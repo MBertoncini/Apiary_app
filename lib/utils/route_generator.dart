@@ -7,6 +7,12 @@ import '../screens/dashboard_screen.dart';
 import '../screens/apiario/apiario_list_screen.dart';
 import '../screens/apiario/apiario_detail_screen.dart';
 import '../screens/apiario/apiario_form_screen.dart';
+import '../screens/settings_screen.dart';
+import '../screens/gruppo/gruppi_list_screen.dart';
+import '../screens/gruppo/gruppo_detail_screen.dart';
+import '../screens/gruppo/gruppo_form_screen.dart';
+import '../screens/gruppo/gruppo_invito_screen.dart';
+import '../models/gruppo.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -41,7 +47,38 @@ class RouteGenerator {
       
       case AppConstants.apiarioCreateRoute:
         return MaterialPageRoute(builder: (_) => ApiarioFormScreen());
+      
+      case AppConstants.settingsRoute:
+        return MaterialPageRoute(builder: (_) => SettingsScreen());
+      
+      // Nuove rotte per la gestione dei gruppi
+      case AppConstants.gruppiListRoute:
+        return MaterialPageRoute(builder: (_) => GruppiListScreen());
         
+      case AppConstants.gruppoDetailRoute:
+        // Verifica che gli argomenti siano corretti
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => GruppoDetailScreen(gruppoId: args),
+          );
+        }
+        return _errorRoute();
+        
+      case AppConstants.gruppoCreateRoute:
+        // Se args è null, è una creazione, altrimenti è una modifica
+        return MaterialPageRoute(
+          builder: (_) => GruppoFormScreen(gruppo: args as Gruppo?),
+        );
+        
+      case AppConstants.gruppoInvitoRoute:
+        // Verifica che gli argomenti siano corretti
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => GruppoInvitoScreen(gruppoId: args),
+          );
+        }
+        return _errorRoute();
+      
       // Aggiungi altre route qui
       
       default:

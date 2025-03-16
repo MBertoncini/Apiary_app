@@ -1,4 +1,4 @@
-name: Apiary_app
+name: apiary_app
 description: Un'app per la gestione degli apiari.
 
 publish_to: 'none'
@@ -17,7 +17,7 @@ dependencies:
   provider: ^6.0.5
   http: ^1.1.0
   shared_preferences: ^2.2.1
-  intl: ^0.18.1
+  intl: 0.19.0
   path_provider: ^2.1.1
   sqflite: ^2.3.0
   flutter_map: ^5.0.0
@@ -25,7 +25,7 @@ dependencies:
   geolocator: ^10.0.1
   image_picker: ^1.0.4
   package_info_plus: ^4.1.0
-  flutter_local_notifications: ^15.1.1
+  flutter_local_notifications: ^17.2.1
   permission_handler: ^11.0.0
   connectivity_plus: ^4.0.2
   cached_network_image: ^3.3.0
@@ -33,7 +33,9 @@ dependencies:
   flutter_svg: ^2.0.7
   share_plus: ^7.1.0
   fl_chart: ^0.63.0
-  
+  flutter_riverpod: ^2.0.0 # Ensure you have the latest version or the one you're using
+  flutter_local_notifications_linux: ^4.0.0+1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

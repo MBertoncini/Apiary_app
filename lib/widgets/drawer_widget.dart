@@ -76,9 +76,7 @@ class AppDrawer extends StatelessWidget {
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              if (currentRoute != AppConstants.arniaListRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.arniaListRoute);
-              }
+              _showFeatureNotImplementedMessage(context, 'Lista Arnie');
             },
           ),
           
@@ -90,7 +88,7 @@ class AppDrawer extends StatelessWidget {
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              // TODO: navigazione alla lista regine
+              _showFeatureNotImplementedMessage(context, 'Lista Regine');
             },
           ),
           
@@ -102,7 +100,7 @@ class AppDrawer extends StatelessWidget {
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              // TODO: navigazione alla lista trattamenti
+              _showFeatureNotImplementedMessage(context, 'Trattamenti Sanitari');
             },
           ),
           
@@ -114,22 +112,24 @@ class AppDrawer extends StatelessWidget {
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              // TODO: navigazione alla lista melari
+              _showFeatureNotImplementedMessage(context, 'Melari e Produzioni');
             },
           ),
           
           // Divisore
           Divider(),
           
-          // Gruppi
+          // Gruppi - Ora implementato
           ListTile(
             leading: Icon(Icons.group),
             title: Text('Gruppi'),
-            selected: false,
+            selected: currentRoute == AppConstants.gruppiListRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              // TODO: navigazione alla lista gruppi
+              if (currentRoute != AppConstants.gruppiListRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.gruppiListRoute);
+              }
             },
           ),
           
@@ -157,6 +157,16 @@ class AppDrawer extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+  
+  // Helper per mostrare un messaggio per funzionalità non implementate
+  void _showFeatureNotImplementedMessage(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('La funzionalità "$feature" sarà disponibile nella prossima versione'),
+        duration: Duration(seconds: 2),
       ),
     );
   }

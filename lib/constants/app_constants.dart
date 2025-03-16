@@ -23,6 +23,14 @@ class AppConstants {
   static const String controlloCreateRoute = "/controllo/create";
   static const String settingsRoute = "/settings";
   
+  // Ruote per gestione gruppi
+  static const String gruppiListRoute = "/gruppi";
+  static const String gruppoDetailRoute = "/gruppo/detail";
+  static const String gruppoCreateRoute = "/gruppo/create";
+  static const String gruppoInvitoRoute = "/gruppo/invito";
+  static const String gruppoMembriRoute = "/gruppo/membri";
+  static const String gruppoApiariRoute = "/gruppo/apiari";
+  
   // Altri parametri
   static const int defaultSyncInterval = 30; // Minuti
 }
