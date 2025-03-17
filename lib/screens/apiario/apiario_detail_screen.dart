@@ -5,6 +5,9 @@ import '../../constants/theme_constants.dart';
 import '../../constants/api_constants.dart';  // Aggiunto per risolvere l'errore di ApiConstants
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import '../../widgets/qr_generator_widget.dart';  
+import '../../services/mobile_scanner_service.dart'; 
 
 class ApiarioDetailScreen extends StatefulWidget {
   final int apiarioId;
@@ -167,6 +170,27 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             icon: Icon(Icons.edit),
             onPressed: _editApiario,
             tooltip: 'Modifica apiario',
+          ),
+          // Nuovo pulsante QR
+          IconButton(
+            icon: Icon(Icons.qr_code),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                builder: (context) => Padding(
+                  padding: EdgeInsets.all(16),
+                  child: QrGeneratorWidget(
+                    entity: _apiario!,
+                    service: MobileScannerService(),
+                  ),
+                ),
+              );
+            },
+            tooltip: 'Genera QR Code',
           ),
         ],
         bottom: TabBar(

@@ -4,25 +4,31 @@ import '../../models/controllo_arnia.dart';
 class ControlloArniaDao {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<int> insert(ControlloArnia controllo) async {
+  Future<int> insert(Map<String, dynamic> controlloDati) async {
+    // Per prima cosa, assicuriamoci che abbia i campi richiesti per il database locale
+    controlloDati['sync_status'] = 'pending';
+    controlloDati['last_updated'] = DateTime.now().millisecondsSinceEpoch;
+    
     return await _dbHelper.insert(
       _dbHelper.tableControlli,
-      controllo.toJson(),
+      controlloDati,
     );
   }
 
-  Future<List<ControlloArnia>> getAll() async {
-    final List<Map<String, dynamic>> maps = await _dbHelper.query(
-      _dbHelper.tableControlli,
-      orderBy: 'data DESC',
-    );
+  Future<int> update(int id, Map<String, dynamic> controlloDati) async {
+    // Aggiorna lo stato di sincronizzazione e il timestamp
+    controlloDati['sync_status'] = 'pending';
+    controlloDati['last_updated'] = DateTime.now().millisecondsSinceEpoch;
     
-    return List.generate(maps.length, (i) {
-      return ControlloArnia.fromJson(maps[i]);
-    });
+    return await _dbHelper.update(
+      _dbHelper.tableControlli,
+      controlloDati,
+      'id = ?',
+      [id],
+    );
   }
 
-  Future<ControlloArnia?> getById(int id) async {
+  Future<Map<String, dynamic>?> getById(int id) async {
     final List<Map<String, dynamic>> maps = await _dbHelper.query(
       _dbHelper.tableControlli,
       where: 'id = ?',
@@ -33,10 +39,10 @@ class ControlloArniaDao {
       return null;
     }
     
-    return ControlloArnia.fromJson(maps.first);
+    return maps.first;
   }
 
-  Future<List<ControlloArnia>> getByArnia(int arniaId) async {
+  Future<List<Map<String, dynamic>>> getByArnia(int arniaId) async {
     final List<Map<String, dynamic>> maps = await _dbHelper.query(
       _dbHelper.tableControlli,
       where: 'arnia = ?',
@@ -44,25 +50,10 @@ class ControlloArniaDao {
       orderBy: 'data DESC',
     );
     
-    return List.generate(maps.length, (i) {
-      return ControlloArnia.fromJson(maps[i]);
-    });
+    return maps;
   }
 
-  Future<List<ControlloArnia>> getByApiario(int apiarioId) async {
-    final List<Map<String, dynamic>> maps = await _dbHelper.query(
-      _dbHelper.tableControlli,
-      where: 'apiario_id = ?',
-      whereArgs: [apiarioId],
-      orderBy: 'data DESC',
-    );
-    
-    return List.generate(maps.length, (i) {
-      return ControlloArnia.fromJson(maps[i]);
-    });
-  }
-
-  Future<List<ControlloArnia>> getRecentByArnia(int arniaId, {int days = 30}) async {
+  Future<List<Map<String, dynamic>>> getRecentByArnia(int arniaId, {int days = 30}) async {
     final date = DateTime.now().subtract(Duration(days: days));
     final dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     
@@ -73,12 +64,10 @@ class ControlloArniaDao {
       orderBy: 'data DESC',
     );
     
-    return List.generate(maps.length, (i) {
-      return ControlloArnia.fromJson(maps[i]);
-    });
+    return maps;
   }
 
-  Future<ControlloArnia?> getLatestByArnia(int arniaId) async {
+  Future<Map<String, dynamic>?> getLatestByArnia(int arniaId) async {
     final List<Map<String, dynamic>> maps = await _dbHelper.query(
       _dbHelper.tableControlli,
       where: 'arnia = ?',
@@ -91,34 +80,11 @@ class ControlloArniaDao {
       return null;
     }
     
-    return ControlloArnia.fromJson(maps.first);
+    return maps.first;
   }
 
-  Future<int> update(ControlloArnia controllo) async {
-    return await _dbHelper.update(
-      _dbHelper.tableControlli,
-      controllo.toJson(),
-      'id = ?',
-      [controllo.id],
-    );
-  }
-
-  Future<int> delete(int id) async {
-    return await _dbHelper.delete(
-      _dbHelper.tableControlli,
-      'id = ?',
-      [id],
-    );
-  }
-
-  Future<List<ControlloArnia>> getPendingChanges() async {
-    final List<Map<String, dynamic>> maps = await _dbHelper.getPendingChanges(
-      _dbHelper.tableControlli,
-    );
-    
-    return List.generate(maps.length, (i) {
-      return ControlloArnia.fromJson(maps[i]);
-    });
+  Future<List<Map<String, dynamic>>> getPendingChanges() async {
+    return await _dbHelper.getPendingChanges(_dbHelper.tableControlli);
   }
 
   Future<void> markSynced(int id) async {
@@ -127,5 +93,13 @@ class ControlloArniaDao {
 
   Future<void> syncFromServer(List<Map<String, dynamic>> records) async {
     await _dbHelper.batchInsertOrUpdate(_dbHelper.tableControlli, records);
+  }
+  
+  Future<int> delete(int id) async {
+    return await _dbHelper.delete(
+      _dbHelper.tableControlli,
+      'id = ?',
+      [id],
+    );
   }
 }

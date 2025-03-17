@@ -9,6 +9,8 @@ import '../services/jokes_service.dart'; // Servizio per le freddure
 import '../widgets/drawer_widget.dart';
 import '../widgets/bee_joke_bubble.dart'; // Widget fumetto
 import '../models/gruppo.dart'; // Import Gruppo model
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import '../screens/mobile_scanner_wrapper_screen.dart'; // Aggiorna percorso in base alla struttura del tuo progetto
 
 // Create a separate StatefulWidget for the dashboard screen
 class DashboardScreen extends StatefulWidget {
@@ -1535,11 +1537,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToApiarioCreate,
-        icon: Icon(Icons.add),
-        label: Text('Nuovo apiario'),
-        tooltip: 'Aggiungi apiario',
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        backgroundColor: Theme.of(context).primaryColor,
+        children: [
+          SpeedDialChild(
+            child: Icon(Icons.qr_code_scanner),
+            label: 'Scansiona QR',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => MobileScannerWrapperScreen()),
+              );
+            },
+          ),
+          SpeedDialChild(
+            child: Icon(Icons.add),
+            label: 'Nuovo apiario',
+            onTap: _navigateToApiarioCreate,
+          ),
+        ],
       ),
     );
   }

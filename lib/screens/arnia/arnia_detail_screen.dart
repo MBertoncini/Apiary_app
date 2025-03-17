@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import '../mobile_scanner_wrapper_screen.dart';
+import '../../widgets/qr_generator_widget.dart';
+import '../../services/mobile_scanner_service.dart';
 
 class ArniaDetailScreen extends StatefulWidget {
   final int arniaId;
@@ -170,10 +174,32 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         title: Text('Arnia ${_arnia!['numero']}'),
         backgroundColor: color,
         actions: [
+          // Pulsante di modifica esistente
           IconButton(
             icon: Icon(Icons.edit),
             onPressed: _editArnia,
             tooltip: 'Modifica arnia',
+          ),
+          // Nuovo pulsante QR
+          IconButton(
+            icon: Icon(Icons.qr_code),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                builder: (context) => Padding(
+                  padding: EdgeInsets.all(16),
+                  child: QrGeneratorWidget(
+                    entity: _arnia!,
+                    service: MobileScannerService(),
+                  ),
+                ),
+              );
+            },
+            tooltip: 'Genera QR Code',
           ),
         ],
         bottom: TabBar(
@@ -623,7 +649,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                 if (controllo['sciamatura'])
                                   _buildControlloTag(
                                     'Sciamatura', 
-                                    Icons.swarm,
+                                    Icons.grain,
                                     Colors.deepOrange,
                                   ),
                               ],

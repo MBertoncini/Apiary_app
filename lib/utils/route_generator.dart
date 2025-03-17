@@ -13,6 +13,9 @@ import '../screens/gruppo/gruppo_detail_screen.dart';
 import '../screens/gruppo/gruppo_form_screen.dart';
 import '../screens/gruppo/gruppo_invito_screen.dart';
 import '../models/gruppo.dart';
+import '../screens/mobile_scanner_wrapper_screen.dart';
+import '../screens/arnia/arnia_detail_screen.dart';
+import '../screens/controllo/controllo_form_screen.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -78,7 +81,29 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
-      
+
+      case '/qr_scanner':
+      return MaterialPageRoute(builder: (_) => MobileScannerWrapperScreen());
+
+            // Aggiungi questi case nel metodo generateRoute
+      case AppConstants.arniaDetailRoute:
+        // Verifica che gli argomenti siano corretti
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => ArniaDetailScreen(arniaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.controlloCreateRoute:
+        // Verifica che gli argomenti siano corretti
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => ControlloArniaScreen(arniaId: args),
+          );
+        }
+        return _errorRoute();
+
       // Aggiungi altre route qui
       
       default:
