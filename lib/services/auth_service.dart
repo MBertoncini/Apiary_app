@@ -261,7 +261,9 @@ class AuthService extends ChangeNotifier {
     if (_token == null) return null;
 
     try {
-      // Il metodo ora punterà al nuovo endpoint funzionante
+      // Add debug logging
+      print('Fetching user info from: ${ApiConstants.userProfileUrl}');
+      
       final response = await http.get(
         Uri.parse(ApiConstants.userProfileUrl),
         headers: {
@@ -270,9 +272,14 @@ class AuthService extends ChangeNotifier {
         },
       );
 
+      print('User profile response status: ${response.statusCode}');
+      print('User profile response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final userJson = json.decode(response.body);
-        return User.fromJson(userJson);
+        final user = User.fromJson(userJson);
+        print('Parsed user: ${user.username}, ${user.email}, ${user.fullName}');
+        return user;
       }
     } catch (e) {
       print('Error fetching user info: $e');
@@ -299,18 +306,23 @@ class AuthService extends ChangeNotifier {
 
   // Aggiungi questo metodo in AuthService
   Future<bool> refreshUserProfile() async {
+    print('Refreshing user profile...');
     try {
       final user = await _fetchUserInfo();
       if (user != null) {
+        print('User profile refreshed successfully: ${user.username}');
         _currentUser = user;
         notifyListeners();
         return true;
+      } else {
+        print('User profile refresh failed: No user data returned');
       }
     } catch (e) {
       print('Error refreshing user profile: $e');
     }
     return false;
   }
+
   // Aggiungi questo metodo a auth_service.dart
   void extractUserFromToken() {
     if (_token != null) {

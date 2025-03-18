@@ -85,7 +85,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
         
         // Ottieni info utente
         final userResponse = await _makeGetRequest(
-          '${ApiConstants.baseUrl}/api/token/',
+          ApiConstants.userProfileUrl,  // Use the correct endpoint
           headers: {'Authorization': 'Bearer $token'},
         );
         

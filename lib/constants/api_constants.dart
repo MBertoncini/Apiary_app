@@ -12,7 +12,6 @@ class ApiConstants {
   static const String tokenUrl = baseUrl + apiPrefix + "/token/";
   static const String tokenRefreshUrl = baseUrl + apiPrefix + "/token/refresh/";
   static const String userProfileUrl = baseUrl + apiPrefix + "/users/me/";
-  
   // Endpoint apiari - nota l'uso di apiPrefix qui
   static const String apiariUrl = baseUrl + apiPrefix + '/apiari/';
   
