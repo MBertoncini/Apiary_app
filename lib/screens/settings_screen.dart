@@ -25,8 +25,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadAppInfo();
     _loadSyncInfo();
+    // Aggiungi questo per forzare l'aggiornamento del profilo utente
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AuthService>(context, listen: false).refreshUserProfile();
+    });
   }
-  
+
   Future<void> _loadAppInfo() async {
     try {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
@@ -178,7 +182,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
-    
+      // Debug per capire cosa contiene l'oggetto utente
+    print('User object: $user');
+    if (user != null) {
+      print('Username: ${user.username}');
+      print('Email: ${user.email}');
+      print('FirstName: ${user.firstName}');
+      print('LastName: ${user.lastName}');
+      print('FullName: ${user.fullName}');
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text('Impostazioni'),
@@ -221,7 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user?.fullName ?? 'Utente',
+                              user?.fullName ?? user?.username ?? 'Utente',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,

@@ -53,6 +53,15 @@ class AuthService extends ChangeNotifier {
           notifyListeners();
           return true;
         } else {
+          // Prova a estrarre info utente dal token
+          extractUserFromToken();
+          if (_currentUser != null) {
+            _isAuthenticated = true;
+            _isLoading = false;
+            notifyListeners();
+            return true;
+          }
+          
           // Prova a rinnovare il token
           final refreshed = await refreshToken();
           _isLoading = false;
@@ -93,7 +102,7 @@ class AuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
 
-        // Estrai i token
+        // Dopo aver ottenuto il token in login()
         _token = responseData['access'];
         _refreshToken = responseData['refresh'];
 
@@ -102,13 +111,16 @@ class AuthService extends ChangeNotifier {
         prefs.setString(AppConstants.tokenKey, _token!);
         prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
 
-        // Ottieni informazioni utente
-        _currentUser = await _fetchUserInfo();
+        // Aggiungi questa riga
+        extractUserFromToken();
+
         _isAuthenticated = true;
+        _currentUser = await _fetchUserInfo();
 
         _isLoading = false;
         notifyListeners();
         return true;
+
       } else {
         // Login fallito
         final responseData = json.decode(response.body);
@@ -210,6 +222,10 @@ class AuthService extends ChangeNotifier {
         
         // Verifica la validità del nuovo token
         _currentUser = await _fetchUserInfo();
+        if (_currentUser == null) {
+          extractUserFromToken();
+        }
+        
         _isAuthenticated = (_currentUser != null);
         
         notifyListeners();
@@ -245,6 +261,7 @@ class AuthService extends ChangeNotifier {
     if (_token == null) return null;
 
     try {
+      // Il metodo ora punterà al nuovo endpoint funzionante
       final response = await http.get(
         Uri.parse(ApiConstants.userProfileUrl),
         headers: {
@@ -255,7 +272,6 @@ class AuthService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final userJson = json.decode(response.body);
-        // Assicurati di fornire tutti i parametri richiesti
         return User.fromJson(userJson);
       }
     } catch (e) {
@@ -279,5 +295,57 @@ class AuthService extends ChangeNotifier {
     
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(AppConstants.refreshTokenKey);
+  }
+
+  // Aggiungi questo metodo in AuthService
+  Future<bool> refreshUserProfile() async {
+    try {
+      final user = await _fetchUserInfo();
+      if (user != null) {
+        _currentUser = user;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      print('Error refreshing user profile: $e');
+    }
+    return false;
+  }
+  // Aggiungi questo metodo a auth_service.dart
+  void extractUserFromToken() {
+    if (_token != null) {
+      try {
+        // Dividi il token nelle sue parti
+        final parts = _token!.split('.');
+        if (parts.length == 3) {
+          // Decodifica il payload
+          String normalizedPayload = parts[1];
+          while (normalizedPayload.length % 4 != 0) {
+            normalizedPayload += '=';
+          }
+          
+          final payloadBytes = base64Url.decode(normalizedPayload);
+          final payloadMap = json.decode(utf8.decode(payloadBytes));
+          
+          print('Token payload: $payloadMap');
+          
+          // Ottieni l'ID utente dal payload
+          final userId = payloadMap['user_id'] ?? 0;
+          
+          // Crea un utente con un nome basato sull'ID
+          _currentUser = User(
+            id: userId,
+            username: 'Utente $userId', // Uso "Utente 1" invece di solo "Utente"
+            email: 'utente$userId@esempio.it', // Email fittizia basata sull'ID
+            isActive: true
+          );
+          
+          _isAuthenticated = true;
+          notifyListeners();
+        }
+      } catch (e) {
+        print('Error extracting user info from token: $e');
+      }
+    }
   }
 }
