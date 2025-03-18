@@ -22,16 +22,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _apiari = [];
   List<dynamic> _trattamenti = [];
   List<dynamic> _fioriture = [];
-  DateTime _lastSyncTime = DateTime.now();
-  
+  List<dynamic> _controlli = [];  DateTime _lastSyncTime = DateTime.now();
+
+
   // Variabili per la gestione del caricamento
   bool _isLoadingApiari = true;
   bool _isLoadingTrattamenti = true;
   bool _isLoadingFioriture = true;
+  bool _isLoadingControlli = true;
+
   String? _apiariError;
   String? _trattamentiError;
   String? _fioritureError;
-  
+  String? _controlliError;  
   // Variabili per funzionalità aggiuntive
   Map<String, dynamic>? _weatherData;
   Map<String, List<dynamic>> _calendarEvents = {};
@@ -109,6 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadApiariData(apiService),
       _loadTrattamentiData(apiService),
       _loadFioritureData(apiService),
+      _loadControlliData(apiService),
     ]);
     
     // Aggiorna l'orario di sincronizzazione
@@ -192,6 +196,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
   
+  Future<void> _loadControlliData(ApiService apiService) async {
+    try {
+      final controlliResponse = await apiService.get('controlli/');
+      setState(() {
+        _controlli = controlliResponse['results'] ?? [];
+        _isLoadingControlli = false;
+      });
+    } catch (e) {
+      print('Error fetching controlli: $e');
+      setState(() {
+        _controlliError = e.toString();
+        _isLoadingControlli = false;
+      });
+    }
+  }
+
   Future<void> _refreshData() async {
     // Mostra messaggio di feedback durante la sincronizzazione
     ScaffoldMessenger.of(context).showSnackBar(
@@ -263,11 +283,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
     
-    // Note: The following collections (_controlli, _regine, _melari, _smielature)
-    // aren't defined in the current state. If you add them in the future,
-    // you can uncomment these sections.
-    
-    /* 
     // Controlli (inspections)
     if (_controlli != null) {
       for (var controllo in _controlli) {
@@ -288,6 +303,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
     }
+
+    // Note: The following collections (_regine, _melari, _smielature)
+    // aren't defined in the current state. If you add them in the future,
+    // you can uncomment these sections.
+    
+    /* 
     
     // Regine (queens)
     if (_regine != null) {
