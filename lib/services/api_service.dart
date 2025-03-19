@@ -163,6 +163,142 @@ class ApiService {
     return response;
   }
   
+  // === METODI PER ARNIE ===
+  
+  // Ottieni tutte le arnie
+  Future<List<dynamic>> getArnie() async {
+    final response = await get(ApiConstants.arnieUrl);
+    return response is List ? response : [];
+  }
+  
+  // Ottieni arnie di un apiario specifico
+  Future<List<dynamic>> getArnieByApiario(int apiarioId) async {
+    final response = await get('${ApiConstants.apiariUrl}$apiarioId/arnie/');
+    return response is List ? response : [];
+  }
+  
+  // Ottieni dettagli di un'arnia specifica
+  Future<dynamic> getArnia(int arniaId) async {
+    return await get('${ApiConstants.arnieUrl}$arniaId/');
+  }
+  
+  // Crea una nuova arnia
+  Future<dynamic> createArnia(Map<String, dynamic> data) async {
+    return await post(ApiConstants.arnieUrl, data);
+  }
+  
+  // Aggiorna un'arnia esistente
+  Future<dynamic> updateArnia(int arniaId, Map<String, dynamic> data) async {
+    return await put('${ApiConstants.arnieUrl}$arniaId/', data);
+  }
+  
+  // === METODI PER REGINE ===
+  
+  // Ottieni tutte le regine
+  Future<List<dynamic>> getRegine() async {
+    final response = await get(ApiConstants.regineUrl);
+    return response is List ? response : [];
+  }
+  
+  // Ottieni regina per una specifica arnia
+  Future<dynamic> getReginaByArnia(int arniaId) async {
+    return await get('${ApiConstants.arnieUrl}$arniaId/regina/');
+  }
+  
+  // Ottieni dettagli di una regina specifica
+  Future<dynamic> getRegina(int reginaId) async {
+    return await get('${ApiConstants.regineUrl}$reginaId/');
+  }
+  
+  // Aggiungi una regina ad un'arnia
+  Future<dynamic> addRegina(int arniaId, Map<String, dynamic> data) async {
+    return await post('${ApiConstants.arnieUrl}$arniaId/regina/aggiungi/', data);
+  }
+  
+  // Sostituisci una regina di un'arnia
+  Future<dynamic> replaceRegina(int arniaId, Map<String, dynamic> data) async {
+    return await post('${ApiConstants.arnieUrl}$arniaId/regina/sostituisci/', data);
+  }
+  
+  // === METODI PER TRATTAMENTI SANITARI ===
+  
+  // Ottieni tutti i trattamenti
+  Future<List<dynamic>> getTrattamenti() async {
+    final response = await get(ApiConstants.trattamentiUrl);
+    return response is List ? response : [];
+  }
+  
+  // Ottieni trattamenti attivi
+  Future<List<dynamic>> getTrattamentiAttivi() async {
+    final response = await get('${ApiConstants.trattamentiUrl}attivi/');
+    return response is List ? response : [];
+  }
+  
+  // Ottieni dettagli di un trattamento specifico
+  Future<dynamic> getTrattamento(int trattamentoId) async {
+    return await get('${ApiConstants.trattamentiUrl}$trattamentoId/');
+  }
+  
+  // Crea un nuovo trattamento
+  Future<dynamic> createTrattamento(Map<String, dynamic> data) async {
+    return await post(ApiConstants.trattamentiUrl, data);
+  }
+  
+  // Aggiorna un trattamento esistente
+  Future<dynamic> updateTrattamento(int trattamentoId, Map<String, dynamic> data) async {
+    return await put('${ApiConstants.trattamentiUrl}$trattamentoId/', data);
+  }
+  
+  // Cambia lo stato di un trattamento
+  Future<dynamic> updateTrattamentoStatus(int trattamentoId, String nuovoStato) async {
+    return await post('${ApiConstants.trattamentiUrl}$trattamentoId/stato/$nuovoStato/', {});
+  }
+  
+  // Ottieni tipi di trattamento
+  Future<List<dynamic>> getTipiTrattamento() async {
+    final response = await get(ApiConstants.tipiTrattamentoUrl);
+    return response is List ? response : [];
+  }
+  
+  // === METODI PER MELARI E PRODUZIONI ===
+  
+  // Ottieni tutti i melari
+  Future<List<dynamic>> getMelari() async {
+    final response = await get(ApiConstants.melariUrl);
+    return response is List ? response : [];
+  }
+  
+  // Ottieni dettagli di un melario specifico
+  Future<dynamic> getMelario(int melarioId) async {
+    return await get('${ApiConstants.melariUrl}$melarioId/');
+  }
+  
+  // Aggiungi un melario ad un'arnia
+  Future<dynamic> addMelario(int arniaId, Map<String, dynamic> data) async {
+    return await post('${ApiConstants.arnieUrl}$arniaId/melario/aggiungi/', data);
+  }
+  
+  // Rimuovi un melario
+  Future<dynamic> removeMelario(int melarioId) async {
+    return await post('${ApiConstants.melariUrl}$melarioId/rimuovi/', {});
+  }
+  
+  // Invia un melario in smielatura
+  Future<dynamic> sendMelarioToSmielatura(int melarioId) async {
+    return await post('${ApiConstants.melariUrl}$melarioId/smielatura/', {});
+  }
+  
+  // Ottieni tutte le smielature
+  Future<List<dynamic>> getSmielature() async {
+    final response = await get(ApiConstants.produzioniUrl);
+    return response is List ? response : [];
+  }
+  
+  // Registra una nuova smielatura
+  Future<dynamic> createSmielatura(int apiarioId, Map<String, dynamic> data) async {
+    return await post('${ApiConstants.apiariUrl}$apiarioId/smielatura/registra/', data);
+  }
+  
   // Metodo di debug per verificare la costruzione degli URL
   void printDebugInfo() {
     print('API Constants Debug Info:');

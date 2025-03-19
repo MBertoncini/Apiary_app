@@ -15,7 +15,14 @@ import '../screens/gruppo/gruppo_invito_screen.dart';
 import '../models/gruppo.dart';
 import '../screens/mobile_scanner_wrapper_screen.dart';
 import '../screens/arnia/arnia_detail_screen.dart';
+import '../screens/arnia/arnia_list_screen.dart';
+import '../screens/arnia/arnia_form_screen.dart';
 import '../screens/controllo/controllo_form_screen.dart';
+import '../screens/regina/regina_list_screen.dart';
+import '../screens/regina/regina_detail_screen.dart';
+import '../screens/trattamento/trattamenti_screen.dart';
+import '../screens/trattamento/trattamento_form_screen.dart';
+import '../screens/melario/melari_screen.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -54,7 +61,7 @@ class RouteGenerator {
       case AppConstants.settingsRoute:
         return MaterialPageRoute(builder: (_) => SettingsScreen());
       
-      // Nuove rotte per la gestione dei gruppi
+      // Rotte per la gestione dei gruppi
       case AppConstants.gruppiListRoute:
         return MaterialPageRoute(builder: (_) => GruppiListScreen());
         
@@ -83,9 +90,12 @@ class RouteGenerator {
         return _errorRoute();
 
       case '/qr_scanner':
-      return MaterialPageRoute(builder: (_) => MobileScannerWrapperScreen());
+        return MaterialPageRoute(builder: (_) => MobileScannerWrapperScreen());
 
-            // Aggiungi questi case nel metodo generateRoute
+      // Rotte per la gestione delle arnie
+      case AppConstants.arniaListRoute:
+        return MaterialPageRoute(builder: (_) => ArniaListScreen());
+            
       case AppConstants.arniaDetailRoute:
         // Verifica che gli argomenti siano corretti
         if (args is int) {
@@ -94,7 +104,17 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
+        
+      case AppConstants.creaArniaRoute:
+        // Verifica se è specificato un apiario
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => ArniaFormScreen(apiarioId: args),
+          );
+        }
+        return MaterialPageRoute(builder: (_) => ArniaFormScreen());
 
+      // Rotte per la gestione dei controlli
       case AppConstants.controlloCreateRoute:
         // Verifica che gli argomenti siano corretti
         if (args is int) {
@@ -104,7 +124,35 @@ class RouteGenerator {
         }
         return _errorRoute();
 
-      // Aggiungi altre route qui
+      // Rotte per la gestione delle regine
+      case AppConstants.reginaListRoute:
+        return MaterialPageRoute(builder: (_) => ReginaListScreen());
+        
+      case AppConstants.reginaDetailRoute:
+        // Verifica che gli argomenti siano corretti
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => ReginaDetailScreen(reginaId: args),
+          );
+        }
+        return _errorRoute();
+
+      // Rotte per la gestione dei trattamenti sanitari
+      case AppConstants.trattamentiRoute:
+        return MaterialPageRoute(builder: (_) => TrattamentiScreen());
+        
+      case AppConstants.nuovoTrattamentoRoute:
+        // Verifica se è specificato un apiario
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => TrattamentoFormScreen(apiarioId: args),
+          );
+        }
+        return MaterialPageRoute(builder: (_) => TrattamentoFormScreen());
+
+      // Rotte per la gestione dei melari e produzioni
+      case AppConstants.melariRoute:
+        return MaterialPageRoute(builder: (_) => MelariScreen());
       
       default:
         return _errorRoute();

@@ -76,7 +76,9 @@ class AppDrawer extends StatelessWidget {
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              _showFeatureNotImplementedMessage(context, 'Lista Arnie');
+              if (currentRoute != AppConstants.arniaListRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.arniaListRoute);
+              }
             },
           ),
           
@@ -84,11 +86,13 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: Icon(Icons.local_florist),
             title: Text('Regine'),
-            selected: false,
+            selected: currentRoute == AppConstants.reginaListRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              _showFeatureNotImplementedMessage(context, 'Lista Regine');
+              if (currentRoute != AppConstants.reginaListRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.reginaListRoute);
+              }
             },
           ),
           
@@ -96,11 +100,13 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: Icon(Icons.medication),
             title: Text('Trattamenti sanitari'),
-            selected: false,
+            selected: currentRoute == AppConstants.trattamentiRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              _showFeatureNotImplementedMessage(context, 'Trattamenti Sanitari');
+              if (currentRoute != AppConstants.trattamentiRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.trattamentiRoute);
+              }
             },
           ),
           
@@ -108,11 +114,13 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: Icon(Icons.view_module),
             title: Text('Melari e produzioni'),
-            selected: false,
+            selected: currentRoute == AppConstants.melariRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () {
               Navigator.pop(context);
-              _showFeatureNotImplementedMessage(context, 'Melari e Produzioni');
+              if (currentRoute != AppConstants.melariRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.melariRoute);
+              }
             },
           ),
           

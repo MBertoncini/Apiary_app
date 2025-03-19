@@ -65,15 +65,15 @@ flutter:
           weight: 700
 
 flutter_launcher_icons:
-  android: "launcher_icon"
+  android: true
   ios: true
-  image_path: "assets/icon/icon.png"  # Percorso della tua icona
-  min_sdk_android: 21
-  adaptive_icon_background: "#FFC107"  # Colore di sfondo per icone adattive Android
-  adaptive_icon_foreground: "assets/icon/icon_foreground.png"  # Opzionale, solo se vuoi un'icona adattiva
-  remove_alpha_ios: true  # Rimuove la trasparenza per iOS
+  image_path: "assets/icons/icon.png"
+  adaptive_icon_background: "#FFC107"
+  adaptive_icon_foreground: "assets/icons/icon.png"  # Stesso file
+  remove_alpha_ios: true
   web:
     generate: true
-    image_path: "assets/icon/icon.png"
+    image_path: "assets/icons/icon.png"
     background_color: "#FFC107"
     theme_color: "#FFA000"
+
