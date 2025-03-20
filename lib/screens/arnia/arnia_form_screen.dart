@@ -3,8 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../models/arnia.dart';
+import '../../models/apiario.dart';  // Import the Apiario model
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';  // Import StorageService
 
 class ArniaFormScreen extends StatefulWidget {
   final int? apiarioId;
@@ -20,6 +22,11 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
   late ApiService _apiService;
+  late StorageService _storageService;
+  
+  // Lista degli apiari disponibili
+  List<Map<String, dynamic>> _apiari = [];
+  bool _loadingApiari = true;
   
   // Campi del form
   int? _apiarioId;
@@ -52,6 +59,10 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
     super.initState();
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService = ApiService(authService);
+    _storageService = Provider.of<StorageService>(context, listen: false);
+    
+    // Carica tutti gli apiari disponibili
+    _loadApiari();
     
     // Se siamo in modalità modifica, carica i dati dell'arnia
     if (widget.arnia != null) {
@@ -68,6 +79,47 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
       _apiarioId = widget.apiarioId;
       // Carica il nome dell'apiario
       _loadApiarioName();
+    }
+  }
+
+  // Carica tutti gli apiari disponibili
+  Future<void> _loadApiari() async {
+    setState(() {
+      _loadingApiari = true;
+    });
+
+    try {
+      // Prima tenta di caricare dal local storage
+      final apiariFromStorage = await _storageService.getStoredData('apiari');
+      
+      if (apiariFromStorage.isNotEmpty) {
+        setState(() {
+          _apiari = List<Map<String, dynamic>>.from(apiariFromStorage);
+          _loadingApiari = false;
+        });
+      } else {
+        // Se non ci sono dati in locale, carica dalla API
+        final apiariFromApi = await _apiService.get(ApiConstants.apiariUrl);
+        
+        if (apiariFromApi is List) {
+          setState(() {
+            _apiari = List<Map<String, dynamic>>.from(apiariFromApi);
+            _loadingApiari = false;
+          });
+          
+          // Salva i dati per uso futuro
+          await _storageService.saveData('apiari', _apiari);
+        }
+      }
+    } catch (e) {
+      print('Errore nel caricare gli apiari: $e');
+      setState(() {
+        _loadingApiari = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore nel caricare gli apiari')),
+      );
     }
   }
   
@@ -101,6 +153,22 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
         
         if (selectedColor != null) {
           _coloreHex = selectedColor['hex'];
+        }
+      });
+    }
+  }
+
+  // Gestisce il cambio di apiario
+  void _onApiarioChanged(int? newValue) {
+    if (newValue != null) {
+      setState(() {
+        _apiarioId = newValue;
+        // Aggiorna il nome dell'apiario
+        try {
+          final apiario = _apiari.firstWhere((a) => a['id'] == newValue);
+          _apiarioNome = apiario['nome'];
+        } catch (e) {
+          _apiarioNome = 'Apiario $newValue';
         }
       });
     }
@@ -160,7 +228,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
       appBar: AppBar(
         title: Text(widget.arnia != null ? 'Modifica Arnia' : 'Nuova Arnia'),
       ),
-      body: _isLoading
+      body: _isLoading || _loadingApiari
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: EdgeInsets.all(16.0),
@@ -169,30 +237,29 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Mostra l'apiario selezionato se ce n'è uno
-                    if (_apiarioId != null && _apiarioNome != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Apiario',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(_apiarioNome!),
-                              ],
-                            ),
-                          ),
-                        ),
+                    // Campo per la selezione dell'apiario
+                    DropdownButtonFormField<int>(
+                      decoration: InputDecoration(
+                        labelText: 'Apiario',
+                        hintText: 'Seleziona l\'apiario',
+                        border: OutlineInputBorder(),
                       ),
+                      value: _apiarioId,
+                      items: _apiari.map((apiario) {
+                        return DropdownMenuItem<int>(
+                          value: apiario['id'],
+                          child: Text(apiario['nome']),
+                        );
+                      }).toList(),
+                      onChanged: _onApiarioChanged,
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Seleziona un apiario';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16),
                     
                     // Numero arnia
                     TextFormField(
