@@ -14,7 +14,29 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  String _errorMessage = '';
+  String? _errorMessage;
+  bool _showDemoLogin = false;
+  bool _serverUnavailable = false;
+  int _loginAttempts = 0;
+  
+  @override
+  void initState() {
+    super.initState();
+    _checkServerAvailability();
+  }
+  
+  // Verifica disponibilità del server
+  Future<void> _checkServerAvailability() async {
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      await auth.refreshUserProfile();
+    } catch (e) {
+      setState(() {
+        _serverUnavailable = true;
+        _showDemoLogin = true;
+      });
+    }
+  }
   
   @override
   void dispose() {
@@ -23,39 +45,78 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
   
-  Future<void> _submit() async {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
     
+    // Nasconde la tastiera
+    FocusScope.of(context).unfocus();
+    
     setState(() {
-      _errorMessage = '';
+      _errorMessage = null;
     });
     
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final success = await authService.login(
-        _usernameController.text.trim(),
-        _passwordController.text,
-      );
+      final auth = Provider.of<AuthService>(context, listen: false);
+      
+      bool success;
+      if (_showDemoLogin) {
+        // Modalità demo (offline)
+        success = await auth.demoLogin(
+          _usernameController.text.trim(),
+          _passwordController.text,
+        );
+      } else {
+        // Login normale
+        success = await auth.login(
+          _usernameController.text.trim(),
+          _passwordController.text,
+        );
+      }
       
       if (success) {
+        // Reset form
+        _usernameController.clear();
+        _passwordController.clear();
+        
+        // Navigate to dashboard
         Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
-      } else {
-        setState(() {
-          _errorMessage = 'Username o password non validi. Riprova.';
-        });
       }
     } catch (e) {
+      _loginAttempts++;
+      
+      String message;
+      if (e is Exception) {
+        // Estrai il messaggio dall'eccezione
+        message = e.toString().replaceAll('Exception: ', '');
+      } else {
+        message = 'Si è verificato un errore durante il login. Riprova più tardi.';
+      }
+      
       setState(() {
-        _errorMessage = 'Si è verificato un errore. Riprova più tardi.';
+        _errorMessage = message;
+        
+        // Dopo 2 tentativi falliti, mostra l'opzione demo
+        if (_loginAttempts >= 2 && !_showDemoLogin) {
+          _showDemoLogin = true;
+        }
       });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_errorMessage ?? 'Login fallito'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
   
   @override
   Widget build(BuildContext context) {
-    final isLoading = Provider.of<AuthService>(context).isLoading;
+    final auth = Provider.of<AuthService>(context);
+    final isLoading = auth.isLoading;
     
     return Scaffold(
       body: SafeArea(
@@ -97,17 +158,48 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: 8),
                   
                   Text(
-                    'Accedi per gestire i tuoi apiari',
+                    _showDemoLogin
+                        ? 'Accedi in modalità demo o inserisci le tue credenziali'
+                        : 'Accedi per gestire i tuoi apiari',
                     style: TextStyle(
                       fontSize: 16,
                       color: ThemeConstants.textSecondaryColor,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 32),
+                  
+                  if (_serverUnavailable) ...[
+                    SizedBox(height: 12),
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.orange.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Server non disponibile. Funzionalità limitate in modalità offline.',
+                              style: TextStyle(
+                                color: Colors.orange[800],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: 20),
                   
                   // Messaggio di errore
-                  if (_errorMessage.isNotEmpty)
+                  if (_errorMessage != null)
                     Container(
                       padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                       margin: EdgeInsets.only(bottom: 16),
@@ -119,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       child: Text(
-                        _errorMessage,
+                        _errorMessage!,
                         style: TextStyle(color: ThemeConstants.errorColor),
                       ),
                     ),
@@ -129,7 +221,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _usernameController,
                     decoration: InputDecoration(
                       labelText: 'Username',
-                      hintText: 'Inserisci il tuo username',
+                      hintText: _showDemoLogin 
+                          ? 'Per la modalità demo, usa "demo"' 
+                          : 'Inserisci il tuo username',
                       prefixIcon: Icon(Icons.person),
                     ),
                     validator: (value) {
@@ -148,7 +242,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _passwordController,
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      hintText: 'Inserisci la tua password',
+                      hintText: _showDemoLogin 
+                          ? 'Per la modalità demo, usa "demo"' 
+                          : 'Inserisci la tua password',
                       prefixIcon: Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -169,13 +265,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                     enabled: !isLoading,
-                    onFieldSubmitted: (_) => _submit(),
+                    onFieldSubmitted: (_) => _login(),
                   ),
                   SizedBox(height: 24),
                   
                   // Login button
                   ElevatedButton(
-                    onPressed: isLoading ? null : _submit,
+                    onPressed: isLoading ? null : _login,
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       child: isLoading
@@ -188,19 +284,37 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             )
                           : Text(
-                              'ACCEDI',
+                              _showDemoLogin ? 'ACCEDI / DEMO' : 'ACCEDI',
                               style: TextStyle(fontSize: 16),
                             ),
                     ),
                   ),
+                  
+                  if (_showDemoLogin) ...[
+                    SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Modalità demo disponibile! Usa "demo" come username e password',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                  
                   SizedBox(height: 16),
                   
                   // Link registrazione
                   TextButton(
-                    onPressed: isLoading ? null : () {
+                    onPressed: isLoading || _serverUnavailable ? null : () {
                       Navigator.of(context).pushNamed(AppConstants.registerRoute);
                     },
-                    child: Text('Non hai un account? Registrati'),
+                    child: Text(_serverUnavailable 
+                        ? 'Registrazione non disponibile in modalità offline'
+                        : 'Non hai un account? Registrati'),
                   ),
                 ],
               ),

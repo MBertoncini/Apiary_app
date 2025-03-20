@@ -1,25 +1,30 @@
 // File: lib/services/auth_service.dart
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
 import '../constants/api_constants.dart';
 import '../models/user.dart';
+import 'dart:async';
 
 class AuthService extends ChangeNotifier {
   bool _isLoading = true;
   bool _isAuthenticated = false;
+  bool _offlineMode = false;
   String? _token;
   String? _refreshToken;
   User? _currentUser;
+  String? _lastError;
 
   // Getters
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
+  bool get isOfflineMode => _offlineMode;
   String? get token => _token;
-  String? get refreshTokenValue => _refreshToken; // Rinominato per evitare conflitti
-
+  String? get refreshTokenValue => _refreshToken;
+  String? get lastError => _lastError;
   User? get currentUser => _currentUser;
 
   // Costruttore
@@ -38,11 +43,38 @@ class AuthService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final savedToken = prefs.getString(AppConstants.tokenKey);
       final savedRefreshToken = prefs.getString(AppConstants.refreshTokenKey);
+      final savedUserInfo = prefs.getString(AppConstants.userInfoKey);
 
       if (savedToken != null && savedRefreshToken != null) {
         // Imposta i token in memoria
         _token = savedToken;
         _refreshToken = savedRefreshToken;
+
+        // Prova a recuperare l'utente dalla cache
+        if (savedUserInfo != null) {
+          try {
+            _currentUser = User.fromJson(json.decode(savedUserInfo));
+            _isAuthenticated = true;
+            _isLoading = false;
+            notifyListeners();
+            
+            // Tenta di aggiornare i dati dell'utente in background
+            _fetchUserInfo().then((user) {
+              if (user != null) {
+                _currentUser = user;
+                notifyListeners();
+              }
+            }).catchError((_) {
+              // Fallback a modalità offline se non riesci a comunicare col server
+              _offlineMode = true;
+              notifyListeners();
+            });
+            
+            return true;
+          } catch (e) {
+            print('Error parsing saved user info: $e');
+          }
+        }
 
         // Verifica la validità del token recuperando le info dell'utente
         final userInfo = await _fetchUserInfo();
@@ -71,18 +103,32 @@ class AuthService extends ChangeNotifier {
       }
     } catch (e) {
       print('Error checking auth: $e');
-      // Pulisci i token in caso di errore
-      await logout();
+      
+      // Verifica se abbiamo informazioni utente salvate per la modalità offline
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final savedUserInfo = prefs.getString(AppConstants.userInfoKey);
+        
+        if (savedUserInfo != null) {
+          _currentUser = User.fromJson(json.decode(savedUserInfo));
+          _isAuthenticated = true;
+          _offlineMode = true;
+          print('Fallback to offline mode with saved user data');
+        }
+      } catch (cacheError) {
+        print('Error accessing cache: $cacheError');
+      }
     }
 
     _isLoading = false;
     notifyListeners();
-    return false;
+    return _isAuthenticated;
   }
 
   // Login con username e password
   Future<bool> login(String username, String password) async {
     _isLoading = true;
+    _lastError = null;
     notifyListeners();
 
     try {
@@ -95,98 +141,128 @@ class AuthService extends ChangeNotifier {
       // Effettua la richiesta al server
       final response = await http.post(
         Uri.parse(ApiConstants.tokenUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(data),
+        body: data,  // Cambiato da JSON a form data per compatibilità con l'endpoint standard
+      ).timeout(
+        Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('La richiesta di login è scaduta. Controlla la tua connessione.');
+        },
       );
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
+        // Tenta di analizzare la risposta come JSON
+        try {
+          final responseData = json.decode(response.body);
 
-        // Dopo aver ottenuto il token in login()
-        _token = responseData['access'];
-        _refreshToken = responseData['refresh'];
+          _token = responseData['access'];
+          _refreshToken = responseData['refresh'];
 
-        // Salva i token
-        final prefs = await SharedPreferences.getInstance();
-        prefs.setString(AppConstants.tokenKey, _token!);
-        prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
+          // Salva i token
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setString(AppConstants.tokenKey, _token!);
+          prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
 
-        // Aggiungi questa riga
-        extractUserFromToken();
+          // Estrai info dal token se presente
+          extractUserFromToken();
 
-        _isAuthenticated = true;
-        _currentUser = await _fetchUserInfo();
+          _isAuthenticated = true;
+          _offlineMode = false;
+          
+          // Tenta di ottenere le informazioni dell'utente
+          final user = await _fetchUserInfo();
+          if (user != null) {
+            _currentUser = user;
+            
+            // Salva le informazioni dell'utente per uso offline
+            prefs.setString(AppConstants.userInfoKey, json.encode(user.toJson()));
+          }
 
-        _isLoading = false;
-        notifyListeners();
-        return true;
-
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        } catch (jsonError) {
+          print('Error parsing JSON response: $jsonError');
+          _lastError = 'Risposta del server non valida. Il server potrebbe essere in manutenzione.';
+          throw Exception(_lastError);
+        }
       } else {
-        // Login fallito
-        final responseData = json.decode(response.body);
-        throw Exception(responseData['detail'] ?? 'Errore di autenticazione');
+        // Controlla se la risposta è in HTML (errore 500 o simili)
+        if (response.body.trim().startsWith('<')) {
+          _lastError = 'Il server ha riscontrato un errore interno. Per favore, riprova più tardi.';
+          throw Exception(_lastError);
+        }
+        
+        // Tenta di estrarre il messaggio di errore dal JSON
+        try {
+          final responseData = json.decode(response.body);
+          _lastError = responseData['detail'] ?? 'Errore di autenticazione';
+        } catch (e) {
+          _lastError = 'Errore di autenticazione. Codice: ${response.statusCode}';
+        }
+        
+        throw Exception(_lastError);
       }
+    } on SocketException {
+      _lastError = 'Impossibile connettersi al server. Verifica la tua connessione internet.';
+      throw Exception(_lastError);
+    } on TimeoutException {
+      _lastError = 'La richiesta è scaduta. Il server potrebbe essere sovraccarico o la connessione lenta.';
+      throw Exception(_lastError);
     } catch (e) {
       print('Login error: $e');
+      if (_lastError == null) {
+        _lastError = 'Si è verificato un errore durante il login: ${e.toString()}';
+      }
       _isLoading = false;
       notifyListeners();
       rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  // Registrazione nuovo utente
-  Future<bool> register(String username, String email, String password, String? firstName, String? lastName) async {
+  // Demo login (quando il server non è disponibile)
+  Future<bool> demoLogin(String username, String password) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Prepara i dati per la richiesta
-      final data = {
-        'username': username,
-        'email': email,
-        'password': password,
-      };
-
-      // Aggiungi nome e cognome se forniti
-      if (firstName != null && firstName.isNotEmpty) {
-        data['first_name'] = firstName;
-      }
-      if (lastName != null && lastName.isNotEmpty) {
-        data['last_name'] = lastName;
-      }
-
-      // Effettua la richiesta al server
-      final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/api/register/'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(data),
-      );
-
-      if (response.statusCode == 201) {
-        // Registrazione riuscita, effettua login
+      // Simula un ritardo di rete
+      await Future.delayed(Duration(seconds: 1));
+      
+      // Credenziali demo
+      if (username == 'demo' && password == 'demo') {
+        // Crea un utente demo
+        _currentUser = User(
+          id: 999,
+          username: 'demo',
+          email: 'demo@example.com',
+          isActive: true,
+          firstName: 'Utente',
+          lastName: 'Demo',
+        );
+        
+        // Imposta token fittizio
+        _token = 'demo_token';
+        _refreshToken = 'demo_refresh_token';
+        
+        // Salva i token e le info utente
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setString(AppConstants.tokenKey, _token!);
+        prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
+        prefs.setString(AppConstants.userInfoKey, json.encode(_currentUser!.toJson()));
+        
+        _isAuthenticated = true;
+        _offlineMode = true;
         _isLoading = false;
         notifyListeners();
-        return await login(username, password);
+        return true;
       } else {
-        // Registrazione fallita
-        final responseData = json.decode(response.body);
-        String errorMsg = 'Errore di registrazione';
-        
-        // Estrai messaggi di errore specifici
-        if (responseData is Map) {
-          if (responseData.containsKey('username')) {
-            errorMsg = 'Username: ${responseData['username'].join(', ')}';
-          } else if (responseData.containsKey('email')) {
-            errorMsg = 'Email: ${responseData['email'].join(', ')}';
-          } else if (responseData.containsKey('password')) {
-            errorMsg = 'Password: ${responseData['password'].join(', ')}';
-          }
-        }
-        
-        throw Exception(errorMsg);
+        _lastError = 'Credenziali demo non valide. Usa "demo" come username e password.';
+        throw Exception(_lastError);
       }
     } catch (e) {
-      print('Registration error: $e');
       _isLoading = false;
       notifyListeners();
       rethrow;
@@ -206,8 +282,10 @@ class AuthService extends ChangeNotifier {
       // Effettua la richiesta al server
       final response = await http.post(
         Uri.parse(ApiConstants.tokenRefreshUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(data),
+        body: data,
+      ).timeout(
+        Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('Timeout refreshing token'),
       );
 
       if (response.statusCode == 200) {
@@ -227,15 +305,22 @@ class AuthService extends ChangeNotifier {
         }
         
         _isAuthenticated = (_currentUser != null);
+        _offlineMode = false;
         
         notifyListeners();
         return _isAuthenticated;
       }
     } catch (e) {
       print('Token refresh error: $e');
+      // Se offline, continua in modalità offline
+      if (_currentUser != null) {
+        _offlineMode = true;
+        notifyListeners();
+        return true;
+      }
     }
     
-    // Se arriviamo qui, il refresh è fallito
+    // Se arriviamo qui, il refresh è fallito e non siamo in modalità offline
     await logout();
     return false;
   }
@@ -247,11 +332,15 @@ class AuthService extends ChangeNotifier {
     prefs.remove(AppConstants.tokenKey);
     prefs.remove(AppConstants.refreshTokenKey);
     
+    // Non rimuoviamo le info utente per permettere un uso offline futuro
+    // prefs.remove(AppConstants.userInfoKey);
+    
     // Pulisci lo stato in memoria
     _token = null;
     _refreshToken = null;
     _currentUser = null;
     _isAuthenticated = false;
+    _offlineMode = false;
     
     notifyListeners();
   }
@@ -261,31 +350,54 @@ class AuthService extends ChangeNotifier {
     if (_token == null) return null;
 
     try {
-      // Add debug logging
       print('Fetching user info from: ${ApiConstants.userProfileUrl}');
       
       final response = await http.get(
         Uri.parse(ApiConstants.userProfileUrl),
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': 'Bearer $_token',
         },
+      ).timeout(
+        Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('Timeout fetching user info'),
       );
 
       print('User profile response status: ${response.statusCode}');
-      print('User profile response body: ${response.body}');
-
+      
       if (response.statusCode == 200) {
-        final userJson = json.decode(response.body);
-        final user = User.fromJson(userJson);
-        print('Parsed user: ${user.username}, ${user.email}, ${user.fullName}');
-        return user;
+        try {
+          final userJson = json.decode(response.body);
+          final user = User.fromJson(userJson);
+          
+          // Salva le info utente per uso offline
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
+          
+          print('Parsed user: ${user.username}, ${user.email}, ${user.fullName}');
+          return user;
+        } catch (jsonError) {
+          print('Error parsing user JSON: $jsonError');
+          return null;
+        }
+      } else if (response.statusCode == 401) {
+        // Token non valido, tenteremo un refresh
+        return null;
+      } else {
+        print('User profile response body: ${response.body}');
+        return null;
       }
+    } on SocketException {
+      print('Network error fetching user info');
+      _offlineMode = true;
+      return null;
+    } on TimeoutException {
+      print('Timeout fetching user info');
+      _offlineMode = true;
+      return null;
     } catch (e) {
       print('Error fetching user info: $e');
+      return null;
     }
-    
-    return null;
   }
 
   // Recupera il token salvato
@@ -304,7 +416,7 @@ class AuthService extends ChangeNotifier {
     return prefs.getString(AppConstants.refreshTokenKey);
   }
 
-  // Aggiungi questo metodo in AuthService
+  // Aggiorna il profilo utente
   Future<bool> refreshUserProfile() async {
     print('Refreshing user profile...');
     try {
@@ -312,18 +424,32 @@ class AuthService extends ChangeNotifier {
       if (user != null) {
         print('User profile refreshed successfully: ${user.username}');
         _currentUser = user;
+        _offlineMode = false;
         notifyListeners();
         return true;
       } else {
         print('User profile refresh failed: No user data returned');
+        
+        // Se c'è un utente in memoria, vai in modalità offline
+        if (_currentUser != null) {
+          _offlineMode = true;
+          notifyListeners();
+          return true;
+        }
       }
     } catch (e) {
       print('Error refreshing user profile: $e');
+      
+      if (_currentUser != null) {
+        _offlineMode = true;
+        notifyListeners();
+        return true;
+      }
     }
     return false;
   }
 
-  // Aggiungi questo metodo a auth_service.dart
+  // Estrai info utente dal token JWT
   void extractUserFromToken() {
     if (_token != null) {
       try {
@@ -347,8 +473,8 @@ class AuthService extends ChangeNotifier {
           // Crea un utente con un nome basato sull'ID
           _currentUser = User(
             id: userId,
-            username: 'Utente $userId', // Uso "Utente 1" invece di solo "Utente"
-            email: 'utente$userId@esempio.it', // Email fittizia basata sull'ID
+            username: 'Utente $userId',
+            email: 'utente$userId@esempio.it',
             isActive: true
           );
           

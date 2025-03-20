@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../models/pagamento.dart';
+import '../../models/quota_utente.dart';
 import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
+import '../../services/api_cache_helper.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
@@ -20,14 +22,16 @@ class PagamentiScreen extends StatefulWidget {
 class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Pagamento> _pagamenti = [];
+  List<QuotaUtente> _quote = [];
   bool _isLoading = true;
+  bool _isOffline = false;
   String? _errorMessage;
   
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadPagamenti();
+    _loadData();
   }
   
   @override
@@ -36,7 +40,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     super.dispose();
   }
   
-  Future<void> _loadPagamenti() async {
+  Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -46,15 +50,64 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       final apiService = Provider.of<ApiService>(context, listen: false);
       final pagamentoService = PagamentoService(apiService);
       
-      final pagamenti = await pagamentoService.getPagamenti();
+      // Verifica la connettività
+      final isConnected = await ApiCacheHelper.isConnected();
+      
+      if (isConnected) {
+        // Carica da API
+        try {
+          final pagamenti = await pagamentoService.getPagamenti();
+          final quote = await pagamentoService.getQuote();
+          
+          setState(() {
+            _pagamenti = pagamenti;
+            _quote = quote;
+            _isLoading = false;
+            _isOffline = false;
+          });
+          
+          // Salva nella cache
+          await ApiCacheHelper.saveToCache('pagamenti', _pagamenti);
+          await ApiCacheHelper.saveToCache('quote', _quote);
+        } catch (e) {
+          print('Errore API, utilizzo cache: $e');
+          _loadFromCache();
+        }
+      } else {
+        // Se offline, carica dalla cache
+        _loadFromCache();
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Errore durante il caricamento dei dati: $e';
+        _isLoading = false;
+      });
+    }
+  }
+  
+  Future<void> _loadFromCache() async {
+    try {
+      // Carica pagamenti dalla cache
+      final cachedPagamenti = await ApiCacheHelper.loadFromCache<List<Pagamento>>(
+        'pagamenti',
+        (data) => (data as List).map((json) => Pagamento.fromJson(json)).toList()
+      );
+      
+      // Carica quote dalla cache
+      final cachedQuote = await ApiCacheHelper.loadFromCache<List<QuotaUtente>>(
+        'quote',
+        (data) => (data as List).map((json) => QuotaUtente.fromJson(json)).toList()
+      );
       
       setState(() {
-        _pagamenti = pagamenti;
+        _pagamenti = cachedPagamenti ?? [];
+        _quote = cachedQuote ?? [];
         _isLoading = false;
+        _isOffline = true;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il caricamento dei pagamenti: $e';
+        _errorMessage = 'Errore durante il caricamento dei dati dalla cache: $e';
         _isLoading = false;
       });
     }
@@ -64,7 +117,19 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestione Pagamenti'),
+        title: Row(
+          children: [
+            Text('Gestione Pagamenti'),
+            if (_isOffline)
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: Tooltip(
+                  message: 'Modalità offline - Dati caricati dalla cache',
+                  child: Icon(Icons.offline_bolt, size: 18, color: Colors.amber),
+                ),
+              ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -72,23 +137,37 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             Tab(text: 'Quote'),
           ],
         ),
-      ),
-      drawer: AppDrawer(currentRoute: AppConstants.pagamentiRoute),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildPagamentiTab(),
-          _buildQuoteTab(),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.sync),
+            tooltip: 'Sincronizza dati',
+            onPressed: _loadData,
+          ),
         ],
       ),
+      drawer: AppDrawer(currentRoute: AppConstants.pagamentiRoute),
+      body: _isLoading
+          ? LoadingWidget(message: 'Caricamento dati...')
+          : _errorMessage != null
+              ? ErrorDisplayWidget(
+                  errorMessage: _errorMessage!,
+                  onRetry: _loadData,
+                )
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildPagamentiTab(),
+                    _buildQuoteTab(),
+                  ],
+                ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_tabController.index == 0) {
             Navigator.pushNamed(context, AppConstants.pagamentoCreateRoute)
-                .then((_) => _loadPagamenti());
+                .then((_) => _loadData());
           } else {
             Navigator.pushNamed(context, AppConstants.quoteRoute)
-                .then((_) => _loadPagamenti());
+                .then((_) => _loadData());
           }
         },
         child: Icon(Icons.add),
@@ -98,17 +177,6 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
   
   Widget _buildPagamentiTab() {
-    if (_isLoading) {
-      return LoadingWidget();
-    }
-    
-    if (_errorMessage != null) {
-      return ErrorDisplayWidget(
-        errorMessage: _errorMessage!,
-        onRetry: _loadPagamenti,
-      );
-    }
-    
     if (_pagamenti.isEmpty) {
       return Center(
         child: Column(
@@ -133,7 +201,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
               label: Text('Registra Pagamento'),
               onPressed: () {
                 Navigator.pushNamed(context, AppConstants.pagamentoCreateRoute)
-                    .then((_) => _loadPagamenti());
+                    .then((_) => _loadData());
               },
             ),
           ],
@@ -145,7 +213,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     final formatDate = DateFormat('dd/MM/yyyy');
     
     return RefreshIndicator(
-      onRefresh: _loadPagamenti,
+      onRefresh: _loadData,
       child: ListView.builder(
         itemCount: _pagamenti.length,
         itemBuilder: (context, index) {
@@ -153,8 +221,15 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
           return Card(
             margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: ListTile(
-              title: Text(pagamento.descrizione),
-              subtitle: Text('${pagamento.utenteUsername} - ${formatDate.format(DateTime.parse(pagamento.data))}'),
+              title: Text(
+                pagamento.descrizione,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                '${pagamento.utenteUsername} - ${formatDate.format(DateTime.parse(pagamento.data))}',
+                maxLines: 1,
+              ),
               trailing: Text(
                 formatCurrency.format(pagamento.importo),
                 style: TextStyle(
@@ -175,7 +250,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   context, 
                   AppConstants.pagamentoDetailRoute,
                   arguments: pagamento.id,
-                ).then((_) => _loadPagamenti());
+                ).then((_) => _loadData());
               },
             ),
           );
@@ -185,34 +260,70 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
   
   Widget _buildQuoteTab() {
-    // Da implementare successivamente
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.pie_chart, 
-            size: 80, 
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Gestione Quote',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
+    if (_quote.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.pie_chart, 
+              size: 80, 
+              color: Colors.grey[400],
             ),
-          ),
-          SizedBox(height: 24),
-          ElevatedButton.icon(
-            icon: Icon(Icons.add),
-            label: Text('Gestisci Quote'),
-            onPressed: () {
-              Navigator.pushNamed(context, AppConstants.quoteRoute)
-                  .then((_) => _loadPagamenti());
-            },
-          ),
-        ],
+            SizedBox(height: 16),
+            Text(
+              'Nessuna quota trovata',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+              ),
+            ),
+            SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: Icon(Icons.add),
+              label: Text('Gestisci Quote'),
+              onPressed: () {
+                Navigator.pushNamed(context, AppConstants.quoteRoute)
+                    .then((_) => _loadData());
+              },
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        itemCount: _quote.length,
+        itemBuilder: (context, index) {
+          final quota = _quote[index];
+          return Card(
+            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              title: Text(quota.utenteUsername),
+              subtitle: Text(quota.gruppoNome ?? 'Gruppo ${quota.gruppo}'),
+              trailing: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: ThemeConstants.primaryColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${quota.percentuale}%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              onTap: () {
+                Navigator.pushNamed(context, AppConstants.quoteRoute)
+                    .then((_) => _loadData());
+              },
+            ),
+          );
+        },
       ),
     );
   }
