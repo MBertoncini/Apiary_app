@@ -60,6 +60,10 @@ class ApiConstants {
   static const String invitiAccettaUrl = baseUrl + apiPrefix + '/inviti/accetta/{token}/';
   static const String invitiRifiutaUrl = baseUrl + apiPrefix + '/inviti/rifiuta/{token}/';
   
+  // Endpoint pagamenti
+  static const String pagamentiUrl = baseUrl + apiPrefix + '/pagamenti/';
+  static const String quoteUrl = baseUrl + apiPrefix + '/quote/';
+
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';
   

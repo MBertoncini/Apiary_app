@@ -1,4 +1,4 @@
-package com.example.apiary_app
+package com.example.Apiary
 
 import io.flutter.embedding.android.FlutterActivity
 

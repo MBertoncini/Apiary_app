@@ -65,15 +65,24 @@ flutter:
           weight: 700
 
 flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/icons/icon.png"
-  adaptive_icon_background: "#FFC107"
-  adaptive_icon_foreground: "assets/icons/icon.png"  # Stesso file
-  remove_alpha_ios: true
-  web:
-    generate: true
-    image_path: "assets/icons/icon.png"
-    background_color: "#FFC107"
-    theme_color: "#FFA000"
+  android: "launcher_icon"  # Nome dell'icona nel manifest Android
+  ios: true                 # Genera icone per iOS
+  
+  image_path: "assets/icons/icon.png"  # Percorso dell'icona principale completa
+  
+  min_sdk_android: 21      # Versione minima Android supportata
+  
+  adaptive_icon_background: "#FFC107"  # Colore di sfondo per icone Android adattive
+                                       # In questo caso è un giallo/ambra
+  
+  adaptive_icon_foreground: "assets/icons/icon_foreground.png"  # Immagine in primo piano
+                                                               # per icone adattive
+  
+  remove_alpha_ios: true   # Rimuove la trasparenza per iOS (consigliato)
+  
+  web:                     # Configurazione per app web
+    generate: true         # Genera icone per il web
+    image_path: "assets/icons/icon.png"  # Stessa icona del mobile
+    background_color: "#FFC107"  # Colore di sfondo giallo/ambra
+    theme_color: "#FFA000"       # Colore del tema (arancione scuro)
 

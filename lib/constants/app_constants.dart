@@ -55,6 +55,17 @@ class AppConstants {
   static const String gruppoMembriRoute = "/gruppo/membri";
   static const String gruppoApiariRoute = "/gruppo/apiari";
   
+  // Route per la mappa
+  static const String mappaRoute = "/mappa";
+  static const String mappaApiariRoute = "/mappa/apiari";
+  static const String mappaMeteoRoute = "/mappa/meteo";
+
+  // Route per gestione pagamenti
+  static const String pagamentiRoute = "/pagamenti";
+  static const String pagamentoDetailRoute = "/pagamento/detail";
+  static const String pagamentoCreateRoute = "/pagamento/create";
+  static const String quoteRoute = "/quote";  
+
   // Altri parametri
   static const int defaultSyncInterval = 30; // Minuti
 }

@@ -23,6 +23,12 @@ import '../screens/regina/regina_detail_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
 import '../screens/trattamento/trattamento_form_screen.dart';
 import '../screens/melario/melari_screen.dart';
+import '../screens/mappa/mappa_screen.dart';
+import '../screens/pagamento/pagamenti_screen.dart';
+import '../screens/pagamento/pagamento_detail_screen.dart';
+import '../screens/pagamento/pagamento_form_screen.dart';
+import '../screens/pagamento/quote_screen.dart';
+
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -153,6 +159,32 @@ class RouteGenerator {
       // Rotte per la gestione dei melari e produzioni
       case AppConstants.melariRoute:
         return MaterialPageRoute(builder: (_) => MelariScreen());
+      
+      // Rotta per la mappa
+      case AppConstants.mappaRoute:
+        return MaterialPageRoute(builder: (_) => MappaScreen());
+      
+      // Rotte per la gestione dei pagamenti
+      case AppConstants.pagamentiRoute:
+        return MaterialPageRoute(builder: (_) => PagamentiScreen());
+        
+      case AppConstants.pagamentoDetailRoute:
+        // Verifica che gli argomenti siano corretti
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => PagamentoDetailScreen(pagamentoId: args),
+          );
+        }
+        return _errorRoute();
+        
+      case AppConstants.pagamentoCreateRoute:
+        // Se args è null, è una creazione, altrimenti è una modifica
+        return MaterialPageRoute(
+          builder: (_) => PagamentoFormScreen(pagamentoId: args as int?),
+        );
+        
+      case AppConstants.quoteRoute:
+        return MaterialPageRoute(builder: (_) => QuoteScreen());
       
       default:
         return _errorRoute();

@@ -82,6 +82,20 @@ class AppDrawer extends StatelessWidget {
             },
           ),
           
+          // Mappa - Aggiungiamo la nuova voce qui
+          ListTile(
+            leading: Icon(Icons.map),
+            title: Text('Mappa Apiari'),
+            selected: currentRoute == AppConstants.mappaRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () {
+              Navigator.pop(context);
+              if (currentRoute != AppConstants.mappaRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.mappaRoute);
+              }
+            },
+          ),
+          
           // Regine
           ListTile(
             leading: Icon(Icons.local_florist),
@@ -127,7 +141,7 @@ class AppDrawer extends StatelessWidget {
           // Divisore
           Divider(),
           
-          // Gruppi - Ora implementato
+          // Gruppi
           ListTile(
             leading: Icon(Icons.group),
             title: Text('Gruppi'),
@@ -137,6 +151,20 @@ class AppDrawer extends StatelessWidget {
               Navigator.pop(context);
               if (currentRoute != AppConstants.gruppiListRoute) {
                 Navigator.of(context).pushReplacementNamed(AppConstants.gruppiListRoute);
+              }
+            },
+          ),
+          
+          // Pagamenti
+          ListTile(
+            leading: Icon(Icons.payments_outlined),
+            title: Text('Pagamenti'),
+            selected: currentRoute == AppConstants.pagamentiRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () {
+              Navigator.pop(context);
+              if (currentRoute != AppConstants.pagamentiRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.pagamentiRoute);
               }
             },
           ),

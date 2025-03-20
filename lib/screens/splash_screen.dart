@@ -6,6 +6,7 @@ import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../screens/disclaimer_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -24,6 +25,7 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(Duration(milliseconds: 100));
     
     final authService = Provider.of<AuthService>(context, listen: false);
+    final storageService = Provider.of<StorageService>(context, listen: false);
     
     // Attendi il completamento della verifica token
     while (authService.isLoading) {
@@ -33,11 +35,26 @@ class _SplashScreenState extends State<SplashScreen> {
     // Mostra splash per almeno 2 secondi
     await Future.delayed(Duration(seconds: 2));
     
+    // Verifica se l'utente ha già accettato il disclaimer
+    final hasAcceptedDisclaimer = await storageService.hasAcceptedDisclaimer();
+    
+    if (!hasAcceptedDisclaimer) {
+      // Mostra il disclaimer
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => DisclaimerScreen(
+            isFirstLogin: !authService.isAuthenticated,
+          ),
+        ),
+      );
+      return;
+    }
+    
+    // Procedi con il flusso normale
     if (authService.isAuthenticated) {
       // Utente autenticato, carica dati iniziali
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
-        final storageService = Provider.of<StorageService>(context, listen: false);
         
         // Ottieni l'ultimo timestamp di sync
         final lastSync = await storageService.getLastSyncTimestamp();

@@ -24,9 +24,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showguides="true"
-     inkscape:zoom="1.4778115"
-     inkscape:cx="535.92764"
-     inkscape:cy="222.28817"
+     inkscape:zoom="1.0449705"
+     inkscape:cx="284.21854"
+     inkscape:cy="768.9212"
      inkscape:window-width="2560"
      inkscape:window-height="1369"
      inkscape:window-x="-8"
@@ -93,7 +93,10 @@
     <path
        style="fill:#ea8e00;fill-opacity:1;stroke:#ea8e00;stroke-width:0.728;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 27.691689,139.612 c 0,0 -1.820889,2.26907 -2.453919,4.13612"
-       id="path2-3" />
+       id="path2-3"
+       inkscape:export-filename="icon.png"
+       inkscape:export-xdpi="400"
+       inkscape:export-ydpi="400" />
     <path
        style="fill:#ea8e00;fill-opacity:1;stroke:#ea8e00;stroke-width:0.724811;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 63.583073,121.31431 c 0,0 -2.806683,-0.41484 -4.685823,8.1e-4"
@@ -2100,7 +2103,10 @@
     </g>
     <g
        id="g2"
-       transform="translate(-41.093643,-86.398816)">
+       transform="translate(-41.34684,-87.664801)"
+       inkscape:export-filename="icon_foreground.png"
+       inkscape:export-xdpi="400"
+       inkscape:export-ydpi="400">
       <g
          id="g10-3-3"
          style="stroke:#000000;stroke-opacity:1"

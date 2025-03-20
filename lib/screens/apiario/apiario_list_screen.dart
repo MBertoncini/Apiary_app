@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
+import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
@@ -15,10 +16,12 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
   bool _isLoading = false;
   List<dynamic> _apiari = [];
   String _searchQuery = '';
+  late ApiService _apiService;
   
   @override
   void initState() {
     super.initState();
+    _apiService = Provider.of<ApiService>(context, listen: false);
     _loadApiari();
   }
   
@@ -29,9 +32,59 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
     
     try {
       final storageService = Provider.of<StorageService>(context, listen: false);
+      final apiService = Provider.of<ApiService>(context, listen: false);
       
-      // Carica dati locali
-      _apiari = await storageService.getStoredData('apiari');
+      // Prima tenta di caricare i dati dall'API
+      try {
+        print('Fetching apiari from API...');
+        final response = await apiService.get(ApiConstants.apiariUrl);
+        print('API response for apiari: $response');
+        
+        List<dynamic> apiariFromApi = [];
+        
+        // Gestione robusta per diversi formati di risposta
+        if (response is List) {
+          apiariFromApi = response;
+          print('Parsed ${apiariFromApi.length} apiari from API (direct array)');
+        } else if (response is Map) {
+          // Django REST Framework tipicamente usa questo formato di paginazione
+          if (response.containsKey('results') && response['results'] is List) {
+            apiariFromApi = response['results'];
+            print('Parsed ${apiariFromApi.length} apiari from API (DRF pagination format)');
+          } 
+          // Potrebbe essere un oggetto che contiene un array in una proprietà
+          else {
+            bool found = false;
+            for (var key in ['apiari', 'data', 'items']) {
+              if (response.containsKey(key) && response[key] is List) {
+                apiariFromApi = response[key];
+                print('Parsed ${apiariFromApi.length} apiari from API (nested in "$key" property)');
+                found = true;
+                break;
+              }
+            }
+            
+            if (!found && response.containsKey('id')) {
+              // Potrebbe essere un singolo apiario
+              apiariFromApi = [response];
+              print('Parsed a single apiario from API response');
+            }
+          }
+        }
+        
+        // Salva i dati aggiornati nello storage locale
+        await storageService.saveData('apiari', apiariFromApi);
+        
+        // Usa i dati dall'API
+        _apiari = apiariFromApi;
+        
+      } catch (e) {
+        print('Error fetching from API, falling back to local storage: $e');
+        
+        // Fallback: carica da storage locale se l'API fallisce
+        _apiari = await storageService.getStoredData('apiari');
+        print('Loaded ${_apiari.length} apiari from local storage');
+      }
       
       // Filtra in base alla ricerca
       if (_searchQuery.isNotEmpty) {

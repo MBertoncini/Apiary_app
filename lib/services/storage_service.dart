@@ -103,4 +103,20 @@ class StorageService {
     final jsonString = json.encode(data);
     await prefs.setString(key, jsonString);
   }
+
+  // Chiave per salvare lo stato del disclaimer
+  static const String _disclaimerAcceptedKey = 'disclaimer_accepted';
+
+  // Salva se l'utente ha accettato il disclaimer
+  Future<void> saveDisclaimerAccepted(bool accepted) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_disclaimerAcceptedKey, accepted);
+  }
+
+  // Verifica se l'utente ha già accettato il disclaimer
+  Future<bool> hasAcceptedDisclaimer() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_disclaimerAcceptedKey) ?? false;
+  }
+
 }
