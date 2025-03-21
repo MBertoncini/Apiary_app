@@ -508,17 +508,6 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       ),
                     ),
                   ),
-                
-                // Button per aggiungere controllo
-                SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _navigateToControlloCreate,
-                  icon: Icon(Icons.add),
-                  label: Text('Nuovo controllo'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 48),
-                  ),
-                ),
               ],
             ),
           ),
@@ -679,7 +668,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                     );
                   },
                 ),
-          
+                
           // Tab Regina
           _regina == null
               ? Center(

@@ -117,7 +117,9 @@ class ControlloService {
   // Ottieni controlli per un'arnia specifica
   Future<List<Map<String, dynamic>>> getControlliByArnia(int arniaId) async {
     // Prima recupera i dati locali
+    print('Inizio caricamento controlli per arnia $arniaId');
     List<Map<String, dynamic>> localControlli = await _controlloDao.getByArnia(arniaId);
+    print('Dati locali caricati: ${localControlli.length} controlli');
     
     // Verifica connettività
     var connectivityResult = await Connectivity().checkConnectivity();
@@ -126,21 +128,30 @@ class ControlloService {
     if (isOnline) {
       try {
         // Recupera dal server
+        print('Chiamata API: ${ApiConstants.arnieUrl}$arniaId/controlli/');
         final response = await _apiService.get('${ApiConstants.arnieUrl}$arniaId/controlli/');
+        print('Risposta API ricevuta di tipo: ${response.runtimeType}');
+        
         List<Map<String, dynamic>> remoteControlli = [];
         
         if (response is List) {
+          print('Risposta è una lista di lunghezza: ${response.length}');
           remoteControlli = List<Map<String, dynamic>>.from(response);
         } else if (response is Map && response['results'] != null) {
+          print('Risposta è un oggetto con campo "results" di lunghezza: ${response['results'].length}');
           remoteControlli = List<Map<String, dynamic>>.from(response['results']);
+        } else {
+          print('Formato risposta non riconosciuto!');
         }
         
         // Sincronizza con il database locale
         if (remoteControlli.isNotEmpty) {
           await _controlloDao.syncFromServer(remoteControlli);
+          print('Sincronizzati ${remoteControlli.length} controlli');
           
           // Ricarica i dati dal database locale
           localControlli = await _controlloDao.getByArnia(arniaId);
+          print('Dati locali dopo sincronizzazione: ${localControlli.length}');
         }
         
         return localControlli;
@@ -148,6 +159,8 @@ class ControlloService {
         print('Errore nel recupero controlli dal server: $e');
         // Fallback ai dati locali
       }
+    } else {
+      print('Dispositivo offline, usando solo dati locali');
     }
     
     return localControlli;
