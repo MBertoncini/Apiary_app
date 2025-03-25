@@ -6,7 +6,10 @@ import '../models/chat_message.dart';
 import '../services/chat_service.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
-
+import '../widgets/chart_widget.dart';
+import '../utils/chart_exporter.dart';
+import '../widgets/formatted_message_widget.dart';
+import '../widgets/rich_message_widget.dart';
 class ChatScreen extends StatefulWidget {
   @override
   _ChatScreenState createState() => _ChatScreenState();
@@ -92,7 +95,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'ApiarioAI ha accesso ai dati dei tuoi apiari per fornirti risposte personalizzate.',
+                    'ApiarioAI ha accesso ai dati dei tuoi apiari e può generare grafici per le tue analisi.',
                     style: TextStyle(
                       fontSize: 12,
                       color: ThemeConstants.textSecondaryColor,
@@ -108,8 +111,9 @@ class _ChatScreenState extends State<ChatScreen> {
             child: chatService.messages.isEmpty
                 ? Center(
                     child: Text(
-                      'Nessun messaggio. Inizia una conversazione!',
+                      'Nessun messaggio. Inizia una conversazione!\nProva a chiedere "Mostrami un grafico della popolazione dell\'arnia 3"',
                       style: TextStyle(color: ThemeConstants.textSecondaryColor),
+                      textAlign: TextAlign.center,
                     ),
                   )
                 : ListView.builder(
@@ -290,66 +294,96 @@ class _ChatScreenState extends State<ChatScreen> {
           
           // Contenuto del messaggio
           Flexible(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-              decoration: BoxDecoration(
-                color: isUser 
-                    ? ThemeConstants.primaryColor 
-                    : ThemeConstants.backgroundColor.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 2,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Testo del messaggio
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isUser ? Colors.white : ThemeConstants.textPrimaryColor,
-                    ),
-                  ),
-                  
-                  // Riga con timestamp e pulsante di ripetizione (solo per messaggi utente)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+            child: Column(
+              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                // Messaggio con formattazione ricca
+                RichMessageWidget(
+                  message: message.text,
+                  timestamp: message.timestamp,
+                  isUser: isUser,
+                  onRetry: isUser ? () => _retryMessage(message.text) : null,
+                ),
+                
+                // Se il messaggio contiene un grafico, mostralo
+                if (message.hasChart && message.chartData != null && !chatService.isProcessingChart)
+                  Stack(
                     children: [
-                      // Timestamp
-                      Text(
-                        DateFormat('HH:mm').format(message.timestamp),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isUser 
-                              ? Colors.white.withOpacity(0.7) 
-                              : ThemeConstants.textSecondaryColor,
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Container(
+                          width: double.infinity,
+                          height: 300,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          padding: EdgeInsets.all(16),
+                          child: ChartWidget(chartData: message.chartData!),
                         ),
                       ),
                       
-                      // Pulsante di ripetizione (solo per messaggi utente)
-                      if (isUser) ...[
-                        SizedBox(width: 4),
-                        InkWell(
-                          onTap: () => _retryMessage(message.text),
-                          child: Padding(
-                            padding: EdgeInsets.all(2.0),
-                            child: Icon(
-                              Icons.refresh,
-                              size: 12,
-                              color: Colors.white.withOpacity(0.7),
+                      // Pulsante per esportare/condividere il grafico
+                      Positioned(
+                        top: 16,
+                        right: 8,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              ChartExporter.captureAndShareChart(
+                                context,
+                                ChartWidget(chartData: message.chartData!),
+                                message.chartData!['title'] ?? 'Grafico',
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.share,
+                                size: 20,
+                                color: ThemeConstants.primaryColor,
+                              ),
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                  
+                // Se stiamo ancora elaborando un grafico, mostra uno spinner
+                if (message.hasChart && chatService.isProcessingChart)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 8),
+                          Text(
+                            'Generazione grafico in corso...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: ThemeConstants.textSecondaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           

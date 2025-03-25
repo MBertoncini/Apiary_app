@@ -29,6 +29,10 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>L'app richiede l'accesso alla galleria per salvare i grafici.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>L'app richiede l'accesso alla galleria per salvare i grafici.</string>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>

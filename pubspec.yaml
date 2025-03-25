@@ -30,7 +30,7 @@ dependencies:
   cached_network_image: ^3.3.0
   url_launcher: ^6.1.14
   flutter_svg: ^2.0.7
-  fl_chart: ^0.63.0
+  fl_chart: ^0.65.0
   flutter_riverpod: ^2.0.0 # Ensure you have the latest version or the one you're using
   flutter_local_notifications_linux: ^4.0.0+1
   flutter_speed_dial: ^7.0.0
@@ -38,6 +38,8 @@ dependencies:
   qr_flutter: ^4.1.0
   share_plus: ^8.0.3
   path_provider: ^2.1.2
+  screenshot: ^3.0.0   # Per catturare screenshot dei grafici
+  flutter_background_service: ^5.0.0  # Già in uso nella tua app
 
 dev_dependencies:
   flutter_test:

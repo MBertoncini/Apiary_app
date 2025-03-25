@@ -5,6 +5,15 @@ import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
 import 'api_service.dart';
 import 'mcp_service.dart';
+import '../widgets/formatted_message_widget.dart';
+
+// Estensione per capitalizzare la prima lettera di una stringa
+extension StringExtension on String {
+  String capitalize() {
+    if (this.isEmpty) return this;
+    return this[0].toUpperCase() + this.substring(1);
+  }
+}
 
 class ChatService with ChangeNotifier {
   final ApiService _apiService;
@@ -13,6 +22,15 @@ class ChatService with ChangeNotifier {
   List<ChatMessage> _messages = [];
   bool _isLoading = false;
   String? _error;
+  
+  // Variabili per la gestione dei grafici
+  bool _isProcessingChart = false;
+  
+  // Getters
+  List<ChatMessage> get messages => _messages;
+  bool get isLoading => _isLoading;
+  bool get isProcessingChart => _isProcessingChart;
+  String? get error => _error;
   
   // Chiave API per Gemini - da sostituire con la tua effettiva
   // In produzione, questa dovrebbe essere immagazzinata in modo sicuro
@@ -33,57 +51,6 @@ class ChatService with ChangeNotifier {
     );
   }
   
-  // Getters
-  List<ChatMessage> get messages => _messages;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  
-    Future<void> sendMessage(String message) async {
-    if (message.trim().isEmpty) return;
-    
-    // Aggiungi il messaggio dell'utente
-    final userMessage = ChatMessage(
-        text: message,
-        isUser: true,
-        timestamp: DateTime.now(),
-    );
-    
-    _messages.add(userMessage);
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-    
-    try {
-        // Prepara il contesto MCP
-        final mcpContext = await _prepareMCPContext();
-        
-        // Genera la risposta
-        final response = await _generateResponse(message, mcpContext);
-        
-        // Aggiungi la risposta del bot
-        final botMessage = ChatMessage(
-        text: response,
-        isUser: false,
-        timestamp: DateTime.now(),
-        );
-        
-        _messages.add(botMessage);
-        _isLoading = false;
-        notifyListeners();
-    } catch (e) {
-        // Verifica se è un errore 503
-        bool isServiceUnavailable = e.toString().contains("503") || 
-                                e.toString().contains("Service Unavailable");
-        
-        if (isServiceUnavailable) {
-        _error = "Errore 503: Server temporaneamente non disponibile. Puoi riprovare usando il pulsante di ripetizione sui messaggi.";
-        } else {
-        _error = e.toString();
-        }
-        _isLoading = false;
-        notifyListeners();
-    }
-    }
 
     // Metodo per gestire il ritorno all'ultimo messaggio in caso di errore 503
     Future<void> retryLastUserMessage() async {
@@ -142,8 +109,8 @@ class ChatService with ChangeNotifier {
     return await _mcpService.prepareContext(_userId);
   }
   
-  // Genera una risposta utilizzando l'API di Gemini
-  Future<String> _generateResponse(String userMessage, Map<String, dynamic> mcpContext) async {
+  // Modifica il metodo _generateResponse per rilevare e processare richieste di grafici
+  Future<ChatMessage> _generateResponse(String userMessage, Map<String, dynamic> mcpContext) async {
     final systemPrompt = _getSystemPrompt(mcpContext);
     
     final requestBody = {
@@ -183,176 +150,419 @@ class ChatService with ChangeNotifier {
     
     if (response.statusCode == 200) {
       final jsonResponse = jsonDecode(response.body);
-      final botResponse = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
-      return botResponse;
+      var botResponse = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
+      
+      // MODIFICA QUI: Cambiamo la regex per accettare qualsiasi carattere tranne ']' nel terzo parametro
+      final regex = RegExp(r'\[GENERA_GRAFICO:(\w+):(\d+)(?::([^\]]+))?\]');
+      final match = regex.firstMatch(botResponse);
+      
+      if (match != null) {
+        final tipoGrafico = match.group(1);
+        final id = int.parse(match.group(2)!);
+        
+        // MODIFICA QUI: Modifichiamo la gestione del periodo
+        dynamic periodo = null;
+        if (match.group(3) != null) {
+          // Prova a convertire in intero, ma se fallisce usa null
+          try {
+            periodo = int.parse(match.group(3)!);
+          } catch (e) {
+            // Se è "tutto" o un'altra stringa, usiamo un valore di default ampio
+            if (match.group(3)!.toLowerCase() == 'tutto') {
+              // Possiamo usare un valore grande per indicare "tutto"
+              periodo = 24; // ad esempio 24 mesi
+            }
+          }
+        }
+        
+        // Rimuovi il comando dalla risposta
+        botResponse = botResponse.replaceAll(match.group(0)!, '');
+        
+        // Determina il tipo di grafico e prepara i parametri
+        String chartType;
+        Map<String, dynamic> params;
+        
+        switch (tipoGrafico) {
+          case 'popolazione':
+            chartType = 'generateArniaPopulationChart';
+            params = {'arniaId': id, 'months': periodo ?? 6};
+            break;
+          case 'salute':
+            chartType = 'generateApiarioHealthChart';
+            params = {'apiarioId': id};
+            break;
+          case 'trattamenti':
+            chartType = 'generateTrattamentiEffectivenessChart';
+            params = {'apiarioId': id};
+            break;
+          case 'produzione':
+            chartType = 'generateHoneyProductionChart';
+            params = {'apiarioId': id, 'years': periodo ?? 3};
+            break;
+          default:
+            chartType = '';
+            params = {};
+            break;
+        }
+        
+        // Aggiungi un messaggio che indica che verrà generato un grafico
+        botResponse += '\n\nSto preparando il grafico richiesto...';
+        
+        return ChatMessage(
+          text: botResponse,
+          isUser: false,
+          timestamp: DateTime.now(),
+          hasChart: true,
+          chartType: chartType,
+          chartData: params,
+        );
+      }
+      
+      return ChatMessage(
+        text: botResponse,
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
     } else {
-      // Fallback in caso di errore
       try {
         final errorMessage = jsonDecode(response.body)['error']['message'];
-        throw Exception('Errore API Gemini: $errorMessage');
+        throw Exception('Errore API: $errorMessage');
       } catch (e) {
         throw Exception('Errore nella generazione della risposta: ${response.statusCode}');
       }
     }
   }
-  
-// Modifica da implementare nel file chat_service.dart
-// Metodo _getSystemPrompt migliorato per includere dati dettagliati sui telaini
-
-
-String _getSystemPrompt(Map<String, dynamic> mcpContext) {
-  return """
-Sei un assistente virtuale specializzato in apicoltura per l'app "Apiario Manager". 
-Il tuo compito è aiutare gli apicoltori a gestire il loro lavoro in modo efficiente.
-
-Ecco i dati dell'apicoltore che sta chattando con te (usa queste informazioni per le tue risposte):
-
-APIARI:
-${_formatApiariData(mcpContext['apiari'])}
-
-ARNIE:
-${_formatArnieData(mcpContext['arnie'])}
-
-TRATTAMENTI:
-${_formatTrattamentiData(mcpContext['trattamenti'])}
-
-CONTROLLI RECENTI:
-${_formatControlliDetailedData(mcpContext['controlli'])}
-
-LINEE GUIDA:
-1. Rispondi brevemente e in modo chiaro. L'apicoltore sta probabilmente consultando l'app mentre è sul campo.
-2. Fornisci consigli pratici basati sui dati degli apiari disponibili.
-3. Se noti problemi (come trattamenti in scadenza o controlli mancanti), evidenziali.
-4. Usa termini specifici dell'apicoltura italiana.
-5. Non inventare dati non presenti nel contesto fornito.
-6. Se l'apicoltore chiede dati che non hai, suggerisci dove potrebbe trovarli nell'app.
-
-Rispondi all'apicoltore in modo utile e professionale.
-""";
-}
-
-// Helper per formattare i dati degli apiari
-String _formatApiariData(List<dynamic> apiari) {
-  if (apiari.isEmpty) return "Nessun apiario registrato.";
-  
-  return apiari.map((apiario) => 
-    "- ${apiario['nome']}: ${apiario['posizione'] ?? 'posizione non specificata'}, " +
-    "${apiario['numero_arnie']} arnie" +
-    (apiario['ultima_visita'] != null ? ", ultima visita: ${apiario['ultima_visita']}" : "")
-  ).join("\n");
-}
-
-// Helper per formattare i dati delle arnie
-String _formatArnieData(List<dynamic> arnie) {
-  if (arnie.isEmpty) return "Nessuna arnia registrata.";
-  
-  return arnie.map((arnia) => 
-    "- Arnia ${arnia['numero']}: " +
-    "apiario ${arnia['apiario_nome']}, " +
-    "stato: ${arnia['stato'] ?? 'non specificato'}"
-  ).join("\n");
-}
-
-// Helper per formattare i dati dei trattamenti
-String _formatTrattamentiData(List<dynamic> trattamenti) {
-  if (trattamenti.isEmpty) return "Nessun trattamento registrato.";
-  
-  return trattamenti.map((trattamento) => 
-    "- ${trattamento['tipo_trattamento_nome']}: " +
-    "apiario ${trattamento['apiario_nome']}, " +
-    "stato: ${trattamento['stato']}, " +
-    "dal ${trattamento['data_inizio']} " +
-    (trattamento['data_fine'] != null ? "al ${trattamento['data_fine']}" : "in corso")
-  ).join("\n");
-}
-
-// NUOVO: Helper migliorato per formattare i dati dettagliati dei controlli
-String _formatControlliDetailedData(List<dynamic> controlli) {
-  if (controlli.isEmpty) return "Nessun controllo recente registrato.";
-  
-  return controlli.map((controllo) {
-    // Prepara la descrizione dei telaini
-    String telainiInfo = "";
-    if (controllo['telaini_config_decoded'] != null) {
-      int telainiCovata = controllo['telaini_covata'] ?? 0;
-      int telainiScorte = controllo['telaini_scorte'] ?? 0;
-      int telainiVuoti = controllo['telaini_vuoti'] ?? 0;
-      int telainiDiaframma = controllo['telaini_diaframma'] ?? 0;
-      int telainiNutritore = controllo['telaini_nutritore'] ?? 0;
+ 
+  Future<void> _processChartRequest(String chartType, Map<String, dynamic> params) async {
+    try {
+      _isProcessingChart = true;
+      notifyListeners();
       
-      List<String> telainiParts = [];
-      
-      if (telainiCovata > 0) telainiParts.add("$telainiCovata di covata");
-      if (telainiScorte > 0) telainiParts.add("$telainiScorte di scorte");
-      if (telainiVuoti > 0) telainiParts.add("$telainiVuoti vuoti");
-      if (telainiDiaframma > 0) telainiParts.add("$telainiDiaframma diaframmi");
-      if (telainiNutritore > 0) telainiParts.add("$telainiNutritore nutritori");
-      
-      telainiInfo = " (telaini: " + telainiParts.join(", ") + ")";
-    }
-    
-    // Prepara le informazioni sulla regina
-    String reginaInfo = "";
-    if (controllo['stato_regina'] != null) {
-      var regina = controllo['stato_regina'];
-      
-      List<String> reginaParts = [];
-      if (regina['presente'] == true) {
-        reginaParts.add("regina presente");
-        if (regina['vista'] == true) reginaParts.add("vista");
-        if (regina['uova_fresche'] == true) reginaParts.add("uova fresche");
-      } else {
-        reginaParts.add("regina assente");
+      // Verifica se il tool esiste prima di chiamarlo
+      if (!_mcpService.tools.containsKey(chartType)) {
+        // Tool non trovato, genera un messaggio di errore informativo
+        final errorMessage = ChatMessage(
+          text: "Mi dispiace, non posso generare questo tipo di grafico. Il tool '$chartType' non è disponibile.\n\n"
+              "I grafici disponibili sono:\n"
+              "• Popolazione dell'arnia (telaini nel tempo)\n"
+              "• Stato di salute delle arnie in un apiario\n"
+              "• Efficacia dei trattamenti\n"
+              "• Produzione di miele",
+          isUser: false,
+          timestamp: DateTime.now(),
+        );
+        
+        _messages.add(errorMessage);
+        return;
       }
       
-      if (regina['celle_reali'] == true) {
-        reginaParts.add("${regina['numero_celle_reali']} celle reali");
+      // Ottieni i dati del grafico
+      final chartData = await _mcpService.executeToolCall(chartType, params);
+      
+      if (chartData.containsKey('error')) {
+        String errorMsg = chartData['error'];
+        String userFriendlyMessage = "Mi dispiace, non sono riuscito a generare il grafico richiesto.";
+        
+        // Personalizza il messaggio in base all'errore
+        if (errorMsg.contains("Tool not found")) {
+          userFriendlyMessage += " Il tipo di grafico non è supportato.";
+        } else if (errorMsg.contains("data")) {
+          userFriendlyMessage += " Non ci sono dati sufficienti per questo grafico. Potrebbero non esserci abbastanza controlli registrati per l'arnia.";
+        } else {
+          userFriendlyMessage += " Errore: $errorMsg";
+        }
+        
+        throw Exception(userFriendlyMessage);
       }
       
-      if (regina['sostituita'] == true) {
-        reginaParts.add("regina sostituita");
-      }
-      
-      if (reginaParts.isNotEmpty) {
-        reginaInfo = " (" + reginaParts.join(", ") + ")";
-      }
-    }
-    
-    // Prepara le informazioni sui problemi
-    String problemiInfo = "";
-    if ((controllo['sciamatura'] == true) || (controllo['problemi_sanitari'] == true)) {
-      List<String> problemiParts = [];
-      
-      if (controllo['sciamatura'] == true) {
-        problemiParts.add("sciamatura rilevata");
-        if (controllo['note_sciamatura'] != null && controllo['note_sciamatura'].isNotEmpty) {
-          problemiParts.add("note: ${controllo['note_sciamatura']}");
+      // NUOVA VERIFICA: Controlla se ci sono abbastanza dati per un grafico significativo
+      String warningMessage = "";
+      if (chartData.containsKey('data') && chartData['data'] is List) {
+        final dataPoints = chartData['data'] as List;
+        final resourceId = params.containsKey('arniaId') 
+            ? 'arnia ${params['arniaId']}' 
+            : 'apiario ${params['apiarioId']}';
+        
+        if (dataPoints.isEmpty) {
+          warningMessage = "⚠️ Attenzione: Non ci sono dati disponibili per ${resourceId}. "
+              "Assicurati che siano stati registrati dei controlli.";
+        } else if (dataPoints.length == 1) {
+          warningMessage = "⚠️ Attenzione: ${resourceId.capitalize()} ha solo un controllo registrato. "
+              "Il grafico mostrerà un solo punto e potrebbe non essere molto informativo. "
+              "Considera di aggiungere più controlli per vedere l'andamento nel tempo.";
+        } else if (dataPoints.length < 3 && chartType == 'generateArniaPopulationChart') {
+          warningMessage = "ℹ️ Nota: ${resourceId.capitalize()} ha solo ${dataPoints.length} controlli registrati. "
+              "Il grafico mostra una tendenza limitata. Più controlli forniranno un quadro più completo.";
         }
       }
       
-      if (controllo['problemi_sanitari'] == true) {
-        problemiParts.add("problemi sanitari");
-        if (controllo['note_problemi'] != null && controllo['note_problemi'].isNotEmpty) {
-          problemiParts.add("dettagli: ${controllo['note_problemi']}");
+      // Crea un messaggio con il grafico (aggiungendo l'avviso se necessario)
+      final textMessage = warningMessage.isEmpty 
+          ? "Ecco il grafico che hai richiesto:"
+          : "Ecco il grafico che hai richiesto:\n\n$warningMessage";
+      
+      final graphMessage = ChatMessage(
+        text: textMessage,
+        isUser: false,
+        timestamp: DateTime.now(),
+        hasChart: true,
+        chartType: chartData['chart_type'],
+        chartData: chartData,
+      );
+      
+      _messages.add(graphMessage);
+    } catch (e) {
+      // Messaggio di errore migliorato
+      String errorMsg = e.toString();
+      // Rimuovi "Exception: " dall'inizio del messaggio se presente
+      if (errorMsg.startsWith("Exception: ")) {
+        errorMsg = errorMsg.substring("Exception: ".length);
+      }
+      
+      _error = errorMsg;
+      
+      // Aggiungi un messaggio di errore con consigli
+      final errorMessage = ChatMessage(
+        text: "$errorMsg\n\nPuoi provare a:\n"
+            "• Assicurarti che l'arnia o l'apiario richiesto esista\n"
+            "• Verificare che ci siano controlli registrati\n"
+            "• Specificare un periodo di tempo più breve se l'arnia è recente",
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+      
+      _messages.add(errorMessage);
+    } finally {
+      _isProcessingChart = false;
+      notifyListeners();
+    }
+  }
+
+
+  // Modifica il metodo _getSystemPrompt per informare il modello della possibilità di generare grafici
+  String _getSystemPrompt(Map<String, dynamic> mcpContext) {
+    return """
+  Sei un assistente virtuale specializzato in apicoltura per l'app "Apiario Manager". 
+  Il tuo compito è aiutare gli apicoltori a gestire il loro lavoro in modo efficiente.
+
+  Ecco i dati dell'apicoltore che sta chattando con te (usa queste informazioni per le tue risposte):
+
+  APIARI:
+  ${_formatApiariData(mcpContext['apiari'])}
+
+  ARNIE:
+  ${_formatArnieData(mcpContext['arnie'])}
+
+  TRATTAMENTI:
+  ${_formatTrattamentiData(mcpContext['trattamenti'])}
+
+  CONTROLLI RECENTI:
+  ${_formatControlliDetailedData(mcpContext['controlli'])}
+
+  CAPACITÀ GRAFICHE:
+  Puoi generare grafici per l'utente. Quando l'utente chiede di visualizzare i dati in forma grafica, offri di creare uno dei seguenti tipi di grafici:
+
+  1. POPOLAZIONE: Andamento della popolazione di un'arnia (telaini nel tempo).
+    Esempio: "Vorrei vedere l'andamento della popolazione dell'arnia 3"
+
+  2. SALUTE: Stato di salute comparativo delle arnie in un apiario.
+    Esempio: "Mostrami un grafico dello stato di salute delle arnie nell'apiario 1"
+
+  3. TRATTAMENTI: Efficacia dei trattamenti effettuati in un apiario.
+    Esempio: "Qual è stata l'efficacia dei trattamenti nell'apiario 2?"
+
+  4. PRODUZIONE: Produzione di miele negli anni per un apiario.
+    Esempio: "Mostrami la produzione di miele dell'apiario 1 negli ultimi anni"
+
+  Per generare uno di questi grafici, includi nella tua risposta un tag speciale con questa sintassi:
+  [GENERA_GRAFICO:tipo:id:periodo]
+
+  LINEE GUIDA:
+  1. Rispondi brevemente e in modo chiaro.
+  2. Formatta sempre le risposte in modo leggibile usando:
+    - Intestazioni chiare (senza asterischi o simboli speciali)
+    - Elenchi puntati con "•" per elementi correlati
+    - Per informazioni su arnie, usa il formato "Arnia X:" (senza asterischi)
+    - Usa emoji appropriate per evidenziare informazioni: 👑 per regine presenti, ⚠️ per regine assenti o problemi, 📝 per note
+  3. Fornisci consigli pratici basati sui dati disponibili.
+  4. Se noti problemi (come trattamenti in scadenza o controlli mancanti), evidenziali chiaramente.
+  5. Non inventare dati non presenti nel contesto fornito.
+  6. Quando l'utente chiede visualizzazioni o confronti di dati, proponi la generazione di un grafico appropriato.
+  7. MOLTO IMPORTANTE: NON USARE asterischi (**) o simboli Markdown nella formattazione. 
+    Il sistema non supporta Markdown. Usa testo normale con emoji.
+
+  Rispondi all'apicoltore in modo utile, professionale e con una formattazione chiara e leggibile.
+  """;
+  }
+  
+  Future<void> sendMessage(String message) async {
+    if (message.trim().isEmpty) return;
+    
+    // Aggiungi il messaggio dell'utente
+    final userMessage = ChatMessage(
+      text: message,
+      isUser: true,
+      timestamp: DateTime.now(),
+    );
+    
+    _messages.add(userMessage);
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    
+    try {
+      // Prepara il contesto MCP
+      final mcpContext = await _prepareMCPContext();
+      
+      // Genera la risposta
+      final response = await _generateResponse(message, mcpContext);
+      
+      // Aggiungi la risposta del bot
+      _messages.add(response);
+      _isLoading = false;
+      notifyListeners();
+      
+      // Se la risposta richiede un grafico, avvia la generazione
+      if (response.hasChart) {
+        await _processChartRequest(response.chartType!, response.chartData!);
+      }
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Helper per formattare i dati degli apiari (versione migliorata senza Markdown)
+  String _formatApiariData(List<dynamic> apiari) {
+    if (apiari.isEmpty) return "Nessun apiario registrato.";
+    
+    List<String> results = ["Apiari"];
+    
+    for (var apiario in apiari) {
+      // RIMOSSI asterischi (**)
+      results.add("• ${apiario['nome']}: ${apiario['posizione'] ?? 'posizione non specificata'}, " +
+        "${apiario['numero_arnie']} arnie" +
+        (apiario['ultima_visita'] != null ? ", ultima visita: ${apiario['ultima_visita']}" : ""));
+    }
+    
+    return results.join("\n");
+  }
+
+  // Helper per formattare i dati delle arnie
+  String _formatArnieData(List<dynamic> arnie) {
+    if (arnie.isEmpty) return "Nessuna arnia registrata.";
+    
+    List<String> results = ["Arnie"];
+    
+    for (var arnia in arnie) {
+      // RIMOSSI asterischi (**)
+      results.add("• Arnia ${arnia['numero']}: " +
+        "apiario ${arnia['apiario_nome']}, " +
+        "stato: ${arnia['stato'] ?? 'non specificato'}");
+    }
+    
+    return results.join("\n");
+  }
+
+  // Helper per formattare i dati dei trattamenti
+  String _formatTrattamentiData(List<dynamic> trattamenti) {
+    if (trattamenti.isEmpty) return "Nessun trattamento registrato.";
+    
+    List<String> results = ["Trattamenti"];
+    
+    for (var trattamento in trattamenti) {
+      String stato = trattamento['stato'];
+      String statoFormattato = stato;
+      
+      // Aggiungi emoji in base allo stato
+      if (stato == 'in_corso') {
+        statoFormattato = "⏳ in corso";
+      } else if (stato == 'completato') {
+        statoFormattato = "✅ completato";
+      } else if (stato == 'programmato') {
+        statoFormattato = "🔜 programmato";
+      }
+      
+      // RIMOSSI asterischi (**)
+      results.add("• ${trattamento['tipo_trattamento_nome']}: " +
+        "apiario ${trattamento['apiario_nome']}, " +
+        "stato: $statoFormattato, " +
+        "dal ${trattamento['data_inizio']} " +
+        (trattamento['data_fine'] != null ? "al ${trattamento['data_fine']}" : "in corso"));
+    }
+    
+    return results.join("\n");
+  }
+
+  // Helper migliorato per formattare i dati dettagliati dei controlli
+  String _formatControlliDetailedData(List<dynamic> controlli) {
+    if (controlli.isEmpty) return "Nessun controllo recente registrato.";
+    
+    List<String> results = ["Controlli Recenti"];
+    
+    for (var controllo in controlli) {
+      // Prepara la descrizione dei telaini
+      String telainiInfo = "";
+      if (controllo['telaini_config_decoded'] != null) {
+        int telainiCovata = controllo['telaini_covata'] ?? 0;
+        int telainiScorte = controllo['telaini_scorte'] ?? 0;
+        int telainiVuoti = controllo['telaini_vuoti'] ?? 0;
+        
+        telainiInfo = "(telaini: $telainiCovata di covata, $telainiScorte di scorte, $telainiVuoti vuoti)";
+      }
+      
+      // Prepara le informazioni sulla regina
+      String reginaInfo = "";
+      if (controllo['stato_regina'] != null) {
+        var regina = controllo['stato_regina'];
+        
+        if (regina['presente'] == true) {
+          reginaInfo = "👑 regina presente";
+        } else {
+          reginaInfo = "⚠️ regina assente";
         }
       }
       
-      if (problemiParts.isNotEmpty) {
-        problemiInfo = " [ATTENZIONE: " + problemiParts.join(", ") + "]";
+      // IMPORTANTE: Qui è il problema - rimossi gli asterischi **
+      // Vecchio formato: "* **Arnia ${controllo['arnia_numero']}:** ..."
+      // Nuovo formato senza asterischi:
+      results.add("• Arnia ${controllo['arnia_numero']}: ${controllo['data']} $telainiInfo $reginaInfo");
+    }
+    
+    // Note e suggerimenti
+    results.add("\n📝 Note:");
+    
+    // Verifica se ci sono arnie con regina assente
+    List<int> arnieReginaAssente = [];
+    for (var controllo in controlli) {
+      if (controllo['stato_regina'] != null && 
+          controllo['stato_regina']['presente'] == false &&
+          !arnieReginaAssente.contains(controllo['arnia_numero'])) {
+        arnieReginaAssente.add(controllo['arnia_numero']);
       }
     }
     
-    return "- Controllo arnia ${controllo['arnia_numero']}: " +
-           "data: ${controllo['data']}, " +
-           "stato: ${controllo['stato'] ?? 'non specificato'}" +
-           telainiInfo +
-           reginaInfo +
-           problemiInfo +
-           (controllo['note'] != null && controllo['note'].isNotEmpty ? 
-           "\n  Note: ${controllo['note']}" : "");
-  }).join("\n\n");
-}
-  
+    if (arnieReginaAssente.isNotEmpty) {
+      results.add("• L'Arnia ${arnieReginaAssente.join(', ')} risulta orfana. Considera di intervenire (introduzione di una nuova regina o un favo con larva giovane).");
+    }
+    
+    // Identifica arnie con popolazione stabile
+    List<int> arniePopolazioneStabile = [];
+    for (var controllo in controlli) {
+      if (!arnieReginaAssente.contains(controllo['arnia_numero']) &&
+          !arniePopolazioneStabile.contains(controllo['arnia_numero'])) {
+        arniePopolazioneStabile.add(controllo['arnia_numero']);
+      }
+    }
+    
+    if (arniePopolazioneStabile.isNotEmpty) {
+      results.add("• Le arnie ${arniePopolazioneStabile.join(', ')} sembrano avere una popolazione stabile.");
+    }
+    
+    return results.join("\n");
+  }
+    
   // Cancella la conversazione
   void clearConversation() {
     _messages = [

@@ -3,12 +3,18 @@ class ChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
-  final Map<String, dynamic>? metadata;
-
+  final bool hasChart;         // Indica se il messaggio contiene un grafico
+  final String? chartType;     // Tipo di grafico (line, bar, etc.)
+  final Map<String, dynamic>? chartData;  // Dati per il grafico
+  final Map<String, dynamic>? metadata;   // Added metadata field based on copyWith method
+  
   ChatMessage({
     required this.text,
     required this.isUser,
     required this.timestamp,
+    this.hasChart = false,
+    this.chartType,
+    this.chartData,
     this.metadata,
   });
 
@@ -24,6 +30,9 @@ class ChatMessage {
       isUser: isUser ?? this.isUser,
       timestamp: timestamp ?? this.timestamp,
       metadata: metadata ?? this.metadata,
+      hasChart: this.hasChart,
+      chartType: this.chartType,
+      chartData: this.chartData,
     );
   }
 
@@ -36,6 +45,11 @@ class ChatMessage {
       metadata: json['metadata'] != null 
           ? Map<String, dynamic>.from(json['metadata'] as Map) 
           : null,
+      hasChart: json['hasChart'] as bool? ?? false,
+      chartType: json['chartType'] as String?,
+      chartData: json['chartData'] != null
+          ? Map<String, dynamic>.from(json['chartData'] as Map)
+          : null,
     );
   }
 
@@ -46,6 +60,9 @@ class ChatMessage {
       'isUser': isUser,
       'timestamp': timestamp.toIso8601String(),
       'metadata': metadata,
+      'hasChart': hasChart,
+      'chartType': chartType,
+      'chartData': chartData,
     };
   }
 }
