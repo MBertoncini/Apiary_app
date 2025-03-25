@@ -66,6 +66,9 @@ class AppConstants {
   static const String pagamentoCreateRoute = "/pagamento/create";
   static const String quoteRoute = "/quote";  
 
+  // Route per chat
+  static const String chatRoute = "/chat";
+
   // Altri parametri
   static const int defaultSyncInterval = 30; // Minuti
-}
+} 

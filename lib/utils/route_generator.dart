@@ -28,13 +28,14 @@ import '../screens/pagamento/pagamenti_screen.dart';
 import '../screens/pagamento/pagamento_detail_screen.dart';
 import '../screens/pagamento/pagamento_form_screen.dart';
 import '../screens/pagamento/quote_screen.dart';
-
+import '../screens/chat_screen.dart';
 
 class RouteGenerator {
+ 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     // Recupera gli argomenti passati alla navigazione
     final args = settings.arguments;
-    
+        
     switch (settings.name) {
       case '/':
       case AppConstants.splashRoute:

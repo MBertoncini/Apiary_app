@@ -1,0 +1,38 @@
+Il video si concentra sulla dimostrazione pratica del Model Context Protocol (MCP) in un'applicazione di e-commerce, illustrando come estendere le capacità di un assistente AI fornendogli l'accesso a dati e funzionalità esterne attraverso l'uso di strumenti.
+Il problema iniziale evidenziato è che un assistente AI generico, pur essendo in grado di rispondere a domande di base, non ha conoscenza specifica del catalogo prodotti o della possibilità di effettuare ordini in un'applicazione di e-commerce. Di conseguenza, le sue raccomandazioni possono essere irrilevanti.
+La soluzione introdotta è l'utilizzo di strumenti (tools), che consentono all'LLM (Large Language Model) di interagire con sistemi esterni. Il video distingue tra due tipi di strumenti:
+•
+Strumenti lato server (Server Tools): Questi strumenti vengono eseguiti sul server e permettono all'LLM di accedere a API backend, come l'API dei prodotti. Il flusso di messaggi in questo scenario è il seguente:
+◦
+Il client (ad esempio, l'assistente AI nel frontend) invia una richiesta al server.
+◦
+Il server inoltra la richiesta all'LLM, includendo le definizioni degli strumenti disponibili. Queste definizioni specificano l'esistenza dello strumento e i suoi parametri, ma non la logica di esecuzione.
+◦
+L'LLM, analizzando la richiesta, può decidere di utilizzare uno strumento e quindi genera una "chiamata allo strumento" (tool call) nella sua risposta, chiedendo al server di eseguire uno specifico strumento con determinati parametri.
+◦
+Il server, che ha accesso all'API backend, esegue lo strumento (ad esempio, chiama l'API dei prodotti) e riceve i dati.
+◦
+Il server aggiunge i risultati della chiamata allo strumento alla lista dei messaggi e li invia nuovamente all'LLM.
+◦
+L'LLM, avendo ora sia la query originale dell'utente che i dati ottenuti dallo strumento, può generare una risposta più pertinente.
+◦
+Per implementare uno strumento lato server, è necessario definirlo con una descrizione per l'AI, eventuali parametri (spesso definiti usando librerie come Zod per la validazione) e una funzione di esecuzione (execute) che contiene la logica per interagire con il sistema esterno.
+•
+Strumenti lato client (Client Tools): Questi strumenti vengono eseguiti direttamente sul client (ad esempio, nel browser) e possono essere utilizzati per azioni specifiche dell'interfaccia utente. Il video sottolinea che l'MCP non è progettato per gli strumenti lato client, poiché MCP opera a livello di server o riga di comando. Gli strumenti lato client possono gestire azioni come mostrare una scheda di raccomandazione di un prodotto direttamente nell'interfaccia utente.
+Successivamente, il video introduce il Model Context Protocol (MCP) come un meccanismo per consentire all'assistente AI di interagire con API backend più complesse, come l'API per la gestione degli ordini. Invece di far comunicare direttamente il frontend con tutte le API, viene introdotto un server MCP come intermediario.
+•
+Un server MCP ospita un insieme di strumenti lato server che possono essere invocati da diversi client MCP. In questo scenario, il server web del frontend diventa un client MCP che comunica con il server MCP degli ordini. Altri potenziali client MCP menzionati includono Claude, Cursor e Windsurf. Tutti questi client comunicano con il server MCP attraverso dei trasporti.
+•
+Il video dimostra due tipi di trasporto:
+◦
+Server-Sent Events (SSE): Un protocollo che consente una comunicazione unidirezionale dal server al client su una connessione HTTP o HTTPS persistente. Viene utilizzato per la comunicazione tra il frontend (client MCP) e il server MCP degli ordini. Inizialmente, la connessione SSE implementata è stateful, anche se viene menzionata una Pull Request per una variante stateless.
+◦
+Standard IO: Un metodo di comunicazione tramite input e output standard, utilizzato per connettere un client MCP come Claude (per funzionalità di business intelligence) al server MCP degli ordini.
+Il flusso di interazione con un server MCP è simile a quello con gli strumenti lato server diretti, ma con l'aggiunta del server MCP come intermediario. Quando un client MCP richiede l'esecuzione di uno strumento, la richiesta viene inviata al server MCP, che a sua volta interagisce con l'API backend appropriata e restituisce il risultato al client MCP e, infine, all'LLM.
+Il video evidenzia anche l'importanza di:
+•
+Prompt di sistema (System Prompt): Utilizzato per fornire istruzioni all'LLM e guidarlo nell'utilizzo degli strumenti disponibili. È possibile aggiungere al prompt indicazioni specifiche sull'esistenza e lo scopo degli strumenti.
+•
+maxSteps: Un parametro nelle librerie AI che limita il numero di passaggi che l'AI può compiere per rispondere a una query. Quando si utilizzano le chiamate agli strumenti, è spesso necessario aumentare il valore predefinito di maxSteps (solitamente 1) per consentire all'LLM di effettuare la chiamata allo strumento e poi elaborare i risultati.
+Infine, il video mostra un caso d'uso di business intelligence, in cui Claude viene utilizzato come client MCP (tramite Standard IO) per interrogare il server MCP degli ordini, accedere ai dati degli ordini tramite uno strumento specifico (get orders) e quindi analizzare questi dati per generare grafici e previsioni di vendita.
+In sintesi, la teoria dietro il video si basa sull'idea di utilizzare un protocollo standardizzato (MCP) per estendere le capacità degli LLM, consentendo loro di interagire con sistemi esterni attraverso strumenti. Questo approccio promuove un'architettura più modulare e flessibile, in cui diversi client AI possono accedere alle stesse funzionalità tramite un server MCP, utilizzando vari metodi di comunicazione (trasporti).

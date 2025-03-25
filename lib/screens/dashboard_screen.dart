@@ -6,10 +6,13 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../services/jokes_service.dart';
+import '../services/chat_service.dart';
+import '../services/mcp_service.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/bee_joke_bubble.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../screens/mobile_scanner_wrapper_screen.dart';
+import '../screens/chat_screen.dart';
 import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -1972,27 +1975,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
       ),
       floatingActionButton: SpeedDial(
-        icon: Icons.add,
-        activeIcon: Icons.close,
-        backgroundColor: Theme.of(context).primaryColor,
-        children: [
-          SpeedDialChild(
-            child: Icon(Icons.qr_code_scanner),
-            label: 'Scansiona QR',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => MobileScannerWrapperScreen()),
-              );
-            },
-          ),
-          SpeedDialChild(
-            child: Icon(Icons.add),
-            label: 'Nuovo apiario',
-            onTap: _navigateToApiarioCreate,
-          ),
-        ],
-      ),
+              icon: Icons.add,
+              activeIcon: Icons.close,
+              backgroundColor: Theme.of(context).primaryColor,
+              children: [
+                SpeedDialChild(
+                  child: Icon(Icons.chat),
+                  label: 'ApiarioAI Assistant',
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  onTap: () {
+                    // Ottieni i servizi necessari
+                    final apiService = Provider.of<ApiService>(context, listen: false);
+                    final authService = Provider.of<AuthService>(context, listen: false);
+                    
+                    // Crea un MCPService
+                    final mcpService = MCPService(apiService);
+                    
+                    // Ottieni ID utente
+                    final userId = authService.currentUser?.id.toString() ?? '0';
+                    
+                    // Crea un ChatService
+                    final chatService = ChatService(apiService, mcpService, userId);
+                    
+                    // Naviga alla ChatScreen con un ChangeNotifierProvider specifico
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChangeNotifierProvider<ChatService>.value(
+                          value: chatService,
+                          child: ChatScreen(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                SpeedDialChild(
+                  child: Icon(Icons.qr_code_scanner),
+                  label: 'Scansiona QR',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MobileScannerWrapperScreen()),
+                    );
+                  },
+                ),
+                SpeedDialChild(
+                  child: Icon(Icons.add),
+                  label: 'Nuovo apiario',
+                  onTap: _navigateToApiarioCreate,
+                ),
+              ],
+            ),
     );
   }
 }
