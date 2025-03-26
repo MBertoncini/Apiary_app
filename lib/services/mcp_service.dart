@@ -105,25 +105,25 @@ class MCPService {
         }
         int months = parameters['months'] ?? 6;
         return await _generateArniaPopulationChart(parameters['arniaId'], months);
-        
-      case 'generateApiarioHealthChart':
-        if (!parameters.containsKey('apiarioId')) {
-          return {'error': 'Missing parameter: apiarioId'};
-        }
-        return await _generateApiarioHealthChart(parameters['apiarioId']);
-        
-      case 'generateTrattamentiEffectivenessChart':
-        if (!parameters.containsKey('apiarioId')) {
-          return {'error': 'Missing parameter: apiarioId'};
-        }
-        return await _generateTrattamentiEffectivenessChart(parameters['apiarioId']);
-        
-      case 'generateHoneyProductionChart':
-        if (!parameters.containsKey('apiarioId')) {
-          return {'error': 'Missing parameter: apiarioId'};
-        }
-        int years = parameters['years'] ?? 3;
-        return await _generateHoneyProductionChart(parameters['apiarioId'], years);
+          
+        case 'generateApiarioHealthChart':
+          if (!parameters.containsKey('apiarioId')) {
+            return {'error': 'Missing parameter: apiarioId'};
+          }
+          return await _generateApiarioHealthChart(parameters['apiarioId']);
+          
+        case 'generateTrattamentiEffectivenessChart':
+          if (!parameters.containsKey('apiarioId')) {
+            return {'error': 'Missing parameter: apiarioId'};
+          }
+          return await _generateTrattamentiEffectivenessChart(parameters['apiarioId']);
+          
+        case 'generateHoneyProductionChart':
+          if (!parameters.containsKey('apiarioId')) {
+            return {'error': 'Missing parameter: apiarioId'};
+          }
+          int years = parameters['years'] ?? 3;
+          return await _generateHoneyProductionChart(parameters['apiarioId'], years);
         
       default:
         return {'error': 'Tool implementation not found: $toolName'};
@@ -131,14 +131,8 @@ class MCPService {
   } catch (e) {
     return {'error': 'Error executing tool $toolName: $e'};
   }
-  }
-        default:
-          return {'error': 'Tool implementation not found: $toolName'};
-      }
-    } catch (e) {
-      return {'error': 'Error executing tool $toolName: $e'};
-    }
-  }
+}
+
   
   // === STRUMENTI MCP (TOOLS) ===
   
