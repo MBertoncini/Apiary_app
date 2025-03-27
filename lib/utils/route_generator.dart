@@ -1,3 +1,4 @@
+// lib/utils/route_generator_updated.dart
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../screens/splash_screen.dart';
@@ -29,8 +30,10 @@ import '../screens/pagamento/pagamento_detail_screen.dart';
 import '../screens/pagamento/pagamento_form_screen.dart';
 import '../screens/pagamento/quote_screen.dart';
 import '../screens/chat_screen.dart';
+// Importa la versione aggiornata dello schermo di comando vocale
+import '../screens/voice_command_screen_updated.dart';
 
-class RouteGenerator {
+class RouteGeneratorUpdated {
  
   static Route<dynamic> generateRoute(RouteSettings settings) {
     // Recupera gli argomenti passati alla navigazione
@@ -186,6 +189,13 @@ class RouteGenerator {
         
       case AppConstants.quoteRoute:
         return MaterialPageRoute(builder: (_) => QuoteScreen());
+        
+      case AppConstants.chatRoute:
+        return MaterialPageRoute(builder: (_) => ChatScreen());
+        
+      // NUOVA ROTTA PER L'INPUT VOCALE CON GOOGLE API
+      case AppConstants.voiceCommandRoute:
+        return MaterialPageRoute(builder: (_) => VoiceCommandScreenUpdated());
       
       default:
         return _errorRoute();

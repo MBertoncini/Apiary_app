@@ -14,6 +14,7 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../screens/mobile_scanner_wrapper_screen.dart';
 import '../screens/chat_screen.dart';
 import 'package:intl/intl.dart';
+import '../widgets/voice_input_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -1974,17 +1975,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
       ),
-      floatingActionButton: SpeedDial(
-              icon: Icons.add,
-              activeIcon: Icons.close,
-              backgroundColor: Theme.of(context).primaryColor,
-              children: [
-                SpeedDialChild(
-                  child: Icon(Icons.chat),
-                  label: 'ApiarioAI Assistant',
-                  backgroundColor: Colors.purple,
-                  foregroundColor: Colors.white,
-                  onTap: () {
+              floatingActionButton: SpeedDial(
+                icon: Icons.add,
+                activeIcon: Icons.close,
+                backgroundColor: Theme.of(context).primaryColor,
+                children: [
+                  // Aggiungi questo elemento all'inizio della lista dei SpeedDialChild
+                  SpeedDialChild(
+                    child: Icon(Icons.mic),
+                    label: 'Input vocale',
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    onTap: () {
+                      Navigator.of(context).pushNamed(AppConstants.voiceCommandRoute);
+                    },
+                  ),
+                  // Mantieni gli elementi esistenti
+                  SpeedDialChild(
+                    child: Icon(Icons.chat),
+                    label: 'ApiarioAI Assistant',
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    onTap: () {
                     // Ottieni i servizi necessari
                     final apiService = Provider.of<ApiService>(context, listen: false);
                     final authService = Provider.of<AuthService>(context, listen: false);

@@ -33,6 +33,10 @@
 	<string>L'app richiede l'accesso alla galleria per salvare i grafici.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>L'app richiede l'accesso alla galleria per salvare i grafici.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Apiario Manager richiede accesso al microfono per l'inserimento vocale dei dati sulle arnie.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Apiario Manager richiede il riconoscimento vocale per convertire i comandi vocali in dati strutturati.</string>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>

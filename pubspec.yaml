@@ -40,6 +40,10 @@ dependencies:
   path_provider: ^2.1.2
   screenshot: ^3.0.0   # Per catturare screenshot dei grafici
   flutter_background_service: ^5.0.0  # Già in uso nella tua app
+  audioplayers: ^5.1.0  # Sostituisci con l'ultima versione stabile
+  vibration: 3.1.3    # Per feedback aptico
+  google_speech: ^2.2.0
+  sound_stream: ^0.3.0
 
 dev_dependencies:
   flutter_test:
@@ -54,7 +58,8 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    
+    - assets/sounds/ 
+
   fonts:
     - family: Poppins
       fonts:

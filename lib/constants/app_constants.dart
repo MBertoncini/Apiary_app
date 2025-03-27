@@ -68,7 +68,16 @@ class AppConstants {
 
   // Route per chat
   static const String chatRoute = "/chat";
+  
+  // Route per input vocale
+  static const String voiceCommandRoute = "/voice_command";
+  static const String voiceVerificationRoute = "/voice_verification";
 
   // Altri parametri
   static const int defaultSyncInterval = 30; // Minuti
-} 
+  
+  // Parametri per input vocale
+  static const String wakePhrase = "ok ape"; // Frase di attivazione
+  static const int maxVoiceRecordingTime = 60; // Secondi
+  static const int maxBatchEntries = 20; // Numero massimo di registrazioni in batch
+}

@@ -4,10 +4,10 @@ import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawerUpdated extends StatelessWidget {
   final String currentRoute;
   
-  AppDrawer({required this.currentRoute});
+  AppDrawerUpdated({required this.currentRoute});
   
   @override
   Widget build(BuildContext context) {
@@ -182,6 +182,56 @@ class AppDrawer extends StatelessWidget {
               }
             },
           ),
+
+          // Voice command menu item con badge "New"
+          Stack(
+            children: [
+              ListTile(
+                leading: Icon(
+                  Icons.mic,
+                  color: currentRoute == AppConstants.voiceCommandRoute
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
+                ),
+                title: Text(
+                  'Inserimento vocale con Google API',
+                  style: TextStyle(
+                    color: currentRoute == AppConstants.voiceCommandRoute
+                        ? Theme.of(context).primaryColor
+                        : null,
+                    fontWeight: currentRoute == AppConstants.voiceCommandRoute
+                        ? FontWeight.bold
+                        : null,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  if (currentRoute != AppConstants.voiceCommandRoute) {
+                    Navigator.of(context).pushNamed(AppConstants.voiceCommandRoute);
+                  }
+                },
+              ),
+              Positioned(
+                right: 16,
+                top: 8,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'NEW',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           
           // Logout
           ListTile(
@@ -193,16 +243,6 @@ class AppDrawer extends StatelessWidget {
             },
           ),
         ],
-      ),
-    );
-  }
-  
-  // Helper per mostrare un messaggio per funzionalità non implementate
-  void _showFeatureNotImplementedMessage(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('La funzionalità "$feature" sarà disponibile nella prossima versione'),
-        duration: Duration(seconds: 2),
       ),
     );
   }
