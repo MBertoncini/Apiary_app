@@ -1,64 +1,71 @@
 // lib/services/audio_service.dart
+import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 
-/// Servizio per la riproduzione di audio nell'app
 class AudioService {
-  // Singleton pattern
-  static final AudioService _instance = AudioService._internal();
-  factory AudioService() => _instance;
-  AudioService._internal();
-  
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  
-  // Percorsi dei suoni
-  static const String _soundStart = 'assets/sounds/start_listening.mp3';
-  static const String _soundStop = 'assets/sounds/stop_listening.mp3';
-  static const String _soundSuccess = 'assets/sounds/success.mp3';
-  static const String _soundError = 'assets/sounds/error.mp3';
-  
-  // Flag per attivare/disattivare i suoni
+  AudioPlayer? _player;
   bool _soundEnabled = true;
   
+  // Riferimenti alle risorse audio
+  static const String _startSoundPath = 'assets/sounds/start_recording.mp3';
+  static const String _stopSoundPath = 'assets/sounds/stop_recording.mp3';
+  static const String _successSoundPath = 'assets/sounds/success.mp3';
+  static const String _errorSoundPath = 'assets/sounds/error.mp3';
+  
+  // Getter e setter
   bool get soundEnabled => _soundEnabled;
   set soundEnabled(bool value) {
     _soundEnabled = value;
   }
   
-  // Riproduci suono di inizio registrazione
-  Future<void> playStartSound() async {
-    if (!_soundEnabled) return;
-    await _playSound(_soundStart);
+  AudioService() {
+    _initPlayer();
   }
   
-  // Riproduci suono di fine registrazione
-  Future<void> playStopSound() async {
-    if (!_soundEnabled) return;
-    await _playSound(_soundStop);
+  Future<void> _initPlayer() async {
+    _player = AudioPlayer();
   }
   
-  // Riproduci suono di successo
-  Future<void> playSuccessSound() async {
-    if (!_soundEnabled) return;
-    await _playSound(_soundSuccess);
-  }
-  
-  // Riproduci suono di errore
-  Future<void> playErrorSound() async {
-    if (!_soundEnabled) return;
-    await _playSound(_soundError);
-  }
-  
-  // Metodo helper per riprodurre un suono
+  // Funzione di utilità per riprodurre un suono
   Future<void> _playSound(String assetPath) async {
+    if (!_soundEnabled) return;
+    
     try {
-      await _audioPlayer.play(AssetSource(assetPath));
+      if (_player == null) {
+        await _initPlayer();
+      }
+      
+      await _player!.stop(); // Ferma qualsiasi riproduzione in corso
+      await _player!.play(AssetSource(assetPath));
     } catch (e) {
       print('Errore nella riproduzione del suono: $e');
     }
   }
   
-  // Ripulisci le risorse quando non più necessarie
+  // Riproduce il suono di inizio ascolto
+  Future<void> playStartSound() async {
+    await _playSound(_startSoundPath);
+  }
+  
+  // Riproduce il suono di fine ascolto
+  Future<void> playStopSound() async {
+    await _playSound(_stopSoundPath);
+  }
+  
+  // Riproduce il suono di successo
+  Future<void> playSuccessSound() async {
+    await _playSound(_successSoundPath);
+  }
+  
+  // Riproduce il suono di errore
+  Future<void> playErrorSound() async {
+    await _playSound(_errorSoundPath);
+  }
+  
+  // Pulisci le risorse
   void dispose() {
-    _audioPlayer.dispose();
+    _player?.dispose();
+    _player = null;
   }
 }

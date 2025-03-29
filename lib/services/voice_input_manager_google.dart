@@ -2,13 +2,15 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/voice_entry.dart';
-import 'google_speech_recognition_service.dart';
+import 'wit_speech_recognition_service.dart';
 import 'voice_data_processor.dart';
 import 'voice_feedback_service.dart';
 
-/// Service that coordinates Google speech recognition and data processing
-class VoiceInputManagerGoogle with ChangeNotifier {
-  final GoogleSpeechRecognitionService _speechService;
+// Nota: abbiamo rimosso la definizione di VoiceEntryBatch che ora è importata da models/voice_entry.dart
+
+/// Service che coordina il riconoscimento vocale e l'elaborazione dei dati
+class VoiceInputManagerGoogle extends ChangeNotifier {
+  final WitSpeechRecognitionService _speechService;
   final VoiceDataProcessor _dataProcessor;
   final VoiceFeedbackService _feedbackService;
   
@@ -39,32 +41,32 @@ class VoiceInputManagerGoogle with ChangeNotifier {
 
   // Listen for changes in the speech service
   void _onSpeechServiceChanged() {
-    // If the speech service stopped listening and we were listening,
-    // process the transcription
+    // Se il servizio vocale ha smesso di ascoltare e noi stavamo ascoltando,
+    // elabora la trascrizione
     if (!_speechService.isListening && _isListening && !_isProcessing && 
         _speechService.transcription.isNotEmpty) {
       _processCurrentTranscription();
     }
     
-    // Update our listening state
+    // Aggiorna il nostro stato di ascolto
     _isListening = _speechService.isListening;
     notifyListeners();
   }
   
   // Listen for changes in the data processor
   void _onDataProcessorChanged() {
-    // Update our error state from the data processor
+    // Aggiorna il nostro stato di errore dal processore di dati
     if (_dataProcessor.error != null) {
       _error = _dataProcessor.error;
       notifyListeners();
     }
   }
 
-  // Start listening
+  // Inizia l'ascolto
   Future<bool> startListening({bool batchMode = false}) async {
     if (_isListening) return true;
     
-    // Check and request microphone permission
+    // Verifica e richiede il permesso del microfono
     if (!await _speechService.hasMicrophonePermission()) {
       _error = 'Permesso microfono non concesso';
       notifyListeners();
@@ -72,22 +74,26 @@ class VoiceInputManagerGoogle with ChangeNotifier {
       return false;
     }
     
-    // Clear any previous errors
+    // Cancella eventuali errori precedenti
     _error = null;
     _isBatchMode = batchMode;
     
-    // Start batch if in batch mode
+    // Inizia il batch se in modalità batch
     if (batchMode && _currentBatch.isEmpty) {
       _currentBatch = VoiceEntryBatch();
     }
     
-    // Start listening
+    // Fornisci feedback sonoro/aptico all'inizio dell'ascolto
+    await _feedbackService.playListeningStartSound();
+    await _feedbackService.vibrateStart();
+    
+    // Inizia l'ascolto
     final success = await _speechService.startListening();
     
     if (success) {
       _isListening = true;
       
-      // In standard mode, set a timeout to auto-stop after 60 seconds
+      // In modalità standard, imposta un timeout per interrompere automaticamente dopo 60 secondi
       if (!batchMode) {
         _autoStopTimer?.cancel();
         _autoStopTimer = Timer(Duration(seconds: 60), () {
@@ -105,15 +111,20 @@ class VoiceInputManagerGoogle with ChangeNotifier {
     return success;
   }
 
-  // Stop listening
+  // Interrompi l'ascolto
   Future<void> stopListening() async {
     if (!_isListening) return;
     
     _autoStopTimer?.cancel();
+    
+    // Fornisci feedback sonoro/aptico alla fine dell'ascolto
+    await _feedbackService.playListeningStopSound();
+    await _feedbackService.vibrateStop();
+    
     await _speechService.stopListening();
     _isListening = false;
     
-    // If we have a transcription, process it
+    // Se abbiamo una trascrizione, elaborala
     if (_speechService.transcription.isNotEmpty && !_isProcessing) {
       await _processCurrentTranscription();
     }
@@ -121,7 +132,7 @@ class VoiceInputManagerGoogle with ChangeNotifier {
     notifyListeners();
   }
 
-  // Process the current transcription
+  // Elabora la trascrizione corrente
   Future<void> _processCurrentTranscription() async {
     final transcription = _speechService.transcription;
     if (transcription.isEmpty) return;
@@ -130,22 +141,23 @@ class VoiceInputManagerGoogle with ChangeNotifier {
     notifyListeners();
     
     try {
-      // Process voice input with Gemini
+      // Elabora l'input vocale
       final entry = await _dataProcessor.processVoiceInput(transcription);
       
       if (entry != null && entry.isValid()) {
-        // Positive feedback
-        _feedbackService.vibrateSuccess();
+        // Feedback positivo
+        await _feedbackService.playSuccessSound();
+        await _feedbackService.vibrateSuccess();
         
-        // Add to current batch
+        // Aggiungi al batch corrente
         _currentBatch.add(entry);
         
-        // Clear transcription
+        // Cancella la trascrizione
         _speechService.clearTranscription();
         
-        // Automatic restart in batch mode
+        // Riavvio automatico in modalità batch
         if (_isBatchMode) {
-          // Small delay to allow user to prepare for next input
+          // Piccolo ritardo per consentire all'utente di prepararsi per il prossimo input
           Future.delayed(Duration(milliseconds: 1500), () {
             if (_isBatchMode) {
               startListening(batchMode: true);
@@ -154,55 +166,63 @@ class VoiceInputManagerGoogle with ChangeNotifier {
         }
       } else {
         _error = 'Non è stato possibile interpretare il comando vocale';
-        _feedbackService.vibrateError();
+        await _feedbackService.playErrorSound();
+        await _feedbackService.vibrateError();
       }
     } catch (e) {
       _error = 'Errore nel processamento: $e';
-      _feedbackService.vibrateError();
+      await _feedbackService.playErrorSound();
+      await _feedbackService.vibrateError();
     } finally {
       _isProcessing = false;
       notifyListeners();
     }
   }
   
-  /// Begin a new batch of voice entries
+  /// Inizia un nuovo batch di voci vocali
   void startNewBatch() {
     _currentBatch = VoiceEntryBatch();
     notifyListeners();
   }
   
-  /// Add a new entry to the current batch
+  /// Aggiungi una nuova voce al batch corrente
   void addToBatch(VoiceEntry entry) {
     _currentBatch.add(entry);
     notifyListeners();
   }
   
-  /// Remove an entry from the current batch
+  /// Rimuovi una voce dal batch corrente
   void removeFromBatch(int index) {
     _currentBatch.remove(index);
     notifyListeners();
   }
   
-  /// Clear the current batch
+  /// Cancella il batch corrente
   void clearBatch() {
     _currentBatch.clear();
     notifyListeners();
   }
   
-  /// Clear current error
+  /// Cancella l'errore corrente
   void clearError() {
     _error = null;
     notifyListeners();
   }
   
-  /// Get the latest transcription
+  /// Ottieni l'ultima trascrizione
   String getTranscription() {
     return _speechService.transcription;
   }
   
-  /// Get partial transcripts (useful for debugging)
+  /// Ottieni le trascrizioni parziali (utile per il debug)
   List<String> getPartialTranscripts() {
     return _speechService.partialTranscripts;
+  }
+  
+  /// Cancella la trascrizione corrente
+  void clearTranscription() {
+    _speechService.clearTranscription();
+    notifyListeners();
   }
   
   @override
@@ -211,11 +231,5 @@ class VoiceInputManagerGoogle with ChangeNotifier {
     _dataProcessor.removeListener(_onDataProcessorChanged);
     _autoStopTimer?.cancel();
     super.dispose();
-  }
-
-    /// Cancella la trascrizione corrente
-  void clearTranscription() {
-    _speechService.clearTranscription();
-    notifyListeners();
   }
 }

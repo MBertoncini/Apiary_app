@@ -8,12 +8,14 @@ import 'services/storage_service.dart';
 import 'services/sync_service.dart';
 import 'services/mcp_service.dart';
 import 'services/chat_service.dart';
-// Importa i nuovi servizi
+// Importa i servizi
 import 'services/google_speech_recognition_service.dart';
 import 'services/voice_data_processor.dart';
+import 'services/wit_data_processor.dart';
 import 'services/voice_input_manager_google.dart';
 import 'services/voice_feedback_service.dart';
 import 'services/audio_service.dart';
+import 'services/wit_speech_recognition_service.dart';
 
 List<SingleChildWidget> providers = [
   // Servizio di storage (indipendente)
@@ -75,31 +77,21 @@ List<SingleChildWidget> providers = [
     },
   ),
   
-  // NUOVI SERVIZI PER INPUT VOCALE GOOGLE
-  
-  // Servizio di riconoscimento vocale Google (indipendente)
-  ChangeNotifierProvider<GoogleSpeechRecognitionService>(
-    create: (_) => GoogleSpeechRecognitionService(),
+  // Servizio di riconoscimento vocale Wit.ai
+  ChangeNotifierProvider<WitSpeechRecognitionService>(
+    create: (_) => WitSpeechRecognitionService(),
   ),
-  
-  // Servizio di elaborazione dati vocali (dipende da API)
-  ChangeNotifierProxyProvider<ApiService, VoiceDataProcessor>(
-    create: (context) => VoiceDataProcessor(
-      Provider.of<ApiService>(context, listen: false)
-    ),
-    update: (_, apiService, previousProcessor) {
-      if (previousProcessor != null) {
-        return previousProcessor;
-      }
-      return VoiceDataProcessor(apiService);
-    },
+
+  // Processore dati Wit.ai - Corrected to extend ChangeNotifier
+  ChangeNotifierProvider<WitDataProcessor>(
+    create: (_) => WitDataProcessor(),
   ),
-  
-  // Gestore input vocale (dipende da riconoscimento e processamento)
-  ChangeNotifierProxyProvider2<GoogleSpeechRecognitionService, VoiceDataProcessor, VoiceInputManagerGoogle>(
+
+  // Gestore input vocale (aggiornato per usare Wit)
+  ChangeNotifierProxyProvider2<WitSpeechRecognitionService, WitDataProcessor, VoiceInputManagerGoogle>(
     create: (context) => VoiceInputManagerGoogle(
-      Provider.of<GoogleSpeechRecognitionService>(context, listen: false),
-      Provider.of<VoiceDataProcessor>(context, listen: false)
+      Provider.of<WitSpeechRecognitionService>(context, listen: false),
+      Provider.of<WitDataProcessor>(context, listen: false)
     ),
     update: (_, speechService, dataProcessor, previousManager) {
       if (previousManager != null) {

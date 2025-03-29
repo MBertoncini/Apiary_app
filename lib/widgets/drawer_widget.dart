@@ -183,7 +183,7 @@ class AppDrawer extends StatelessWidget {
             },
           ),
 
-          // Voice command menu item con badge "New"
+          // Voice command con Wit.ai
           Stack(
             children: [
               ListTile(
@@ -194,7 +194,7 @@ class AppDrawer extends StatelessWidget {
                       : Colors.grey,
                 ),
                 title: Text(
-                  'Inserimento vocale con Google API',
+                  'Inserimento vocale con Wit.ai',
                   style: TextStyle(
                     color: currentRoute == AppConstants.voiceCommandRoute
                         ? Theme.of(context).primaryColor
