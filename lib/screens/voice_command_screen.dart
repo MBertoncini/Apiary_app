@@ -1,12 +1,14 @@
-// lib/screens/voice_command_screen_updated.dart
+// lib/screens/voice_command_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/voice_input_manager_google.dart';
-import '../services/voice_data_processor.dart';
+import '../services/wit_data_processor.dart';
 import '../widgets/google_voice_input_widget.dart';
 import 'voice_entry_verification_screen.dart';
 import '../constants/theme_constants.dart';
+import '../services/wit_speech_recognition_service.dart';
+import '../services/voice_feedback_service.dart';
 
 class VoiceCommandScreenUpdated extends StatefulWidget {
   @override
@@ -15,17 +17,36 @@ class VoiceCommandScreenUpdated extends StatefulWidget {
 
 class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
   bool _showGuide = true;
+  late VoiceInputManagerGoogle _voiceManager;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Inizializza i servizi qui invece di usare Provider.of
+    _initializeServices();
+  }
+  
+  Future<void> _initializeServices() async {
+    final speechService = Provider.of<WitSpeechRecognitionService>(context, listen: false);
+    final dataProcessor = Provider.of<WitDataProcessor>(context, listen: false);
+    final feedbackService = VoiceFeedbackService();
+    
+    // Crea il VoiceInputManagerGoogle localmente
+    _voiceManager = VoiceInputManagerGoogle(
+      speechService,
+      dataProcessor,
+      feedbackService: feedbackService
+    );
+  }
     
   @override
   Widget build(BuildContext context) {
-    // Ottieni i servizi necessari dal provider globale esistente
+    // Ottieni solo ApiService dal provider
     final apiService = Provider.of<ApiService>(context, listen: false);
-    final voiceDataProcessor = Provider.of<VoiceDataProcessor>(context, listen: false);
-    final voiceManager = Provider.of<VoiceInputManagerGoogle>(context, listen: false);
     
     return Scaffold(
       appBar: AppBar(
-        title: Text('Inserimento vocale (Google API)'),
+        title: Text('Inserimento vocale (Wit.ai)'),
         actions: [
           IconButton(
             icon: Icon(_showGuide ? Icons.visibility_off : Icons.visibility),
@@ -135,7 +156,7 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
                                 SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Questa versione utilizza Google Speech-to-Text API per un riconoscimento vocale più preciso',
+                                    'Questa versione utilizza Wit.ai per un riconoscimento vocale più intelligente',
                                     style: TextStyle(fontSize: 13),
                                   ),
                                 ),
@@ -148,14 +169,17 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
                   ),
                 ),
               
-              // Widget per l'input vocale - usa Container con altezza definita invece di Expanded
-              Container(
-                height: 250, // Altezza fissa per l'area di input vocale
-                padding: const EdgeInsets.all(16.0),
-                child: Center(
-                  child: GoogleVoiceInputWidget(
-                    onEntriesReady: _handleEntriesReady,
-                    showBatchMode: true,
+              // Widget per l'input vocale
+              ChangeNotifierProvider<VoiceInputManagerGoogle>.value(
+                value: _voiceManager,
+                child: Container(
+                  height: 250, // Altezza fissa per l'area di input vocale
+                  padding: const EdgeInsets.all(16.0),
+                  child: Center(
+                    child: GoogleVoiceInputWidget(
+                      onEntriesReady: _handleEntriesReady,
+                      showBatchMode: true,
+                    ),
                   ),
                 ),
               ),
@@ -246,8 +270,7 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
             Navigator.of(context).pop();
             
             // Clear the batch
-            final voiceManager = Provider.of<VoiceInputManagerGoogle>(context, listen: false);
-            voiceManager.clearBatch();
+            _voiceManager.clearBatch();
             
             // Show success message
             ScaffoldMessenger.of(context).showSnackBar(
@@ -264,5 +287,11 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
         ),
       ),
     );
+  }
+  
+  @override
+  void dispose() {
+    // Assicurati di rilasciare le risorse
+    super.dispose();
   }
 }

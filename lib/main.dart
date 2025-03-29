@@ -31,7 +31,7 @@ void main() {
 
     runApp(
       MultiProvider(
-        providers: providers, // Usa i provider aggiornati definiti in provider_setup_updated.dart
+        providers: providers, // Usa i provider aggiornati definiti in provider_setup.dart
         child: MaterialApp(
           title: AppConstants.appName,
           theme: ThemeData(
@@ -39,7 +39,7 @@ void main() {
             visualDensity: VisualDensity.adaptivePlatformDensity,
           ),
           initialRoute: AppConstants.splashRoute,
-          onGenerateRoute: RouteGeneratorUpdated.generateRoute, // Use the updated route generator
+          onGenerateRoute: RouteGenerator.generateRoute, // Use the updated route generator
         ),
       ),
     );

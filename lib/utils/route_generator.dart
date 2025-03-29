@@ -1,4 +1,4 @@
-// lib/utils/route_generator_updated.dart
+// lib/utils/route_generator.dart
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../screens/splash_screen.dart';
@@ -32,7 +32,7 @@ import '../screens/pagamento/quote_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/voice_command_screen.dart';
 
-class RouteGeneratorUpdated {
+class RouteGenerator {
  
   static Route<dynamic> generateRoute(RouteSettings settings) {
     // Recupera gli argomenti passati alla navigazione
@@ -192,7 +192,7 @@ class RouteGeneratorUpdated {
       case AppConstants.chatRoute:
         return MaterialPageRoute(builder: (_) => ChatScreen());
         
-      // NUOVA ROTTA PER L'INPUT VOCALE CON GOOGLE API
+      // Rotta per l'input vocale con Wit.ai
       case AppConstants.voiceCommandRoute:
         return MaterialPageRoute(builder: (_) => VoiceCommandScreenUpdated());
       
