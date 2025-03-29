@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
 import '../services/voice_input_manager_google.dart';
-import '../services/voice_feedback_service_updated.dart';
+import '../services/voice_feedback_service.dart';
 import '../models/voice_entry.dart';
 
 /// Widget per l'input vocale che utilizza Google Speech API

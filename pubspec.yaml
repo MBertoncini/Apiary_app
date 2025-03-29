@@ -43,7 +43,7 @@ dependencies:
   audioplayers: ^5.1.0  # Sostituisci con l'ultima versione stabile
   vibration: 3.1.3    # Per feedback aptico
   google_speech: ^2.2.0
-  sound_stream: ^0.3.0
+  sound_stream: ^0.4.1
 
 dev_dependencies:
   flutter_test:

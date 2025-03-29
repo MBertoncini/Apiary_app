@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
-import '../services/voice_input_manager.dart';
+import '../services/voice_input_manager_google.dart'; // Cambiato da voice_input_manager.dart
 import '../services/voice_feedback_service.dart';
 import '../models/voice_entry.dart';
 
@@ -48,12 +48,12 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
   
   @override
   Widget build(BuildContext context) {
-    // Ottieni i servizi dal provider
-    late VoiceInputManager voiceManager;
+    // Ottieni i servizi dal provider - Modificato per usare VoiceInputManagerGoogle
+    late VoiceInputManagerGoogle voiceManager;
     late VoiceFeedbackService feedbackService;
     
     try {
-      voiceManager = Provider.of<VoiceInputManager>(context);
+      voiceManager = Provider.of<VoiceInputManagerGoogle>(context);
       feedbackService = Provider.of<VoiceFeedbackService>(context, listen: false);
     } catch (e) {
       // Caso dove il provider non è disponibile
@@ -426,7 +426,8 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
     );
   }
   
-  String _getStatusText(VoiceInputManager voiceManager) {
+  // Questo metodo è modificato per accettare VoiceInputManagerGoogle invece di VoiceInputManager
+  String _getStatusText(VoiceInputManagerGoogle voiceManager) {
     if (voiceManager.error != null) {
       return 'Errore: ${voiceManager.error}';
     }

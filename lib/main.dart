@@ -1,12 +1,12 @@
-// lib/main_updated.dart
+// lib/main.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'utils/route_generator_updated.dart';
+import 'utils/route_generator.dart';
 import 'constants/app_constants.dart';
 import 'database/database_helper.dart';
-import 'provider_setup_updated.dart'; // Use the updated provider setup
+import 'provider_setup.dart';
 
 void main() {
   runZonedGuarded(() async {

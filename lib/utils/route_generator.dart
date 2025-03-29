@@ -30,8 +30,7 @@ import '../screens/pagamento/pagamento_detail_screen.dart';
 import '../screens/pagamento/pagamento_form_screen.dart';
 import '../screens/pagamento/quote_screen.dart';
 import '../screens/chat_screen.dart';
-// Importa la versione aggiornata dello schermo di comando vocale
-import '../screens/voice_command_screen_updated.dart';
+import '../screens/voice_command_screen.dart';
 
 class RouteGeneratorUpdated {
  

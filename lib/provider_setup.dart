@@ -1,4 +1,4 @@
-// lib/provider_setup_updated.dart
+// lib/provider_setup.dart
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
@@ -12,7 +12,7 @@ import 'services/chat_service.dart';
 import 'services/google_speech_recognition_service.dart';
 import 'services/voice_data_processor.dart';
 import 'services/voice_input_manager_google.dart';
-import 'services/voice_feedback_service_updated.dart';
+import 'services/voice_feedback_service.dart';
 import 'services/audio_service.dart';
 
 List<SingleChildWidget> providers = [

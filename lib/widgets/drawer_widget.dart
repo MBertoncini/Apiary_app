@@ -4,10 +4,10 @@ import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 
-class AppDrawerUpdated extends StatelessWidget {
+class AppDrawer extends StatelessWidget {
   final String currentRoute;
   
-  AppDrawerUpdated({required this.currentRoute});
+  AppDrawer({required this.currentRoute});
   
   @override
   Widget build(BuildContext context) {

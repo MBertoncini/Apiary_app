@@ -1,4 +1,4 @@
-// lib/services/voice_feedback_service_updated.dart
+// lib/services/voice_feedback_service.dart
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 import '../constants/theme_constants.dart';
@@ -142,3 +142,73 @@ class VoiceFeedbackService {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     strokeWidth: 3,
                   )
+                : Icon(
+                    isListening ? Icons.stop : Icons.mic,
+                    color: Colors.white,
+                    size: isListening ? 40 : 32,
+                    key: ValueKey<bool>(isListening),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget per l'animazione di pulsazione
+  Widget buildPulsingAnimation(bool isActive) {
+    if (!isActive) return SizedBox.shrink();
+    
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      width: 150,
+      height: 150,
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget per l'animazione della forma d'onda
+  Widget buildWaveformAnimation(bool isActive) {
+    if (!isActive) return SizedBox.shrink();
+    
+    return Container(
+      height: 40,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          9,
+          (index) => _buildWaveBar(index % 3 == 0 ? 1.0 : 0.7),
+        ),
+      ),
+    );
+  }
+  
+  // Helper per costruire una barra della forma d'onda
+  Widget _buildWaveBar(double heightFactor) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300 + (300 * heightFactor).toInt()),
+      curve: Curves.easeInOut,
+      margin: EdgeInsets.symmetric(horizontal: 2),
+      width: 4,
+      height: 30 * heightFactor,
+      decoration: BoxDecoration(
+        color: ThemeConstants.primaryColor.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+}
