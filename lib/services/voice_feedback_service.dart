@@ -83,14 +83,20 @@ class VoiceFeedbackService {
   
   // Suono quando inizia l'ascolto
   Future<void> playListeningStartSound() async {
-    await _audioService.playStartSound();
+    try {
+      await _audioService.playStartSound();
+    } catch (e) {
+      debugPrint('Errore nella riproduzione del suono di avvio: $e');
+    }
   }
-  
-  // Suono quando termina l'ascolto
+
   Future<void> playListeningStopSound() async {
-    await _audioService.playStopSound();
+    try {
+      await _audioService.playStopSound();
+    } catch (e) {
+      debugPrint('Errore nella riproduzione del suono di stop: $e');
+    }
   }
-  
   // Suono per feedback di successo
   Future<void> playSuccessSound() async {
     await _audioService.playSuccessSound();

@@ -1,5 +1,6 @@
 // lib/services/wit_data_processor.dart
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
@@ -37,23 +38,40 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
         },
       );
       
+      // Log per debug
+      debugPrint('Sending text to Wit.ai: "$text"');
+      
       // Invia richiesta
       final response = await http.get(uri, headers: {
         'Authorization': 'Bearer $_witApiToken',
         'Accept': 'application/json',
+      }).timeout(Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException('La richiesta a Wit.ai è scaduta');
       });
       
       if (response.statusCode == 200) {
-        final responseJson = jsonDecode(response.body);
-        
-        // Trasforma risposta Wit.ai in un oggetto VoiceEntry
-        return _extractVoiceEntry(responseJson, text);
+        try {
+          final responseJson = jsonDecode(response.body);
+          
+          // Log per debug
+          debugPrint('Wit.ai response keys: ${responseJson.keys.toList().join(', ')}');
+          
+          // Trasforma risposta Wit.ai in un oggetto VoiceEntry
+          return _extractVoiceEntry(responseJson, text);
+        } catch (e) {
+          _error = 'Errore nel parsing della risposta: $e';
+          debugPrint('JSON decoding error: $_error');
+          debugPrint('Response body excerpt: ${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}...');
+          return null;
+        }
       } else {
-        throw Exception('Errore API Wit.ai: ${response.statusCode}');
+        _error = 'Errore API Wit.ai: ${response.statusCode}';
+        debugPrint('$_error - ${response.body}');
+        return null;
       }
     } catch (e) {
-      _error = e.toString();
-      debugPrint('Errore nell\'elaborazione: $_error');
+      _error = 'Errore nella comunicazione: $e';
+      debugPrint('Network error: $_error');
       return null;
     } finally {
       _isProcessing = false;

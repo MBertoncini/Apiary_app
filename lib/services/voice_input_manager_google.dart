@@ -135,13 +135,19 @@ class VoiceInputManagerGoogle extends ChangeNotifier {
   // Elabora la trascrizione corrente
   Future<void> _processCurrentTranscription() async {
     final transcription = _speechService.transcription;
-    if (transcription.isEmpty) return;
-    
     _isProcessing = true;
     notifyListeners();
     
     try {
-      // Elabora l'input vocale
+      if (transcription.isEmpty) {
+        // Nessun testo riconosciuto
+        _error = 'Non è stato riconosciuto alcun testo. Prova a parlare più chiaramente.';
+        await _feedbackService.playErrorSound();
+        await _feedbackService.vibrateError();
+        return; // Esci dal metodo senza creare una VoiceEntry
+      }
+      
+      // Processa l'input vocale con il data processor
       final entry = await _dataProcessor.processVoiceInput(transcription);
       
       if (entry != null && entry.isValid()) {

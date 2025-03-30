@@ -9,6 +9,7 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/voice_entry.dart';
 import 'google_speech_recognition_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 class WitSpeechRecognitionService with ChangeNotifier {
   // Constants
@@ -195,33 +196,162 @@ class WitSpeechRecognitionService with ChangeNotifier {
       
       // Invia la richiesta
       final httpClient = http.Client();
-      final streamedResponse = await httpClient.send(request);
-      final response = await http.Response.fromStream(streamedResponse);
-      
-      if (response.statusCode == 200) {
-        final responseJson = jsonDecode(response.body);
-        debugPrint('Wit.ai response: $responseJson');
+      try {
+        final streamedResponse = await httpClient.send(request);
+        final response = await http.Response.fromStream(streamedResponse);
         
-        // Estrai il testo trascritto
-        _transcription = responseJson['text'] ?? '';
-        _confidence = responseJson['entities']?.isNotEmpty ?? false ? 0.9 : 0.6;
+        debugPrint('Wit.ai API response code: ${response.statusCode}');
         
-        if (_transcription.isNotEmpty) {
-          _partialTranscripts.add(_transcription);
-          if (_partialTranscripts.length > 10) {
-            _partialTranscripts.removeAt(0);
+        if (response.statusCode == 200) {
+          await _saveResponseToDebugFile(response.body);
+          
+          try {
+            // Estrai il primo oggetto JSON dalla risposta
+            final firstJsonObject = _extractFirstJsonObject(response.body);
+            debugPrint('First JSON object: $firstJsonObject');
+            
+            if (firstJsonObject != null) {
+              final responseJson = jsonDecode(firstJsonObject);
+              
+              // Estrai il testo trascritto
+              _transcription = responseJson['text'] ?? '';
+              
+              // Se non c'è testo nel primo oggetto, prova il secondo
+              if (_transcription.isEmpty) {
+                final secondJsonObject = _extractSecondJsonObject(response.body);
+                if (secondJsonObject != null) {
+                  final secondJson = jsonDecode(secondJsonObject);
+                  _transcription = secondJson['text'] ?? '';
+                }
+              }
+              
+              // Aggiorna la confidenza
+              if (responseJson['speech'] != null && responseJson['speech']['confidence'] != null) {
+                _confidence = responseJson['speech']['confidence'] ?? 0.0;
+              } else {
+                _confidence = _transcription.isNotEmpty ? 0.8 : 0.0;
+              }
+              
+              if (_transcription.isNotEmpty) {
+                debugPrint('Transcription: "$_transcription"');
+                _partialTranscripts.add(_transcription);
+                if (_partialTranscripts.length > 10) {
+                  _partialTranscripts.removeAt(0);
+                }
+              } else {
+                debugPrint('Wit.ai non ha riconosciuto alcun testo nell\'audio');
+              }
+            } else {
+              debugPrint('Impossibile estrarre un oggetto JSON valido dalla risposta');
+            }
+            
+            notifyListeners();
+          } catch (parseError) {
+            debugPrint('Error decoding JSON from Wit.ai: $parseError');
+            _transcription = '';
+            notifyListeners();
           }
+        } else {
+          debugPrint('Error from Wit.ai API: ${response.statusCode} - ${response.body}');
         }
-        
-        notifyListeners();
-      } else {
-        debugPrint('Error from Wit.ai API: ${response.statusCode} - ${response.body}');
+      } finally {
+        httpClient.close();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error processing audio with Wit.ai: $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
-  
+
+  // Metodo per estrarre il primo oggetto JSON dalla risposta
+  String? _extractFirstJsonObject(String text) {
+    final firstOpenBrace = text.indexOf('{');
+    if (firstOpenBrace < 0) return null;
+    
+    int depth = 0;
+    for (int i = firstOpenBrace; i < text.length; i++) {
+      if (text[i] == '{') depth++;
+      if (text[i] == '}') {
+        depth--;
+        if (depth == 0) {
+          return text.substring(firstOpenBrace, i + 1);
+        }
+      }
+    }
+    
+    return null; // Nessun oggetto JSON valido trovato
+  }
+
+  // Metodo per estrarre il secondo oggetto JSON dalla risposta
+  String? _extractSecondJsonObject(String text) {
+    // Trova il primo oggetto JSON completo
+    final firstJson = _extractFirstJsonObject(text);
+    if (firstJson == null) return null;
+    
+    // Cerca il prossimo '{' dopo il primo oggetto
+    final startPos = text.indexOf(firstJson) + firstJson.length;
+    final secondOpenBrace = text.indexOf('{', startPos);
+    if (secondOpenBrace < 0) return null;
+    
+    int depth = 0;
+    for (int i = secondOpenBrace; i < text.length; i++) {
+      if (text[i] == '{') depth++;
+      if (text[i] == '}') {
+        depth--;
+        if (depth == 0) {
+          return text.substring(secondOpenBrace, i + 1);
+        }
+      }
+    }
+    
+    return null; // Nessun secondo oggetto JSON trovato
+  }
+
+  // Metodo per pulire la risposta JSON
+  String _cleanJsonResponse(String jsonString) {
+    // Rimuovi caratteri di controllo invisibili che causano problemi di parsing
+    String cleaned = jsonString.replaceAll(RegExp(r'[\u0000-\u001F]'), '');
+    
+    // Rimuovi caratteri di formattazione o non-JSON
+    cleaned = cleaned.trim();
+    
+    // Assicurati che inizi con { e finisca con }
+    if (!cleaned.startsWith('{')) {
+      int startBrace = cleaned.indexOf('{');
+      if (startBrace >= 0) {
+        cleaned = cleaned.substring(startBrace);
+      } else {
+        // Non c'è una parentesi graffa aperta, questo non è un JSON
+        cleaned = '{"text":""}';
+      }
+    }
+    
+    if (!cleaned.endsWith('}')) {
+      int endBrace = cleaned.lastIndexOf('}');
+      if (endBrace >= 0) {
+        cleaned = cleaned.substring(0, endBrace + 1);
+      } else {
+        // Non c'è una parentesi graffa chiusa, questo non è un JSON
+        cleaned = '{"text":""}';
+      }
+    }
+    
+    return cleaned;
+  }
+
+  // Metodo per salvare la risposta per debug
+  Future<void> _saveResponseToDebugFile(String responseBody) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/wit_error_response.txt');
+      await file.writeAsString(responseBody);
+      debugPrint('Response saved to: ${file.path}');
+    } catch (e) {
+      debugPrint('Error saving debug file: $e');
+    }
+  }
+
+ 
   // Imposta la lingua per il riconoscimento (nota: Wit.ai è già configurato per lingua)
   void setLanguageCode(String languageCode) {
     if (_languageCode != languageCode) {
