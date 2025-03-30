@@ -7,7 +7,9 @@ import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../services/api_service.dart';
 import '../widgets/drawer_widget.dart';
+import '../widgets/paper_widgets.dart'; // Importa i nuovi widget in stile carta
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -25,13 +27,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadAppInfo();
     _loadSyncInfo();
-    // Aggiungi questo per forzare l'aggiornamento del profilo utente
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AuthService>(context, listen: false).refreshUserProfile();
     });
   }
 
+  // Metodi esistenti per caricare le informazioni
   Future<void> _loadAppInfo() async {
+    // Implementazione esistente invariata
     try {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
       setState(() {
@@ -45,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
   
   Future<void> _loadSyncInfo() async {
+    // Implementazione esistente invariata
     try {
       final storageService = Provider.of<StorageService>(context, listen: false);
       final lastSyncTimestamp = await storageService.getLastSyncTimestamp();
@@ -62,7 +66,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final controlli = await storageService.getStoredData('controlli');
       final regine = await storageService.getStoredData('regine');
       
-      // Approssima 1KB per ogni elemento
       setState(() {
         _cacheSize = apiari.length + arnie.length + controlli.length + regine.length;
       });
@@ -72,6 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
   
   Future<void> _syncData() async {
+    // Implementazione esistente invariata
     setState(() {
       _isSyncing = true;
     });
@@ -80,10 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
       
-      // Ottieni l'ultimo timestamp di sync
       final lastSync = await storageService.getLastSyncTimestamp();
-      
-      // Sincronizza dati
       final syncData = await apiService.syncData(lastSync: lastSync);
       await storageService.saveSyncData(syncData);
       
@@ -94,7 +95,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
       
-      // Aggiorna info
       _loadSyncInfo();
     } catch (e) {
       print('Error during sync: $e');
@@ -112,11 +112,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
   
   Future<void> _clearCache() async {
+    // Implementazione esistente invariata
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Cancella cache'),
-        content: Text('Sei sicuro di voler cancellare tutti i dati salvati? Dovrai sincronizzare nuovamente per recuperarli.'),
+        title: Text('Cancella cache', style: ThemeConstants.subheadingStyle),
+        content: Text(
+          'Sei sicuro di voler cancellare tutti i dati salvati? Dovrai sincronizzare nuovamente per recuperarli.',
+          style: ThemeConstants.bodyStyle,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -136,7 +140,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               );
               
-              // Aggiorna info
               _loadSyncInfo();
             },
             child: Text('CONFERMA'),
@@ -150,11 +153,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
   
   Future<void> _logout() async {
+    // Implementazione esistente invariata
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Logout'),
-        content: Text('Sei sicuro di voler effettuare il logout?'),
+        title: Text('Logout', style: ThemeConstants.subheadingStyle),
+        content: Text(
+          'Sei sicuro di voler effettuare il logout?',
+          style: ThemeConstants.bodyStyle,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -182,27 +189,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
-      // Debug per capire cosa contiene l'oggetto utente
-    print('User object: $user');
-    if (user != null) {
-      print('Username: ${user.username}');
-      print('Email: ${user.email}');
-      print('FirstName: ${user.firstName}');
-      print('LastName: ${user.lastName}');
-      print('FullName: ${user.fullName}');
-    }
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Impostazioni'),
+        title: Text('Diario dell\'Apicoltore'),
+        elevation: 4,
       ),
       drawer: AppDrawer(currentRoute: AppConstants.settingsRoute),
-      body: ListView(
-        padding: EdgeInsets.all(16),
-        children: [
-          // Profilo utente
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+      body: Container(
+        // Aggiungi texture leggera allo sfondo
+        decoration: BoxDecoration(
+          color: ThemeConstants.backgroundColor,
+          image: ThemeConstants.paperBackgroundTexture,
+        ),
+        child: ListView(
+          padding: EdgeInsets.all(16),
+          children: [
+            DiaryTitle(title: 'Impostazioni'),
+            
+            // Profilo utente
+            PaperCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -213,17 +219,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SizedBox(height: 16),
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: ThemeConstants.primaryColor,
-                        child: Text(
-                          (user?.username.isNotEmpty == true) 
-                              ? user!.username[0].toUpperCase() 
-                              : 'U',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                      // Avatar personalizzato in stile diario
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: ThemeConstants.primaryColor.withOpacity(0.2),
+                          border: Border.all(
+                            color: ThemeConstants.primaryColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            (user?.username.isNotEmpty == true) 
+                                ? user!.username[0].toUpperCase() 
+                                : 'U',
+                            style: GoogleFonts.caveat(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              color: ThemeConstants.secondaryColor,
+                            ),
                           ),
                         ),
                       ),
@@ -233,16 +250,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user?.fullName ?? user?.username ?? 'Utente',
-                              style: TextStyle(
-                                fontSize: 18,
+                              user?.fullName ?? user?.username ?? 'Apicoltore',
+                              style: ThemeConstants.handwrittenNotes.copyWith(
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             SizedBox(height: 4),
                             Text(
                               user?.email ?? '',
-                              style: TextStyle(
+                              style: ThemeConstants.bodyStyle.copyWith(
                                 color: ThemeConstants.textSecondaryColor,
                               ),
                             ),
@@ -252,24 +269,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                   SizedBox(height: 16),
-                  OutlinedButton(
+                  DiaryButton(
+                    label: 'Esci',
                     onPressed: _logout,
-                    child: Text('LOGOUT'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: ThemeConstants.errorColor,
-                      minimumSize: Size(double.infinity, 40),
-                    ),
+                    icon: Icons.exit_to_app,
+                    color: ThemeConstants.errorColor,
                   ),
                 ],
               ),
             ),
-          ),
-          SizedBox(height: 16),
-          
-          // Sincronizzazione
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+            SizedBox(height: 16),
+            
+            // Sincronizzazione
+            PaperCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -278,12 +290,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: ThemeConstants.subheadingStyle,
                   ),
                   SizedBox(height: 16),
-                  _buildSettingItem(
+                  _buildDiarySettingItem(
                     'Ultima sincronizzazione',
                     _lastSync,
                     Icons.sync,
                   ),
-                  _buildSettingItem(
+                  _buildDiarySettingItem(
                     'Dimensione cache',
                     '${_cacheSize > 1024 ? (_cacheSize / 1024).toStringAsFixed(1) + ' MB' : _cacheSize.toString() + ' KB'}',
                     Icons.storage,
@@ -292,45 +304,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: DiaryButton(
+                          label: 'Sincronizza',
                           onPressed: _isSyncing ? null : _syncData,
-                          icon: _isSyncing 
-                              ? SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : Icon(Icons.sync),
-                          label: Text('SINCRONIZZA ORA'),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: Size(0, 40),
-                          ),
+                          icon: _isSyncing ? null : Icons.sync,
+                          color: ThemeConstants.primaryColor,
                         ),
                       ),
                       SizedBox(width: 8),
-                      OutlinedButton.icon(
+                      DiaryButton(
+                        label: 'Cancella Cache',
                         onPressed: _clearCache,
-                        icon: Icon(Icons.delete_outline),
-                        label: Text('CANCELLA CACHE'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: Size(0, 40),
-                        ),
+                        icon: Icons.delete_outline,
+                        color: ThemeConstants.secondaryColor,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-          ),
-          SizedBox(height: 16),
-          
-          // Informazioni app
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+            SizedBox(height: 16),
+            
+            // Informazioni app
+            PaperCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -339,17 +335,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: ThemeConstants.subheadingStyle,
                   ),
                   SizedBox(height: 16),
-                  _buildSettingItem(
+                  _buildDiarySettingItem(
                     'Versione app',
                     _appVersion,
                     Icons.info_outline,
                   ),
-                  _buildSettingItem(
+                  _buildDiarySettingItem(
                     'Server API',
                     ApiConstants.baseUrl,
                     Icons.cloud_outlined,
                   ),
-                  _buildSettingItem(
+                  _buildDiarySettingItem(
                     'Sviluppato da',
                     'Cible99',
                     Icons.code,
@@ -357,20 +353,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
   
-  Widget _buildSettingItem(String label, String value, IconData icon) {
+  Widget _buildDiarySettingItem(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Icon(
             icon,
-            color: ThemeConstants.textSecondaryColor,
+            color: ThemeConstants.secondaryColor.withOpacity(0.8),
             size: 20,
           ),
           SizedBox(width: 12),
@@ -380,15 +376,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
+                  style: ThemeConstants.bodyStyle.copyWith(
                     fontSize: 14,
                     color: ThemeConstants.textSecondaryColor,
                   ),
                 ),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: ThemeConstants.handwrittenNotes.copyWith(
+                    fontSize: 18,
                   ),
                 ),
               ],
