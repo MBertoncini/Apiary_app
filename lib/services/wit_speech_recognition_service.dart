@@ -7,19 +7,17 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../models/voice_entry.dart';
-import 'google_speech_recognition_service.dart';
-import 'package:path_provider/path_provider.dart';
 
 class WitSpeechRecognitionService with ChangeNotifier {
   // Constants
   static const String _witApiUrl = 'https://api.wit.ai/speech';
-  static const String _witApiToken = '2NJ4OP6FZXEWAJ56GC7PET2KOKXIXJZM'; // Sostituisci con il tuo token
+  static const String _witApiToken = '2NJ4OP6FZXEWAJ56GC7PET2KOKXIXJZM';
+  static const int _minAudioDuration = 1000; // Minimum ms for a valid recording
   
   // Flutter Sound recorder
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   
-  // Stato corrente
+  // Current state
   bool _isInitialized = false;
   bool _isListening = false;
   bool _isProcessing = false;
@@ -28,6 +26,7 @@ class WitSpeechRecognitionService with ChangeNotifier {
   double _confidence = 0.0;
   List<String> _partialTranscripts = [];
   String? _recordingPath;
+  DateTime? _recordingStartTime;
   
   // Getters
   bool get isInitialized => _isInitialized;
@@ -43,180 +42,255 @@ class WitSpeechRecognitionService with ChangeNotifier {
     _initRecorder();
   }
   
-  // Inizializza il registratore audio
+  // Initialize the audio recorder
   Future<bool> _initRecorder() async {
     if (_isInitialized) return true;
     
     try {
-      debugPrint('Initializing Recorder...');
+      debugPrint('[WitSpeech] Initializing Recorder...');
+      
+      // Set up recorder with logging
       await _recorder.openRecorder();
-      debugPrint('Recorder Initialized.');
+      
+      // Set subscription for dbPeakProgress to monitor audio levels
+      _recorder.setSubscriptionDuration(const Duration(milliseconds: 100));
+      _recorder.onProgress?.listen((e) {
+        if (e.decibels != null) {
+          debugPrint('[WitSpeech] Audio level: ${e.decibels} dB');
+        }
+      });
+      
+      debugPrint('[WitSpeech] Recorder Initialized successfully.');
       
       _isInitialized = true;
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      debugPrint('Error initializing recorder: $e');
-      debugPrint('Stack trace: $stackTrace');
+      debugPrint('[WitSpeech] Error initializing recorder: $e');
+      debugPrint('[WitSpeech] Stack trace: $stackTrace');
       _isInitialized = false;
       notifyListeners();
       return false;
     }
   }
   
-  // Verifica e richiede i permessi del microfono
+  // Check and request microphone permissions
   Future<bool> hasMicrophonePermission() async {
     var status = await Permission.microphone.status;
-    debugPrint('Microphone permission status: $status');
+    debugPrint('[WitSpeech] Microphone permission status: $status');
+    
     if (status.isGranted) return true;
     
-    if (!status.isGranted) {
-      debugPrint('Requesting microphone permission...');
-      status = await Permission.microphone.request();
-      debugPrint('Microphone permission status after request: $status');
-      if (status.isPermanentlyDenied) {
-        debugPrint('Microphone permission permanently denied. Please enable in settings.');
-      }
+    debugPrint('[WitSpeech] Requesting microphone permission...');
+    status = await Permission.microphone.request();
+    debugPrint('[WitSpeech] Microphone permission status after request: $status');
+    
+    if (status.isPermanentlyDenied) {
+      debugPrint('[WitSpeech] Microphone permission permanently denied. Please enable in settings.');
     }
+    
     return status.isGranted;
   }
   
-  // Avvia l'ascolto
+  // Start listening
   Future<bool> startListening() async {
     if (_isListening) {
-      debugPrint('Already listening.');
+      debugPrint('[WitSpeech] Already listening.');
       return true;
     }
     
+    // Make sure the recorder is initialized
     if (!_isInitialized) {
-      debugPrint('Speech service not initialized. Initializing...');
+      debugPrint('[WitSpeech] Speech service not initialized. Initializing...');
       final initialized = await _initRecorder();
       if (!initialized) {
-        debugPrint('Failed to initialize speech service. Cannot start listening.');
+        debugPrint('[WitSpeech] Failed to initialize speech service. Cannot start listening.');
         return false;
       }
     }
     
+    // Check permissions
     final hasPermission = await hasMicrophonePermission();
     if (!hasPermission) {
-      debugPrint('Microphone permission denied. Cannot start listening.');
+      debugPrint('[WitSpeech] Microphone permission denied. Cannot start listening.');
       return false;
     }
     
+    // Reset state
     _transcription = '';
     _partialTranscripts.clear();
     _confidence = 0.0;
     notifyListeners();
     
-    debugPrint('Starting listening...');
+    debugPrint('[WitSpeech] Starting listening...');
     
     try {
-      // Prepara percorso per la registrazione
+      // Prepare recording path
       final tempDir = await getTemporaryDirectory();
       _recordingPath = '${tempDir.path}/temp_recording.wav';
+      debugPrint('[WitSpeech] Recording path: $_recordingPath');
       
-      // Inizia la registrazione
+      // Make sure there's no previous recording in progress
+      if (_recorder.isRecording) {
+        await _recorder.stopRecorder();
+        await Future.delayed(Duration(milliseconds: 300));
+      }
+      
+      // Delete any existing file at the recording path
+      final file = File(_recordingPath!);
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('[WitSpeech] Deleted existing recording file');
+      }
+      
+      // Begin recording with better parameters
       await _recorder.startRecorder(
         toFile: _recordingPath,
         codec: Codec.pcm16WAV,
-        sampleRate: 16000, // Wit.ai preferisce 16kHz
+        sampleRate: 16000, // Wit.ai prefers 16kHz
+        bitRate: 16000, // Ensure we're using 16 bits
+        numChannels: 1, // Mono recording
       );
+      
+      _recordingStartTime = DateTime.now();
+      debugPrint('[WitSpeech] Recording started at: $_recordingStartTime');
       
       _isListening = true;
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('Error starting recording: $e');
+      debugPrint('[WitSpeech] Error starting recording: $e');
       return false;
     }
   }
   
-  // Interrompi l'ascolto
+  // Stop listening
   Future<void> stopListening() async {
     if (!_isListening) {
-      debugPrint('Not currently listening.');
+      debugPrint('[WitSpeech] Not currently listening.');
       return;
     }
     
-    debugPrint('Stopping listening...');
+    debugPrint('[WitSpeech] Stopping listening...');
     try {
-      // Ferma la registrazione
+      // Calculate recording duration
+      final recordingDuration = _recordingStartTime != null 
+          ? DateTime.now().difference(_recordingStartTime!).inMilliseconds
+          : 0;
+      
+      debugPrint('[WitSpeech] Recording duration: ${recordingDuration}ms');
+      
+      // If the recording is too short, add a small delay to ensure it's valid
+      if (recordingDuration < _minAudioDuration) {
+        debugPrint('[WitSpeech] Recording too short, adding delay to ensure valid data');
+        await Future.delayed(Duration(milliseconds: _minAudioDuration - recordingDuration));
+      }
+      
+      // Stop the recording
       final recordingResult = await _recorder.stopRecorder();
       _isListening = false;
       notifyListeners();
       
-      // Se abbiamo un percorso di registrazione, elaboriamo l'audio
       if (recordingResult != null && recordingResult.isNotEmpty) {
-        _isProcessing = true;
-        notifyListeners();
+        // Check file size
+        final file = File(recordingResult);
+        final fileSize = await file.length();
+        debugPrint('[WitSpeech] Recorded file size: $fileSize bytes');
         
-        await _processAudioWithWit(recordingResult);
+        if (fileSize < 1000) { // Minimum reasonable file size for speech
+          debugPrint('[WitSpeech] Warning: Audio file is very small ($fileSize bytes)');
+        }
         
-        _isProcessing = false;
-        notifyListeners();
+        if (fileSize > 100) { // Only process if there's some data
+          _isProcessing = true;
+          notifyListeners();
+          
+          await _processAudioWithWit(recordingResult);
+          
+          _isProcessing = false;
+          notifyListeners();
+        } else {
+          debugPrint('[WitSpeech] Audio file too small to process: $fileSize bytes');
+          _transcription = ''; // Clear any previous transcription
+          notifyListeners();
+        }
       }
       
-      debugPrint('Listening stopped successfully.');
+      debugPrint('[WitSpeech] Listening stopped successfully.');
     } catch (e, stackTrace) {
-      debugPrint('Error stopping recording: $e');
-      debugPrint('Stack trace: $stackTrace');
+      debugPrint('[WitSpeech] Error stopping recording: $e');
+      debugPrint('[WitSpeech] Stack trace: $stackTrace');
       _isListening = false;
       _isProcessing = false;
       notifyListeners();
     }
   }
   
-  // Elabora l'audio con Wit.ai
+  // Process audio with Wit.ai
   Future<void> _processAudioWithWit(String audioFilePath) async {
     try {
-      debugPrint('Processing audio with Wit.ai: $audioFilePath');
+      debugPrint('[WitSpeech] Processing audio with Wit.ai: $audioFilePath');
       
-      // Leggi il file audio
+      // Read the audio file
       final file = File(audioFilePath);
       if (!await file.exists()) {
-        debugPrint('Audio file does not exist: $audioFilePath');
+        debugPrint('[WitSpeech] Audio file does not exist: $audioFilePath');
+        return;
+      }
+      
+      final fileSize = await file.length();
+      if (fileSize < 100) {
+        debugPrint('[WitSpeech] Audio file is too small (${fileSize} bytes), likely empty recording');
         return;
       }
       
       final audioBytes = await file.readAsBytes();
+      debugPrint('[WitSpeech] Read ${audioBytes.length} bytes from audio file');
       
-      // Prepara la richiesta HTTP
+      // Prepare HTTP request
       final uri = Uri.parse('$_witApiUrl');
       final request = http.Request('POST', uri);
       
-      // Imposta gli headers
+      // Set headers
       request.headers.addAll({
         'Authorization': 'Bearer $_witApiToken',
         'Content-Type': 'audio/wav',
         'Accept': 'application/json',
       });
       
-      // Imposta il corpo della richiesta con i byte audio
+      // Set request body with audio bytes
       request.bodyBytes = audioBytes;
       
-      // Invia la richiesta
+      // Send request
       final httpClient = http.Client();
       try {
-        final streamedResponse = await httpClient.send(request);
+        debugPrint('[WitSpeech] Sending request to Wit.ai...');
+        final streamedResponse = await httpClient.send(request).timeout(
+          Duration(seconds: 15),
+          onTimeout: () {
+            throw TimeoutException('Request to Wit.ai timed out');
+          }
+        );
+        
         final response = await http.Response.fromStream(streamedResponse);
         
-        debugPrint('Wit.ai API response code: ${response.statusCode}');
+        debugPrint('[WitSpeech] Wit.ai API response code: ${response.statusCode}');
         
         if (response.statusCode == 200) {
           await _saveResponseToDebugFile(response.body);
           
           try {
-            // Estrai il primo oggetto JSON dalla risposta
+            // Extract the first JSON object from response
             final firstJsonObject = _extractFirstJsonObject(response.body);
-            debugPrint('First JSON object: $firstJsonObject');
+            debugPrint('[WitSpeech] First JSON object length: ${firstJsonObject?.length ?? 0}');
             
             if (firstJsonObject != null) {
               final responseJson = jsonDecode(firstJsonObject);
               
-              // Estrai il testo trascritto
+              // Extract the transcribed text
               _transcription = responseJson['text'] ?? '';
               
-              // Se non c'è testo nel primo oggetto, prova il secondo
+              // If no text in first object, try the second
               if (_transcription.isEmpty) {
                 final secondJsonObject = _extractSecondJsonObject(response.body);
                 if (secondJsonObject != null) {
@@ -225,45 +299,50 @@ class WitSpeechRecognitionService with ChangeNotifier {
                 }
               }
               
-              // Aggiorna la confidenza
+              // Update confidence - CORRECTED TO HANDLE BOTH INT AND DOUBLE
               if (responseJson['speech'] != null && responseJson['speech']['confidence'] != null) {
-                _confidence = responseJson['speech']['confidence'] ?? 0.0;
+                var confidenceValue = responseJson['speech']['confidence'];
+                if (confidenceValue is int) {
+                  _confidence = confidenceValue.toDouble();
+                } else {
+                  _confidence = confidenceValue as double? ?? 0.0;
+                }
               } else {
                 _confidence = _transcription.isNotEmpty ? 0.8 : 0.0;
               }
               
               if (_transcription.isNotEmpty) {
-                debugPrint('Transcription: "$_transcription"');
+                debugPrint('[WitSpeech] Transcription: "$_transcription"');
                 _partialTranscripts.add(_transcription);
                 if (_partialTranscripts.length > 10) {
                   _partialTranscripts.removeAt(0);
                 }
               } else {
-                debugPrint('Wit.ai non ha riconosciuto alcun testo nell\'audio');
+                debugPrint('[WitSpeech] Wit.ai did not recognize any text in the audio');
               }
             } else {
-              debugPrint('Impossibile estrarre un oggetto JSON valido dalla risposta');
+              debugPrint('[WitSpeech] Unable to extract a valid JSON object from response');
             }
             
             notifyListeners();
           } catch (parseError) {
-            debugPrint('Error decoding JSON from Wit.ai: $parseError');
+            debugPrint('[WitSpeech] Error decoding JSON from Wit.ai: $parseError');
             _transcription = '';
             notifyListeners();
           }
         } else {
-          debugPrint('Error from Wit.ai API: ${response.statusCode} - ${response.body}');
+          debugPrint('[WitSpeech] Error from Wit.ai API: ${response.statusCode} - ${response.body}');
         }
       } finally {
         httpClient.close();
       }
     } catch (e, stackTrace) {
-      debugPrint('Error processing audio with Wit.ai: $e');
-      debugPrint('Stack trace: $stackTrace');
+      debugPrint('[WitSpeech] Error processing audio with Wit.ai: $e');
+      debugPrint('[WitSpeech] Stack trace: $stackTrace');
     }
   }
 
-  // Metodo per estrarre il primo oggetto JSON dalla risposta
+  // Method to extract the first JSON object from the response
   String? _extractFirstJsonObject(String text) {
     final firstOpenBrace = text.indexOf('{');
     if (firstOpenBrace < 0) return null;
@@ -279,16 +358,16 @@ class WitSpeechRecognitionService with ChangeNotifier {
       }
     }
     
-    return null; // Nessun oggetto JSON valido trovato
+    return null; // No valid JSON object found
   }
 
-  // Metodo per estrarre il secondo oggetto JSON dalla risposta
+  // Method to extract the second JSON object from the response
   String? _extractSecondJsonObject(String text) {
-    // Trova il primo oggetto JSON completo
+    // Find the first complete JSON object
     final firstJson = _extractFirstJsonObject(text);
     if (firstJson == null) return null;
     
-    // Cerca il prossimo '{' dopo il primo oggetto
+    // Look for the next '{' after the first object
     final startPos = text.indexOf(firstJson) + firstJson.length;
     final secondOpenBrace = text.indexOf('{', startPos);
     if (secondOpenBrace < 0) return null;
@@ -304,79 +383,63 @@ class WitSpeechRecognitionService with ChangeNotifier {
       }
     }
     
-    return null; // Nessun secondo oggetto JSON trovato
+    return null; // No second JSON object found
   }
 
-  // Metodo per pulire la risposta JSON
-  String _cleanJsonResponse(String jsonString) {
-    // Rimuovi caratteri di controllo invisibili che causano problemi di parsing
-    String cleaned = jsonString.replaceAll(RegExp(r'[\u0000-\u001F]'), '');
-    
-    // Rimuovi caratteri di formattazione o non-JSON
-    cleaned = cleaned.trim();
-    
-    // Assicurati che inizi con { e finisca con }
-    if (!cleaned.startsWith('{')) {
-      int startBrace = cleaned.indexOf('{');
-      if (startBrace >= 0) {
-        cleaned = cleaned.substring(startBrace);
-      } else {
-        // Non c'è una parentesi graffa aperta, questo non è un JSON
-        cleaned = '{"text":""}';
-      }
-    }
-    
-    if (!cleaned.endsWith('}')) {
-      int endBrace = cleaned.lastIndexOf('}');
-      if (endBrace >= 0) {
-        cleaned = cleaned.substring(0, endBrace + 1);
-      } else {
-        // Non c'è una parentesi graffa chiusa, questo non è un JSON
-        cleaned = '{"text":""}';
-      }
-    }
-    
-    return cleaned;
-  }
-
-  // Metodo per salvare la risposta per debug
+  // Method to save response for debugging
   Future<void> _saveResponseToDebugFile(String responseBody) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/wit_error_response.txt');
+      final file = File('${directory.path}/wit_response_debug.txt');
       await file.writeAsString(responseBody);
-      debugPrint('Response saved to: ${file.path}');
+      debugPrint('[WitSpeech] Response saved to: ${file.path}');
     } catch (e) {
-      debugPrint('Error saving debug file: $e');
+      debugPrint('[WitSpeech] Error saving debug file: $e');
     }
   }
 
- 
-  // Imposta la lingua per il riconoscimento (nota: Wit.ai è già configurato per lingua)
+  // Set the language for recognition (note: Wit.ai is already configured for language)
   void setLanguageCode(String languageCode) {
     if (_languageCode != languageCode) {
-      debugPrint('Setting language code to: $languageCode');
+      debugPrint('[WitSpeech] Setting language code to: $languageCode');
       _languageCode = languageCode;
       notifyListeners();
     }
   }
   
-  // Cancella la trascrizione corrente e la cronologia
+  // Clear the current transcription and history
   void clearTranscription() {
-    debugPrint('Clearing transcription and history.');
+    debugPrint('[WitSpeech] Clearing transcription and history.');
     _transcription = '';
     _confidence = 0.0;
     _partialTranscripts.clear();
     notifyListeners();
   }
   
+  // Reset recording engine - useful for troubleshooting
+  Future<void> resetRecorder() async {
+    debugPrint('[WitSpeech] Resetting recorder...');
+    if (_isListening) {
+      await stopListening();
+    }
+    
+    // Close and reopen recorder
+    await _recorder.closeRecorder();
+    _isInitialized = false;
+    notifyListeners();
+    
+    // Reinitialize
+    await _initRecorder();
+    debugPrint('[WitSpeech] Recorder reset complete.');
+  }
+  
   // Dispose resources
   @override
   void dispose() {
-    debugPrint('Disposing WitSpeechRecognitionService...');
+    debugPrint('[WitSpeech] Disposing WitSpeechRecognitionService...');
     _recorder.closeRecorder();
     _isListening = false;
-    debugPrint('WitSpeechRecognitionService disposed.');
+    debugPrint('[WitSpeech] WitSpeechRecognitionService disposed.');
     super.dispose();
   }
 }

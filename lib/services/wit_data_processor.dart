@@ -4,7 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
-import 'voice_data_processor.dart'; // Add this import
+import 'voice_data_processor.dart';
 
 class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
   // Constants
@@ -34,7 +34,7 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
       final uri = Uri.parse('$_witApiUrl').replace(
         queryParameters: {
           'q': text,
-          'v': '20230215', // Versione API
+          'v': '20250331', // Versione API aggiornata
         },
       );
       
@@ -85,8 +85,10 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
       final text = witResponse['text'] as String? ?? originalText;
       final entities = witResponse['entities'] as Map<String, dynamic>? ?? {};
       final traits = witResponse['traits'] as Map<String, dynamic>? ?? {};
+      final intents = witResponse['intents'] as List<dynamic>? ?? [];
       
       debugPrint('Entities estratte: $entities');
+      debugPrint('Intents estratti: $intents');
       
       // Estrai informazioni comuni
       String? apiarioNome;
@@ -104,7 +106,7 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
       String? tipoProblema;
       String? tipoComando;
       
-      // Estrai nome apiario
+      // Estrai nome apiario (manteniamo la compatibilità con il vecchio formato)
       if (entities.containsKey('apiario_nome:apiario_nome')) {
         final values = entities['apiario_nome:apiario_nome'] as List<dynamic>;
         if (values.isNotEmpty) {
@@ -112,23 +114,76 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
         }
       }
       
-      // Estrai numero arnia
-      if (entities.containsKey('arnia_numero:arnia_numero')) {
+      // Estrai numero arnia - adattato per gestire 'wit$number:arnia'
+      if (entities.containsKey('wit\$number:arnia')) {
+        final values = entities['wit\$number:arnia'] as List<dynamic>;
+        if (values.isNotEmpty) {
+          // Prendi il primo valore per il numero dell'arnia
+          arniaNumero = (values.first['value'] is num) 
+              ? (values.first['value'] as num).toInt() 
+              : int.tryParse(values.first['value'].toString());
+        }
+      } else if (entities.containsKey('arnia_numero:arnia_numero')) {
+        // Manteniamo la compatibilità con il vecchio formato
         final values = entities['arnia_numero:arnia_numero'] as List<dynamic>;
         if (values.isNotEmpty) {
           arniaNumero = int.tryParse(values.first['value'].toString());
         }
       }
       
-      // Estrai info regina
-      if (text.toLowerCase().contains('regina presente') || 
-          text.toLowerCase().contains('presenza regina')) {
-        presenzaRegina = true;
-      } else if (text.toLowerCase().contains('regina assente') || 
-                text.toLowerCase().contains('assenza regina')) {
-        presenzaRegina = false;
+      // Estrai info regina - usando l'entità 'regina_stato:regina_stato' se disponibile
+      if (entities.containsKey('regina_stato:regina_stato')) {
+        final values = entities['regina_stato:regina_stato'] as List<dynamic>;
+        if (values.isNotEmpty) {
+          final stato = values.first['value'] as String?;
+          if (stato?.toLowerCase() == 'presente') {
+            presenzaRegina = true;
+          } else if (stato?.toLowerCase() == 'assente') {
+            presenzaRegina = false;
+          }
+        }
+      } else {
+        // Fallback al metodo precedente analizzando il testo
+        if (text.toLowerCase().contains('regina presente') || 
+            text.toLowerCase().contains('presenza regina')) {
+          presenzaRegina = true;
+        } else if (text.toLowerCase().contains('regina assente') || 
+                  text.toLowerCase().contains('assenza regina')) {
+          presenzaRegina = false;
+        }
       }
       
+      // Estrai info telaini scorte da 'wit$number:telaini_scorte'
+      if (entities.containsKey('wit\$number:telaini_scorte')) {
+        final values = entities['wit\$number:telaini_scorte'] as List<dynamic>;
+        if (values.isNotEmpty) {
+          telainiScorte = (values.first['value'] is num) 
+              ? (values.first['value'] as num).toInt() 
+              : int.tryParse(values.first['value'].toString());
+        }
+      }
+      
+      // Estrai info telaini covata da 'wit$number:telaini_covata' se disponibile
+      if (entities.containsKey('wit\$number:telaini_covata')) {
+        final values = entities['wit\$number:telaini_covata'] as List<dynamic>;
+        if (values.isNotEmpty) {
+          telainiCovata = (values.first['value'] is num) 
+              ? (values.first['value'] as num).toInt() 
+              : int.tryParse(values.first['value'].toString());
+        }
+      }
+      
+      // Determina il tipo di comando dagli intents
+      if (intents.isNotEmpty) {
+        final primoIntent = intents.first['name'] as String?;
+        if (primoIntent == 'ControlloArnia') {
+          tipoComando = 'controllo';
+        } else if (primoIntent == 'TrattamentoArnia') {
+          tipoComando = 'trattamento';
+        }
+      }
+      
+      // Manteniamo anche l'analisi del testo come fallback
       if (text.toLowerCase().contains('regina vista')) {
         reginaVista = true;
       } else if (text.toLowerCase().contains('regina non vista')) {
@@ -143,22 +198,23 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
         celleReali = true;
       }
       
-      // Estrai informazioni su telaini
-      // Ricerca pattern come "X telaini" o "X telaini di covata/scorte"
-      final telainiRegex = RegExp(r'(\d+)\s+telaini(?:\s+di\s+(\w+))?');
-      final matches = telainiRegex.allMatches(text.toLowerCase());
-      
-      for (final match in matches) {
-        final count = int.tryParse(match.group(1) ?? '');
-        final type = match.group(2);
+      // Estrai informazioni su telaini come fallback (ricerca pattern come "X telaini" o "X telaini di covata/scorte")
+      if (telainiTotali == null || telainiCovata == null || telainiScorte == null) {
+        final telainiRegex = RegExp(r'(\d+)\s+telaini(?:\s+di\s+(\w+))?');
+        final matches = telainiRegex.allMatches(text.toLowerCase());
         
-        if (count != null) {
-          if (type == null) {
-            telainiTotali = count;
-          } else if (type == 'covata') {
-            telainiCovata = count;
-          } else if (type == 'scorte' || type == 'miele') {
-            telainiScorte = count;
+        for (final match in matches) {
+          final count = int.tryParse(match.group(1) ?? '');
+          final type = match.group(2);
+          
+          if (count != null) {
+            if (type == null && telainiTotali == null) {
+              telainiTotali = count;
+            } else if (type == 'covata' && telainiCovata == null) {
+              telainiCovata = count;
+            } else if ((type == 'scorte' || type == 'miele') && telainiScorte == null) {
+              telainiScorte = count;
+            }
           }
         }
       }
@@ -194,14 +250,16 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
         problemiSanitari = true;
       }
       
-      // Determina il tipo di comando
-      if (text.toLowerCase().contains('controllo') || 
-          text.toLowerCase().contains('ispezione')) {
-        tipoComando = 'controllo';
-      } else if (text.toLowerCase().contains('trattamento')) {
-        tipoComando = 'trattamento';
-      } else {
-        tipoComando = 'controllo'; // Default
+      // Se tipoComando non è stato estratto dagli intents, determina dal testo
+      if (tipoComando == null) {
+        if (text.toLowerCase().contains('controllo') || 
+            text.toLowerCase().contains('ispezione')) {
+          tipoComando = 'controllo';
+        } else if (text.toLowerCase().contains('trattamento')) {
+          tipoComando = 'trattamento';
+        } else {
+          tipoComando = 'controllo'; // Default
+        }
       }
       
       // Crea VoiceEntry con le informazioni estratte

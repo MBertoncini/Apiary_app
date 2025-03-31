@@ -1,14 +1,14 @@
-// lib/services/voice_input_manager_google.dart
+// lib/services/voice_input_manager.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/voice_entry.dart';
-import 'google_speech_recognition_service.dart';
+import 'wit_speech_recognition_service.dart';
 import 'voice_data_processor.dart';
 import 'voice_feedback_service.dart';
 
-/// Service that coordinates Google speech recognition and data processing
-class VoiceInputManagerGoogle with ChangeNotifier {
-  final GoogleSpeechRecognitionService _speechService;
+/// Service that coordinates speech recognition and data processing
+class VoiceInputManager with ChangeNotifier {
+  final WitSpeechRecognitionService _speechService;
   final VoiceDataProcessor _dataProcessor;
   final VoiceFeedbackService _feedbackService;
   
@@ -27,7 +27,7 @@ class VoiceInputManagerGoogle with ChangeNotifier {
   String? get error => _error;
   
   // Constructor
-  VoiceInputManagerGoogle(
+  VoiceInputManager(
     this._speechService, 
     this._dataProcessor, {
     VoiceFeedbackService? feedbackService
@@ -81,6 +81,10 @@ class VoiceInputManagerGoogle with ChangeNotifier {
       _currentBatch = VoiceEntryBatch();
     }
     
+    // Provide audio/haptic feedback when starting listening
+    await _feedbackService.playListeningStartSound();
+    await _feedbackService.vibrateStart();
+    
     // Start listening
     final success = await _speechService.startListening();
     
@@ -110,32 +114,50 @@ class VoiceInputManagerGoogle with ChangeNotifier {
     if (!_isListening) return;
     
     _autoStopTimer?.cancel();
+    
+    // Provide audio/haptic feedback when stopping listening
+    await _feedbackService.playListeningStopSound();
+    await _feedbackService.vibrateStop();
+    
     await _speechService.stopListening();
     _isListening = false;
     
     // If we have a transcription, process it
     if (_speechService.transcription.isNotEmpty && !_isProcessing) {
       await _processCurrentTranscription();
+    } else if (_speechService.transcription.isEmpty) {
+      // No text recognized
+      _error = 'Non è stato riconosciuto alcun testo. Prova a parlare più chiaramente.';
+      await _feedbackService.playErrorSound();
+      await _feedbackService.vibrateError();
+      notifyListeners();
     }
-    
-    notifyListeners();
   }
 
   // Process the current transcription
   Future<void> _processCurrentTranscription() async {
     final transcription = _speechService.transcription;
-    if (transcription.isEmpty) return;
-    
     _isProcessing = true;
     notifyListeners();
     
     try {
-      // Process voice input with Gemini
+      if (transcription.isEmpty) {
+        // No recognized text
+        _error = 'Non è stato riconosciuto alcun testo. Prova a parlare più chiaramente.';
+        await _feedbackService.playErrorSound();
+        await _feedbackService.vibrateError();
+        _isProcessing = false;
+        notifyListeners();
+        return; // Exit the method without creating a VoiceEntry
+      }
+      
+      // Process voice input with data processor
       final entry = await _dataProcessor.processVoiceInput(transcription);
       
       if (entry != null && entry.isValid()) {
         // Positive feedback
-        _feedbackService.vibrateSuccess();
+        await _feedbackService.playSuccessSound();
+        await _feedbackService.vibrateSuccess();
         
         // Add to current batch
         _currentBatch.add(entry);
@@ -154,11 +176,13 @@ class VoiceInputManagerGoogle with ChangeNotifier {
         }
       } else {
         _error = 'Non è stato possibile interpretare il comando vocale';
-        _feedbackService.vibrateError();
+        await _feedbackService.playErrorSound();
+        await _feedbackService.vibrateError();
       }
     } catch (e) {
       _error = 'Errore nel processamento: $e';
-      _feedbackService.vibrateError();
+      await _feedbackService.playErrorSound();
+      await _feedbackService.vibrateError();
     } finally {
       _isProcessing = false;
       notifyListeners();
@@ -203,6 +227,31 @@ class VoiceInputManagerGoogle with ChangeNotifier {
   /// Get partial transcripts (useful for debugging)
   List<String> getPartialTranscripts() {
     return _speechService.partialTranscripts;
+  }
+  
+  /// Clear the current transcription
+  void clearTranscription() {
+    _speechService.clearTranscription();
+    notifyListeners();
+  }
+  
+  // Try to recover from errors by resetting the speech service
+  Future<void> resetSpeechService() async {
+    try {
+      _isListening = false;
+      _isProcessing = false;
+      _error = null;
+      
+      // Try to reset the speech service
+      if (_speechService is WitSpeechRecognitionService) {
+        await (_speechService as WitSpeechRecognitionService).resetRecorder();
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      _error = 'Errore nel reset del servizio vocale: $e';
+      notifyListeners();
+    }
   }
   
   @override

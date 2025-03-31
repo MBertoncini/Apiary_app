@@ -1,16 +1,14 @@
-// lib/services/voice_input_manager_google.dart
+// lib/services/platform_voice_input_manager.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/voice_entry.dart';
-import 'wit_speech_recognition_service.dart';
+import 'platform_speech_service.dart';
 import 'voice_data_processor.dart';
 import 'voice_feedback_service.dart';
 
-// Nota: abbiamo rimosso la definizione di VoiceEntryBatch che ora è importata da models/voice_entry.dart
-
-/// Service che coordina il riconoscimento vocale e l'elaborazione dei dati
-class VoiceInputManagerGoogle extends ChangeNotifier {
-  final WitSpeechRecognitionService _speechService;
+/// Gestore di input vocale che utilizza il riconoscimento vocale nativo della piattaforma
+class PlatformVoiceInputManager with ChangeNotifier {
+  final PlatformSpeechService _speechService;
   final VoiceDataProcessor _dataProcessor;
   final VoiceFeedbackService _feedbackService;
   
@@ -29,7 +27,7 @@ class VoiceInputManagerGoogle extends ChangeNotifier {
   String? get error => _error;
   
   // Constructor
-  VoiceInputManagerGoogle(
+  PlatformVoiceInputManager(
     this._speechService, 
     this._dataProcessor, {
     VoiceFeedbackService? feedbackService
@@ -41,98 +39,130 @@ class VoiceInputManagerGoogle extends ChangeNotifier {
 
   // Listen for changes in the speech service
   void _onSpeechServiceChanged() {
-    // Se il servizio vocale ha smesso di ascoltare e noi stavamo ascoltando,
-    // elabora la trascrizione
+    // If the speech service stopped listening and we were listening,
+    // process the transcription
     if (!_speechService.isListening && _isListening && !_isProcessing && 
         _speechService.transcription.isNotEmpty) {
       _processCurrentTranscription();
     }
     
-    // Aggiorna il nostro stato di ascolto
+    // Update our listening state
     _isListening = _speechService.isListening;
+    
+    // Update our error state from the speech service
+    if (_speechService.error != null) {
+      _error = _speechService.error;
+    }
+    
     notifyListeners();
   }
   
   // Listen for changes in the data processor
   void _onDataProcessorChanged() {
-    // Aggiorna il nostro stato di errore dal processore di dati
+    // Update our error state from the data processor
     if (_dataProcessor.error != null) {
       _error = _dataProcessor.error;
       notifyListeners();
     }
   }
 
-  // Inizia l'ascolto
+  // Start listening
   Future<bool> startListening({bool batchMode = false}) async {
     if (_isListening) return true;
     
-    // Verifica e richiede il permesso del microfono
+    // Check and request microphone permission
     if (!await _speechService.hasMicrophonePermission()) {
       _error = 'Permesso microfono non concesso';
       notifyListeners();
-      _feedbackService.vibrateError();
+      try {
+        await _feedbackService.vibrateError();
+      } catch (e) {
+        debugPrint('Errore durante la vibrazione: $e');
+      }
       return false;
     }
     
-    // Cancella eventuali errori precedenti
+    // Clear any previous errors
     _error = null;
     _isBatchMode = batchMode;
     
-    // Inizia il batch se in modalità batch
+    // Start batch if in batch mode
     if (batchMode && _currentBatch.isEmpty) {
       _currentBatch = VoiceEntryBatch();
     }
     
-    // Fornisci feedback sonoro/aptico all'inizio dell'ascolto
-    await _feedbackService.playListeningStartSound();
-    await _feedbackService.vibrateStart();
+    // Provide audio/haptic feedback when starting listening
+    try {
+      await _feedbackService.playListeningStartSound();
+      await _feedbackService.vibrateStart();
+    } catch (e) {
+      debugPrint('Errore durante il feedback: $e');
+      // Continue even if feedback fails
+    }
     
-    // Inizia l'ascolto
+    // Start listening
     final success = await _speechService.startListening();
     
     if (success) {
       _isListening = true;
       
-      // In modalità standard, imposta un timeout per interrompere automaticamente dopo 60 secondi
+      // In standard mode, set a timeout to auto-stop after 30 seconds
       if (!batchMode) {
         _autoStopTimer?.cancel();
-        _autoStopTimer = Timer(Duration(seconds: 60), () {
+        _autoStopTimer = Timer(Duration(seconds: 30), () {
           if (_isListening) {
             stopListening();
           }
         });
       }
     } else {
-      _error = 'Non è stato possibile avviare il riconoscimento vocale';
-      _feedbackService.vibrateError();
+      _error = _speechService.error ?? 'Non è stato possibile avviare il riconoscimento vocale';
+      try {
+        await _feedbackService.vibrateError();
+      } catch (e) {
+        debugPrint('Errore durante la vibrazione: $e');
+      }
     }
     
     notifyListeners();
     return success;
   }
 
-  // Interrompi l'ascolto
+  // Stop listening
   Future<void> stopListening() async {
     if (!_isListening) return;
     
     _autoStopTimer?.cancel();
     
-    // Fornisci feedback sonoro/aptico alla fine dell'ascolto
-    await _feedbackService.playListeningStopSound();
-    await _feedbackService.vibrateStop();
+    // Provide audio/haptic feedback when stopping listening
+    try {
+      await _feedbackService.playListeningStopSound();
+      await _feedbackService.vibrateStop();
+    } catch (e) {
+      debugPrint('Errore durante il feedback di stop: $e');
+      // Continue even if feedback fails
+    }
     
     await _speechService.stopListening();
     _isListening = false;
     
-    // Se abbiamo una trascrizione, elaborala
+    // If we have a transcription, process it
     if (_speechService.transcription.isNotEmpty && !_isProcessing) {
       await _processCurrentTranscription();
+    } else if (_speechService.transcription.isEmpty) {
+      // No text recognized
+      _error = 'Non è stato riconosciuto alcun testo. Prova a parlare più chiaramente.';
+      try {
+        await _feedbackService.playErrorSound();
+        await _feedbackService.vibrateError();
+      } catch (e) {
+        debugPrint('Errore durante il feedback di errore: $e');
+      }
+      notifyListeners();
     }
-    
-    notifyListeners();
   }
 
-  // Elabora la trascrizione corrente
+  // Process the current transcription
   Future<void> _processCurrentTranscription() async {
     final transcription = _speechService.transcription;
     _isProcessing = true;
@@ -140,30 +170,40 @@ class VoiceInputManagerGoogle extends ChangeNotifier {
     
     try {
       if (transcription.isEmpty) {
-        // Nessun testo riconosciuto
+        // No recognized text
         _error = 'Non è stato riconosciuto alcun testo. Prova a parlare più chiaramente.';
-        await _feedbackService.playErrorSound();
-        await _feedbackService.vibrateError();
-        return; // Esci dal metodo senza creare una VoiceEntry
+        try {
+          await _feedbackService.playErrorSound();
+          await _feedbackService.vibrateError();
+        } catch (e) {
+          debugPrint('Errore durante il feedback di errore: $e');
+        }
+        _isProcessing = false;
+        notifyListeners();
+        return; // Exit the method without creating a VoiceEntry
       }
       
-      // Processa l'input vocale con il data processor
+      // Process voice input with data processor
       final entry = await _dataProcessor.processVoiceInput(transcription);
       
       if (entry != null && entry.isValid()) {
-        // Feedback positivo
-        await _feedbackService.playSuccessSound();
-        await _feedbackService.vibrateSuccess();
+        // Positive feedback
+        try {
+          await _feedbackService.playSuccessSound();
+          await _feedbackService.vibrateSuccess();
+        } catch (e) {
+          debugPrint('Errore durante il feedback di successo: $e');
+        }
         
-        // Aggiungi al batch corrente
+        // Add to current batch
         _currentBatch.add(entry);
         
-        // Cancella la trascrizione
+        // Clear transcription
         _speechService.clearTranscription();
         
-        // Riavvio automatico in modalità batch
+        // Automatic restart in batch mode
         if (_isBatchMode) {
-          // Piccolo ritardo per consentire all'utente di prepararsi per il prossimo input
+          // Small delay to allow user to prepare for next input
           Future.delayed(Duration(milliseconds: 1500), () {
             if (_isBatchMode) {
               startListening(batchMode: true);
@@ -172,60 +212,68 @@ class VoiceInputManagerGoogle extends ChangeNotifier {
         }
       } else {
         _error = 'Non è stato possibile interpretare il comando vocale';
-        await _feedbackService.playErrorSound();
-        await _feedbackService.vibrateError();
+        try {
+          await _feedbackService.playErrorSound();
+          await _feedbackService.vibrateError();
+        } catch (e) {
+          debugPrint('Errore durante il feedback di errore: $e');
+        }
       }
     } catch (e) {
       _error = 'Errore nel processamento: $e';
-      await _feedbackService.playErrorSound();
-      await _feedbackService.vibrateError();
+      try {
+        await _feedbackService.playErrorSound();
+        await _feedbackService.vibrateError();
+      } catch (feedbackError) {
+        debugPrint('Errore durante il feedback di errore: $feedbackError');
+      }
     } finally {
       _isProcessing = false;
       notifyListeners();
     }
   }
   
-  /// Inizia un nuovo batch di voci vocali
+  /// Begin a new batch of voice entries
   void startNewBatch() {
     _currentBatch = VoiceEntryBatch();
     notifyListeners();
   }
   
-  /// Aggiungi una nuova voce al batch corrente
+  /// Add a new entry to the current batch
   void addToBatch(VoiceEntry entry) {
     _currentBatch.add(entry);
     notifyListeners();
   }
   
-  /// Rimuovi una voce dal batch corrente
+  /// Remove an entry from the current batch
   void removeFromBatch(int index) {
     _currentBatch.remove(index);
     notifyListeners();
   }
   
-  /// Cancella il batch corrente
+  /// Clear the current batch
   void clearBatch() {
     _currentBatch.clear();
     notifyListeners();
   }
   
-  /// Cancella l'errore corrente
+  /// Clear current error
   void clearError() {
     _error = null;
     notifyListeners();
   }
   
-  /// Ottieni l'ultima trascrizione
+  /// Get the latest transcription
   String getTranscription() {
     return _speechService.transcription;
   }
   
-  /// Ottieni le trascrizioni parziali (utile per il debug)
-  List<String> getPartialTranscripts() {
-    return _speechService.partialTranscripts;
+  /// Get partial transcripts (useful for debugging)
+  List<String> getRecognitionHistory() {
+    return _speechService.recognitionHistory;
   }
   
-  /// Cancella la trascrizione corrente
+  /// Clear the current transcription
   void clearTranscription() {
     _speechService.clearTranscription();
     notifyListeners();

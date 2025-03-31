@@ -2,19 +2,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
-import '../services/voice_input_manager_google.dart'; // Cambiato da voice_input_manager.dart
+import '../services/voice_input_manager.dart';
 import '../services/voice_feedback_service.dart';
 import '../models/voice_entry.dart';
 
-/// Widget per l'input vocale che può essere aggiunto a qualsiasi schermata
+/// Widget for voice input that can be added to any screen
 class VoiceInputWidget extends StatefulWidget {
   final Function(VoiceEntryBatch)? onEntriesReady;
   final bool showBatchMode;
+  final bool showDebugInfo;
   
   const VoiceInputWidget({
     Key? key,
     this.onEntriesReady,
     this.showBatchMode = true,
+    this.showDebugInfo = false,
   }) : super(key: key);
   
   @override
@@ -29,7 +31,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
   void initState() {
     super.initState();
     
-    // Inizializza l'animazione
+    // Initialize animation
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 1500),
@@ -48,43 +50,19 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
   
   @override
   Widget build(BuildContext context) {
-    // Ottieni i servizi dal provider - Modificato per usare VoiceInputManagerGoogle
-    late VoiceInputManagerGoogle voiceManager;
+    // Get services from provider
+    late VoiceInputManager voiceManager;
     late VoiceFeedbackService feedbackService;
     
     try {
-      voiceManager = Provider.of<VoiceInputManagerGoogle>(context);
+      voiceManager = Provider.of<VoiceInputManager>(context);
       feedbackService = Provider.of<VoiceFeedbackService>(context, listen: false);
     } catch (e) {
-      // Caso dove il provider non è disponibile
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 48,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Servizio di voce non disponibile',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Controlla che il servizio di voce sia correttamente inizializzato.',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
+      // Case where provider is not available
+      return _buildServiceUnavailableWidget(e.toString());
     }
     
-    // Avvolgiamo tutto in un SingleChildScrollView per gestire qualsiasi overflow
+    // Wrap everything in a SingleChildScrollView to handle any overflow
     return SingleChildScrollView(
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -93,7 +71,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Stato dell'input vocale e controlli
+            // Voice input status and controls
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -110,11 +88,11 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Stato e controlli
+                  // Status and controls
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Testo di stato
+                      // Status text
                       Expanded(
                         child: Text(
                           _getStatusText(voiceManager),
@@ -129,10 +107,10 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                         ),
                       ),
                       
-                      // Pulsante modalità batch
+                      // Batch mode button
                       if (widget.showBatchMode)
                         Container(
-                          width: 180, // Larghezza fissa
+                          width: 180, // Fixed width
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -164,26 +142,22 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                     ],
                   ),
                   
-                  // Visualizzazione dell'animazione di pulsazione
+                  // Display pulsing animation
                   if (voiceManager.isListening)
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        // Animazione di pulsazione
+                        // Pulsing animation
                         feedbackService.buildPulsingAnimation(voiceManager.isListening),
                         
-                        // Pulsante del microfono al centro
+                        // Microphone button in the center
                         feedbackService.buildAnimatedMicButton(
                           isListening: voiceManager.isListening,
                           isProcessing: voiceManager.isProcessing,
                           onPressed: () {
                             if (voiceManager.isListening) {
-                              // Quando fermiamo l'ascolto, produciamo una vibrazione
-                              feedbackService.vibrateStop();
                               voiceManager.stopListening();
                             } else {
-                              // Quando iniziamo l'ascolto, produciamo una vibrazione
-                              feedbackService.vibrateStart();
                               voiceManager.startListening(
                                 batchMode: voiceManager.isBatchMode,
                               );
@@ -193,7 +167,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                       ],
                     ),
                   
-                  // Se non stiamo ascoltando, mostra solo il pulsante
+                  // If not listening, just show the button
                   if (!voiceManager.isListening)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -202,10 +176,8 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                         isProcessing: voiceManager.isProcessing,
                         onPressed: () {
                           if (voiceManager.isListening) {
-                            feedbackService.vibrateStop();
                             voiceManager.stopListening();
                           } else {
-                            feedbackService.vibrateStart();
                             voiceManager.startListening(
                               batchMode: voiceManager.isBatchMode,
                             );
@@ -214,14 +186,14 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                       ),
                     ),
                   
-                  // Visualizzazione dell'animazione della forma d'onda
+                  // Display waveform animation
                   if (voiceManager.isListening)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: feedbackService.buildWaveformAnimation(voiceManager.isListening),
                     ),
                   
-                  // Visualizzazione della trascrizione
+                  // Display transcription
                   if (voiceManager.isListening || voiceManager.isProcessing || voiceManager.getTranscription().isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -264,7 +236,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                       ),
                     ),
                   
-                  // Stato del batch - utilizzo più compatto
+                  // Batch status - more compact layout
                   if (voiceManager.isBatchMode && voiceManager.currentBatch.length > 0)
                     Container(
                       padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -294,7 +266,39 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                       ),
                     ),
                   
-                  // Controlli e azioni
+                  // Debug info panel (only if showDebugInfo is true)
+                  if (widget.showDebugInfo && voiceManager.error != null)
+                    Container(
+                      margin: EdgeInsets.only(top: 8),
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Debug Info:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Error: ${voiceManager.error}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  
+                  // Controls and actions
                   Padding(
                     padding: const EdgeInsets.only(top: 16.0),
                     child: SingleChildScrollView(
@@ -302,14 +306,13 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          // Pulsante di annullamento (solo durante l'ascolto)
+                          // Cancel button (only during listening)
                           if (voiceManager.isListening)
                             ElevatedButton.icon(
                               onPressed: () {
                                 voiceManager.stopListening();
-                                // La trascrizione verrà scartata
+                                // Transcription will be discarded
                                 voiceManager.clearTranscription();
-                                feedbackService.vibrateError();
                               },
                               icon: Icon(Icons.close, size: 16),
                               label: Text('Annulla'),
@@ -319,7 +322,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                               ),
                             ),
                           
-                          // Pulsante di revisione (solo in modalità batch con voci)
+                          // Review button (only in batch mode with entries)
                           if (!voiceManager.isListening && 
                               voiceManager.isBatchMode && 
                               voiceManager.currentBatch.length > 0)
@@ -327,7 +330,6 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                               padding: const EdgeInsets.symmetric(horizontal: 8.0),
                               child: ElevatedButton.icon(
                                 onPressed: () {
-                                  feedbackService.vibrateSuccess();
                                   if (widget.onEntriesReady != null) {
                                     widget.onEntriesReady!(voiceManager.currentBatch);
                                   }
@@ -341,26 +343,35 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                               ),
                             ),
                             
-                          // Pulsante di pulizia (solo in modalità batch con voci)
+                          // Clear button (only in batch mode with entries)
                           if (!voiceManager.isListening && 
                               voiceManager.isBatchMode && 
                               voiceManager.currentBatch.length > 0)
                             TextButton.icon(
                               onPressed: () {
-                                feedbackService.vibrateError();
                                 voiceManager.clearBatch();
                               },
                               icon: Icon(Icons.delete_outline, size: 18),
                               label: Text('Pulisci'),
                             ),
                             
-                          // Configurazione
+                          // Reset button for error recovery
+                          if (voiceManager.error != null && !voiceManager.isListening)
+                            TextButton.icon(
+                              onPressed: () {
+                                voiceManager.resetSpeechService();
+                              },
+                              icon: Icon(Icons.refresh, size: 18),
+                              label: Text('Reset'),
+                            ),
+                            
+                          // Configuration
                           if (!voiceManager.isListening && !voiceManager.isProcessing)
                             IconButton(
                               icon: Icon(Icons.settings),
                               tooltip: 'Impostazioni riconoscimento vocale',
                               onPressed: () {
-                                // Mostra dialog di configurazione
+                                // Show settings dialog
                                 _showVoiceSettingsDialog(context, feedbackService);
                               },
                             ),
@@ -377,10 +388,52 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
     );
   }
   
-  // Dialog per impostazioni riconoscimento vocale
+  // Widget for service unavailable state
+  Widget _buildServiceUnavailableWidget(String error) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.red,
+            size: 48,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Servizio di voce non disponibile',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Controlla che il servizio di voce sia correttamente inizializzato.',
+            textAlign: TextAlign.center,
+          ),
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: Text(
+                'Errore: $error',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  
+  // Dialog for voice recognition settings
   void _showVoiceSettingsDialog(BuildContext context, VoiceFeedbackService feedbackService) {
-    // Crea delle copie locali delle impostazioni attuali
+    // Create local copies of current settings
     bool vibrationEnabled = feedbackService.vibrationEnabled;
+    bool soundEnabled = feedbackService.soundEnabled;
     
     showDialog(
       context: context,
@@ -401,7 +454,16 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                     });
                   },
                 ),
-                // Per espandere con altre impostazioni in futuro
+                SwitchListTile(
+                  title: Text('Suoni'),
+                  subtitle: Text('Feedback sonoro durante il riconoscimento'),
+                  value: soundEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      soundEnabled = value;
+                    });
+                  },
+                ),
               ],
             ),
             actions: [
@@ -413,8 +475,9 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
               ),
               ElevatedButton(
                 onPressed: () {
-                  // Applica le modifiche
+                  // Apply changes
                   feedbackService.vibrationEnabled = vibrationEnabled;
+                  feedbackService.soundEnabled = soundEnabled;
                   Navigator.of(context).pop();
                 },
                 child: Text('Applica'),
@@ -426,8 +489,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
     );
   }
   
-  // Questo metodo è modificato per accettare VoiceInputManagerGoogle invece di VoiceInputManager
-  String _getStatusText(VoiceInputManagerGoogle voiceManager) {
+  String _getStatusText(VoiceInputManager voiceManager) {
     if (voiceManager.error != null) {
       return 'Errore: ${voiceManager.error}';
     }
@@ -448,7 +510,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
   }
 }
 
-/// Floating action button per input vocale rapido
+/// Floating action button for quick voice input
 class VoiceInputFAB extends StatelessWidget {
   final VoidCallback onPressed;
   

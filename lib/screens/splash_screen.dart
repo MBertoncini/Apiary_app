@@ -176,7 +176,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 
                 // Titolo in stile scritto a mano
                 Text(
-                  'Diario dell\'Apicoltore',
+                  'Apiary',
                   style: GoogleFonts.caveat(
                     fontSize: 42,
                     fontWeight: FontWeight.bold,

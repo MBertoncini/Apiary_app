@@ -45,7 +45,7 @@ class VoiceFeedbackService {
     try {
       Vibration.vibrate(duration: 100);
     } catch (e) {
-      print('Errore nella vibrazione: $e');
+      debugPrint('Errore nella vibrazione: $e');
     }
   }
   
@@ -55,7 +55,7 @@ class VoiceFeedbackService {
     try {
       Vibration.vibrate(duration: 50);
     } catch (e) {
-      print('Errore nella vibrazione: $e');
+      debugPrint('Errore nella vibrazione: $e');
     }
   }
   
@@ -65,7 +65,7 @@ class VoiceFeedbackService {
     try {
       Vibration.vibrate(pattern: [0, 50, 100, 50]);
     } catch (e) {
-      print('Errore nella vibrazione: $e');
+      debugPrint('Errore nella vibrazione: $e');
     }
   }
   
@@ -75,7 +75,7 @@ class VoiceFeedbackService {
     try {
       Vibration.vibrate(pattern: [0, 100, 100, 100, 100, 100]);
     } catch (e) {
-      print('Errore nella vibrazione: $e');
+      debugPrint('Errore nella vibrazione: $e');
     }
   }
   
@@ -94,17 +94,36 @@ class VoiceFeedbackService {
     try {
       await _audioService.playStopSound();
     } catch (e) {
-      debugPrint('Errore nella riproduzione del suono di stop: $e');
+      // Ignoriamo l'errore se il file non esiste invece di stamparlo
+      // Questo è un workaround fino a quando non vengono aggiunti i file audio
+      if (!e.toString().contains('Unable to load asset')) {
+        debugPrint('Errore nella riproduzione del suono di stop: $e');
+      }
     }
   }
+  
   // Suono per feedback di successo
   Future<void> playSuccessSound() async {
-    await _audioService.playSuccessSound();
+    try {
+      await _audioService.playSuccessSound();
+    } catch (e) {
+      // Ignoriamo l'errore se il file non esiste
+      if (!e.toString().contains('Unable to load asset')) {
+        debugPrint('Errore nella riproduzione del suono di successo: $e');
+      }
+    }
   }
   
   // Suono per feedback di errore
   Future<void> playErrorSound() async {
-    await _audioService.playErrorSound();
+    try {
+      await _audioService.playErrorSound();
+    } catch (e) {
+      // Ignoriamo l'errore se il file non esiste
+      if (!e.toString().contains('Unable to load asset')) {
+        debugPrint('Errore nella riproduzione del suono di errore: $e');
+      }
+    }
   }
   
   // === METODI PER COMPONENTI VISUALI ===

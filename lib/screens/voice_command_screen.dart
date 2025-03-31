@@ -2,38 +2,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
-import '../services/voice_input_manager_google.dart';
+import '../services/platform_voice_input_manager.dart';
+import '../services/platform_speech_service.dart';
 import '../services/wit_data_processor.dart';
-import '../widgets/google_voice_input_widget.dart';
+import '../widgets/voice_input_widget.dart';
 import 'voice_entry_verification_screen.dart';
 import '../constants/theme_constants.dart';
-import '../services/wit_speech_recognition_service.dart';
 import '../services/voice_feedback_service.dart';
 
-class VoiceCommandScreenUpdated extends StatefulWidget {
+class VoiceCommandScreen extends StatefulWidget {
   @override
-  _VoiceCommandScreenUpdatedState createState() => _VoiceCommandScreenUpdatedState();
+  _VoiceCommandScreenState createState() => _VoiceCommandScreenState();
 }
 
-class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
+class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   bool _showGuide = true;
-  late VoiceInputManagerGoogle _voiceManager;
+  bool _showDebugPanel = false;
+  late PlatformVoiceInputManager _voiceManager;
+  late PlatformSpeechService _speechService;
   
   @override
   void initState() {
     super.initState();
-    // Inizializza i servizi qui invece di usare Provider.of
     _initializeServices();
   }
   
-  Future<void> _initializeServices() async {
-    final speechService = Provider.of<WitSpeechRecognitionService>(context, listen: false);
-    final dataProcessor = Provider.of<WitDataProcessor>(context, listen: false);
+  void _initializeServices() {
+    // Crea i servizi necessari
+    _speechService = PlatformSpeechService();
+    final dataProcessor = WitDataProcessor();
     final feedbackService = VoiceFeedbackService();
     
-    // Crea il VoiceInputManagerGoogle localmente
-    _voiceManager = VoiceInputManagerGoogle(
-      speechService,
+    // Crea il VoiceInputManager
+    _voiceManager = PlatformVoiceInputManager(
+      _speechService,
       dataProcessor,
       feedbackService: feedbackService
     );
@@ -41,13 +43,21 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
     
   @override
   Widget build(BuildContext context) {
-    // Ottieni solo ApiService dal provider
-    final apiService = Provider.of<ApiService>(context, listen: false);
-    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Inserimento vocale (Wit.ai)'),
+        title: Text('Inserimento vocale'),
         actions: [
+          // Debug toggle button
+          IconButton(
+            icon: Icon(_showDebugPanel ? Icons.bug_report : Icons.bug_report_outlined),
+            onPressed: () {
+              setState(() {
+                _showDebugPanel = !_showDebugPanel;
+              });
+            },
+            tooltip: _showDebugPanel ? 'Nascondi debug' : 'Mostra debug',
+          ),
+          // Guide toggle button
           IconButton(
             icon: Icon(_showGuide ? Icons.visibility_off : Icons.visibility),
             onPressed: () {
@@ -59,27 +69,26 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
           ),
         ],
       ),
-      // Avvolgi tutto il body in un SingleChildScrollView per evitare overflow verticale
+      // Wrap the entire body in a SingleChildScrollView to avoid vertical overflow
       body: SingleChildScrollView(
-        // Imposta physics a AlwaysScrollableScrollPhysics per garantire scorrimento anche con poco contenuto
+        // Set physics to AlwaysScrollableScrollPhysics to ensure scrolling even with little content
         physics: AlwaysScrollableScrollPhysics(),
         child: ConstrainedBox(
-          // Questo garantisce che il contenuto occupi almeno l'altezza dello schermo
+          // This ensures the content occupies at least the screen height
           constraints: BoxConstraints(
             minHeight: MediaQuery.of(context).size.height - 
                       AppBar().preferredSize.height - 
                       MediaQuery.of(context).padding.top,
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min, // Importante per evitare overflow verticale
+            mainAxisSize: MainAxisSize.min, // Important to avoid vertical overflow
             children: [
-              // Sezione guida
+              // Guide section
               if (_showGuide)
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Card(
                     elevation: 2,
-                    // Già usa SingleChildScrollView, assicuriamo che funzioni correttamente
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -156,7 +165,7 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
                                 SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Questa versione utilizza Wit.ai per un riconoscimento vocale più intelligente',
+                                    'Questa versione utilizza il riconoscimento vocale integrato nel tuo dispositivo',
                                     style: TextStyle(fontSize: 13),
                                   ),
                                 ),
@@ -169,17 +178,79 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
                   ),
                 ),
               
-              // Widget per l'input vocale
-              ChangeNotifierProvider<VoiceInputManagerGoogle>.value(
+              // Debug panel
+              if (_showDebugPanel)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Card(
+                    color: Colors.grey.shade100,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Debug Panel',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Divider(),
+                          Text('Nuovo metodo di riconoscimento vocale:'),
+                          SizedBox(height: 4),
+                          Text('• Utilizza API di riconoscimento vocale native'),
+                          Text('• Richiede connessione internet'),
+                          Text('• Supporta l\'italiano tramite il sistema operativo'),
+                          SizedBox(height: 8),
+                          ListenableBuilder(
+                            listenable: _voiceManager,
+                            builder: (context, _) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Stato: ${_voiceManager.isListening ? "Ascolto" : "Inattivo"}'),
+                                  if (_voiceManager.error != null)
+                                    Text('Errore: ${_voiceManager.error}', 
+                                      style: TextStyle(color: Colors.red)),
+                                  if (_voiceManager.getTranscription().isNotEmpty)
+                                    Text('Trascrizione: "${_voiceManager.getTranscription()}"',
+                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                ],
+                              );
+                            },
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                icon: Icon(Icons.refresh),
+                                label: Text('Reset'),
+                                onPressed: () {
+                                  _speechService.clearTranscription();
+                                  _voiceManager.clearError();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Servizio vocale ripristinato'))
+                                  );
+                                },
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              
+              // Voice input widget
+              ChangeNotifierProvider<PlatformVoiceInputManager>.value(
                 value: _voiceManager,
                 child: Container(
-                  height: 250, // Altezza fissa per l'area di input vocale
+                  height: 250, // Fixed height for voice input area
                   padding: const EdgeInsets.all(16.0),
                   child: Center(
-                    child: GoogleVoiceInputWidget(
-                      onEntriesReady: _handleEntriesReady,
-                      showBatchMode: true,
-                    ),
+                    child: _buildCustomVoiceInputWidget(),
                   ),
                 ),
               ),
@@ -188,6 +259,152 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
         ),
       ),
     );
+  }
+
+  // Build a custom voice input widget since we can't use the standard one
+  // because it expects VoiceInputManager, not PlatformVoiceInputManager
+  Widget _buildCustomVoiceInputWidget() {
+    return ListenableBuilder(
+      listenable: _voiceManager,
+      builder: (context, _) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Status text
+            Text(
+              _getStatusText(),
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: _voiceManager.error != null
+                    ? Colors.red
+                    : ThemeConstants.textPrimaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 20),
+            
+            // Microphone button
+            InkWell(
+              onTap: () {
+                if (_voiceManager.isListening) {
+                  _voiceManager.stopListening();
+                } else {
+                  _voiceManager.startListening(batchMode: _voiceManager.isBatchMode);
+                }
+              },
+              child: Container(
+                width: _voiceManager.isListening ? 100 : 80,
+                height: _voiceManager.isListening ? 100 : 80,
+                decoration: BoxDecoration(
+                  color: _voiceManager.isProcessing 
+                    ? Colors.orange 
+                    : (_voiceManager.isListening ? Colors.red : ThemeConstants.primaryColor),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _voiceManager.isListening 
+                        ? Colors.red.withOpacity(0.5) 
+                        : ThemeConstants.primaryColor.withOpacity(0.3),
+                      spreadRadius: _voiceManager.isListening ? 4 : 2,
+                      blurRadius: _voiceManager.isListening ? 8 : 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: _voiceManager.isProcessing
+                    ? CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      )
+                    : Icon(
+                        _voiceManager.isListening ? Icons.stop : Icons.mic,
+                        color: Colors.white,
+                        size: _voiceManager.isListening ? 40 : 32,
+                      ),
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+            
+            // Batch mode switch
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Inserimento multiplo'),
+                Switch(
+                  value: _voiceManager.isBatchMode,
+                  onChanged: (value) {
+                    if (_voiceManager.isListening) {
+                      _voiceManager.stopListening();
+                    }
+                    if (value) {
+                      _voiceManager.startListening(batchMode: true);
+                    }
+                  },
+                  activeColor: ThemeConstants.primaryColor,
+                ),
+              ],
+            ),
+            
+            // Transcription
+            if (_voiceManager.getTranscription().isNotEmpty)
+              Container(
+                margin: EdgeInsets.only(top: 16),
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                ),
+                child: Text(_voiceManager.getTranscription()),
+              ),
+              
+            // Batch status
+            if (_voiceManager.currentBatch.length > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('${_voiceManager.currentBatch.length} registrazioni in attesa'),
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        _handleEntriesReady(_voiceManager.currentBatch);
+                      },
+                      child: Text('Verifica'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ThemeConstants.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _getStatusText() {
+    if (_voiceManager.error != null) {
+      return 'Errore: ${_voiceManager.error}';
+    }
+    
+    if (_voiceManager.isProcessing) {
+      return 'Elaborazione comando vocale...';
+    }
+    
+    if (_voiceManager.isListening) {
+      return _voiceManager.isBatchMode
+          ? 'Sto ascoltando... Parla chiaramente (modalità multipla)'
+          : 'Sto ascoltando... Parla chiaramente';
+    }
+    
+    return _voiceManager.isBatchMode
+        ? 'Premi il pulsante per l\'inserimento multiplo'
+        : 'Premi il pulsante per iniziare a parlare';
   }
 
   Widget _buildGuideItem({
@@ -291,7 +508,8 @@ class _VoiceCommandScreenUpdatedState extends State<VoiceCommandScreenUpdated> {
   
   @override
   void dispose() {
-    // Assicurati di rilasciare le risorse
+    _voiceManager.dispose();
+    _speechService.dispose();
     super.dispose();
   }
 }

@@ -30,12 +30,12 @@ import '../screens/pagamento/pagamento_detail_screen.dart';
 import '../screens/pagamento/pagamento_form_screen.dart';
 import '../screens/pagamento/quote_screen.dart';
 import '../screens/chat_screen.dart';
-import '../screens/voice_command_screen.dart';
+import '../screens/voice_command_screen.dart'; // Updated import - using the correct updated class
 
 class RouteGenerator {
  
   static Route<dynamic> generateRoute(RouteSettings settings) {
-    // Recupera gli argomenti passati alla navigazione
+    // Get arguments passed to navigation
     final args = settings.arguments;
         
     switch (settings.name) {
@@ -56,7 +56,7 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => ApiarioListScreen());
       
       case AppConstants.apiarioDetailRoute:
-        // Verifica che gli argomenti siano corretti
+        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => ApiarioDetailScreen(apiarioId: args),
@@ -70,12 +70,12 @@ class RouteGenerator {
       case AppConstants.settingsRoute:
         return MaterialPageRoute(builder: (_) => SettingsScreen());
       
-      // Rotte per la gestione dei gruppi
+      // Routes for group management
       case AppConstants.gruppiListRoute:
         return MaterialPageRoute(builder: (_) => GruppiListScreen());
         
       case AppConstants.gruppoDetailRoute:
-        // Verifica che gli argomenti siano corretti
+        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => GruppoDetailScreen(gruppoId: args),
@@ -84,13 +84,13 @@ class RouteGenerator {
         return _errorRoute();
         
       case AppConstants.gruppoCreateRoute:
-        // Se args è null, è una creazione, altrimenti è una modifica
+        // If args is null, it's a creation, otherwise it's a modification
         return MaterialPageRoute(
           builder: (_) => GruppoFormScreen(gruppo: args as Gruppo?),
         );
         
       case AppConstants.gruppoInvitoRoute:
-        // Verifica che gli argomenti siano corretti
+        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => GruppoInvitoScreen(gruppoId: args),
@@ -101,12 +101,12 @@ class RouteGenerator {
       case '/qr_scanner':
         return MaterialPageRoute(builder: (_) => MobileScannerWrapperScreen());
 
-      // Rotte per la gestione delle arnie
+      // Routes for hive management
       case AppConstants.arniaListRoute:
         return MaterialPageRoute(builder: (_) => ArniaListScreen());
             
       case AppConstants.arniaDetailRoute:
-        // Verifica che gli argomenti siano corretti
+        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => ArniaDetailScreen(arniaId: args),
@@ -115,7 +115,7 @@ class RouteGenerator {
         return _errorRoute();
         
       case AppConstants.creaArniaRoute:
-        // Verifica se è specificato un apiario
+        // Check if an apiary is specified
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => ArniaFormScreen(apiarioId: args),
@@ -123,9 +123,9 @@ class RouteGenerator {
         }
         return MaterialPageRoute(builder: (_) => ArniaFormScreen());
 
-      // Rotte per la gestione dei controlli
+      // Routes for inspection management
       case AppConstants.controlloCreateRoute:
-        // Verifica che gli argomenti siano corretti
+        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => ControlloArniaScreen(arniaId: args),
@@ -133,12 +133,12 @@ class RouteGenerator {
         }
         return _errorRoute();
 
-      // Rotte per la gestione delle regine
+      // Routes for queen management
       case AppConstants.reginaListRoute:
         return MaterialPageRoute(builder: (_) => ReginaListScreen());
         
       case AppConstants.reginaDetailRoute:
-        // Verifica che gli argomenti siano corretti
+        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => ReginaDetailScreen(reginaId: args),
@@ -146,12 +146,12 @@ class RouteGenerator {
         }
         return _errorRoute();
 
-      // Rotte per la gestione dei trattamenti sanitari
+      // Routes for treatment management
       case AppConstants.trattamentiRoute:
         return MaterialPageRoute(builder: (_) => TrattamentiScreen());
         
       case AppConstants.nuovoTrattamentoRoute:
-        // Verifica se è specificato un apiario
+        // Check if an apiary is specified
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => TrattamentoFormScreen(apiarioId: args),
@@ -159,20 +159,20 @@ class RouteGenerator {
         }
         return MaterialPageRoute(builder: (_) => TrattamentoFormScreen());
 
-      // Rotte per la gestione dei melari e produzioni
+      // Routes for honey super and production management
       case AppConstants.melariRoute:
         return MaterialPageRoute(builder: (_) => MelariScreen());
       
-      // Rotta per la mappa
+      // Route for map
       case AppConstants.mappaRoute:
         return MaterialPageRoute(builder: (_) => MappaScreen());
       
-      // Rotte per la gestione dei pagamenti
+      // Routes for payment management
       case AppConstants.pagamentiRoute:
         return MaterialPageRoute(builder: (_) => PagamentiScreen());
         
       case AppConstants.pagamentoDetailRoute:
-        // Verifica che gli argomenti siano corretti
+        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => PagamentoDetailScreen(pagamentoId: args),
@@ -181,7 +181,7 @@ class RouteGenerator {
         return _errorRoute();
         
       case AppConstants.pagamentoCreateRoute:
-        // Se args è null, è una creazione, altrimenti è una modifica
+        // If args is null, it's a creation, otherwise it's a modification
         return MaterialPageRoute(
           builder: (_) => PagamentoFormScreen(pagamentoId: args as int?),
         );
@@ -192,9 +192,9 @@ class RouteGenerator {
       case AppConstants.chatRoute:
         return MaterialPageRoute(builder: (_) => ChatScreen());
         
-      // Rotta per l'input vocale con Wit.ai
+      // Route for voice input with Wit.ai - Updated to use the new class
       case AppConstants.voiceCommandRoute:
-        return MaterialPageRoute(builder: (_) => VoiceCommandScreenUpdated());
+        return MaterialPageRoute(builder: (_) => VoiceCommandScreen());
       
       default:
         return _errorRoute();

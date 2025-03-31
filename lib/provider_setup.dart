@@ -8,54 +8,53 @@ import 'services/storage_service.dart';
 import 'services/sync_service.dart';
 import 'services/mcp_service.dart';
 import 'services/chat_service.dart';
-// Importa i servizi
-import 'services/google_speech_recognition_service.dart';
+// Import services
+import 'services/wit_speech_recognition_service.dart';
 import 'services/voice_data_processor.dart';
 import 'services/wit_data_processor.dart';
-import 'services/voice_input_manager_google.dart';
+import 'services/voice_input_manager.dart'; // Updated to use the new class
 import 'services/voice_feedback_service.dart';
 import 'services/audio_service.dart';
-import 'services/wit_speech_recognition_service.dart';
 
 List<SingleChildWidget> providers = [
-  // Servizio di storage (indipendente)
+  // Storage service (independent)
   Provider<StorageService>(
     create: (_) => StorageService(),
   ),
   
-  // Servizio di autenticazione (indipendente, modificato per non usare StorageService)
+  // Authentication service (independent, modified to not use StorageService)
   ChangeNotifierProvider<AuthService>(
     create: (_) => AuthService(),
   ),
   
-  // Servizio API (dipende da auth)
+  // API service (depends on auth)
   ProxyProvider<AuthService, ApiService>(
     update: (_, authService, __) => ApiService(authService),
   ),
   
-  // Servizio di sincronizzazione (dipende da API e storage)
+  // Sync service (depends on API and storage)
   ProxyProvider2<ApiService, StorageService, SyncService>(
     update: (_, apiService, storageService, __) => 
         SyncService(apiService, storageService),
   ),
   
-  // Servizio MCP (dipende da API)
+  // MCP service (depends on API)
   ProxyProvider<ApiService, MCPService>(
     update: (_, apiService, __) => MCPService(apiService),
   ),
   
-  // Audio Service (indipendente)
+  // Audio Service (independent)
   Provider<AudioService>(
     create: (_) => AudioService(),
     dispose: (_, service) => service.dispose(),
   ),
   
-  // Servizio di feedback vocale (indipendente)
+  // Voice feedback service (independent)
   Provider<VoiceFeedbackService>(
     create: (_) => VoiceFeedbackService(),
   ),
 
-  // Servizio Chat (dipende da API e MCP)
+  // Chat Service (depends on API and MCP)
   ChangeNotifierProxyProvider2<ApiService, MCPService, ChatService>(
     create: (context) => ChatService(
       Provider.of<ApiService>(context, listen: false),
@@ -63,33 +62,33 @@ List<SingleChildWidget> providers = [
       '0' // Default user ID, will be updated
     ),
     update: (context, apiService, mcpService, previousChat) {
-      // Ottieni l'ID utente dal servizio di autenticazione
+      // Get user ID from auth service
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.currentUser?.id.toString() ?? '0';
       
-      // Se esiste un servizio precedente, aggiorna solo l'userId
+      // If a previous service exists, only update the userId
       if (previousChat != null) {
         return previousChat;
       }
       
-      // Altrimenti crea una nuova istanza
+      // Otherwise create a new instance
       return ChatService(apiService, mcpService, userId);
     },
   ),
   
-  // Servizio di riconoscimento vocale Wit.ai
+  // Wit.ai speech recognition service
   ChangeNotifierProvider<WitSpeechRecognitionService>(
     create: (_) => WitSpeechRecognitionService(),
   ),
 
-  // Processore dati Wit.ai - Corrected to extend ChangeNotifier
+  // Wit.ai data processor
   ChangeNotifierProvider<WitDataProcessor>(
     create: (_) => WitDataProcessor(),
   ),
 
-  // Gestore input vocale (aggiornato per usare Wit)
-  ChangeNotifierProxyProvider2<WitSpeechRecognitionService, WitDataProcessor, VoiceInputManagerGoogle>(
-    create: (context) => VoiceInputManagerGoogle(
+  // Voice input manager (updated to use the new class)
+  ChangeNotifierProxyProvider2<WitSpeechRecognitionService, WitDataProcessor, VoiceInputManager>(
+    create: (context) => VoiceInputManager(
       Provider.of<WitSpeechRecognitionService>(context, listen: false),
       Provider.of<WitDataProcessor>(context, listen: false)
     ),
@@ -97,12 +96,12 @@ List<SingleChildWidget> providers = [
       if (previousManager != null) {
         return previousManager;
       }
-      return VoiceInputManagerGoogle(speechService, dataProcessor);
+      return VoiceInputManager(speechService, dataProcessor);
     },
   ),
 ];
 
-// Puoi anche aggiungere configurazioni per test e mock se necessario
+// You can also add configurations for tests and mocks if needed
 List<SingleChildWidget> testProviders = [
-  // Mock dei servizi per testing
+  // Mock services for testing
 ];
