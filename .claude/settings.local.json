@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(flutter build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd REST API endpoints for Attrezzature, SpesaAttrezzatura, ManutenzioneAttrezzatura\n\nAdd serializers, viewsets and router registrations for the equipment module\nto enable the Flutter mobile app to communicate with the backend.\n- AttrezzaturaSerializer with categoria_nome, gruppo_nome, apiario_nome\n- SpesaAttrezzaturaSerializer with tipo_display\n- ManutenzioneAttrezzaturaSerializer with tipo_display, stato_display\n- ViewSets with proper queryset filtering \\(own + shared group equipment\\)\n- Router registrations: attrezzature, spese-attrezzatura, manutenzioni\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter pub get:*)",
+      "WebFetch(domain:cible99.pythonanywhere.com)",
+      "WebFetch(domain:generativelanguage.googleapis.com)",
+      "Bash(flutter --version:*)",
+      "Bash(flutter config:*)",
+      "Bash(gh repo view:*)",
+      "Bash(where:*)"
+    ]
+  }
+}

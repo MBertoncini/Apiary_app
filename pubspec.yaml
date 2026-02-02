@@ -36,7 +36,7 @@ dependencies:
   flutter_speed_dial: ^7.0.0
   mobile_scanner: ^5.1.0
   qr_flutter: ^4.1.0
-  share_plus: ^8.0.3
+  share_plus: ^10.0.0
   path_provider: ^2.1.2
   screenshot: ^3.0.0   # Per catturare screenshot dei grafici
   flutter_background_service: ^5.0.0  # Già in uso nella tua app
@@ -45,7 +45,13 @@ dependencies:
   google_speech: ^2.2.0
   flutter_sound: ^9.28.0
   google_fonts: ^6.2.1
-  speech_to_text: ^6.6.0 
+  speech_to_text: ^7.0.0
+  sensors_plus: ^4.0.0
+  flutter_image_compress: ^2.1.0
+  pdf: ^3.10.0
+  csv: ^5.1.1
+  flutter_timezone: ^3.0.1
+  flutter_background_service_android: ^6.2.2
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
 import '../services/api_service.dart';
+import '../constants/api_constants.dart';
 import 'database_helper.dart';
 import 'dao/apiario_dao.dart';
 import 'dao/arnia_dao.dart';

@@ -2,12 +2,46 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
-import 'auth_service.dart';
+import 'auth_token_provider.dart';
+
+/// AuthTokenProvider basato su token statici, usato dal background sync service.
+class _StaticTokenProvider implements AuthTokenProvider {
+  String? _token;
+  final String? _refreshToken;
+
+  _StaticTokenProvider(this._token, this._refreshToken);
+
+  @override
+  Future<String?> getToken() async => _token;
+
+  @override
+  Future<bool> refreshToken() async {
+    if (_refreshToken == null) return false;
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConstants.tokenRefreshUrl),
+        body: {'refresh': _refreshToken},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _token = data['access'];
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+}
 
 class ApiService {
-  final AuthService _authService;
-  
+  final AuthTokenProvider _authService;
+
   ApiService(this._authService);
+
+  /// Factory constructor per creare un ApiService a partire da token statici.
+  /// Usato dal background sync service dove non c'e' un AuthService disponibile.
+  factory ApiService.fromToken(String token, String refreshToken) {
+    return ApiService(_StaticTokenProvider(token, refreshToken));
+  }
   
   // Helper per costruire l'URL correttamente
   String _buildUrl(String endpoint) {

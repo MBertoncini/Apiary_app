@@ -33,7 +33,7 @@ class Arnia {
       coloreHex: json['colore_hex'],
       dataInstallazione: json['data_installazione'],
       note: json['note'],
-      attiva: json['attiva'],
+      attiva: json['attiva'] ?? true,
     );
   }
   

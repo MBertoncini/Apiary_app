@@ -36,7 +36,36 @@ class Regina {
     };
   }
 
-  // Convert a Map into a Regina object
+  // Convert from JSON (API REST response)
+  factory Regina.fromJson(Map<String, dynamic> json) {
+    return Regina(
+      id: json['id'],
+      arniaId: json['arnia'] ?? json['arnia_id'],
+      razza: json['razza'] ?? '',
+      origine: json['origine'] ?? '',
+      colore: json['colore'],
+      dataInserimento: json['data_inserimento'] ?? '',
+      dataRimozione: json['data_rimozione'],
+      note: json['note'],
+      isAttiva: json['is_attiva'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'arnia': arniaId,
+      'razza': razza,
+      'origine': origine,
+      'colore': colore,
+      'data_inserimento': dataInserimento,
+      'data_rimozione': dataRimozione,
+      'note': note,
+      'is_attiva': isAttiva,
+    };
+  }
+
+  // Convert a Map into a Regina object (SQLite)
   factory Regina.fromMap(Map<String, dynamic> map) {
     return Regina(
       id: map['id'],

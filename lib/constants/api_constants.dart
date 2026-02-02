@@ -60,9 +60,20 @@ class ApiConstants {
   static const String invitiAccettaUrl = baseUrl + apiPrefix + '/inviti/accetta/{token}/';
   static const String invitiRifiutaUrl = baseUrl + apiPrefix + '/inviti/rifiuta/{token}/';
   
+  // Endpoint fioriture
+  static const String fioritureUrl = baseUrl + apiPrefix + '/fioriture/';
+
   // Endpoint pagamenti
   static const String pagamentiUrl = baseUrl + apiPrefix + '/pagamenti/';
   static const String quoteUrl = baseUrl + apiPrefix + '/quote/';
+
+  // Endpoint attrezzature
+  static const String attrezzatureUrl = baseUrl + apiPrefix + '/attrezzature/';
+  static const String attrezzaturaDetailUrl = baseUrl + apiPrefix + '/attrezzatura/';
+  static const String speseAttrezzaturaUrl = baseUrl + apiPrefix + '/spese-attrezzatura/';
+  static const String attrezzaturaSpeseUrl = baseUrl + apiPrefix + '/attrezzatura/{attrezzatura_id}/spese/';
+  static const String manutenzioniUrl = baseUrl + apiPrefix + '/manutenzioni/';
+  static const String attrezzaturaManutenzioniUrl = baseUrl + apiPrefix + '/attrezzatura/{attrezzatura_id}/manutenzioni/';
 
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';

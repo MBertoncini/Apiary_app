@@ -8,8 +8,9 @@ import '../constants/app_constants.dart';
 import '../constants/api_constants.dart';
 import '../models/user.dart';
 import 'dart:async';
+import 'auth_token_provider.dart';
 
-class AuthService extends ChangeNotifier {
+class AuthService extends ChangeNotifier implements AuthTokenProvider {
   bool _isLoading = true;
   bool _isAuthenticated = false;
   bool _offlineMode = false;

@@ -312,11 +312,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       SizedBox(width: 8),
-                      DiaryButton(
-                        label: 'Cancella Cache',
-                        onPressed: _clearCache,
-                        icon: Icons.delete_outline,
-                        color: ThemeConstants.secondaryColor,
+                      Expanded(
+                        child: DiaryButton(
+                          label: 'Cancella Cache',
+                          onPressed: _clearCache,
+                          icon: Icons.delete_outline,
+                          color: ThemeConstants.secondaryColor,
+                        ),
                       ),
                     ],
                   ),

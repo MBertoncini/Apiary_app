@@ -9,6 +9,8 @@ class Gruppo {
   final List<dynamic> membri; // Cambiato da MembroGruppo a dynamic
   final String? immagineProfilo;
   final List<dynamic> apiariIds; // Cambiato da List<int> a List<dynamic>
+  final int? membriCountFromApi;
+  final int? apiariCountFromApi;
 
   Gruppo({
     required this.id,
@@ -20,6 +22,8 @@ class Gruppo {
     required this.membri,
     this.immagineProfilo,
     required this.apiariIds,
+    this.membriCountFromApi,
+    this.apiariCountFromApi,
   });
 
   factory Gruppo.fromJson(Map<String, dynamic> json) {
@@ -50,10 +54,11 @@ class Gruppo {
     // Inizializza liste vuote - saranno popolate da chiamate API separate
     List<dynamic> membri = [];
     List<dynamic> apiariIds = []; // Cambiato da List<int> a List<dynamic>
-    
-    // Gestione sicura del conteggio membri
-    int membriCount = json['membri_count'] ?? 0;
-    
+
+    // Gestione sicura del conteggio membri e apiari dall'API
+    int? membriCount = json['membri_count'];
+    int? apiariCount = json['apiari_count'];
+
     return Gruppo(
         id: json['id'] is String ? int.parse(json['id']) : json['id'],
         nome: json['nome'] ?? 'Senza nome',
@@ -64,6 +69,8 @@ class Gruppo {
         membri: membri,            // Lista vuota, da popolare con chiamata API separata
         immagineProfilo: null,     // Non presente nella risposta
         apiariIds: apiariIds,      // Lista vuota, da popolare con chiamata API separata
+        membriCountFromApi: membriCount,
+        apiariCountFromApi: apiariCount,
     );
   }
 
@@ -160,20 +167,22 @@ class Gruppo {
   // Metodo helper per ottenere il numero di membri
   int getMembriCount() {
     try {
-      return membri.length;
+      if (membri.isNotEmpty) return membri.length;
+      return membriCountFromApi ?? 0;
     } catch (e) {
       print('Errore nel conteggio membri: $e');
-      return 0;
+      return membriCountFromApi ?? 0;
     }
   }
 
   // Metodo helper per ottenere il numero di apiari
   int getApiariCount() {
     try {
-      return apiariIds.length;
+      if (apiariIds.isNotEmpty) return apiariIds.length;
+      return apiariCountFromApi ?? 0;
     } catch (e) {
       print('Errore nel conteggio apiari: $e');
-      return 0;
+      return apiariCountFromApi ?? 0;
     }
   }
 

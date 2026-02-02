@@ -137,7 +137,21 @@ class AppDrawer extends StatelessWidget {
               }
             },
           ),
-          
+
+          // Attrezzature
+          ListTile(
+            leading: Icon(Icons.build),
+            title: Text('Attrezzature'),
+            selected: currentRoute == AppConstants.attrezzatureRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () {
+              Navigator.pop(context);
+              if (currentRoute != AppConstants.attrezzatureRoute) {
+                Navigator.of(context).pushReplacementNamed(AppConstants.attrezzatureRoute);
+              }
+            },
+          ),
+
           // Divisore
           Divider(),
           
@@ -178,7 +192,7 @@ class AppDrawer extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               if (currentRoute != AppConstants.settingsRoute) {
-                Navigator.of(context).pushNamed(AppConstants.settingsRoute);
+                Navigator.of(context).pushReplacementNamed(AppConstants.settingsRoute);
               }
             },
           ),
@@ -207,7 +221,7 @@ class AppDrawer extends StatelessWidget {
                 onTap: () {
                   Navigator.of(context).pop();
                   if (currentRoute != AppConstants.voiceCommandRoute) {
-                    Navigator.of(context).pushNamed(AppConstants.voiceCommandRoute);
+                    Navigator.of(context).pushReplacementNamed(AppConstants.voiceCommandRoute);
                   }
                 },
               ),

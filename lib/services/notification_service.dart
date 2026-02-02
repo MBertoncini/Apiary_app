@@ -1,10 +1,11 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter/material.dart';
-import 'package:flutter_native_timezone/flutter_native_timezone.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -20,7 +21,7 @@ class NotificationService {
   Future<void> init() async {
     // Inizializza timezone
     tz.initializeTimeZones();
-    final String timeZoneName = await FlutterNativeTimezone.getLocalTimezone();
+    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(timeZoneName));
     
     // Configurazione iniziale Android
@@ -154,10 +155,8 @@ class NotificationService {
       payload: payload,
     );
     
-    // Aggiorna il badge dell'app (solo iOS)
-    if (Platform.isIOS && await FlutterAppBadger.isAppBadgeSupported()) {
-      await FlutterAppBadger.updateBadgeCount(1);
-    }
+    // TODO: Badge app iOS - flutter_app_badger rimosso perche' discontinuato.
+    // Valutare alternative come app_badge_plus se necessario.
   }
   
   // Pianifica una notifica per una data futura
@@ -294,19 +293,15 @@ class NotificationService {
   Future<void> cancelAllNotifications() async {
     await _flutterLocalNotificationsPlugin.cancelAll();
     
-    // Reset badge (solo iOS)
-    if (Platform.isIOS && await FlutterAppBadger.isAppBadgeSupported()) {
-      await FlutterAppBadger.removeBadge();
-    }
+    // TODO: Reset badge iOS - flutter_app_badger rimosso perche' discontinuato.
   }
   
   // Cancella notifiche per una specifica categoria
+  // Nota: cancelNotificationsByGroupKey non disponibile nella versione attuale.
+  // Si usa cancelAll() o cancel(id) come alternativa.
   Future<void> cancelNotificationsByGroupKey(String groupKey) async {
-    if (Platform.isAndroid) {
-      await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.cancelNotificationsByGroupKey(groupKey);
-    }
+    // Non supportato direttamente - cancella tutte le notifiche come fallback
+    await _flutterLocalNotificationsPlugin.cancelAll();
   }
   
   // Chiudi il controller quando non serve più

@@ -34,15 +34,15 @@ class Apiario {
       id: json['id'],
       nome: json['nome'],
       posizione: json['posizione'],
-      latitudine: json['latitudine'] != null ? double.parse(json['latitudine'].toString()) : null,
-      longitudine: json['longitudine'] != null ? double.parse(json['longitudine'].toString()) : null,
+      latitudine: json['latitudine'] != null ? double.tryParse(json['latitudine'].toString()) : null,
+      longitudine: json['longitudine'] != null ? double.tryParse(json['longitudine'].toString()) : null,
       note: json['note'],
-      monitoraggioMeteo: json['monitoraggio_meteo'],
+      monitoraggioMeteo: json['monitoraggio_meteo'] ?? false,
       proprietario: json['proprietario'],
-      proprietarioUsername: json['proprietario_username'],
+      proprietarioUsername: json['proprietario_username'] ?? '',
       gruppo: json['gruppo'],
-      condivisoConGruppo: json['condiviso_con_gruppo'],
-      visibilitaMappa: json['visibilita_mappa'],
+      condivisoConGruppo: json['condiviso_con_gruppo'] ?? false,
+      visibilitaMappa: json['visibilita_mappa'] ?? 'privato',
     );
   }
   

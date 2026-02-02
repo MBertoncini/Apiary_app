@@ -8,7 +8,6 @@ import 'utils/route_generator.dart';
 import 'constants/app_constants.dart';
 import 'constants/theme_constants.dart';
 import 'screens/splash_screen.dart';
-import 'widgets/drawer_widget.dart'; // Importa il drawer widget
 
 class ApiarioManagerApp extends StatelessWidget {
   @override

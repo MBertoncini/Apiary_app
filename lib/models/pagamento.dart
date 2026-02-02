@@ -25,9 +25,7 @@ class Pagamento {
       id: json['id'],
       utente: json['utente'],
       utenteUsername: json['utente_username'] ?? 'Sconosciuto',
-      importo: json['importo'] is int 
-          ? (json['importo'] as int).toDouble() 
-          : json['importo'],
+      importo: double.tryParse(json['importo'].toString()) ?? 0.0,
       data: json['data'],
       descrizione: json['descrizione'],
       gruppo: json['gruppo'],

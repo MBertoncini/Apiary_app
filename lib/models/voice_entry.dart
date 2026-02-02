@@ -141,30 +141,30 @@ class VoiceEntry {
   
   // Convert VoiceEntry to JSON
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = {};
-    
+    final Map<String, dynamic> jsonMap = {};
+
     // Only include non-null fields
-    if (apiarioId != null) data['apiario_id'] = apiarioId;
-    if (apiarioNome != null) data['apiario_nome'] = apiarioNome;
-    if (arniaId != null) data['arnia_id'] = arniaId;
-    if (arniaNumero != null) data['arnia_numero'] = arniaNumero;
-    if (tipoComando != null) data['tipo_comando'] = tipoComando;
-    if (data != null) data['data'] = DateFormat('yyyy-MM-dd').format(this.data!);
-    if (presenzaRegina != null) data['presenza_regina'] = presenzaRegina;
-    if (reginaVista != null) data['regina_vista'] = reginaVista;
-    if (uovaFresche != null) data['uova_fresche'] = uovaFresche;
-    if (celleReali != null) data['celle_reali'] = celleReali;
-    if (numeroCelleReali != null) data['numero_celle_reali'] = numeroCelleReali;
-    if (telainiTotali != null) data['telaini_totali'] = telainiTotali;
-    if (telainiCovata != null) data['telaini_covata'] = telainiCovata;
-    if (telainiScorte != null) data['telaini_scorte'] = telainiScorte;
-    if (forzaFamiglia != null) data['forza_famiglia'] = forzaFamiglia;
-    if (sciamatura != null) data['sciamatura'] = sciamatura;
-    if (problemiSanitari != null) data['problemi_sanitari'] = problemiSanitari;
-    if (tipoProblema != null) data['tipo_problema'] = tipoProblema;
-    if (note != null) data['note'] = note;
-    
-    return data;
+    if (apiarioId != null) jsonMap['apiario_id'] = apiarioId;
+    if (apiarioNome != null) jsonMap['apiario_nome'] = apiarioNome;
+    if (arniaId != null) jsonMap['arnia_id'] = arniaId;
+    if (arniaNumero != null) jsonMap['arnia_numero'] = arniaNumero;
+    if (tipoComando != null) jsonMap['tipo_comando'] = tipoComando;
+    if (data != null) jsonMap['data'] = DateFormat('yyyy-MM-dd').format(data!);
+    if (presenzaRegina != null) jsonMap['presenza_regina'] = presenzaRegina;
+    if (reginaVista != null) jsonMap['regina_vista'] = reginaVista;
+    if (uovaFresche != null) jsonMap['uova_fresche'] = uovaFresche;
+    if (celleReali != null) jsonMap['celle_reali'] = celleReali;
+    if (numeroCelleReali != null) jsonMap['numero_celle_reali'] = numeroCelleReali;
+    if (telainiTotali != null) jsonMap['telaini_totali'] = telainiTotali;
+    if (telainiCovata != null) jsonMap['telaini_covata'] = telainiCovata;
+    if (telainiScorte != null) jsonMap['telaini_scorte'] = telainiScorte;
+    if (forzaFamiglia != null) jsonMap['forza_famiglia'] = forzaFamiglia;
+    if (sciamatura != null) jsonMap['sciamatura'] = sciamatura;
+    if (problemiSanitari != null) jsonMap['problemi_sanitari'] = problemiSanitari;
+    if (tipoProblema != null) jsonMap['tipo_problema'] = tipoProblema;
+    if (note != null) jsonMap['note'] = note;
+
+    return jsonMap;
   }
   
   // Convert to database-ready map for "controllo" type

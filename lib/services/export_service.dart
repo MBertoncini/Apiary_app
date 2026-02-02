@@ -8,7 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../database/dao/apiario_dao.dart';
 import '../database/dao/arnia_dao.dart';
 import '../database/dao/controllo_arnia_dao.dart';
-import '../utils/date_formatter.dart';
+import '../utils/date_formatters.dart';
 
 class ExportService {
   final ApiarioDao _apiarioDao = ApiarioDao();

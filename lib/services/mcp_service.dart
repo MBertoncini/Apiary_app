@@ -140,7 +140,7 @@ class MCPService {
   Future<List<dynamic>> _getApiari() async {
     try {
       final response = await _apiService.get('apiari/');
-      final List<dynamic> apiari = response['results'] ?? [];
+      final List<dynamic> apiari = response is List ? response : (response['results'] ?? []);
       return apiari;
     } catch (e) {
       print('Errore nel recupero degli apiari: $e');
@@ -152,7 +152,7 @@ class MCPService {
   Future<List<dynamic>> _getArnie() async {
     try {
       final response = await _apiService.get('arnie/');
-      final List<dynamic> arnie = response['results'] ?? [];
+      final List<dynamic> arnie = response is List ? response : (response['results'] ?? []);
       return arnie;
     } catch (e) {
       print('Errore nel recupero delle arnie: $e');
@@ -164,7 +164,7 @@ class MCPService {
   Future<List<dynamic>> _getTrattamenti() async {
     try {
       final response = await _apiService.get('trattamenti/');
-      final List<dynamic> trattamenti = response['results'] ?? [];
+      final List<dynamic> trattamenti = response is List ? response : (response['results'] ?? []);
       
       // Ordina i trattamenti per data di inizio (decrescente)
       trattamenti.sort((a, b) {
@@ -190,7 +190,7 @@ class MCPService {
   Future<List<dynamic>> _getTrattamentiAttivi() async {
     try {
       final response = await _apiService.get('trattamenti/attivi/');
-      final List<dynamic> trattamenti = response['results'] ?? [];
+      final List<dynamic> trattamenti = response is List ? response : (response['results'] ?? []);
       return trattamenti;
     } catch (e) {
       print('Errore nel recupero dei trattamenti attivi: $e');
@@ -202,7 +202,7 @@ class MCPService {
   Future<List<dynamic>> _getControlliDettagliati() async {
     try {
       final response = await _apiService.get('controlli/');
-      final List<dynamic> controlli = response['results'] ?? [];
+      final List<dynamic> controlli = response is List ? response : (response['results'] ?? []);
       
       // Ordina i controlli per data (decrescente)
       controlli.sort((a, b) {
@@ -269,7 +269,7 @@ class MCPService {
   Future<List<dynamic>> _getControlliRecenti(int daysBack) async {
     try {
       final response = await _apiService.get('controlli/');
-      final List<dynamic> controlli = response['results'] ?? [];
+      final List<dynamic> controlli = response is List ? response : (response['results'] ?? []);
       final cutoffDate = DateTime.now().subtract(Duration(days: daysBack));
       
       // Filtra per data
@@ -499,7 +499,7 @@ class MCPService {
   Future<List<dynamic>> _getFioritureAttive() async {
     try {
       final response = await _apiService.get('fioriture/');
-      final List<dynamic> fioriture = response['results'] ?? [];
+      final List<dynamic> fioriture = response is List ? response : (response['results'] ?? []);
       
       // Filtra per fioriture attive
       return fioriture.where((f) => f['is_active'] == true).toList();
@@ -513,7 +513,7 @@ class MCPService {
   Future<List<dynamic>> _getRegine() async {
     try {
       final response = await _apiService.get('regine/');
-      final List<dynamic> regine = response['results'] ?? [];
+      final List<dynamic> regine = response is List ? response : (response['results'] ?? []);
       return regine;
     } catch (e) {
       print('Errore nel recupero delle regine: $e');
@@ -525,7 +525,7 @@ class MCPService {
   Future<List<dynamic>> _searchArnie(String query) async {
     try {
       final response = await _apiService.get('arnie/');
-      final List<dynamic> arnie = response['results'] ?? [];
+      final List<dynamic> arnie = response is List ? response : (response['results'] ?? []);
       
       // Filtra le arnie in base alla query
       return arnie.where((arnia) {

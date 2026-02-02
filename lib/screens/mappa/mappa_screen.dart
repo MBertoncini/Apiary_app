@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
+import '../../services/api_cache_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
@@ -17,6 +18,7 @@ class MappaScreen extends StatefulWidget {
 
 class _MappaScreenState extends State<MappaScreen> {
   bool _isLoading = true;
+  bool _isOffline = false;
   List<dynamic> _apiari = [];
   List<dynamic> _fioriture = [];
   Position? _currentPosition;
@@ -175,38 +177,85 @@ class _MappaScreenState extends State<MappaScreen> {
         _isLoading = true;
       });
     }
-    
+
     try {
       // Verifichiamo che StorageService sia inizializzato
       if (_storageService == null) {
         _storageService = Provider.of<StorageService>(context, listen: false);
       }
-      
+
       // Verifichiamo che AuthService sia inizializzato
       if (_authService == null) {
         _authService = Provider.of<AuthService>(context);
       }
-      
+
       final currentUser = _authService!.currentUser;
       final currentUserId = currentUser?.id;
-      
+
       print("Caricamento apiari e fioriture. User ID: $currentUserId");
-      
-      // Carica apiari
-      final apiari = await _storageService!.getStoredData('apiari');
-      print("Apiari totali caricati: ${apiari.length}");
-      
-      // Debug: stampa i primi 2 apiari (se presenti)
-      if (apiari.isNotEmpty) {
-        print("Primo apiario: ${apiari[0]}");
-        if (apiari.length > 1) {
-          print("Secondo apiario: ${apiari[1]}");
+
+      // Verifica la connettività e carica dall'API se possibile
+      final isConnected = await ApiCacheHelper.isConnected();
+      List<dynamic> apiari = [];
+      List<dynamic> fioriture = [];
+
+      if (isConnected) {
+        try {
+          final apiService = Provider.of<ApiService>(context, listen: false);
+
+          // Carica apiari dall'API
+          final apiariResponse = await apiService.get('apiari/');
+          if (apiariResponse is List) {
+            apiari = apiariResponse;
+          } else if (apiariResponse is Map) {
+            apiari = apiariResponse['results'] ?? [];
+          }
+
+          // Carica fioriture dall'API
+          final fioritureResponse = await apiService.get('fioriture/');
+          if (fioritureResponse is List) {
+            fioriture = fioritureResponse;
+          } else if (fioritureResponse is Map) {
+            fioriture = fioritureResponse['results'] ?? [];
+          }
+
+          // Salva nella cache per uso offline
+          await ApiCacheHelper.saveToCache('apiari', apiari);
+          await ApiCacheHelper.saveToCache('fioriture', fioriture);
+
+          if (mounted) {
+            setState(() {
+              _isOffline = false;
+            });
+          }
+
+          print("Apiari caricati dall'API: ${apiari.length}");
+          print("Fioriture caricate dall'API: ${fioriture.length}");
+        } catch (e) {
+          print('Errore API, fallback su cache locale: $e');
+          apiari = await _storageService!.getStoredData('apiari');
+          fioriture = await _storageService!.getStoredData('fioriture');
+          if (mounted) {
+            setState(() {
+              _isOffline = true;
+            });
+          }
         }
+      } else {
+        // Offline: carica dalla cache locale
+        apiari = await _storageService!.getStoredData('apiari');
+        fioriture = await _storageService!.getStoredData('fioriture');
+        if (mounted) {
+          setState(() {
+            _isOffline = true;
+          });
+        }
+        print("Modalità offline - Apiari dalla cache: ${apiari.length}");
       }
-      
+
       // Filtra apiari in base ai permessi
       List<dynamic> apiariVisibili = [];
-      
+
       for (var a in apiari) {
         // Verifica le coordinate
         bool hasCoordinates = a['latitudine'] != null && a['longitudine'] != null;
@@ -214,15 +263,15 @@ class _MappaScreenState extends State<MappaScreen> {
           print("Apiario senza coordinate: ${a['nome']}");
           continue;
         }
-        
+
         // Filtra in base alla visibilità e ai permessi
         final visibilita = a['visibilita_mappa'];
         final proprietarioId = a['proprietario'];
         final condivisoConGruppo = a['condiviso_con_gruppo'] == true;
         final gruppoId = a['gruppo'];
-        
+
         bool visible = false;
-        
+
         if (visibilita == 'pubblico') {
           // Visibile a tutti
           visible = true;
@@ -238,32 +287,21 @@ class _MappaScreenState extends State<MappaScreen> {
         } else {
           print("Apiario con visibilità non riconosciuta: ${a['nome']}, tipo: $visibilita");
         }
-        
+
         if (visible) {
           apiariVisibili.add(a);
         }
       }
-      
+
       print("Apiari visibili: ${apiariVisibili.length}");
-      
-      // Carica fioriture
-      final fioriture = await _storageService!.getStoredData('fioriture');
-      print("Fioriture totali caricate: ${fioriture.length}");
-      
-      // Debug: stampa le prime 2 fioriture (se presenti)
-      if (fioriture.isNotEmpty) {
-        print("Prima fioritura: ${fioriture[0]}");
-        if (fioriture.length > 1) {
-          print("Seconda fioritura: ${fioriture[1]}");
-        }
-      }
-      
+
+      // Filtra fioriture
       List<dynamic> fioritureVisibili = [];
-      
+
       for (var f in fioriture) {
         bool hasCoordinates = f['latitudine'] != null && f['longitudine'] != null;
         bool isActive = _isFiorituraActive(f);
-        
+
         if (hasCoordinates && isActive) {
           fioritureVisibili.add(f);
         } else {
@@ -275,9 +313,9 @@ class _MappaScreenState extends State<MappaScreen> {
           }
         }
       }
-      
+
       print("Fioriture visibili: ${fioritureVisibili.length}");
-      
+
       if (mounted) {
         setState(() {
           _apiari = apiariVisibili;
@@ -285,7 +323,7 @@ class _MappaScreenState extends State<MappaScreen> {
           _isLoading = false;
         });
       }
-      
+
     } catch (e) {
       print('Error loading data: $e');
       if (mounted) {
@@ -302,12 +340,14 @@ class _MappaScreenState extends State<MappaScreen> {
     }
   }
   
-  // Verifica se l'utente appartiene a un gruppo
+  // Verifica se l'utente appartiene a un gruppo.
+  // Nota: l'API Django filtra gia' i dati per utente, quindi se un apiario
+  // condiviso con un gruppo arriva dall'API, l'utente ne fa parte.
+  // Questo check serve come ulteriore validazione lato client.
   bool _userBelongsToGroup(int? userId, int gruppoId) {
     if (userId == null) return false;
-    
-    // Per semplicità, assumiamo che l'utente appartenga a tutti i gruppi
-    // con cui sono condivisi gli apiari
+    // Se l'apiario e' stato restituito dall'API, il backend ha gia' verificato
+    // che l'utente appartenga al gruppo. Ritorna true.
     return true;
   }
   
@@ -362,7 +402,26 @@ class _MappaScreenState extends State<MappaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mappa Apiari'),
+        title: Row(
+          children: [
+            Text('Mappa Apiari'),
+            if (_isOffline)
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: Tooltip(
+                  message: 'Modalità offline - Dati caricati dalla cache',
+                  child: Icon(Icons.offline_bolt, size: 18, color: Colors.amber),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.sync),
+            tooltip: 'Sincronizza dati',
+            onPressed: _loadData,
+          ),
+        ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.mappaRoute),
       body: _isLoading

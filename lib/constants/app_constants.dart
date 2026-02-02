@@ -25,7 +25,8 @@ class AppConstants {
   static const String arniaListRoute = "/arnie";
   static const String arniaDetailRoute = "/arnia/detail";
   static const String arniaCreateRoute = "/arnia/create";
-  static const String creaArniaRoute = "/arnia/create"; // Alias per arniaCreateRoute
+  @Deprecated('Usa arniaCreateRoute')
+  static const String creaArniaRoute = arniaCreateRoute;
   static const String controlloCreateRoute = "/controllo/create";
   
   // Route per regine
@@ -37,7 +38,8 @@ class AppConstants {
   static const String trattamentiRoute = "/trattamenti";
   static const String trattamentoDetailRoute = "/trattamento/detail";
   static const String trattamentoCreateRoute = "/trattamento/create";
-  static const String nuovoTrattamentoRoute = "/trattamento/create"; // Alias per trattamentoCreateRoute
+  @Deprecated('Usa trattamentoCreateRoute')
+  static const String nuovoTrattamentoRoute = trattamentoCreateRoute;
   static const String tipiTrattamentoRoute = "/trattamenti/tipi";
   
   // Route per melari e produzioni
@@ -64,14 +66,24 @@ class AppConstants {
   static const String pagamentiRoute = "/pagamenti";
   static const String pagamentoDetailRoute = "/pagamento/detail";
   static const String pagamentoCreateRoute = "/pagamento/create";
-  static const String quoteRoute = "/quote";  
+  static const String quoteRoute = "/quote";
+
+  // Route per gestione attrezzature
+  static const String attrezzatureRoute = "/attrezzature";
+  static const String attrezzaturaDetailRoute = "/attrezzatura/detail";
+  static const String attrezzaturaCreateRoute = "/attrezzatura/create";
+  static const String spesaAttrezzaturaCreateRoute = "/spesa-attrezzatura/create";
+  static const String manutenzioneCreateRoute = "/manutenzione/create";
 
   // Route per chat
   static const String chatRoute = "/chat";
   
+  // Route per QR scanner
+  static const String qrScannerRoute = "/qr_scanner";
+
   // Route per input vocale
   static const String voiceCommandRoute = "/voice_command";
-  static const String voiceVerificationRoute = "/voice_verification";
+  static const String voiceVerificationRoute = "/voice/verification";
 
   // Altri parametri
   static const int defaultSyncInterval = 30; // Minuti

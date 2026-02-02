@@ -5,6 +5,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../constants/app_constants.dart';
 import '../services/api_service.dart';
 import '../database/database_helper.dart';
@@ -140,11 +141,34 @@ void onStart(ServiceInstance service) async {
   });
   
   // Notifica che il servizio è attivo
-  service.notify(
+  await _showNotification(
     id: 888,
     title: 'Apiario Manager',
-    content: 'Sincronizzazione in background attiva',
-    playSound: false,
+    body: 'Sincronizzazione in background attiva',
+  );
+}
+
+// Helper per mostrare notifiche dal background service
+Future<void> _showNotification({
+  required int id,
+  required String title,
+  required String body,
+}) async {
+  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  await flutterLocalNotificationsPlugin.show(
+    id,
+    title,
+    body,
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'sync_channel',
+        'Sincronizzazione',
+        channelDescription: 'Notifiche relative alla sincronizzazione dei dati',
+        importance: Importance.low,
+        priority: Priority.low,
+        playSound: false,
+      ),
+    ),
   );
 }
 
@@ -154,69 +178,66 @@ Future<void> _performSync(ServiceInstance service) async {
     // Verifica se abbiamo connessione
     final connectivity = await Connectivity().checkConnectivity();
     if (connectivity == ConnectivityResult.none) {
-      service.notify(
+      await _showNotification(
         id: 889,
         title: 'Sincronizzazione non riuscita',
-        content: 'Nessuna connessione internet disponibile',
-        playSound: false,
+        body: 'Nessuna connessione internet disponibile',
       );
       return;
     }
-    
+
     // Ottieni token di autenticazione
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.tokenKey);
     final refreshToken = prefs.getString(AppConstants.refreshTokenKey);
-    
+
     if (token == null || refreshToken == null) {
-      service.notify(
+      await _showNotification(
         id: 889,
         title: 'Sincronizzazione non riuscita',
-        content: 'Nessuna sessione attiva',
-        playSound: false,
+        body: 'Nessuna sessione attiva',
       );
       return;
     }
-    
+
     // Notifica inizio sincronizzazione
-    service.notify(
+    await _showNotification(
       id: 889,
       title: 'Sincronizzazione in corso',
-      content: 'Sincronizzazione dati in background...',
-      playSound: false,
+      body: 'Sincronizzazione dati in background...',
     );
-    
+
     // Crea API Service
     final apiService = ApiService.fromToken(token, refreshToken);
-    
+
     // Ottieni ultimo timestamp sincronizzazione
     final lastSync = prefs.getString(AppConstants.lastSyncKey);
-    
+
     // Sincronizza con il server
     final syncData = await apiService.syncData(lastSync: lastSync);
-    
+
     // Salva i dati nella cache locale
     await _saveDataToDatabase(syncData);
-    
+
     // Salva timestamp sincronizzazione
-    await prefs.setString(AppConstants.lastSyncKey, syncData['timestamp']);
-    
+    if (syncData['timestamp'] != null) {
+      await prefs.setString(AppConstants.lastSyncKey, syncData['timestamp']);
+    }
+
     // Notifica completamento
-    service.notify(
+    await _showNotification(
       id: 889,
       title: 'Sincronizzazione completata',
-      content: 'Dati aggiornati correttamente',
-      playSound: false,
+      body: 'Dati aggiornati correttamente',
     );
   } catch (e) {
     print('BACKGROUND SERVICE: Sync error: $e');
-    
+
     // Notifica errore
-    service.notify(
+    await _showNotification(
       id: 889,
       title: 'Sincronizzazione fallita',
-      content: 'Si è verificato un errore: $e',
-      playSound: false,
+      body: 'Si è verificato un errore: $e',
     );
   }
 }

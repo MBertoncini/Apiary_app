@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/theme_constants.dart';
-import '../utils/date_formatter.dart';
+import '../utils/date_formatters.dart';
 
 class ArniaCardWidget extends StatelessWidget {
   final Map<String, dynamic> arnia;

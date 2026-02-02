@@ -67,8 +67,8 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
           });
           
           // Salva nella cache
-          await ApiCacheHelper.saveToCache('pagamenti', _pagamenti);
-          await ApiCacheHelper.saveToCache('quote', _quote);
+          await ApiCacheHelper.saveToCache('pagamenti', _pagamenti.map((p) => p.toJson()).toList());
+          await ApiCacheHelper.saveToCache('quote', _quote.map((q) => q.toJson()).toList());
         } catch (e) {
           print('Errore API, utilizzo cache: $e');
           _loadFromCache();
@@ -176,6 +176,12 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     );
   }
   
+  // Verifica se un pagamento è legato ad attrezzatura/manutenzione
+  bool _isAttrezzaturaPagamento(Pagamento pagamento) {
+    final desc = pagamento.descrizione.toLowerCase();
+    return desc.contains('attrezzatura') || desc.contains('manutenzione');
+  }
+
   Widget _buildPagamentiTab() {
     if (_pagamenti.isEmpty) {
       return Center(
@@ -183,8 +189,8 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.payments_outlined, 
-              size: 80, 
+              Icons.payments_outlined,
+              size: 80,
               color: Colors.grey[400],
             ),
             SizedBox(height: 16),
@@ -208,53 +214,109 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
         ),
       );
     }
-    
+
     final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '€');
     final formatDate = DateFormat('dd/MM/yyyy');
-    
+
     return RefreshIndicator(
       onRefresh: _loadData,
-      child: ListView.builder(
-        itemCount: _pagamenti.length,
-        itemBuilder: (context, index) {
-          final pagamento = _pagamenti[index];
-          return Card(
-            margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: ListTile(
-              title: Text(
-                pagamento.descrizione,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+      child: ListView(
+        children: [
+          // Link rapidi
+          Card(
+            margin: EdgeInsets.all(8),
+            color: Colors.blue.withOpacity(0.05),
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Link Rapidi',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: Icon(Icons.build, size: 16),
+                          label: Text('Gestione Attrezzature', style: TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            Navigator.pushNamed(context, AppConstants.attrezzatureRoute);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Le spese per attrezzature vengono registrate automaticamente nei pagamenti',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                  ),
+                ],
               ),
-              subtitle: Text(
-                '${pagamento.utenteUsername} - ${formatDate.format(DateTime.parse(pagamento.data))}',
-                maxLines: 1,
-              ),
-              trailing: Text(
-                formatCurrency.format(pagamento.importo),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: ThemeConstants.primaryColor,
-                ),
-              ),
-              leading: CircleAvatar(
-                backgroundColor: ThemeConstants.primaryColor.withOpacity(0.1),
-                child: Icon(
-                  Icons.euro,
-                  color: ThemeConstants.primaryColor,
-                ),
-              ),
-              onTap: () {
-                Navigator.pushNamed(
-                  context, 
-                  AppConstants.pagamentoDetailRoute,
-                  arguments: pagamento.id,
-                ).then((_) => _loadData());
-              },
             ),
-          );
-        },
+          ),
+          // Lista pagamenti
+          ...List.generate(_pagamenti.length, (index) {
+            final pagamento = _pagamenti[index];
+            final isAttrezzatura = _isAttrezzaturaPagamento(pagamento);
+
+            return Card(
+              margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                title: Row(
+                  children: [
+                    if (isAttrezzatura)
+                      Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Tooltip(
+                          message: 'Spesa attrezzatura',
+                          child: Icon(Icons.build, size: 16, color: Colors.cyan),
+                        ),
+                      ),
+                    Expanded(
+                      child: Text(
+                        pagamento.descrizione,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Text(
+                  '${pagamento.utenteUsername} - ${formatDate.format(DateTime.parse(pagamento.data))}',
+                  maxLines: 1,
+                ),
+                trailing: Text(
+                  formatCurrency.format(pagamento.importo),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: ThemeConstants.primaryColor,
+                  ),
+                ),
+                leading: CircleAvatar(
+                  backgroundColor: isAttrezzatura
+                      ? Colors.cyan.withOpacity(0.1)
+                      : ThemeConstants.primaryColor.withOpacity(0.1),
+                  child: Icon(
+                    isAttrezzatura ? Icons.build : Icons.euro,
+                    color: isAttrezzatura ? Colors.cyan : ThemeConstants.primaryColor,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    AppConstants.pagamentoDetailRoute,
+                    arguments: pagamento.id,
+                  ).then((_) => _loadData());
+                },
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

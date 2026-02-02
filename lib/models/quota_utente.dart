@@ -21,9 +21,7 @@ class QuotaUtente {
       id: json['id'],
       utente: json['utente'],
       utenteUsername: json['utente_username'] ?? 'Sconosciuto',
-      percentuale: json['percentuale'] is int 
-          ? (json['percentuale'] as int).toDouble() 
-          : json['percentuale'],
+      percentuale: double.tryParse(json['percentuale'].toString()) ?? 0.0,
       gruppo: json['gruppo'],
       gruppoNome: json['gruppo_nome'],
     );

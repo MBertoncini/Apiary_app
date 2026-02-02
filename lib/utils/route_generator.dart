@@ -31,6 +31,12 @@ import '../screens/pagamento/pagamento_form_screen.dart';
 import '../screens/pagamento/quote_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/voice_command_screen.dart'; // Updated import - using the correct updated class
+import '../screens/attrezzatura/attrezzature_list_screen.dart';
+import '../screens/attrezzatura/attrezzatura_detail_screen.dart';
+import '../screens/attrezzatura/attrezzatura_form_screen.dart';
+import '../screens/attrezzatura/spesa_attrezzatura_form_screen.dart';
+import '../screens/attrezzatura/manutenzione_form_screen.dart';
+import '../screens/voice_entry_verification_screen.dart';
 
 class RouteGenerator {
  
@@ -98,7 +104,7 @@ class RouteGenerator {
         }
         return _errorRoute();
 
-      case '/qr_scanner':
+      case AppConstants.qrScannerRoute:
         return MaterialPageRoute(builder: (_) => MobileScannerWrapperScreen());
 
       // Routes for hive management
@@ -189,13 +195,70 @@ class RouteGenerator {
       case AppConstants.quoteRoute:
         return MaterialPageRoute(builder: (_) => QuoteScreen());
         
+      // Routes for equipment management
+      case AppConstants.attrezzatureRoute:
+        return MaterialPageRoute(builder: (_) => AttrezzatureListScreen());
+
+      case AppConstants.attrezzaturaDetailRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => AttrezzaturaDetailScreen(attrezzaturaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.attrezzaturaCreateRoute:
+        // If args is null, it's a creation, otherwise it's a modification
+        return MaterialPageRoute(
+          builder: (_) => AttrezzaturaFormScreen(attrezzaturaId: args as int?),
+        );
+
+      case AppConstants.spesaAttrezzaturaCreateRoute:
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => SpesaAttrezzaturaFormScreen(
+              attrezzaturaId: args['attrezzaturaId'],
+              attrezzaturaNome: args['attrezzaturaNome'],
+              condivisoConGruppo: args['condivisoConGruppo'] ?? false,
+              gruppoId: args['gruppoId'],
+            ),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.manutenzioneCreateRoute:
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => ManutenzioneFormScreen(
+              attrezzaturaId: args['attrezzaturaId'],
+              attrezzaturaNome: args['attrezzaturaNome'],
+              condivisoConGruppo: args['condivisoConGruppo'] ?? false,
+              gruppoId: args['gruppoId'],
+            ),
+          );
+        }
+        return _errorRoute();
+
       case AppConstants.chatRoute:
         return MaterialPageRoute(builder: (_) => ChatScreen());
         
       // Route for voice input with Wit.ai - Updated to use the new class
       case AppConstants.voiceCommandRoute:
         return MaterialPageRoute(builder: (_) => VoiceCommandScreen());
-      
+
+      // Route for voice entry verification
+      case AppConstants.voiceVerificationRoute:
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => VoiceEntryVerificationScreen(
+              batch: args['batch'],
+              onSuccess: args['onSuccess'] ?? () {},
+              onCancel: args['onCancel'] ?? () {},
+            ),
+          );
+        }
+        return _errorRoute();
+
       default:
         return _errorRoute();
     }

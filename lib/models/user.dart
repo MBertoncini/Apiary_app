@@ -41,8 +41,8 @@ class User {
       firstName: json['first_name'],
       lastName: json['last_name'],
       profileImage: json['profile_image'],
-      dateJoined: json['date_joined'] != null 
-          ? DateTime.parse(json['date_joined']) 
+      dateJoined: json['date_joined'] != null
+          ? DateTime.tryParse(json['date_joined'].toString())
           : null,
       isActive: json['is_active'] ?? true,
     );

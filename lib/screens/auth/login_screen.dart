@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -79,9 +81,32 @@ class _LoginScreenState extends State<LoginScreen> {
         // Reset form
         _usernameController.clear();
         _passwordController.clear();
-        
+
+        // Sincronizza i dati dal server dopo il login
+        // per garantire che tutte le schermate abbiano dati aggiornati
+        if (!_showDemoLogin) {
+          try {
+            final apiService = Provider.of<ApiService>(context, listen: false);
+            final storageService = Provider.of<StorageService>(context, listen: false);
+
+            // Pulisci la cache dei dati del precedente utente
+            await storageService.clearDataCache();
+
+            // Esegui la sincronizzazione completa
+            final syncData = await apiService.syncData();
+            await storageService.saveSyncData(syncData);
+            print('Post-login sync completata con successo');
+          } catch (e) {
+            // Se la sync fallisce, prosegui comunque verso la dashboard
+            // Le singole schermate caricheranno i dati autonomamente
+            print('Post-login sync fallita (non bloccante): $e');
+          }
+        }
+
         // Navigate to dashboard
-        Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
+        }
       }
     } catch (e) {
       _loginAttempts++;

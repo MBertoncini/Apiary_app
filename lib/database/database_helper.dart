@@ -3,15 +3,6 @@ import 'dart:io';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
-import '../constants/app_constants.dart';
-import '../models/apiario.dart';
-import '../models/arnia.dart';
-import '../models/controllo_arnia.dart';
-import '../models/regina.dart';
-import '../models/fioritura.dart';
-import '../models/trattamento.dart';
-import '../models/melario.dart';
-import '../models/smielatura.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();

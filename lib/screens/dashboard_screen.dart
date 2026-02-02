@@ -133,7 +133,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final apiariResponse = await apiService.get('apiari/');
       setState(() {
-        _apiari = apiariResponse['results'] ?? [];
+        if (apiariResponse is List) {
+          _apiari = apiariResponse;
+        } else if (apiariResponse is Map) {
+          _apiari = apiariResponse['results'] ?? [];
+        } else {
+          _apiari = [];
+        }
         _isLoadingApiari = false;
       });
     } catch (e) {
@@ -149,7 +155,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final trattamentiResponse = await apiService.get('trattamenti/');
       setState(() {
-        _trattamenti = trattamentiResponse['results'] ?? [];
+        if (trattamentiResponse is List) {
+          _trattamenti = trattamentiResponse;
+        } else if (trattamentiResponse is Map) {
+          _trattamenti = trattamentiResponse['results'] ?? [];
+        } else {
+          _trattamenti = [];
+        }
         _isLoadingTrattamenti = false;
       });
     } catch (e) {
@@ -165,7 +177,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final fioritureResponse = await apiService.get('fioriture/');
       setState(() {
-        _fioriture = fioritureResponse['results'] ?? [];
+        if (fioritureResponse is List) {
+          _fioriture = fioritureResponse;
+        } else if (fioritureResponse is Map) {
+          _fioriture = fioritureResponse['results'] ?? [];
+        } else {
+          _fioriture = [];
+        }
         _isLoadingFioriture = false;
       });
     } catch (e) {
@@ -204,7 +222,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final controlliResponse = await apiService.get('controlli/');
       setState(() {
-        _controlli = controlliResponse['results'] ?? [];
+        if (controlliResponse is List) {
+          _controlli = controlliResponse;
+        } else if (controlliResponse is Map) {
+          _controlli = controlliResponse['results'] ?? [];
+        } else {
+          _controlli = [];
+        }
         _isLoadingControlli = false;
       });
     } catch (e) {

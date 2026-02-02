@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../constants/app_constants.dart';
+import '../constants/api_constants.dart';
 import '../services/api_service.dart';
+import '../services/auth_token_provider.dart';
 import '../models/user.dart';
 
 // Provider per lo stato di autenticazione
@@ -10,7 +13,7 @@ final authStateProvider = StateNotifierProvider<AuthStateNotifier, AuthState>((r
   return AuthStateNotifier(ref);
 });
 
-class AuthStateNotifier extends StateNotifier<AuthState> {
+class AuthStateNotifier extends StateNotifier<AuthState> implements AuthTokenProvider {
   final Ref _ref;
   
   AuthStateNotifier(this._ref) : super(AuthState.initial()) {
@@ -55,6 +58,11 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     }
   }
   
+  @override
+  Future<String?> getToken() async {
+    return state.token;
+  }
+
   Future<void> _verifyToken() async {
     try {
       final apiService = ApiService(this);
@@ -73,7 +81,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     
     try {
       final response = await _makePostRequest(
-        '${ApiConstants.baseUrl}${ApiConstants.tokenUrl}',
+        ApiConstants.tokenUrl,
         {'username': username, 'password': password},
       );
       
@@ -132,6 +140,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     }
   }
   
+  @override
   Future<bool> refreshToken() async {
     try {
       if (state.refreshToken == null) {
@@ -139,7 +148,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       }
       
       final response = await _makePostRequest(
-        '${ApiConstants.baseUrl}${ApiConstants.tokenRefreshUrl}',
+        ApiConstants.tokenRefreshUrl,
         {'refresh': state.refreshToken},
       );
       

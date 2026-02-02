@@ -15,18 +15,24 @@ class GruppoService {
   Future<List<Gruppo>> getGruppi() async {
     try {
       final response = await _apiService.get(ApiConstants.gruppiUrl);
-      
-      if (response['results'] != null) {
-        List<Gruppo> gruppi = (response['results'] as List)
+
+      final List<dynamic> resultsList = response is List
+          ? response
+          : (response is Map && response['results'] != null
+              ? response['results']
+              : []);
+
+      if (resultsList.isNotEmpty) {
+        List<Gruppo> gruppi = resultsList
             .map((gruppoJson) => Gruppo.fromJson(gruppoJson))
             .toList();
-        
+
         // Salva i gruppi in locale
-        await _storageService.saveData('gruppi', response['results']);
-        
+        await _storageService.saveData('gruppi', resultsList);
+
         return gruppi;
       }
-      
+
       return [];
     } catch (e) {
       // Se c'è un errore, prova a recuperare i dati locali
@@ -109,6 +115,8 @@ class GruppoService {
           membri: membri,
           immagineProfilo: gruppoBase.immagineProfilo,
           apiariIds: apiariIds,
+          membriCountFromApi: membri.isNotEmpty ? membri.length : gruppoBase.membriCountFromApi,
+          apiariCountFromApi: apiariIds.isNotEmpty ? apiariIds.length : gruppoBase.apiariCountFromApi,
         );
       } catch (e, stackTrace) {
         print('=== ERRORE NELLA CREAZIONE DEL GRUPPO COMBINATO ===');
@@ -231,14 +239,16 @@ class GruppoService {
   Future<List<InvitoGruppo>> getGruppoInviti(int gruppoId) async {
     final String endpoint = '${ApiConstants.gruppiUrl}$gruppoId/inviti/';
     final response = await _apiService.get(endpoint);
-    
-    if (response['results'] != null) {
-      return (response['results'] as List)
-          .map((invitoJson) => InvitoGruppo.fromJson(invitoJson))
-          .toList();
-    }
-    
-    return [];
+
+    final List<dynamic> resultsList = response is List
+        ? response
+        : (response is Map && response['results'] != null
+            ? response['results']
+            : []);
+
+    return resultsList
+        .map((invitoJson) => InvitoGruppo.fromJson(invitoJson))
+        .toList();
   }
 
   // Annulla un invito
@@ -251,9 +261,15 @@ class GruppoService {
   Future<List<InvitoGruppo>> getInvitiRicevuti() async {
     final String endpoint = '${ApiConstants.invitiUrl}ricevuti/';
     final response = await _apiService.get(endpoint);
-    
-    if (response['results'] != null) {
-      return (response['results'] as List)
+
+    final List<dynamic> resultsList = response is List
+        ? response
+        : (response is Map && response['results'] != null
+            ? response['results']
+            : []);
+
+    if (resultsList.isNotEmpty) {
+      return resultsList
           .map((invitoJson) => InvitoGruppo.fromJson(invitoJson))
           .toList();
     }

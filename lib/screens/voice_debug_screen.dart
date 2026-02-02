@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
-import '../services/simple_record_service.dart';
-import '../services/simple_voice_input_manager.dart';
-import '../services/wit_data_processor.dart';
+import '../services/wit_speech_recognition_service.dart';
+import '../services/voice_input_manager.dart';
+import '../services/voice_data_processor.dart';
 import '../services/voice_feedback_service.dart';
 import '../constants/theme_constants.dart';
 
@@ -15,14 +15,15 @@ class VoiceDebugScreen extends StatefulWidget {
 }
 
 class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
-  SimpleRecordService? _recordService;
-  SimpleVoiceInputManager? _voiceManager;
+  WitSpeechRecognitionService? _recordService;
+  VoiceInputManager? _voiceManager;
   String _logContent = '';
   String _systemInfo = '';
   bool _isRecording = false;
   double _currentAmplitude = 0;
   bool _hasPermission = false;
   bool _canWriteToTemp = false;
+  String? _lastError;
 
   @override
   void initState() {
@@ -34,14 +35,14 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
 
   Future<void> _initServices() async {
     // Crea i servizi necessari
-    final dataProcessor = WitDataProcessor();
+    final dataProcessor = VoiceDataProcessor();
     final feedbackService = VoiceFeedbackService();
-    
+
     // Crea il servizio di registrazione
-    _recordService = SimpleRecordService();
-    
+    _recordService = WitSpeechRecognitionService();
+
     // Crea il gestore di input vocale
-    _voiceManager = SimpleVoiceInputManager(
+    _voiceManager = VoiceInputManager(
       _recordService!,
       dataProcessor,
       feedbackService: feedbackService
@@ -107,41 +108,52 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
 
   Future<void> _startRecording() async {
     if (_recordService == null) return;
-    
+
     setState(() {
+      _lastError = null;
       _logContent += 'Starting recording...\n';
     });
-    
-    final success = await _recordService!.startListening();
-    
-    setState(() {
-      _logContent += 'Recording started: $success\n';
-      if (!success && _recordService!.error != null) {
-        _logContent += 'Error: ${_recordService!.error}\n';
-      }
-    });
+
+    try {
+      final success = await _recordService!.startListening();
+      setState(() {
+        _logContent += 'Recording started: $success\n';
+        if (!success) {
+          _lastError = 'Failed to start recording';
+          _logContent += 'Error: $_lastError\n';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _lastError = e.toString();
+        _logContent += 'Error: $_lastError\n';
+      });
+    }
   }
 
   Future<void> _stopRecording() async {
     if (_recordService == null) return;
-    
+
     setState(() {
       _logContent += 'Stopping recording...\n';
     });
-    
-    await _recordService!.stopListening();
-    
-    setState(() {
-      _logContent += 'Recording stopped\n';
-      if (_recordService!.error != null) {
-        _logContent += 'Error: ${_recordService!.error}\n';
-      }
-      if (_recordService!.transcription.isNotEmpty) {
-        _logContent += 'Transcription: "${_recordService!.transcription}"\n';
-      } else {
-        _logContent += 'No transcription received\n';
-      }
-    });
+
+    try {
+      await _recordService!.stopListening();
+      setState(() {
+        _logContent += 'Recording stopped\n';
+        if (_recordService!.transcription.isNotEmpty) {
+          _logContent += 'Transcription: "${_recordService!.transcription}"\n';
+        } else {
+          _logContent += 'No transcription received\n';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _lastError = e.toString();
+        _logContent += 'Error: $_lastError\n';
+      });
+    }
   }
 
   Future<void> _checkPermission() async {
@@ -305,7 +317,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                           ],
                         ),
                       ),
-                    if (_recordService != null && _recordService!.error != null)
+                    if (_recordService != null && _lastError != null)
                       Container(
                         margin: EdgeInsets.only(top: 16),
                         padding: EdgeInsets.all(12),
@@ -326,7 +338,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              _recordService!.error!,
+                              _lastError!,
                               style: TextStyle(
                                 color: Colors.red.shade800,
                               ),

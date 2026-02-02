@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/dao/apiario_dao.dart';
 import '../models/apiario.dart';
+import '../constants/api_constants.dart';
 import '../services/api_service.dart';
 import 'auth_provider.dart';
 

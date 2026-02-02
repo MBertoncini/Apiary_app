@@ -260,33 +260,60 @@ class _QuoteScreenState extends State<QuoteScreen> {
   Future<Map<String, dynamic>?> _showAddDialog() async {
     final percentualeController = TextEditingController();
     final utenteIdController = TextEditingController();
-    
+    final formKey = GlobalKey<FormState>();
+
     return showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Aggiungi quota'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: utenteIdController,
-              decoration: InputDecoration(
-                labelText: 'ID Utente',
-                border: OutlineInputBorder(),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: utenteIdController,
+                decoration: InputDecoration(
+                  labelText: 'ID Utente',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Inserisci l\'ID utente';
+                  }
+                  final id = int.tryParse(value);
+                  if (id == null || id <= 0) {
+                    return 'ID utente non valido';
+                  }
+                  return null;
+                },
               ),
-              keyboardType: TextInputType.number,
-            ),
-            SizedBox(height: 16),
-            TextFormField(
-              controller: percentualeController,
-              decoration: InputDecoration(
-                labelText: 'Percentuale',
-                border: OutlineInputBorder(),
-                suffixText: '%',
+              SizedBox(height: 16),
+              TextFormField(
+                controller: percentualeController,
+                decoration: InputDecoration(
+                  labelText: 'Percentuale',
+                  border: OutlineInputBorder(),
+                  suffixText: '%',
+                ),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Inserisci la percentuale';
+                  }
+                  final perc = double.tryParse(value.replaceAll(',', '.'));
+                  if (perc == null) {
+                    return 'Valore non valido';
+                  }
+                  if (perc <= 0 || perc > 100) {
+                    return 'La percentuale deve essere tra 0 e 100';
+                  }
+                  return null;
+                },
               ),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -295,18 +322,13 @@ class _QuoteScreenState extends State<QuoteScreen> {
           ),
           TextButton(
             onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+
               final percentuale = double.tryParse(percentualeController.text.replaceAll(',', '.'));
               final utenteId = int.tryParse(utenteIdController.text);
-              
-              if (percentuale == null || utenteId == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Inserisci valori validi')),
-                );
-                return;
-              }
-              
+
               Navigator.pop(
-                context, 
+                context,
                 {
                   'percentuale': percentuale,
                   'utente': utenteId,

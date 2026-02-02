@@ -32,10 +32,13 @@ class ChatService with ChangeNotifier {
   bool get isProcessingChart => _isProcessingChart;
   String? get error => _error;
   
-  // Chiave API per Gemini - da sostituire con la tua effettiva
-  // In produzione, questa dovrebbe essere immagazzinata in modo sicuro
-  static const String _apiKey = "AIzaSyCgoAfYh-MjTXm9_RzHEKhlfWAxXzUFNGs";
-  static const String _apiUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
+  // ATTENZIONE: API key hardcoded - in produzione spostare in variabile d'ambiente
+  // o file .env non committato. Usare: String.fromEnvironment('GEMINI_API_KEY')
+  static const String _apiKey = String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: 'AIzaSyCbUxxKCI1f5aB3kcFA6jBFgAp3ZN6FP-M',
+  );
+  static const String _apiUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
   
   // L'ID utente è usato per tenere traccia della conversazione
   final String _userId;
@@ -150,7 +153,18 @@ class ChatService with ChangeNotifier {
     
     if (response.statusCode == 200) {
       final jsonResponse = jsonDecode(response.body);
-      var botResponse = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
+
+      // Accesso sicuro alla risposta Gemini con null-checks
+      final candidates = jsonResponse['candidates'] as List<dynamic>?;
+      if (candidates == null || candidates.isEmpty) {
+        throw Exception('Risposta API Gemini vuota o formato non valido');
+      }
+      final content = candidates[0]['content'] as Map<String, dynamic>?;
+      final parts = content?['parts'] as List<dynamic>?;
+      if (parts == null || parts.isEmpty || parts[0]['text'] == null) {
+        throw Exception('Risposta API Gemini senza testo');
+      }
+      var botResponse = parts[0]['text'] as String;
       
       // MODIFICA QUI: Cambiamo la regex per accettare qualsiasi carattere tranne ']' nel terzo parametro
       final regex = RegExp(r'\[GENERA_GRAFICO:(\w+):(\d+)(?::([^\]]+))?\]');
