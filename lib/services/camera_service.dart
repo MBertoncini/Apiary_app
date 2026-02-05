@@ -85,7 +85,7 @@ class CameraService {
       
       return compressedFile != null ? File(compressedFile.path) : null;
     } catch (e) {
-      print('Error compressing image: $e');
+      debugPrint('Error compressing image: $e');
       return file; // Ritorna l'immagine originale in caso di errore
     }
   }
@@ -105,7 +105,7 @@ class CameraService {
       
       return await tempFile.copy(targetPath);
     } catch (e) {
-      print('Error saving image permanently: $e');
+      debugPrint('Error saving image permanently: $e');
       return null;
     }
   }

@@ -89,7 +89,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   // Solo per debug
-  print('BACKGROUND SERVICE: Started');
+  debugPrint('BACKGROUND SERVICE: Started');
   
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
@@ -231,7 +231,7 @@ Future<void> _performSync(ServiceInstance service) async {
       body: 'Dati aggiornati correttamente',
     );
   } catch (e) {
-    print('BACKGROUND SERVICE: Sync error: $e');
+    debugPrint('BACKGROUND SERVICE: Sync error: $e');
 
     // Notifica errore
     await _showNotification(

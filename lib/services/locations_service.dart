@@ -1,6 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 class LocationService {
   StreamSubscription<Position>? _positionStreamSubscription;
@@ -45,7 +46,7 @@ class LocationService {
         timeLimit: Duration(seconds: 15),
       );
     } catch (e) {
-      print('Error getting current position: $e');
+      debugPrint('Error getting current position: $e');
       return null;
     }
   }
@@ -68,7 +69,7 @@ class LocationService {
       
       return true;
     } catch (e) {
-      print('Error starting location tracking: $e');
+      debugPrint('Error starting location tracking: $e');
       return false;
     }
   }

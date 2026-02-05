@@ -19,7 +19,7 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
   late TabController _tabController;
   late Future<List<TrattamentoSanitario>> _trattamentiFuture;
   late ApiService _apiService;
-  
+
   @override
   void initState() {
     super.initState();
@@ -28,19 +28,19 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
     _apiService = ApiService(authService);
     _refreshTrattamenti();
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _refreshTrattamenti() async {
     setState(() {
       _trattamentiFuture = _loadTrattamenti();
     });
   }
-  
+
   Future<List<TrattamentoSanitario>> _loadTrattamenti() async {
     try {
       final response = await _apiService.get(ApiConstants.trattamentiUrl);
@@ -51,11 +51,11 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
       }
       return [];
     } catch (e) {
-      print('Error loading trattamenti: $e');
+      debugPrint('Error loading trattamenti: $e');
       throw e;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,7 +95,7 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
                     'Nessun trattamento sanitario trovato',
                     style: TextStyle(fontSize: 18),
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   ElevatedButton.icon(
                     icon: Icon(Icons.add),
                     label: Text('Nuovo trattamento'),
@@ -114,16 +114,16 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
             final trattamentiCompletati = trattamenti
                 .where((t) => t.stato == 'completato')
                 .toList();
-                
+
             return TabBarView(
               controller: _tabController,
               children: [
                 // Tab Trattamenti Attivi
                 _buildTrattamentiList(trattamentiAttivi, 'Nessun trattamento attivo'),
-                
+
                 // Tab Trattamenti Completati
                 _buildTrattamentiList(trattamentiCompletati, 'Nessun trattamento completato'),
-                
+
                 // Tab Tutti i Trattamenti
                 _buildTrattamentiList(trattamenti, 'Nessun trattamento trovato'),
               ],
@@ -139,7 +139,7 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
       ),
     );
   }
-  
+
   Widget _buildTrattamentiList(List<TrattamentoSanitario> trattamenti, String emptyMessage) {
     if (trattamenti.isEmpty) {
       return Center(
@@ -149,7 +149,7 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
         ),
       );
     }
-    
+
     return RefreshIndicator(
       onRefresh: _refreshTrattamenti,
       child: ListView.builder(
@@ -172,13 +172,13 @@ class TrattamentoListItem extends StatelessWidget {
   final VoidCallback onStatusChanged;
   final ApiService apiService;
   final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
-  
+
   TrattamentoListItem({
     required this.trattamento,
     required this.onStatusChanged,
     required this.apiService,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -198,10 +198,10 @@ class TrattamentoListItem extends StatelessWidget {
                   Text('Fine: ${trattamento.dataFine}'),
                 if (trattamento.dataFineSospensione != null)
                   Text('Fine sospensione: ${trattamento.dataFineSospensione}'),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 if (trattamento.note != null && trattamento.note!.isNotEmpty)
                   Text('Note: ${trattamento.note}'),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 _buildActionButtons(context),
               ],
             ),
@@ -210,7 +210,7 @@ class TrattamentoListItem extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _getStatusIcon() {
     // Icona variabile in base allo stato
     switch (trattamento.stato) {
@@ -226,7 +226,7 @@ class TrattamentoListItem extends StatelessWidget {
         return Icon(Icons.help);
     }
   }
-  
+
   Widget _buildActionButtons(BuildContext context) {
     // Pulsanti variabili in base allo stato
     switch (trattamento.stato) {
@@ -257,6 +257,7 @@ class TrattamentoListItem extends StatelessWidget {
               child: Text('Annulla'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
               ),
               onPressed: () async {
                 try {
@@ -301,6 +302,7 @@ class TrattamentoListItem extends StatelessWidget {
               child: Text('Annulla'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
               ),
               onPressed: () async {
                 try {

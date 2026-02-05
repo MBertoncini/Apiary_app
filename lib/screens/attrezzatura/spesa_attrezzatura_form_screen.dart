@@ -140,7 +140,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                     subtitle: Text(widget.attrezzaturaNome!),
                   ),
                 ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               if (_errorMessage != null)
                 Padding(
@@ -172,7 +172,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   setState(() => _selectedTipo = value!);
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Descrizione
               TextFormField(
@@ -191,7 +191,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                 },
                 maxLines: 2,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Importo
               TextFormField(
@@ -212,7 +212,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   return null;
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Data
               InkWell(
@@ -226,7 +226,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   child: Text(formatDate.format(_selectedDate)),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Fornitore
               TextFormField(
@@ -238,7 +238,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   hintText: 'Es: Nome fornitore',
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Numero Fattura
               TextFormField(
@@ -250,7 +250,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   hintText: 'Es: FT-2024-001',
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Note
               TextFormField(
@@ -262,7 +262,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                 ),
                 maxLines: 2,
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Info pagamento automatico
               Card(
@@ -307,7 +307,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   ),
                 ),
 
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Pulsante salva
               SizedBox(

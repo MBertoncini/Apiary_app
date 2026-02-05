@@ -72,7 +72,7 @@ class SensorService {
       _lightSensor = Light();
       _isLightSensorAvailable = true;
     } catch (e) {
-      print('Light sensor not available: $e');
+      debugPrint('Light sensor not available: $e');
       _isLightSensorAvailable = false;
     }
   }
@@ -111,7 +111,7 @@ class SensorService {
       _isMonitoring = true;
       return true;
     } catch (e) {
-      print('Error starting sensor monitoring: $e');
+      debugPrint('Error starting sensor monitoring: $e');
       _stopAllSubscriptions();
       _isMonitoring = false;
       return false;
@@ -179,7 +179,7 @@ class SensorService {
       
       return weather;
     } catch (e) {
-      print('Error fetching weather data: $e');
+      debugPrint('Error fetching weather data: $e');
       return null;
     }
   }
@@ -192,7 +192,7 @@ class SensorService {
         longitude,
       );
     } catch (e) {
-      print('Error fetching forecast: $e');
+      debugPrint('Error fetching forecast: $e');
       return [];
     }
   }

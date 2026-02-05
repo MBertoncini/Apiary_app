@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
-import '../services/storage_service.dart';
 import '../services/jokes_service.dart';
 import '../services/chat_service.dart';
 import '../services/mcp_service.dart';
@@ -14,7 +14,6 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../screens/mobile_scanner_wrapper_screen.dart';
 import '../screens/chat_screen.dart';
 import 'package:intl/intl.dart';
-import '../widgets/voice_input_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -43,6 +42,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _weatherData;
   Map<String, List<dynamic>> _calendarEvents = {};
   
+  // Cache per alerts (evita ricalcolo ad ogni build)
+  List<Map<String, dynamic>> _cachedAlerts = [];
+
   // Variabili per ricerca
   bool _isSearching = false;
   String _searchQuery = '';
@@ -107,136 +109,122 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _isLoadingApiari = true;
       _isLoadingTrattamenti = true;
       _isLoadingFioriture = true;
+      _isLoadingControlli = true;
     });
-    
+
     final apiService = Provider.of<ApiService>(context, listen: false);
-    
-    // Carica i vari dati in parallelo
+
+    // Carica i vari dati in parallelo (nessun setState individuale)
     await Future.wait([
       _loadApiariData(apiService),
       _loadTrattamentiData(apiService),
       _loadFioritureData(apiService),
       _loadControlliData(apiService),
     ]);
-    
-    // Aggiorna l'orario di sincronizzazione
-    setState(() {
-      _lastSyncTime = DateTime.now();
-    });
-    
-    // Prepara i dati per il calendario
+
+    // Prepara dati derivati
     _prepareCalendarEvents();
-    await _loadWeatherData();
+    _cachedAlerts = _generateAlerts();
+    _lastSyncTime = DateTime.now();
+
+    // Singolo setState per tutti i dati caricati -> un solo rebuild
+    if (mounted) setState(() {});
+
+    _cachedAlerts = _generateAlerts();
+
+    // Singolo setState per alerts aggiornati
+    if (mounted) setState(() {});
   }
+
+  // --- Metodi di caricamento dati ---
+  // Non chiamano setState individualmente; lo stato viene aggiornato in batch da _loadData()
 
   Future<void> _loadApiariData(ApiService apiService) async {
     try {
       final apiariResponse = await apiService.get('apiari/');
-      setState(() {
-        if (apiariResponse is List) {
-          _apiari = apiariResponse;
-        } else if (apiariResponse is Map) {
-          _apiari = apiariResponse['results'] ?? [];
-        } else {
-          _apiari = [];
-        }
-        _isLoadingApiari = false;
-      });
+      if (apiariResponse is List) {
+        _apiari = apiariResponse;
+      } else if (apiariResponse is Map) {
+        _apiari = apiariResponse['results'] ?? [];
+      } else {
+        _apiari = [];
+      }
+      _isLoadingApiari = false;
     } catch (e) {
-      print('Error fetching apiari: $e');
-      setState(() {
-        _apiariError = e.toString();
-        _isLoadingApiari = false;
-      });
+      debugPrint('Error fetching apiari: $e');
+      _apiariError = e.toString();
+      _isLoadingApiari = false;
     }
   }
 
   Future<void> _loadTrattamentiData(ApiService apiService) async {
     try {
       final trattamentiResponse = await apiService.get('trattamenti/');
-      setState(() {
-        if (trattamentiResponse is List) {
-          _trattamenti = trattamentiResponse;
-        } else if (trattamentiResponse is Map) {
-          _trattamenti = trattamentiResponse['results'] ?? [];
-        } else {
-          _trattamenti = [];
-        }
-        _isLoadingTrattamenti = false;
-      });
+      if (trattamentiResponse is List) {
+        _trattamenti = trattamentiResponse;
+      } else if (trattamentiResponse is Map) {
+        _trattamenti = trattamentiResponse['results'] ?? [];
+      } else {
+        _trattamenti = [];
+      }
+      _isLoadingTrattamenti = false;
     } catch (e) {
-      print('Error fetching trattamenti: $e');
-      setState(() {
-        _trattamentiError = e.toString();
-        _isLoadingTrattamenti = false;
-      });
+      debugPrint('Error fetching trattamenti: $e');
+      _trattamentiError = e.toString();
+      _isLoadingTrattamenti = false;
     }
   }
 
   Future<void> _loadFioritureData(ApiService apiService) async {
     try {
       final fioritureResponse = await apiService.get('fioriture/');
-      setState(() {
-        if (fioritureResponse is List) {
-          _fioriture = fioritureResponse;
-        } else if (fioritureResponse is Map) {
-          _fioriture = fioritureResponse['results'] ?? [];
-        } else {
-          _fioriture = [];
-        }
-        _isLoadingFioriture = false;
-      });
+      if (fioritureResponse is List) {
+        _fioriture = fioritureResponse;
+      } else if (fioritureResponse is Map) {
+        _fioriture = fioritureResponse['results'] ?? [];
+      } else {
+        _fioriture = [];
+      }
+      _isLoadingFioriture = false;
     } catch (e) {
-      print('Error fetching fioriture: $e');
-      setState(() {
-        _fioritureError = e.toString();
-        _isLoadingFioriture = false;
-      });
+      debugPrint('Error fetching fioriture: $e');
+      _fioritureError = e.toString();
+      _isLoadingFioriture = false;
     }
   }
-  
+
   Future<void> _loadWeatherData() async {
     if (_apiari.isEmpty) return;
-    
+
     try {
-      // Utilizza la posizione del primo apiario
       var apiario = _apiari[0];
       if (apiario['latitudine'] != null && apiario['longitudine'] != null) {
         final apiService = Provider.of<ApiService>(context, listen: false);
-        
-        // Endpoint meteo
         final weatherResponse = await apiService.get(
           'meteo/?lat=${apiario['latitudine']}&lon=${apiario['longitudine']}',
         );
-        
-        setState(() {
-          _weatherData = weatherResponse;
-        });
+        _weatherData = weatherResponse;
       }
     } catch (e) {
-      print('Error fetching weather data: $e');
+      debugPrint('Error fetching weather data: $e');
     }
   }
-  
+
   Future<void> _loadControlliData(ApiService apiService) async {
     try {
       final controlliResponse = await apiService.get('controlli/');
-      setState(() {
-        if (controlliResponse is List) {
-          _controlli = controlliResponse;
-        } else if (controlliResponse is Map) {
-          _controlli = controlliResponse['results'] ?? [];
-        } else {
-          _controlli = [];
-        }
-        _isLoadingControlli = false;
-      });
+      if (controlliResponse is List) {
+        _controlli = controlliResponse;
+      } else if (controlliResponse is Map) {
+        _controlli = controlliResponse['results'] ?? [];
+      } else {
+        _controlli = [];
+      }
+      _isLoadingControlli = false;
     } catch (e) {
-      print('Error fetching controlli: $e');
-      setState(() {
-        _controlliError = e.toString();
-        _isLoadingControlli = false;
-      });
+      debugPrint('Error fetching controlli: $e');
+      _controlliError = e.toString();
+      _isLoadingControlli = false;
     }
   }
 
@@ -431,7 +419,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       );
     } catch (e) {
-      print('Errore nel mostrare la freddura: $e');
+      debugPrint('Errore nel mostrare la freddura: $e');
     }
   }
   
@@ -628,7 +616,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   
                   // View selection row
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -673,7 +661,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   
                   // Legend
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 16,
                     children: [
@@ -707,7 +695,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   ...selectedDayEvents.map((event) => _buildCalendarEventItem(event)).toList(),
                 ],
               ),
@@ -816,7 +804,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       if (events.isNotEmpty)
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                       if (events.isNotEmpty)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -886,7 +874,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: ThemeConstants.textSecondaryColor,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     date.day.toString(),
                     style: TextStyle(
@@ -894,7 +882,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   if (events.isNotEmpty)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1053,7 +1041,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     weather['condition'] ?? '',
                     style: TextStyle(
@@ -1073,7 +1061,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   'Umidità: ${weather['humidity']}%',
                   style: TextStyle(
@@ -1113,32 +1101,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
     
-    // Controlla condizioni meteo avverse
-    if (_weatherData != null) {
-      final condition = _weatherData!['condition']?.toLowerCase() ?? '';
-      final temperature = _weatherData!['temperature'] as double? ?? 0;
-      
-      if (condition.contains('temporale') || condition.contains('pioggia forte')) {
-        alerts.add({
-          'type': 'danger',
-          'title': 'Allerta meteo',
-          'message': 'Previste condizioni meteorologiche avverse nelle prossime ore. Verifica lo stato degli apiari.',
-          'icon': Icons.thunderstorm,
-          'color': Colors.red,
-          'action': null,
-        });
-      } else if (temperature > 35) {
-        alerts.add({
-          'type': 'warning',
-          'title': 'Temperature elevate',
-          'message': 'Le temperature elevate possono mettere a rischio le api. Considera l\'ombreggiamento degli alveari.',
-          'icon': Icons.wb_sunny,
-          'color': Colors.orange,
-          'action': null,
-        });
-      }
-    }
-    
     // Controlla se ci sono apiari senza visite recenti
     for (var apiario in _apiari) {
       if (apiario['ultima_visita'] != null) {
@@ -1158,22 +1120,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
     
-    // Aggiungi suggerimenti sulla produzione 
-    alerts.add({
-      'type': 'success',
-      'title': 'Ottima produzione!',
-      'message': 'La produzione media di miele è aumentata del 15% rispetto allo stesso periodo dello scorso anno.',
-      'icon': Icons.trending_up,
-      'color': Colors.green,
-      'action': null,
-    });
-    
     return alerts;
   }
 
   Widget _buildAlertsWidget() {
-    final alerts = _generateAlerts();
-    
+    final alerts = _cachedAlerts;
+
     if (alerts.isEmpty) {
       return SizedBox.shrink();
     }
@@ -1188,7 +1140,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: ThemeConstants.subheadingStyle,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Container(
           height: 160,
           child: ListView.builder(
@@ -1239,7 +1191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Expanded(
                             child: Text(
                               alert['message'],
@@ -1252,7 +1204,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           if (alert['action'] != null) ...[
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Align(
                               alignment: Alignment.centerRight,
                               child: Text(
@@ -1307,7 +1259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 apiario['posizione'] ?? 'Posizione non specificata',
                 style: TextStyle(
@@ -1370,7 +1322,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       )
     );
     
-    children.add(SizedBox(height: 8));
+    children.add(const SizedBox(height: 8));
     
     children.add(
       Row(
@@ -1388,7 +1340,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       )
     );
     
-    children.add(SizedBox(height: 4));
+    children.add(const SizedBox(height: 4));
     
     children.add(
       Row(
@@ -1419,7 +1371,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Limita il progresso a 0.0-1.0
       progress = progress.clamp(0.0, 1.0);
       
-      children.add(SizedBox(height: 8));
+      children.add(const SizedBox(height: 8));
       children.add(
         LinearProgressIndicator(
           value: progress,
@@ -1484,7 +1436,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             if (fioritura['apiario_nome'] != null)
               Row(
                 children: [
@@ -1499,7 +1451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Row(
               children: [
                 Icon(Icons.calendar_today, size: 16, color: ThemeConstants.textSecondaryColor),
@@ -1531,7 +1483,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               size: 64,
               color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Nessun risultato trovato per "$_searchQuery"',
               style: TextStyle(
@@ -1560,7 +1512,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: ThemeConstants.subheadingStyle,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -1570,7 +1522,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
           ],
           
           // Risultati della ricerca: Trattamenti
@@ -1582,7 +1534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: ThemeConstants.subheadingStyle,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -1592,7 +1544,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
           ],
           
           // Risultati della ricerca: Fioriture
@@ -1604,7 +1556,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: ThemeConstants.subheadingStyle,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -1625,7 +1577,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
     
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          SystemNavigator.pop(); // Esce dall'app
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: _isSearching ? null : Text('Dashboard'),
         actions: [
@@ -1634,22 +1593,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? Container(
                 width: 240, // Aumentato per dare più spazio
                 margin: EdgeInsets.only(right: 16.0, left: 16.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Cerca...',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.white70),
-                    prefixIcon: Icon(Icons.search, color: Colors.white70),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    inputDecorationTheme: const InputDecorationTheme(
+                      filled: false,
+                      border: InputBorder.none,
+                    ),
                   ),
-                  style: TextStyle(color: Colors.white), // Testo bianco solo su AppBar scura
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                      _performSearch(); // Nuova funzione per eseguire la ricerca
-                    });
-                  },
-                  autofocus: true,
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Cerca...',
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      hintStyle: TextStyle(color: Colors.white70),
+                      prefixIcon: Icon(Icons.search, color: Colors.white70),
+                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                    cursorColor: Colors.white,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                        _performSearch();
+                      });
+                    },
+                    autofocus: true,
+                  ),
                 ),
               )
             : IconButton(
@@ -1695,7 +1668,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   'Benvenuto, ${user?.fullName ?? user?.username ?? "Utente"}',
                                   style: ThemeConstants.headingStyle,
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Ultima sincronizzazione: ${_formatLastSync()}',
                                   style: TextStyle(
@@ -1713,19 +1686,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 16),
-                    
-                    // Meteo
-                    if (_weatherData != null)
-                      _buildWeatherCard(),
-                    
-                    // Avvisi e suggerimenti
-                    _buildAlertsWidget(),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Calendario attività
                     _buildCalendar(),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     
                     // Sezione Apiari
                     Padding(
@@ -1746,7 +1711,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           
                           if (_isLoadingApiari)
                             Container(
@@ -1790,14 +1755,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       size: 48,
                                       color: ThemeConstants.textSecondaryColor,
                                     ),
-                                    SizedBox(height: 16),
+                                    const SizedBox(height: 16),
                                     Text(
                                       'Nessun apiario disponibile',
                                       style: TextStyle(
                                         color: ThemeConstants.textSecondaryColor,
                                       ),
                                     ),
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
                                     ElevatedButton(
                                       onPressed: _navigateToApiarioCreate,
                                       child: Text('Crea nuovo apiario'),
@@ -1816,7 +1781,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     
                     // Sezione Trattamenti
                     Padding(
@@ -1839,7 +1804,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           
                           if (_isLoadingTrattamenti)
                             Container(
@@ -1883,7 +1848,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       size: 48,
                                       color: ThemeConstants.textSecondaryColor,
                                     ),
-                                    SizedBox(height: 16),
+                                    const SizedBox(height: 16),
                                     Text(
                                       'Nessun trattamento attivo',
                                       style: TextStyle(
@@ -1905,7 +1870,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     
                     // Sezione Fioriture
                     Padding(
@@ -1928,7 +1893,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           
                           if (_isLoadingFioriture)
                             Container(
@@ -1972,7 +1937,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       size: 48,
                                       color: ThemeConstants.textSecondaryColor,
                                     ),
-                                    SizedBox(height: 16),
+                                    const SizedBox(height: 16),
                                     Text(
                                       'Nessuna fioritura attiva',
                                       style: TextStyle(
@@ -1994,7 +1959,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     
-                    SizedBox(height: 32),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -2063,6 +2028,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
+    ),
     );
   }
 }

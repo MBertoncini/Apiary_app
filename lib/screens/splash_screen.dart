@@ -21,59 +21,59 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Inizializza le animazioni
     _controller = AnimationController(
       vsync: this,
       duration: Duration(seconds: 2),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
-    
+
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Interval(0.0, 0.5, curve: Curves.easeOutBack),
       ),
     );
-    
+
     _controller.forward();
     _checkAuthentication();
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   Future<void> _checkAuthentication() async {
     // Attendi che inizializzi il provider
     await Future.delayed(Duration(milliseconds: 100));
-    
+
     final authService = Provider.of<AuthService>(context, listen: false);
     final storageService = Provider.of<StorageService>(context, listen: false);
-    
+
     // Attendi il completamento della verifica token
     while (authService.isLoading) {
       await Future.delayed(Duration(milliseconds: 100));
     }
-    
+
     // Mostra splash per almeno 3 secondi (più lungo per apprezzare l'animazione)
     await Future.delayed(Duration(seconds: 3));
-    
+
     // Verifica se l'utente ha già accettato il disclaimer
     final hasAcceptedDisclaimer = await storageService.hasAcceptedDisclaimer();
-    
+
     if (!hasAcceptedDisclaimer) {
       // Mostra il disclaimer
       Navigator.of(context).pushReplacement(
@@ -85,29 +85,29 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       );
       return;
     }
-    
+
     // Procedi con il flusso normale
     if (authService.isAuthenticated) {
       // Utente autenticato, carica dati iniziali
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
-        
+
         // Ottieni l'ultimo timestamp di sync
         final lastSync = await storageService.getLastSyncTimestamp();
-        
+
         // Sincronizza dati
         final syncData = await apiService.syncData(lastSync: lastSync);
         await storageService.saveSyncData(syncData);
       } catch (e) {
-        print('Error during initial sync: $e');
+        debugPrint('Error during initial sync: $e');
       }
-      
+
       Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
     } else {
       Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,7 +152,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         beehiveCount: 5,
                         color: ThemeConstants.primaryColor,
                       ),
-                      
+
                       // Piccole api che volano attorno
                       Positioned(
                         top: 20,
@@ -172,8 +172,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     ],
                   ),
                 ),
-                SizedBox(height: 32),
-                
+                const SizedBox(height: 32),
+
                 // Titolo in stile scritto a mano
                 Text(
                   'Apiary',
@@ -190,9 +190,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     ],
                   ),
                 ),
-                
-                SizedBox(height: 16),
-                
+
+                const SizedBox(height: 16),
+
                 // Sottotitolo
                 Text(
                   'Gestisci i tuoi apiari ovunque',
@@ -201,9 +201,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     color: ThemeConstants.textSecondaryColor,
                   ),
                 ),
-                
+
                 SizedBox(height: 48),
-                
+
                 // Personalizza l'indicatore di caricamento
                 Container(
                   width: 50,
@@ -220,7 +220,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
   }
-  
+
   // Crea un'animazione di ape volante
   Widget _buildFlyingBee({required double size, required int delay}) {
     return TweenAnimationBuilder(
@@ -252,36 +252,36 @@ class SimpleBee extends CustomPainter {
       ..color = ThemeConstants.secondaryColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = size.width * 0.1;
-    
+
     final fillPaint = Paint()
       ..color = ThemeConstants.primaryColor
       ..style = PaintingStyle.fill;
-    
+
     // Corpo
     canvas.drawCircle(
       Offset(size.width * 0.5, size.height * 0.5),
       size.width * 0.4,
       fillPaint,
     );
-    
+
     // Strisce
     canvas.drawLine(
       Offset(size.width * 0.4, size.height * 0.4),
       Offset(size.width * 0.6, size.height * 0.4),
       paint,
     );
-    
+
     canvas.drawLine(
       Offset(size.width * 0.4, size.height * 0.6),
       Offset(size.width * 0.6, size.height * 0.6),
       paint,
     );
-    
+
     // Ali
     final wingPaint = Paint()
       ..color = Colors.white.withOpacity(0.8)
       ..style = PaintingStyle.fill;
-    
+
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(size.width * 0.4, size.height * 0.3),
@@ -290,7 +290,7 @@ class SimpleBee extends CustomPainter {
       ),
       wingPaint,
     );
-    
+
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(size.width * 0.6, size.height * 0.3),
@@ -300,7 +300,7 @@ class SimpleBee extends CustomPainter {
       wingPaint,
     );
   }
-  
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

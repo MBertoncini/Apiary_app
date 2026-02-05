@@ -1,5 +1,6 @@
 // File: lib/services/api_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import 'auth_token_provider.dart';
@@ -73,7 +74,6 @@ class ApiService {
     
     // Costruisci l'URL completo
     final url = baseUrl + endpoint;
-    print('DEBUG - Built URL: $url'); // Per debug
     return url;
   }
   
@@ -109,8 +109,6 @@ class ApiService {
     final uri = Uri.parse(_buildUrl(endpoint));
     final headers = await _headers;
     
-    print('GET request to: $uri'); // Per debug
-    
     final response = await http.get(
       uri,
       headers: headers,
@@ -122,9 +120,6 @@ class ApiService {
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     final uri = Uri.parse(_buildUrl(endpoint));
     final headers = await _headers;
-    
-    print('POST request to: $uri'); // Per debug
-    print('POST data: ${json.encode(data)}'); // Per debug
     
     final response = await http.post(
       uri,
@@ -139,8 +134,6 @@ class ApiService {
     final uri = Uri.parse(_buildUrl(endpoint));
     final headers = await _headers;
     
-    print('PUT request to: $uri'); // Per debug
-    
     final response = await http.put(
       uri,
       headers: headers,
@@ -153,8 +146,6 @@ class ApiService {
   Future<dynamic> delete(String endpoint) async {
     final uri = Uri.parse(_buildUrl(endpoint));
     final headers = await _headers;
-    
-    print('DELETE request to: $uri'); // Per debug
     
     final response = await http.delete(
       uri,
@@ -181,7 +172,7 @@ class ApiService {
           }
         }
       } catch (e) {
-        print('Error formatting lastSync timestamp: $e');
+        debugPrint('Error formatting lastSync timestamp: $e');
       }
       
       // Aggiungi il parametro di query all'URL
@@ -192,7 +183,6 @@ class ApiService {
       }
     }
     
-    print('Sync URL: $endpoint'); // Per debug
     final response = await get(endpoint);
     return response;
   }
@@ -335,10 +325,12 @@ class ApiService {
   
   // Metodo di debug per verificare la costruzione degli URL
   void printDebugInfo() {
-    print('API Constants Debug Info:');
-    print('baseUrl: ${ApiConstants.baseUrl}');
-    print('apiPrefix: ${ApiConstants.apiPrefix}');
-    print('Esempio URL costruito: ${_buildUrl("inviti/ricevuti/")}');
-    print('Esempio URL con leading slash: ${_buildUrl("/inviti/ricevuti/")}');
+    if (kDebugMode) {
+      debugPrint('API Constants Debug Info:');
+      debugPrint('baseUrl: ${ApiConstants.baseUrl}');
+      debugPrint('apiPrefix: ${ApiConstants.apiPrefix}');
+      debugPrint('Esempio URL costruito: ${_buildUrl("inviti/ricevuti/")}');
+      debugPrint('Esempio URL con leading slash: ${_buildUrl("/inviti/ricevuti/")}');
+    }
   }
 }

@@ -14,116 +14,103 @@ class ApiarioListScreen extends StatefulWidget {
 
 class _ApiarioListScreenState extends State<ApiarioListScreen> {
   bool _isLoading = false;
-  List<dynamic> _apiari = [];
+  List<dynamic> _allApiari = [];  // Dati completi (non filtrati)
   String _searchQuery = '';
-  late ApiService _apiService;
-  
+
+  /// Getter che filtra e ordina in modo efficiente senza ricreare la lista se la query è vuota
+  List<dynamic> get _apiari {
+    if (_searchQuery.isEmpty) return _allApiari;
+    final query = _searchQuery.toLowerCase();
+    return _allApiari.where((apiario) =>
+      apiario['nome'].toLowerCase().contains(query) ||
+      (apiario['posizione'] != null && apiario['posizione'].toLowerCase().contains(query))
+    ).toList();
+  }
+
   @override
   void initState() {
     super.initState();
-    _apiService = Provider.of<ApiService>(context, listen: false);
     _loadApiari();
   }
-  
+
   Future<void> _loadApiari() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       final storageService = Provider.of<StorageService>(context, listen: false);
       final apiService = Provider.of<ApiService>(context, listen: false);
-      
+
       // Prima tenta di caricare i dati dall'API
       try {
-        print('Fetching apiari from API...');
         final response = await apiService.get(ApiConstants.apiariUrl);
-        print('API response for apiari: $response');
-        
+
         List<dynamic> apiariFromApi = [];
-        
+
         // Gestione robusta per diversi formati di risposta
         if (response is List) {
           apiariFromApi = response;
-          print('Parsed ${apiariFromApi.length} apiari from API (direct array)');
         } else if (response is Map) {
-          // Django REST Framework tipicamente usa questo formato di paginazione
           if (response.containsKey('results') && response['results'] is List) {
             apiariFromApi = response['results'];
-            print('Parsed ${apiariFromApi.length} apiari from API (DRF pagination format)');
-          } 
-          // Potrebbe essere un oggetto che contiene un array in una proprietà
-          else {
-            bool found = false;
+          } else {
             for (var key in ['apiari', 'data', 'items']) {
               if (response.containsKey(key) && response[key] is List) {
                 apiariFromApi = response[key];
-                print('Parsed ${apiariFromApi.length} apiari from API (nested in "$key" property)');
-                found = true;
                 break;
               }
             }
-            
-            if (!found && response.containsKey('id')) {
-              // Potrebbe essere un singolo apiario
+            if (apiariFromApi.isEmpty && response.containsKey('id')) {
               apiariFromApi = [response];
-              print('Parsed a single apiario from API response');
             }
           }
         }
-        
+
         // Salva i dati aggiornati nello storage locale
         await storageService.saveData('apiari', apiariFromApi);
-        
-        // Usa i dati dall'API
-        _apiari = apiariFromApi;
-        
+
+        // Ordina una sola volta
+        apiariFromApi.sort((a, b) => a['nome'].compareTo(b['nome']));
+        _allApiari = apiariFromApi;
+
       } catch (e) {
-        print('Error fetching from API, falling back to local storage: $e');
-        
-        // Fallback: carica da storage locale se l'API fallisce
-        _apiari = await storageService.getStoredData('apiari');
-        print('Loaded ${_apiari.length} apiari from local storage');
+        debugPrint('Error fetching from API, falling back to local storage: $e');
+        _allApiari = await storageService.getStoredData('apiari');
+        _allApiari.sort((a, b) => a['nome'].compareTo(b['nome']));
       }
-      
-      // Filtra in base alla ricerca
-      if (_searchQuery.isNotEmpty) {
-        _apiari = _apiari.where((apiario) => 
-          apiario['nome'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (apiario['posizione'] != null && apiario['posizione'].toLowerCase().contains(_searchQuery.toLowerCase()))
-        ).toList();
-      }
-      
-      // Ordina per nome
-      _apiari.sort((a, b) => a['nome'].compareTo(b['nome']));
     } catch (e) {
-      print('Error loading apiari: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante il caricamento degli apiari')),
-      );
+      debugPrint('Error loading apiari: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Errore durante il caricamento degli apiari')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-  
+
   void _navigateToApiarioDetail(int apiarioId) {
     Navigator.of(context).pushNamed(
       AppConstants.apiarioDetailRoute,
       arguments: apiarioId,
     );
   }
-  
+
   void _navigateToApiarioCreate() {
     Navigator.of(context).pushNamed(AppConstants.apiarioCreateRoute);
   }
-  
+
+  /// Filtra localmente senza ricaricare dall'API
   void _searchApiari(String query) {
     setState(() {
       _searchQuery = query;
     });
-    _loadApiari();
   }
   
   Widget _buildApiarioCard(dynamic apiario) {
@@ -156,7 +143,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Icon(
@@ -164,7 +151,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                     size: 16,
                     color: ThemeConstants.textSecondaryColor,
                   ),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       apiario['posizione'] ?? 'Posizione non specificata',
@@ -177,7 +164,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   if (hasCoordinates)
@@ -195,7 +182,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                             size: 12,
                             color: ThemeConstants.secondaryColor,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
                             'Mappa',
                             style: TextStyle(
@@ -222,7 +209,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                             size: 12,
                             color: Colors.orange,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
                             'Meteo',
                             style: TextStyle(
@@ -249,7 +236,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                             size: 12,
                             color: Colors.purple,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
                             'Condiviso',
                             style: TextStyle(
@@ -316,7 +303,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                               size: 64,
                               color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
                               _searchQuery.isNotEmpty
                                   ? 'Nessun apiario trovato con "$_searchQuery"'
@@ -327,7 +314,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             if (_searchQuery.isEmpty)
                               ElevatedButton.icon(
                                 onPressed: _navigateToApiarioCreate,

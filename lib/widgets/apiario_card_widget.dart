@@ -43,7 +43,7 @@ class ApiarioCardWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Icon(
@@ -64,7 +64,7 @@ class ApiarioCardWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   if (hasCoordinates)

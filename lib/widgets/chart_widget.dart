@@ -61,7 +61,7 @@ class ChartWidget extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -218,7 +218,7 @@ class ChartWidget extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(16.0),

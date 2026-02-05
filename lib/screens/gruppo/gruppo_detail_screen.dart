@@ -41,7 +41,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
       if (!_tabController.indexIsChanging) {
         setState(() {
           _currentIndex = _tabController.index;
-          print('Tab cambiato a: $_currentIndex');
+          debugPrint('Tab cambiato a: $_currentIndex');
         });
       }
     });
@@ -75,14 +75,14 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
         try {
           var apiari = results[1];
           if (apiari is List) {
-            print('Apiari caricati: ${apiari.length}');
+            debugPrint('Apiari caricati: ${apiari.length}');
             _apiariCondivisi = apiari;
           } else {
-            print('Formato apiari non riconosciuto: ${apiari.runtimeType}');
+            debugPrint('Formato apiari non riconosciuto: ${apiari.runtimeType}');
             _apiariCondivisi = [];
           }
         } catch (e) {
-          print('Errore nel processare gli apiari: $e');
+          debugPrint('Errore nel processare gli apiari: $e');
           _apiariCondivisi = [];
         }
         
@@ -97,16 +97,16 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
   }
 
   void _navigateToApiarioDetail(dynamic apiarioId) {
-    print('_navigateToApiarioDetail chiamato con: $apiarioId (${apiarioId.runtimeType})');
+    debugPrint('_navigateToApiarioDetail chiamato con: $apiarioId (${apiarioId.runtimeType})');
     try {
       // Converti l'ID in intero
       int id;
       if (apiarioId is String) {
         try {
           id = int.parse(apiarioId);
-          print('Convertito ID da String a int: $apiarioId -> $id');
+          debugPrint('Convertito ID da String a int: $apiarioId -> $id');
         } catch (e) {
-          print('Errore nella conversione dell\'ID: $e');
+          debugPrint('Errore nella conversione dell\'ID: $e');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('ID apiario non valido: $apiarioId'),
@@ -117,9 +117,9 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
         }
       } else if (apiarioId is int) {
         id = apiarioId;
-        print('ID già intero: $id');
+        debugPrint('ID già intero: $id');
       } else {
-        print('Tipo ID non supportato: ${apiarioId.runtimeType}');
+        debugPrint('Tipo ID non supportato: ${apiarioId.runtimeType}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Formato ID apiario non supportato'),
@@ -130,14 +130,14 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
       }
       
       // Naviga alla pagina di dettaglio
-      print('Navigazione a dettaglio apiario con ID: $id');
+      debugPrint('Navigazione a dettaglio apiario con ID: $id');
       Navigator.of(context).pushNamed(
         AppConstants.apiarioDetailRoute,
         arguments: id,
       );
     } catch (e, stackTrace) {
-      print('Errore in _navigateToApiarioDetail: $e');
-      print('Stack trace: $stackTrace');
+      debugPrint('Errore in _navigateToApiarioDetail: $e');
+      debugPrint('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Errore nell\'accesso ai dettagli dell\'apiario: $e'),
@@ -150,7 +150,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     try {
-      print('=== INIZIO BUILD CON INDICE: $_currentIndex ===');
+      debugPrint('=== INIZIO BUILD CON INDICE: $_currentIndex ===');
       
       final authService = Provider.of<AuthService>(context);
       final user = authService.currentUser;
@@ -162,7 +162,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
         isAdmin = user != null && (_gruppo?.isAdmin(user.id) ?? false);
         isCreator = user != null && (_gruppo?.isCreator(user.id) ?? false);
       } catch (e) {
-        print('Errore nella verifica dei permessi: $e');
+        debugPrint('Errore nella verifica dei permessi: $e');
         isAdmin = false;
         isCreator = false;
       }
@@ -186,7 +186,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
             onTap: (index) {
               setState(() {
                 _currentIndex = index;
-                print('onTap: cambiato tab a $_currentIndex');
+                debugPrint('onTap: cambiato tab a $_currentIndex');
               });
             },
           ),
@@ -219,6 +219,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
                     label: Text('ELIMINA GRUPPO'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ThemeConstants.errorColor,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -226,10 +227,10 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
             : null,
       );
     } catch (e, stackTrace) {
-      print('=== ERRORE CRITICO IN BUILD ===');
-      print('$e');
-      print('=== STACK TRACE ===');
-      print('$stackTrace');
+      debugPrint('=== ERRORE CRITICO IN BUILD ===');
+      debugPrint('$e');
+      debugPrint('=== STACK TRACE ===');
+      debugPrint('$stackTrace');
       
       return Scaffold(
         appBar: AppBar(
@@ -240,9 +241,9 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.error_outline, size: 64, color: ThemeConstants.errorColor),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text('Si è verificato un errore: $e'),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -354,7 +355,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
                 try {
                   membroId = int.parse(id);
                 } catch (e) {
-                  print('Errore nel parsing dell\'ID membro: $e');
+                  debugPrint('Errore nel parsing dell\'ID membro: $e');
                 }
               }
               
@@ -366,13 +367,13 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
                 try {
                   utenteId = int.parse(utente);
                 } catch (e) {
-                  print('Errore nel parsing dell\'ID utente: $e');
+                  debugPrint('Errore nel parsing dell\'ID utente: $e');
                 }
               } else if (utente is Map) {
                 utenteId = utente['id'] ?? 0;
               }
             } else {
-              print('Tipo membro non riconosciuto: ${membro.runtimeType}');
+              debugPrint('Tipo membro non riconosciuto: ${membro.runtimeType}');
               return ListTile(
                 title: Text('Membro non valido'),
                 subtitle: Text('Errore nel formato dei dati'),
@@ -468,7 +469,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
                   : null,
             );
           } catch (e) {
-            print('Errore nella costruzione della tile membro[$index]: $e');
+            debugPrint('Errore nella costruzione della tile membro[$index]: $e');
             return ListTile(
               title: Text('Errore'),
               subtitle: Text('$e'),
@@ -478,8 +479,8 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
         },
       );
     } catch (e, stackTrace) {
-      print('Errore nel tab membri: $e');
-      print('Stack trace: $stackTrace');
+      debugPrint('Errore nel tab membri: $e');
+      debugPrint('Stack trace: $stackTrace');
       return Center(
         child: Text('Errore nel caricamento dei membri: $e'),
       );
@@ -520,7 +521,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
   // Tab Apiari
   Widget _buildApiariTab() {
     try {
-      print('=== INIZIO COSTRUZIONE TAB APIARI ===');
+      debugPrint('=== INIZIO COSTRUZIONE TAB APIARI ===');
       
       if (_apiariCondivisi.isEmpty) {
         return Center(
@@ -532,7 +533,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
                 size: 64,
                 color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 'Nessun apiario condiviso con questo gruppo',
                 style: TextStyle(
@@ -546,7 +547,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
         );
       }
 
-      print('Numero apiari condivisi: ${_apiariCondivisi.length}');
+      debugPrint('Numero apiari condivisi: ${_apiariCondivisi.length}');
 
       return ListView.builder(
         itemCount: _apiariCondivisi.length,
@@ -566,7 +567,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
               proprietarioNome = apiario['proprietario_username'] ?? 'N/D';
               apiarioId = apiario['id'];
             } else {
-              print('Tipo apiario non riconosciuto: ${apiario.runtimeType}');
+              debugPrint('Tipo apiario non riconosciuto: ${apiario.runtimeType}');
               return ListTile(
                 title: Text('Apiario non valido'),
                 subtitle: Text('Errore nel formato dei dati'),
@@ -609,7 +610,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
                           Icon(Icons.chevron_right),
                         ],
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
                         posizione,
                         style: TextStyle(
@@ -618,7 +619,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Icon(
@@ -642,7 +643,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
               ),
             );
           } catch (e) {
-            print('Errore nella costruzione della card apiario[$index]: $e');
+            debugPrint('Errore nella costruzione della card apiario[$index]: $e');
             return Card(
               color: Colors.red.shade50,
               margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -655,10 +656,10 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
         },
       );
     } catch (e, stackTrace) {
-      print('=== ERRORE NEL TAB APIARI ===');
-      print('$e');
-      print('=== STACK TRACE ===');
-      print('$stackTrace');
+      debugPrint('=== ERRORE NEL TAB APIARI ===');
+      debugPrint('$e');
+      debugPrint('=== STACK TRACE ===');
+      debugPrint('$stackTrace');
       return Center(
         child: Text('Errore nel caricamento degli apiari: $e'),
       );

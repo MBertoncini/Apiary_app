@@ -67,12 +67,24 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           orElse: () => null,
         );
         
-        // Carica regina
+        // Carica regina - prima da storage locale, poi dal server se non trovata
         final regine = await storageService.getStoredData('regine');
         _regina = regine.firstWhere(
           (r) => r['arnia'] == widget.arniaId,
           orElse: () => null,
         );
+
+        // Se la regina non e' in locale, prova a caricarla dal server
+        if (_regina == null) {
+          try {
+            final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
+            if (reginaData != null && reginaData is Map<String, dynamic> && reginaData.containsKey('id')) {
+              _regina = reginaData;
+            }
+          } catch (e) {
+            debugPrint('Regina non trovata dal server per arnia ${widget.arniaId}: $e');
+          }
+        }
         
         // Carica controlli e ordina per data (più recenti prima)
         final allControlli = await storageService.getStoredData('controlli');
@@ -98,7 +110,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
             _regina = reginaData;
           } catch (e) {
-            print('Regina non trovata: $e');
+            debugPrint('Regina non trovata: $e');
           }
           
           // Carica controlli
@@ -106,7 +118,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           _controlli = controlliData;
           _controlli.sort((a, b) => b['data'].compareTo(a['data']));
         } catch (e) {
-          print('Errore caricamento arnia dal server: $e');
+          debugPrint('Errore caricamento arnia dal server: $e');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Arnia non trovata')),
           );
@@ -114,7 +126,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         }
       }
     } catch (e) {
-      print('Error loading arnia: $e');
+      debugPrint('Error loading arnia: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Errore durante il caricamento dei dati')),
       );
@@ -257,7 +269,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 _apiario?['nome'] ?? 'Apiario sconosciuto',
                                 style: TextStyle(
@@ -265,7 +277,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   color: ThemeConstants.textSecondaryColor,
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Container(
                                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
@@ -287,7 +299,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                     ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 
                 // Informazioni generali
                 Card(
@@ -300,7 +312,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           'Informazioni generali',
                           style: ThemeConstants.subheadingStyle,
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Data installazione
                         Row(
@@ -332,7 +344,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Colore
                         Row(
@@ -384,7 +396,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               Text(
                                 'Note',
                                 style: TextStyle(
@@ -392,7 +404,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   fontSize: 14,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(_arnia!['note']),
                             ],
                           ),
@@ -400,7 +412,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                     ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 
                 // Ultimo controllo
                 if (_controlli.isNotEmpty)
@@ -414,7 +426,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             'Ultimo controllo',
                             style: ThemeConstants.subheadingStyle,
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           Row(
                             children: [
                               Icon(
@@ -431,7 +443,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           
                           Row(
                             children: [
@@ -449,7 +461,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           
                           Row(
                             children: [
@@ -487,13 +499,13 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                       fontSize: 14,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
+                                  const SizedBox(height: 4),
                                   Text(_controlli[0]['note']),
                                 ],
                               ),
                             ),
                           
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           
                           OutlinedButton(
                             onPressed: () {
@@ -523,7 +535,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                         size: 64,
                         color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
                         'Nessun controllo registrato',
                         style: TextStyle(
@@ -531,7 +543,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           fontSize: 16,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _navigateToControlloCreate,
                         icon: Icon(Icons.add),
@@ -577,7 +589,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      SizedBox(height: 4),
+                                      const SizedBox(height: 4),
                                       Text(
                                         'Effettuato da ${controllo['utente_username']}',
                                         style: TextStyle(
@@ -590,7 +602,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                 ),
                               ],
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             
                             Wrap(
                               spacing: 8,
@@ -657,7 +669,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                         fontSize: 14,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 4),
                                     Text(controllo['note']),
                                   ],
                                 ),
@@ -680,7 +692,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                         size: 64,
                         color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
                         'Nessuna regina registrata',
                         style: TextStyle(
@@ -688,7 +700,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           fontSize: 16,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _navigateToReginaCreate,
                         icon: Icon(Icons.add),
@@ -734,7 +746,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 4),
                                     Text(
                                       'Introdotta il ${_regina!['data_introduzione']}',
                                       style: TextStyle(
@@ -749,7 +761,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           ),
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       // Informazioni generali
                       Card(
@@ -762,7 +774,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                 'Informazioni generali',
                                 style: ThemeConstants.subheadingStyle,
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               
                               // Data di nascita
                               if (_regina!['data_nascita'] != null)
@@ -811,7 +823,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           ),
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       // Valutazioni
                       if (_regina!['docilita'] != null || 
@@ -828,7 +840,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   'Valutazioni',
                                   style: ThemeConstants.subheadingStyle,
                                 ),
-                                SizedBox(height: 16),
+                                const SizedBox(height: 16),
                                 
                                 if (_regina!['docilita'] != null)
                                   _buildRatingBar('Docilità', _regina!['docilita'], Colors.green),
@@ -859,7 +871,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   'Note',
                                   style: ThemeConstants.subheadingStyle,
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(_regina!['note']),
                               ],
                             ),
@@ -889,7 +901,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             color: ThemeConstants.textSecondaryColor,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(

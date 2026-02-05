@@ -73,7 +73,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
             
             return true;
           } catch (e) {
-            print('Error parsing saved user info: $e');
+            debugPrint('Error parsing saved user info: $e');
           }
         }
 
@@ -103,7 +103,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         }
       }
     } catch (e) {
-      print('Error checking auth: $e');
+      debugPrint('Error checking auth: $e');
       
       // Verifica se abbiamo informazioni utente salvate per la modalità offline
       try {
@@ -114,10 +114,10 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           _currentUser = User.fromJson(json.decode(savedUserInfo));
           _isAuthenticated = true;
           _offlineMode = true;
-          print('Fallback to offline mode with saved user data');
+          debugPrint('Fallback to offline mode with saved user data');
         }
       } catch (cacheError) {
-        print('Error accessing cache: $cacheError');
+        debugPrint('Error accessing cache: $cacheError');
       }
     }
 
@@ -182,7 +182,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           notifyListeners();
           return true;
         } catch (jsonError) {
-          print('Error parsing JSON response: $jsonError');
+          debugPrint('Error parsing JSON response: $jsonError');
           _lastError = 'Risposta del server non valida. Il server potrebbe essere in manutenzione.';
           throw Exception(_lastError);
         }
@@ -210,7 +210,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       _lastError = 'La richiesta è scaduta. Il server potrebbe essere sovraccarico o la connessione lenta.';
       throw Exception(_lastError);
     } catch (e) {
-      print('Login error: $e');
+      debugPrint('Login error: $e');
       if (_lastError == null) {
         _lastError = 'Si è verificato un errore durante il login: ${e.toString()}';
       }
@@ -312,7 +312,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         return _isAuthenticated;
       }
     } catch (e) {
-      print('Token refresh error: $e');
+      debugPrint('Token refresh error: $e');
       // Se offline, continua in modalità offline
       if (_currentUser != null) {
         _offlineMode = true;
@@ -351,7 +351,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     if (_token == null) return null;
 
     try {
-      print('Fetching user info from: ${ApiConstants.userProfileUrl}');
+      debugPrint('Fetching user info from: ${ApiConstants.userProfileUrl}');
       
       final response = await http.get(
         Uri.parse(ApiConstants.userProfileUrl),
@@ -363,7 +363,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         onTimeout: () => throw TimeoutException('Timeout fetching user info'),
       );
 
-      print('User profile response status: ${response.statusCode}');
+      debugPrint('User profile response status: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         try {
@@ -374,29 +374,29 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           final prefs = await SharedPreferences.getInstance();
           prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
           
-          print('Parsed user: ${user.username}, ${user.email}, ${user.fullName}');
+          debugPrint('Parsed user: ${user.username}, ${user.email}, ${user.fullName}');
           return user;
         } catch (jsonError) {
-          print('Error parsing user JSON: $jsonError');
+          debugPrint('Error parsing user JSON: $jsonError');
           return null;
         }
       } else if (response.statusCode == 401) {
         // Token non valido, tenteremo un refresh
         return null;
       } else {
-        print('User profile response body: ${response.body}');
+        debugPrint('User profile response body: ${response.body}');
         return null;
       }
     } on SocketException {
-      print('Network error fetching user info');
+      debugPrint('Network error fetching user info');
       _offlineMode = true;
       return null;
     } on TimeoutException {
-      print('Timeout fetching user info');
+      debugPrint('Timeout fetching user info');
       _offlineMode = true;
       return null;
     } catch (e) {
-      print('Error fetching user info: $e');
+      debugPrint('Error fetching user info: $e');
       return null;
     }
   }
@@ -419,17 +419,17 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
 
   // Aggiorna il profilo utente
   Future<bool> refreshUserProfile() async {
-    print('Refreshing user profile...');
+    debugPrint('Refreshing user profile...');
     try {
       final user = await _fetchUserInfo();
       if (user != null) {
-        print('User profile refreshed successfully: ${user.username}');
+        debugPrint('User profile refreshed successfully: ${user.username}');
         _currentUser = user;
         _offlineMode = false;
         notifyListeners();
         return true;
       } else {
-        print('User profile refresh failed: No user data returned');
+        debugPrint('User profile refresh failed: No user data returned');
         
         // Se c'è un utente in memoria, vai in modalità offline
         if (_currentUser != null) {
@@ -439,7 +439,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         }
       }
     } catch (e) {
-      print('Error refreshing user profile: $e');
+      debugPrint('Error refreshing user profile: $e');
       
       if (_currentUser != null) {
         _offlineMode = true;
@@ -466,7 +466,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           final payloadBytes = base64Url.decode(normalizedPayload);
           final payloadMap = json.decode(utf8.decode(payloadBytes));
           
-          print('Token payload: $payloadMap');
+          debugPrint('Token payload: $payloadMap');
           
           // Ottieni l'ID utente dal payload
           final userId = payloadMap['user_id'] ?? 0;
@@ -483,7 +483,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           notifyListeners();
         }
       } catch (e) {
-        print('Error extracting user info from token: $e');
+        debugPrint('Error extracting user info from token: $e');
       }
     }
   }

@@ -48,7 +48,7 @@ class ControlloCardWidget extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
                           'Arnia ${controllo['arnia_numero']}',
                           style: TextStyle(
@@ -61,7 +61,7 @@ class ControlloCardWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               
               Wrap(
                 spacing: 8,

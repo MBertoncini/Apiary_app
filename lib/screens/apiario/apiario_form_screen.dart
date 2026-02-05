@@ -131,7 +131,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
       // Torna alla schermata precedente
       Navigator.of(context).pop();
     } catch (e) {
-      print('Error saving apiario: $e');
+      debugPrint('Error saving apiario: $e');
       setState(() {
         _errorMessage = 'Errore durante il salvataggio. Riprova più tardi.';
       });
@@ -182,7 +182,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       'Informazioni generali',
                       style: ThemeConstants.subheadingStyle,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Nome
                     TextFormField(
@@ -199,7 +199,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                         return null;
                       },
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Posizione
                     TextFormField(
@@ -214,7 +214,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             
             // Coordinate geografiche
             Card(
@@ -227,7 +227,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       'Posizione sulla mappa',
                       style: ThemeConstants.subheadingStyle,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     Row(
                       children: [
@@ -276,7 +276,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     
                     Text(
                       'Lascia vuoti i campi se non vuoi specificare le coordinate.',
@@ -287,9 +287,9 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       ),
                     ),
                     
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Divider(),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     
                     // Visibilità sulla mappa
                     Text(
@@ -299,7 +299,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     
                     RadioListTile<String>(
                       title: Text('Solo proprietario'),
@@ -340,7 +340,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             
             // Funzionalità aggiuntive
             Card(
@@ -353,7 +353,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       'Funzionalità aggiuntive',
                       style: ThemeConstants.subheadingStyle,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Monitoraggio meteo
                     SwitchListTile(
@@ -384,7 +384,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             
             // Note
             Card(
@@ -397,7 +397,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       'Note',
                       style: ThemeConstants.subheadingStyle,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     TextFormField(
                       controller: _noteController,
@@ -412,7 +412,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             
             // Pulsanti
             Row(

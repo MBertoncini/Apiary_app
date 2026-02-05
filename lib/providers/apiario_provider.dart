@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/dao/apiario_dao.dart';
 import '../models/apiario.dart';
@@ -72,7 +73,7 @@ class ApiariStateNotifier extends StateNotifier<ApiariState> {
       );
     } catch (e) {
       // Non aggiornare lo stato in caso di errore, abbiamo già caricato i dati locali
-      print('Errore sincronizzazione apiari dal server: $e');
+      debugPrint('Errore sincronizzazione apiari dal server: $e');
     }
   }
   

@@ -132,7 +132,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
         }
       });
     } catch (e) {
-      print('Errore caricamento gruppi: $e');
+      debugPrint('Errore caricamento gruppi: $e');
     }
   }
 
@@ -258,7 +258,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Descrizione
                         TextFormField(
@@ -270,7 +270,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                           ),
                           maxLines: 2,
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Marca e Modello in Row
                         Row(
@@ -296,7 +296,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Quantità
                         TextFormField(
@@ -317,7 +317,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Stato e Condizione in Row
                         Row(
@@ -361,7 +361,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Data acquisto
                         InkWell(
@@ -375,7 +375,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             child: Text(formatDate.format(_selectedDate)),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Prezzo acquisto
                         TextFormField(
@@ -398,7 +398,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Fornitore
                         TextFormField(
@@ -409,7 +409,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Condivisione con gruppo
                         if (_gruppi.isNotEmpty) ...[
@@ -420,7 +420,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Condivisione', style: Theme.of(context).textTheme.titleMedium),
-                                  SizedBox(height: 8),
+                                  const SizedBox(height: 8),
                                   SwitchListTile(
                                     title: Text('Condividi con gruppo'),
                                     subtitle: Text('Le spese verranno condivise con i membri del gruppo'),
@@ -430,7 +430,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                     },
                                   ),
                                   if (_condivisoConGruppo) ...[
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
                                     DropdownButtonFormField<Gruppo>(
                                       value: _selectedGruppo,
                                       decoration: InputDecoration(
@@ -450,7 +450,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                               ),
                             ),
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                         ],
 
                         // Note
@@ -463,7 +463,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                           ),
                           maxLines: 3,
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
                         // Info pagamento automatico
                         if (!isEditing)
@@ -485,7 +485,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                               ),
                             ),
                           ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
                         // Pulsante salva
                         SizedBox(

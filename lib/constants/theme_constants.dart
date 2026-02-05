@@ -7,7 +7,7 @@ class ThemeConstants {
   static const Color primaryColor = Color(0xFFD3A121);    // Colore miele
   static const Color secondaryColor = Color(0xFF8B5E00);  // Marrone miele scuro
   static const Color backgroundColor = Color(0xFFF8F5E6); // Beige carta
-  
+
   // Altri colori
   static const Color textPrimaryColor = Color(0xFF3A2E21);  // Marrone scuro per testo
   static const Color textSecondaryColor = Color(0xFF6D5D4B);  // Marrone medio
@@ -15,7 +15,7 @@ class ThemeConstants {
   static const Color errorColor = Color(0xFFAD3B23);  // Rosso ruggine
   static const Color successColor = Color(0xFF688148);  // Verde oliva
   static const Color cardColor = Color(0xFFFFFDF5);  // Carta chiara
-  
+
   // Ombre e texture
   static const BoxShadow paperShadow = BoxShadow(
     color: Color(0x33000000),
@@ -23,43 +23,48 @@ class ThemeConstants {
     spreadRadius: 0.5,
     offset: Offset(2, 2),
   );
-  
+
   // Bordi stile carta
   static final BorderRadius paperRadius = BorderRadius.circular(4);
   static final Border paperBorder = Border.all(
     color: Color(0xFFE5DDC8),
     width: 1.0,
   );
-  
-  // Stili di testo con font "scritti a mano"
-  static TextStyle get headingStyle => GoogleFonts.caveat(
+
+  // Stili di testo con font "scritti a mano" - cached as static final
+  static final TextStyle headingStyle = GoogleFonts.caveat(
     fontSize: 32,
     fontWeight: FontWeight.bold,
     color: textPrimaryColor,
     height: 1.1,
   );
-  
-  static TextStyle get subheadingStyle => GoogleFonts.caveat(
+
+  static final TextStyle subheadingStyle = GoogleFonts.caveat(
     fontSize: 24,
     fontWeight: FontWeight.w600,
     color: textPrimaryColor,
     height: 1.1,
   );
-  
-  static TextStyle get bodyStyle => GoogleFonts.quicksand(
+
+  static final TextStyle bodyStyle = GoogleFonts.quicksand(
     fontSize: 16,
     color: textPrimaryColor,
   );
 
-  static TextStyle get handwrittenNotes => GoogleFonts.caveat(
+  static final TextStyle handwrittenNotes = GoogleFonts.caveat(
     fontSize: 18,
     color: textPrimaryColor,
     height: 1.3,
   );
   
-  // Metodo factory per generare il tema completo
-  static ThemeData getTheme() {
+  // Tema completo - cached as static final
+  static final ThemeData _cachedTheme = _buildTheme();
+
+  static ThemeData getTheme() => _cachedTheme;
+
+  static ThemeData _buildTheme() {
     return ThemeData(
+      useMaterial3: false,
       primaryColor: primaryColor,
       scaffoldBackgroundColor: backgroundColor,
       cardColor: cardColor,
@@ -69,8 +74,11 @@ class ThemeConstants {
         primary: primaryColor,
         secondary: secondaryColor,
         error: errorColor,
+        onError: Colors.white,
         surface: cardColor,
         background: backgroundColor,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
       ),
       
       appBarTheme: AppBarTheme(
@@ -157,16 +165,16 @@ class ThemeConstants {
     );
   }
   
-  // Stili per i widget carta
-  static BoxDecoration get paperDecoration => BoxDecoration(
+  // Stili per i widget carta - cached
+  static final BoxDecoration paperDecoration = BoxDecoration(
     color: cardColor,
     borderRadius: paperRadius,
-    boxShadow: [paperShadow],
+    boxShadow: const [paperShadow],
     border: paperBorder,
   );
-  
+
   // Texture di sfondo (se desideri aggiungere una texture sottile alla carta)
-  static DecorationImage get paperBackgroundTexture => DecorationImage(
+  static final DecorationImage paperBackgroundTexture = const DecorationImage(
     image: AssetImage('assets/images/backgrounds/paper_texture.png'),
     fit: BoxFit.cover,
     opacity: 0.08,

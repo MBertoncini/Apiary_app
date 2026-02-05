@@ -62,7 +62,7 @@ class ArniaCardWidget extends StatelessWidget {
                         ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     DateFormatter.formatDate(arnia['data_installazione']),
                     style: TextStyle(
@@ -70,7 +70,7 @@ class ArniaCardWidget extends StatelessWidget {
                       color: ThemeConstants.textSecondaryColor,
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

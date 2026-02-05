@@ -112,7 +112,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
         }
       }
     } catch (e) {
-      print('Errore nel caricare gli apiari: $e');
+      debugPrint('Errore nel caricare gli apiari: $e');
       setState(() {
         _loadingApiari = false;
       });
@@ -132,7 +132,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
         });
       } catch (e) {
         // In caso di errore, lascia il nome vuoto
-        print('Errore nel caricare il nome dell\'apiario: $e');
+        debugPrint('Errore nel caricare il nome dell\'apiario: $e');
       }
     }
   }
@@ -259,7 +259,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         return null;
                       },
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Numero arnia
                     TextFormField(
@@ -283,7 +283,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         _numero = int.parse(value!);
                       },
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Colore arnia
                     DropdownButtonFormField<String>(
@@ -314,7 +314,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                       }).toList(),
                       onChanged: _onColoreChanged,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Data installazione
                     InkWell(
@@ -346,7 +346,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Stato attivo
                     SwitchListTile(
@@ -363,7 +363,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         side: BorderSide(color: Colors.grey),
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     
                     // Note
                     TextFormField(
@@ -378,7 +378,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         _note = value ?? '';
                       },
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     
                     // Pulsante salva
                     ElevatedButton(

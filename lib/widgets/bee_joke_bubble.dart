@@ -143,7 +143,7 @@ class BeeJokeDialog extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             // Freddura
             Text(
               joke,
@@ -153,7 +153,7 @@ class BeeJokeDialog extends StatelessWidget {
                 color: Colors.black87,
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             // Pulsante per chiudere
             TextButton(
               onPressed: () {

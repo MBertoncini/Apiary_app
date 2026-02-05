@@ -77,7 +77,7 @@ class QrGeneratorWidget extends StatelessWidget {
                 color: Colors.grey[700],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             
             // Visualizzazione QR code
             Container(
@@ -102,7 +102,7 @@ class QrGeneratorWidget extends StatelessWidget {
                 gapless: false,
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             
             // Pulsanti azioni
             Row(

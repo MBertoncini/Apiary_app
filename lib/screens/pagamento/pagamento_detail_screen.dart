@@ -160,7 +160,7 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 16),
                                   _buildInfoRow('Descrizione', _pagamento!.descrizione),
                                   _buildInfoRow('Data', formatDate.format(DateTime.parse(_pagamento!.data))),
                                   _buildInfoRow('Utente', _pagamento!.utenteUsername),

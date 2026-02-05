@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
 import '../services/api_service.dart';
@@ -98,7 +99,7 @@ class SyncService {
         // Marca come sincronizzato
         await _apiarioDao.markSynced(apiario.id);
       } catch (e) {
-        print('Errore sincronizzazione apiario ${apiario.id}: $e');
+        debugPrint('Errore sincronizzazione apiario ${apiario.id}: $e');
         // Continua con il prossimo elemento anche se questo fallisce
       }
     }
@@ -118,7 +119,7 @@ class SyncService {
         
         await _arniaDao.markSynced(arnia.id);
       } catch (e) {
-        print('Errore sincronizzazione arnia ${arnia.id}: $e');
+        debugPrint('Errore sincronizzazione arnia ${arnia.id}: $e');
       }
     }
     
@@ -137,7 +138,7 @@ class SyncService {
         
         await _controlloArniaDao.markSynced(controllo.id);
       } catch (e) {
-        print('Errore sincronizzazione controllo ${controllo.id}: $e');
+        debugPrint('Errore sincronizzazione controllo ${controllo.id}: $e');
       }
     }
     

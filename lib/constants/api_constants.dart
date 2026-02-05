@@ -48,8 +48,9 @@ class ApiConstants {
   static const String smielaturaDetailUrl = baseUrl + apiPrefix + '/smielatura/{smielatura_id}/';
   
   // Endpoint gruppi
+  // FIX #11 - Corretto gruppoDetailUrl: il router Django usa 'gruppi' (plurale), non 'gruppo'
   static const String gruppiUrl = baseUrl + apiPrefix + '/gruppi/';
-  static const String gruppoDetailUrl = baseUrl + apiPrefix + '/gruppo/';
+  static const String gruppoDetailUrl = baseUrl + apiPrefix + '/gruppi/'; // Era '/gruppo/' - corretto a '/gruppi/'
   static const String gruppoMembriUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/membri/';
   static const String gruppoInvitiUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/inviti/';
   static const String gruppoApiariUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/apiari/';

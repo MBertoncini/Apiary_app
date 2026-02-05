@@ -84,7 +84,7 @@ class ErrorMessage503Widget extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Si è verificato un errore temporaneo del server. Puoi riprovare a inviare il messaggio usando il pulsante "Riprova" qui sotto o nella bolla del messaggio.',
             style: TextStyle(
@@ -92,7 +92,7 @@ class ErrorMessage503Widget extends StatelessWidget {
               fontSize: 14,
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Center(
             child: ElevatedButton.icon(
               onPressed: onRetry,

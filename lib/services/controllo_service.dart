@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import '../constants/api_constants.dart';
 import '../services/api_service.dart';
 import '../database/dao/controllo_arnia_dao.dart';
@@ -26,7 +27,7 @@ class ControlloService {
         return response;
       } catch (e) {
         // Fallback al salvataggio offline se l'API fallisce
-        print('Errore salvataggio online, uso offline: $e');
+        debugPrint('Errore salvataggio online, uso offline: $e');
         final id = await _controlloDao.insert(data);
         
         // Crea una versione con ID locale per l'UI
@@ -64,7 +65,7 @@ class ControlloService {
         return response;
       } catch (e) {
         // Fallback al salvataggio offline se l'API fallisce
-        print('Errore aggiornamento online, uso offline: $e');
+        debugPrint('Errore aggiornamento online, uso offline: $e');
         await _controlloDao.update(id, data);
         
         // Ritorna i dati aggiornati con stato di sincronizzazione
@@ -105,7 +106,7 @@ class ControlloService {
           
           return remoteControllo;
         } catch (e) {
-          print('Errore nel recupero del controllo: $e');
+          debugPrint('Errore nel recupero del controllo: $e');
           return null;
         }
       }
@@ -117,9 +118,9 @@ class ControlloService {
   // Ottieni controlli per un'arnia specifica
   Future<List<Map<String, dynamic>>> getControlliByArnia(int arniaId) async {
     // Prima recupera i dati locali
-    print('Inizio caricamento controlli per arnia $arniaId');
+    debugPrint('Inizio caricamento controlli per arnia $arniaId');
     List<Map<String, dynamic>> localControlli = await _controlloDao.getByArnia(arniaId);
-    print('Dati locali caricati: ${localControlli.length} controlli');
+    debugPrint('Dati locali caricati: ${localControlli.length} controlli');
     
     // Verifica connettività
     var connectivityResult = await Connectivity().checkConnectivity();
@@ -128,39 +129,39 @@ class ControlloService {
     if (isOnline) {
       try {
         // Recupera dal server
-        print('Chiamata API: ${ApiConstants.arnieUrl}$arniaId/controlli/');
+        debugPrint('Chiamata API: ${ApiConstants.arnieUrl}$arniaId/controlli/');
         final response = await _apiService.get('${ApiConstants.arnieUrl}$arniaId/controlli/');
-        print('Risposta API ricevuta di tipo: ${response.runtimeType}');
+        debugPrint('Risposta API ricevuta di tipo: ${response.runtimeType}');
         
         List<Map<String, dynamic>> remoteControlli = [];
         
         if (response is List) {
-          print('Risposta è una lista di lunghezza: ${response.length}');
+          debugPrint('Risposta è una lista di lunghezza: ${response.length}');
           remoteControlli = List<Map<String, dynamic>>.from(response);
         } else if (response is Map && response['results'] != null) {
-          print('Risposta è un oggetto con campo "results" di lunghezza: ${response['results'].length}');
+          debugPrint('Risposta è un oggetto con campo "results" di lunghezza: ${response['results'].length}');
           remoteControlli = List<Map<String, dynamic>>.from(response['results']);
         } else {
-          print('Formato risposta non riconosciuto!');
+          debugPrint('Formato risposta non riconosciuto!');
         }
         
         // Sincronizza con il database locale
         if (remoteControlli.isNotEmpty) {
           await _controlloDao.syncFromServer(remoteControlli);
-          print('Sincronizzati ${remoteControlli.length} controlli');
+          debugPrint('Sincronizzati ${remoteControlli.length} controlli');
           
           // Ricarica i dati dal database locale
           localControlli = await _controlloDao.getByArnia(arniaId);
-          print('Dati locali dopo sincronizzazione: ${localControlli.length}');
+          debugPrint('Dati locali dopo sincronizzazione: ${localControlli.length}');
         }
         
         return localControlli;
       } catch (e) {
-        print('Errore nel recupero controlli dal server: $e');
+        debugPrint('Errore nel recupero controlli dal server: $e');
         // Fallback ai dati locali
       }
     } else {
-      print('Dispositivo offline, usando solo dati locali');
+      debugPrint('Dispositivo offline, usando solo dati locali');
     }
     
     return localControlli;
@@ -203,14 +204,14 @@ class ControlloService {
           // Marca come sincronizzato
           await _controlloDao.markSynced(id);
         } catch (e) {
-          print('Errore sincronizzazione controllo $id: $e');
+          debugPrint('Errore sincronizzazione controllo $id: $e');
           // Continua con il prossimo
         }
       }
       
       return true;
     } catch (e) {
-      print('Errore generale durante la sincronizzazione: $e');
+      debugPrint('Errore generale durante la sincronizzazione: $e');
       return false;
     }
   }

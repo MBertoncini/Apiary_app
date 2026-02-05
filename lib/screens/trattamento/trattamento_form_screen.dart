@@ -306,7 +306,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                               ],
                             ),
                           ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Selezione tipo trattamento
                         DropdownButtonFormField<int>(
@@ -336,7 +336,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Data inizio
                         InkWell(
@@ -373,7 +373,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Data fine (opzionale)
                         InkWell(
@@ -418,7 +418,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Note
                         TextFormField(
@@ -433,7 +433,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                             _note = value ?? '';
                           },
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
                         
                         // Sezione blocco covata
                         Card(
@@ -449,7 +449,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 SwitchListTile(
                                   title: Text('Blocco covata attivo'),
                                   value: _bloccoCovataAttivo,
@@ -466,7 +466,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                                   contentPadding: EdgeInsets.zero,
                                 ),
                                 if (_bloccoCovataAttivo) ...[
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 16),
                                   
                                   // Data inizio blocco
                                   InkWell(
@@ -505,7 +505,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 16),
                                   
                                   // Data fine blocco
                                   InkWell(
@@ -557,7 +557,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 16),
                                   
                                   // Metodo blocco
                                   TextFormField(
@@ -571,7 +571,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                                       _metodoBlocco = value ?? '';
                                     },
                                   ),
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 16),
                                   
                                   // Note blocco
                                   TextFormField(
@@ -591,7 +591,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
                         
                         // Pulsante salva
                         ElevatedButton(

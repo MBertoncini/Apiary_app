@@ -42,20 +42,20 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
       
       try {
         // Tenta di caricare le arnie dall'API
-        print('Fetching arnie from API...');
+        debugPrint('Fetching arnie from API...');
         final response = await _apiService.get(ApiConstants.arnieUrl);
-        print('API response for arnie: $response');
+        debugPrint('API response for arnie: $response');
         
         // Gestione robusta per diversi formati di risposta
         if (response is List) {
           // Formato diretto: array di arnie
           arnie = response.map((item) => Arnia.fromJson(item)).toList();
-          print('Parsed ${arnie.length} arnie from API (direct array)');
+          debugPrint('Parsed ${arnie.length} arnie from API (direct array)');
         } else if (response is Map) {
           // Django REST Framework tipicamente usa questo formato di paginazione
           if (response.containsKey('results') && response['results'] is List) {
             arnie = (response['results'] as List).map((item) => Arnia.fromJson(item)).toList();
-            print('Parsed ${arnie.length} arnie from API (DRF pagination format)');
+            debugPrint('Parsed ${arnie.length} arnie from API (DRF pagination format)');
           } 
           // Potrebbe essere un oggetto che contiene un array in una proprietà
           else {
@@ -63,46 +63,46 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
             for (var key in ['arnie', 'data', 'items']) {
               if (response.containsKey(key) && response[key] is List) {
                 arnie = (response[key] as List).map((item) => Arnia.fromJson(item)).toList();
-                print('Parsed ${arnie.length} arnie from API (nested in "$key" property)');
+                debugPrint('Parsed ${arnie.length} arnie from API (nested in "$key" property)');
                 found = true;
                 break;
               }
             }
             
             if (!found) {
-              print('Unexpected response format for arnie: could not find array in object properties');
+              debugPrint('Unexpected response format for arnie: could not find array in object properties');
               // Prova a controllare se l'oggetto stesso può essere interpretato come un'arnia
               try {
                 var singleArnia = Arnia.fromJson(response as Map<String, dynamic>);
                 arnie = [singleArnia];
-                print('Parsed a single arnia from response object');
+                debugPrint('Parsed a single arnia from response object');
               } catch (e) {
-                print('Could not parse response as a single arnia: $e');
+                debugPrint('Could not parse response as a single arnia: $e');
               }
             }
           }
         } else {
-          print('Unexpected response format for arnie: ${response.runtimeType}');
+          debugPrint('Unexpected response format for arnie: ${response.runtimeType}');
         }
         
         // Carica i dati degli apiari
-        print('Fetching apiari from API...');
+        debugPrint('Fetching apiari from API...');
         final apiariResponse = await _apiService.get(ApiConstants.apiariUrl);
-        print('API response for apiari: $apiariResponse');
+        debugPrint('API response for apiari: $apiariResponse');
         
         // Stessa gestione robusta per gli apiari
         if (apiariResponse is List) {
           for (var apiario in apiariResponse) {
             apiariMap[apiario['id']] = apiario;
           }
-          print('Parsed ${apiariMap.length} apiari from API (direct array)');
+          debugPrint('Parsed ${apiariMap.length} apiari from API (direct array)');
         } else if (apiariResponse is Map) {
           // Django REST Framework tipicamente usa questo formato di paginazione
           if (apiariResponse.containsKey('results') && apiariResponse['results'] is List) {
             for (var apiario in apiariResponse['results']) {
               apiariMap[apiario['id']] = apiario;
             }
-            print('Parsed ${apiariMap.length} apiari from API (DRF pagination format)');
+            debugPrint('Parsed ${apiariMap.length} apiari from API (DRF pagination format)');
           }
           // Cerca proprietà che potrebbero contenere un array di apiari
           else {
@@ -112,7 +112,7 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
                 for (var apiario in apiariResponse[key]) {
                   apiariMap[apiario['id']] = apiario;
                 }
-                print('Parsed ${apiariMap.length} apiari from API (nested in "$key" property)');
+                debugPrint('Parsed ${apiariMap.length} apiari from API (nested in "$key" property)');
                 found = true;
                 break;
               }
@@ -121,22 +121,22 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
             if (!found && apiariResponse.containsKey('id')) {
               // Potrebbe essere un singolo apiario
               apiariMap[apiariResponse['id']] = apiariResponse;
-              print('Parsed a single apiario from response object');
+              debugPrint('Parsed a single apiario from response object');
             } else if (!found) {
-              print('Unexpected response format for apiari: could not find array in object properties');
+              debugPrint('Unexpected response format for apiari: could not find array in object properties');
             }
           }
         } else {
-          print('Unexpected response format for apiari: ${apiariResponse.runtimeType}');
+          debugPrint('Unexpected response format for apiari: ${apiariResponse.runtimeType}');
         }
       } catch (e) {
-        print('Error fetching from API, falling back to local storage: $e');
+        debugPrint('Error fetching from API, falling back to local storage: $e');
         
         // Fallback: carica da storage locale se l'API fallisce
         final storedArnie = await _storageService.getStoredData('arnie');
         if (storedArnie.isNotEmpty) {
           arnie = storedArnie.map((item) => Arnia.fromJson(item)).toList();
-          print('Loaded ${arnie.length} arnie from local storage');
+          debugPrint('Loaded ${arnie.length} arnie from local storage');
         }
         
         final storedApiari = await _storageService.getStoredData('apiari');
@@ -144,13 +144,13 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
           for (var apiario in storedApiari) {
             apiariMap[apiario['id']] = apiario;
           }
-          print('Loaded ${apiariMap.length} apiari from local storage');
+          debugPrint('Loaded ${apiariMap.length} apiari from local storage');
         }
       }
       
       // Se ancora non abbiamo arnie, restituisci una mappa vuota
       if (arnie.isEmpty) {
-        print('No arnie found in API or local storage');
+        debugPrint('No arnie found in API or local storage');
         return {};
       }
       
@@ -190,15 +190,15 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
         arnieList.sort((a, b) => a.numero.compareTo(b.numero));
       });
       
-      print('Returning ${arniaByApiario.length} apiario groups with arnie');
+      debugPrint('Returning ${arniaByApiario.length} apiario groups with arnie');
       return arniaByApiario;
     } catch (e) {
-      print('Error loading arnie: $e');
+      debugPrint('Error loading arnie: $e');
       // Invece di propagare l'errore, proviamo a recuperare i dati locali
       try {
         final storedArnie = await _storageService.getStoredData('arnie');
         if (storedArnie.isNotEmpty) {
-          print('Fallback: loading ${storedArnie.length} arnie from local storage after error');
+          debugPrint('Fallback: loading ${storedArnie.length} arnie from local storage after error');
           
           List<Arnia> arnie = storedArnie.map((item) => Arnia.fromJson(item)).toList();
           Map<String, List<Arnia>> arniaByApiario = {};
@@ -219,7 +219,7 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
           return arniaByApiario;
         }
       } catch (localError) {
-        print('Error loading from local storage: $localError');
+        debugPrint('Error loading from local storage: $localError');
       }
       
       // Se tutto fallisce, restituisci una mappa vuota
@@ -256,18 +256,18 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
                     size: 64,
                     color: Colors.red.withOpacity(0.7),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
                     'Errore nel caricamento delle arnie',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     '${snapshot.error}',
                     style: TextStyle(fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   ElevatedButton.icon(
                     icon: Icon(Icons.refresh),
                     label: Text('Riprova'),
@@ -287,18 +287,18 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
                     size: 80,
                     color: Colors.grey.withOpacity(0.5),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
                     'Nessuna arnia trovata',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Non hai ancora creato arnie o non è stato possibile caricarle',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   ElevatedButton.icon(
                     icon: Icon(Icons.add),
                     label: Text('Crea arnia'),
@@ -306,7 +306,7 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
                       Navigator.of(context).pushNamed(AppConstants.creaArniaRoute);
                     },
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   TextButton.icon(
                     icon: Icon(Icons.refresh),
                     label: Text('Riprova a caricare'),

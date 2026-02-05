@@ -1,5 +1,6 @@
 // lib/services/api_cache_helper.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
@@ -23,7 +24,7 @@ class ApiCacheHelper {
       // Aggiorna timestamp ultima sincronizzazione
       await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
     } catch (e) {
-      print('Errore nel salvare i dati nella cache: $e');
+      debugPrint('Errore nel salvare i dati nella cache: $e');
     }
   }
   
@@ -40,7 +41,7 @@ class ApiCacheHelper {
       final data = jsonDecode(jsonString);
       return converter(data);
     } catch (e) {
-      print('Errore nel caricamento dei dati dalla cache: $e');
+      debugPrint('Errore nel caricamento dei dati dalla cache: $e');
       return null;
     }
   }
@@ -59,7 +60,7 @@ class ApiCacheHelper {
       if (lastSync == null) return null;
       return DateTime.parse(lastSync);
     } catch (e) {
-      print('Errore nel recupero dell\'ultima sincronizzazione: $e');
+      debugPrint('Errore nel recupero dell\'ultima sincronizzazione: $e');
       return null;
     }
   }
@@ -95,7 +96,7 @@ class ApiCacheHelper {
           await saveToCache(cacheKey, data);
           return data;
         } catch (apiError) {
-          print('Errore API, fallback sulla cache: $apiError');
+          debugPrint('Errore API, fallback sulla cache: $apiError');
           // Se l'API fallisce, prova con la cache
           final cachedData = await loadFromCache();
           if (cachedData != null) {
@@ -114,7 +115,7 @@ class ApiCacheHelper {
         return defaultValue;
       }
     } catch (e) {
-      print('Errore generale nel fetch con fallback: $e');
+      debugPrint('Errore generale nel fetch con fallback: $e');
       return defaultValue;
     }
   }

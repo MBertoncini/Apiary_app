@@ -131,7 +131,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         final List<dynamic> config = json.decode(controllo['telaini_config']);
         _telainiConfig = List<String>.from(config);
       } catch (e) {
-        print('Errore nel parsing della configurazione telaini: $e');
+        debugPrint('Errore nel parsing della configurazione telaini: $e');
       }
     } else {
       // Distribuzione di default basata sui valori di telaini_scorte e telaini_covata
@@ -204,14 +204,14 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
             });
           }
         } catch (e) {
-          print('Errore nel caricamento online dell\'arnia: $e');
+          debugPrint('Errore nel caricamento online dell\'arnia: $e');
           _loadArniaOffline();
         }
       } else {
         _loadArniaOffline();
       }
     } catch (e) {
-      print('Errore generale nel caricamento dell\'arnia: $e');
+      debugPrint('Errore generale nel caricamento dell\'arnia: $e');
       setState(() {
         _errorMessage = 'Impossibile caricare i dati dell\'arnia. Verifica la connessione.';
       });
@@ -253,7 +253,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         }
       }
     } catch (e) {
-      print('Errore nel caricamento offline dell\'arnia: $e');
+      debugPrint('Errore nel caricamento offline dell\'arnia: $e');
     }
   }
   
@@ -382,7 +382,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
       Navigator.of(context).pop(result);
       
     } catch (e) {
-      print('Errore nel salvataggio del controllo: $e');
+      debugPrint('Errore nel salvataggio del controllo: $e');
       setState(() {
         _errorMessage = 'Si è verificato un errore. Riprova più tardi.';
       });
@@ -551,7 +551,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       GestureDetector(
                         onTap: () => _selectDate(context),
                         child: AbsorbPointer(
@@ -587,7 +587,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       // Strumenti di selezione
                       Wrap(
@@ -602,9 +602,9 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         ],
                       ),
                       
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text('Tocca un telaino per cambiare il tipo', style: TextStyle(color: Colors.grey)),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       
                       // Visualizzazione Arnia
                       Container(
@@ -622,7 +622,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         ),
                       ),
                       
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       // Contatori
                       Row(
@@ -652,7 +652,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       _buildSwitchTile(
                         'Presenza regina',
@@ -745,7 +745,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       _buildSwitchTile(
                         'Sciamatura rilevata',
@@ -788,7 +788,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       _buildSwitchTile(
                         'Problemi sanitari rilevati',
@@ -837,7 +837,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       TextFormField(
                         controller: _noteController,
@@ -930,7 +930,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
               color: isSelected ? (color.computeLuminance() > 0.5 ? Colors.black : Colors.white) : color,
               size: 32,
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
@@ -1048,7 +1048,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             value.toString(),
             style: TextStyle(

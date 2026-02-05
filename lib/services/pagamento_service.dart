@@ -4,6 +4,7 @@ import '../models/quota_utente.dart';
 import 'api_service.dart';
 import '../constants/api_constants.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 class PagamentoService {
   final ApiService _apiService;
@@ -24,7 +25,7 @@ class PagamentoService {
         return transform(response);
       }
     } catch (e) {
-      print('$errorMessage: $e');
+      debugPrint('$errorMessage: $e');
       // Rethrow con messaggio più pulito
       throw _formatErrorMessage(e);
     }
@@ -89,7 +90,7 @@ class PagamentoService {
       await _apiService.delete('${ApiConstants.pagamentiUrl}$id/');
       return true;
     } catch (e) {
-      print('Errore eliminazione pagamento: $e');
+      debugPrint('Errore eliminazione pagamento: $e');
       throw _formatErrorMessage(e);
     }
   }
@@ -136,7 +137,7 @@ class PagamentoService {
       await _apiService.delete('${ApiConstants.quoteUrl}$id/');
       return true;
     } catch (e) {
-      print('Errore eliminazione quota: $e');
+      debugPrint('Errore eliminazione quota: $e');
       throw _formatErrorMessage(e);
     }
   }

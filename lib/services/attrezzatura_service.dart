@@ -1,4 +1,5 @@
 // lib/services/attrezzatura_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../models/attrezzatura.dart';
 import '../models/spesa_attrezzatura.dart';
@@ -29,7 +30,7 @@ class AttrezzaturaService {
         return transform(response);
       }
     } catch (e) {
-      print('$errorMessage: $e');
+      debugPrint('$errorMessage: $e');
       throw _formatErrorMessage(e);
     }
   }
@@ -102,7 +103,7 @@ class AttrezzaturaService {
           'gruppo': gruppoId,
         });
       } catch (e) {
-        print('Errore creazione SpesaAttrezzatura per acquisto: $e');
+        debugPrint('Errore creazione SpesaAttrezzatura per acquisto: $e');
       }
 
       // Crea Pagamento
@@ -115,7 +116,7 @@ class AttrezzaturaService {
           'gruppo': gruppoId,
         });
       } catch (e) {
-        print('Errore creazione Pagamento per acquisto attrezzatura: $e');
+        debugPrint('Errore creazione Pagamento per acquisto attrezzatura: $e');
       }
     }
 
@@ -137,7 +138,7 @@ class AttrezzaturaService {
       await _apiService.delete('${ApiConstants.attrezzatureUrl}$id/');
       return true;
     } catch (e) {
-      print('Errore eliminazione attrezzatura: $e');
+      debugPrint('Errore eliminazione attrezzatura: $e');
       throw _formatErrorMessage(e);
     }
   }
@@ -199,7 +200,7 @@ class AttrezzaturaService {
         'gruppo': gruppoId,
       });
     } catch (e) {
-      print('Errore creazione Pagamento per spesa attrezzatura: $e');
+      debugPrint('Errore creazione Pagamento per spesa attrezzatura: $e');
     }
 
     return spesa;
@@ -211,7 +212,7 @@ class AttrezzaturaService {
       await _apiService.delete('${ApiConstants.speseAttrezzaturaUrl}$id/');
       return true;
     } catch (e) {
-      print('Errore eliminazione spesa attrezzatura: $e');
+      debugPrint('Errore eliminazione spesa attrezzatura: $e');
       throw _formatErrorMessage(e);
     }
   }
@@ -285,7 +286,7 @@ class AttrezzaturaService {
           'gruppo': gruppoId,
         });
       } catch (e) {
-        print('Errore creazione SpesaAttrezzatura per manutenzione: $e');
+        debugPrint('Errore creazione SpesaAttrezzatura per manutenzione: $e');
       }
 
       // Crea Pagamento
@@ -298,7 +299,7 @@ class AttrezzaturaService {
           'gruppo': gruppoId,
         });
       } catch (e) {
-        print('Errore creazione Pagamento per manutenzione: $e');
+        debugPrint('Errore creazione Pagamento per manutenzione: $e');
       }
     }
 
@@ -320,7 +321,7 @@ class AttrezzaturaService {
       await _apiService.delete('${ApiConstants.manutenzioniUrl}$id/');
       return true;
     } catch (e) {
-      print('Errore eliminazione manutenzione: $e');
+      debugPrint('Errore eliminazione manutenzione: $e');
       throw _formatErrorMessage(e);
     }
   }
@@ -364,7 +365,7 @@ class AttrezzaturaService {
           'gruppo': gruppoIdEffettivo,
         });
       } catch (e) {
-        print('Errore creazione SpesaAttrezzatura per completamento manutenzione: $e');
+        debugPrint('Errore creazione SpesaAttrezzatura per completamento manutenzione: $e');
       }
 
       // Crea Pagamento
@@ -377,7 +378,7 @@ class AttrezzaturaService {
           'gruppo': gruppoIdEffettivo,
         });
       } catch (e) {
-        print('Errore creazione Pagamento per completamento manutenzione: $e');
+        debugPrint('Errore creazione Pagamento per completamento manutenzione: $e');
       }
     }
 

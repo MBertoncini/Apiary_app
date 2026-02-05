@@ -4,6 +4,7 @@ import '../constants/api_constants.dart';
 import '../models/gruppo.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
+import 'package:flutter/foundation.dart';
 
 class GruppoService {
   final ApiService _apiService;
@@ -52,7 +53,7 @@ class GruppoService {
     try {
       // 1. Carica i dati base del gruppo
       final String endpoint = '${ApiConstants.gruppiUrl}$gruppoId/';
-      print('=== CARICAMENTO GRUPPO DETAIL ===');
+      debugPrint('=== CARICAMENTO GRUPPO DETAIL ===');
       final response = await _apiService.get(endpoint);
       Gruppo gruppoBase = Gruppo.fromJson(response);
       
@@ -62,20 +63,20 @@ class GruppoService {
       // 2. Carica i membri (chiamata separata)
       try {
         membri = await getGruppoMembri(gruppoId);
-        print('=== MEMBRI CARICATI ===');
-        print('Membri tipo: ${membri.runtimeType}');
-        print('Membri: $membri');
+        debugPrint('=== MEMBRI CARICATI ===');
+        debugPrint('Membri tipo: ${membri.runtimeType}');
+        debugPrint('Membri: $membri');
       } catch (e, stackTrace) {
-        print('=== ERRORE NEL CARICAMENTO MEMBRI ===');
-        print('$e');
-        print('=== STACK TRACE ===');
-        print('$stackTrace');
+        debugPrint('=== ERRORE NEL CARICAMENTO MEMBRI ===');
+        debugPrint('$e');
+        debugPrint('=== STACK TRACE ===');
+        debugPrint('$stackTrace');
       }
       
       // 3. Carica gli apiari condivisi (chiamata separata)
       try {
         final apiari = await getApiariGruppo(gruppoId);
-        print('Apiari ricevuti: ${apiari.runtimeType} - ${apiari.length} elementi');
+        debugPrint('Apiari ricevuti: ${apiari.runtimeType} - ${apiari.length} elementi');
         
         // Versione ancora più sicura e robusta per estrarre gli ID
         apiariIds = [];
@@ -88,22 +89,22 @@ class GruppoService {
               if (id is int) {
                 apiariIds.add(id);
               } else {
-                print('ATTENZIONE: ID apiario non è un intero: $id (${id.runtimeType})');
+                debugPrint('ATTENZIONE: ID apiario non è un intero: $id (${id.runtimeType})');
                 // Non aggiungerlo alla lista
               }
             }
           } catch (e) {
-            print('Errore nell\'estrazione dell\'ID apiario: $e');
+            debugPrint('Errore nell\'estrazione dell\'ID apiario: $e');
           }
         }
         
-        print('ID apiari estratti: $apiariIds');
+        debugPrint('ID apiari estratti: $apiariIds');
       } catch (e) {
-        print('Errore nel caricamento degli apiari: $e');
+        debugPrint('Errore nel caricamento degli apiari: $e');
       }
       
       // Crea un nuovo gruppo con tutti i dati combinati
-      print('=== CREAZIONE GRUPPO COMBINATO ===');
+      debugPrint('=== CREAZIONE GRUPPO COMBINATO ===');
       try {
         return Gruppo(
           id: gruppoBase.id,
@@ -119,17 +120,17 @@ class GruppoService {
           apiariCountFromApi: apiariIds.isNotEmpty ? apiariIds.length : gruppoBase.apiariCountFromApi,
         );
       } catch (e, stackTrace) {
-        print('=== ERRORE NELLA CREAZIONE DEL GRUPPO COMBINATO ===');
-        print('$e');
-        print('=== STACK TRACE ===');
-        print('$stackTrace');
+        debugPrint('=== ERRORE NELLA CREAZIONE DEL GRUPPO COMBINATO ===');
+        debugPrint('$e');
+        debugPrint('=== STACK TRACE ===');
+        debugPrint('$stackTrace');
         rethrow;
       }
     } catch (e, stackTrace) {
-      print('=== ERRORE GLOBALE IN GETGRUPPODETAIL ===');
-      print('$e');
-      print('=== STACK TRACE ===');
-      print('$stackTrace');
+      debugPrint('=== ERRORE GLOBALE IN GETGRUPPODETAIL ===');
+      debugPrint('$e');
+      debugPrint('=== STACK TRACE ===');
+      debugPrint('$stackTrace');
       
       // Tenta di recuperare dai dati locali
       try {
@@ -142,8 +143,8 @@ class GruppoService {
         
         return Gruppo.fromJson(gruppoData);
       } catch (fallbackError) {
-        print('=== ERRORE ANCHE NEL FALLBACK ===');
-        print('$fallbackError');
+        debugPrint('=== ERRORE ANCHE NEL FALLBACK ===');
+        debugPrint('$fallbackError');
         rethrow; // Rilancia l'errore originale
       }
     }
@@ -185,7 +186,7 @@ class GruppoService {
       final response = await _apiService.get(endpoint);
       
       // Debug
-      print('Membri risposta: $response');
+      debugPrint('Membri risposta: $response');
       
       if (response is List) {
         return response
@@ -199,7 +200,7 @@ class GruppoService {
       
       return [];
     } catch (e) {
-      print('Errore nel caricamento dei membri: $e');
+      debugPrint('Errore nel caricamento dei membri: $e');
       // IMPORTANTE: NON chiamare più getGruppoDetail qui!
       // Restituisci una lista vuota invece di utilizzare il fallback
       return [];
@@ -307,7 +308,7 @@ class GruppoService {
       final String endpoint = '${ApiConstants.gruppiUrl}$gruppoId/apiari/';
       final response = await _apiService.get(endpoint);
       
-      print('Risposta API apiari: $response');
+      debugPrint('Risposta API apiari: $response');
       
       List<Map<String, dynamic>> risultati = [];
       
@@ -325,30 +326,30 @@ class GruppoService {
               if (stringKey == 'id' && value is String) {
                 try {
                   normalizedItem[stringKey] = int.parse(value);
-                  print('Convertito ID da String a int: $value -> ${normalizedItem[stringKey]}');
+                  debugPrint('Convertito ID da String a int: $value -> ${normalizedItem[stringKey]}');
                 } catch (e) {
                   normalizedItem[stringKey] = 0;
-                  print('Errore convertendo ID: $e, impostato a 0');
+                  debugPrint('Errore convertendo ID: $e, impostato a 0');
                 }
               } 
               // Converti gruppo in intero se è una stringa
               else if (stringKey == 'gruppo' && value is String) {
                 try {
                   normalizedItem[stringKey] = int.parse(value);
-                  print('Convertito gruppo da String a int: $value -> ${normalizedItem[stringKey]}');
+                  debugPrint('Convertito gruppo da String a int: $value -> ${normalizedItem[stringKey]}');
                 } catch (e) {
                   normalizedItem[stringKey] = 0;
-                  print('Errore convertendo gruppo: $e, impostato a 0');
+                  debugPrint('Errore convertendo gruppo: $e, impostato a 0');
                 }
               }
               // Converti proprietario in intero se è una stringa
               else if (stringKey == 'proprietario' && value is String) {
                 try {
                   normalizedItem[stringKey] = int.parse(value);
-                  print('Convertito proprietario da String a int: $value -> ${normalizedItem[stringKey]}');
+                  debugPrint('Convertito proprietario da String a int: $value -> ${normalizedItem[stringKey]}');
                 } catch (e) {
                   normalizedItem[stringKey] = 0;
-                  print('Errore convertendo proprietario: $e, impostato a 0');
+                  debugPrint('Errore convertendo proprietario: $e, impostato a 0');
                 }
               }
               else {
@@ -400,16 +401,16 @@ class GruppoService {
           }
         }
       } else {
-        print('Formato apiari inaspettato: ${response.runtimeType}');
+        debugPrint('Formato apiari inaspettato: ${response.runtimeType}');
       }
       
       if (risultati.isNotEmpty) {
-        print('Primo elemento apiari normalizzato: ${risultati.first}');
+        debugPrint('Primo elemento apiari normalizzato: ${risultati.first}');
       }
       
       return risultati;
     } catch (e) {
-      print('Errore nel caricamento degli apiari: $e');
+      debugPrint('Errore nel caricamento degli apiari: $e');
       return [];
     }
   }

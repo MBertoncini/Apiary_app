@@ -208,7 +208,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(_systemInfo),
                     Divider(),
                     Row(
@@ -247,7 +247,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
@@ -261,25 +261,26 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Center(
                       child: ElevatedButton.icon(
                         icon: Icon(_isRecording ? Icons.stop : Icons.mic),
                         label: Text(_isRecording ? 'Stop Registrazione' : 'Inizia Registrazione'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _isRecording ? Colors.red : ThemeConstants.primaryColor,
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         ),
                         onPressed: _isRecording ? _stopRecording : _startRecording,
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     if (_isRecording)
                       Center(
                         child: Column(
                           children: [
                             Text('Registrazione in corso...'),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             LinearProgressIndicator(
                               value: null,
                               backgroundColor: Colors.grey.shade200,
@@ -307,7 +308,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                                 color: Colors.green.shade800,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               _recordService!.transcription,
                               style: TextStyle(
@@ -336,7 +337,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                                 color: Colors.red.shade800,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               _lastError!,
                               style: TextStyle(
@@ -350,7 +351,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
@@ -376,7 +377,7 @@ class _VoiceDebugScreenState extends State<VoiceDebugScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Container(
                       padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(

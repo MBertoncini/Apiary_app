@@ -57,7 +57,7 @@ class SpeechRecognitionService with ChangeNotifier {
       
       return _isInitialized;
     } catch (e) {
-      print('Errore nell\'inizializzazione del riconoscimento vocale: $e');
+      debugPrint('Errore nell\'inizializzazione del riconoscimento vocale: $e');
       _isInitialized = false;
       notifyListeners();
       return false;
@@ -66,7 +66,7 @@ class SpeechRecognitionService with ChangeNotifier {
   
   // Callback per cambio di stato del riconoscimento
   void _onStatusChanged(String status) {
-    print('Speech status: $status');
+    debugPrint('Speech status: $status');
     
     if (status == 'done') {
       _isListening = false;
@@ -76,7 +76,7 @@ class SpeechRecognitionService with ChangeNotifier {
   
   // Callback per errori del riconoscimento
   void _onSpeechError(Object error) {
-    print('Speech error: $error');
+    debugPrint('Speech error: $error');
     _isListening = false;
     
     // Riproduci suono di errore
@@ -163,7 +163,7 @@ class SpeechRecognitionService with ChangeNotifier {
       notifyListeners();
       return _isListening;
     } catch (e) {
-      print('Errore nell\'avvio del riconoscimento vocale: $e');
+      debugPrint('Errore nell\'avvio del riconoscimento vocale: $e');
       _isListening = false;
       
       // Riproduci suono di errore
@@ -214,7 +214,7 @@ class SpeechRecognitionService with ChangeNotifier {
       
       notifyListeners();
     } catch (e) {
-      print('Errore nell\'interruzione del riconoscimento vocale: $e');
+      debugPrint('Errore nell\'interruzione del riconoscimento vocale: $e');
     }
   }
   
@@ -231,7 +231,7 @@ class SpeechRecognitionService with ChangeNotifier {
       
       notifyListeners();
     } catch (e) {
-      print('Errore nell\'annullamento del riconoscimento vocale: $e');
+      debugPrint('Errore nell\'annullamento del riconoscimento vocale: $e');
     }
   }
   

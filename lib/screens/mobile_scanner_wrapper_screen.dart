@@ -192,7 +192,7 @@ class _MobileScannerWrapperScreenState extends State<MobileScannerWrapperScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircularProgressIndicator(color: Colors.white),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
                       'Elaborazione in corso...',
                       style: TextStyle(color: Colors.white, fontSize: 16),

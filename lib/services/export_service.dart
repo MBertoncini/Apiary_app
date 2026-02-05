@@ -9,6 +9,7 @@ import '../database/dao/apiario_dao.dart';
 import '../database/dao/arnia_dao.dart';
 import '../database/dao/controllo_arnia_dao.dart';
 import '../utils/date_formatters.dart';
+import 'package:flutter/foundation.dart';
 
 class ExportService {
   final ApiarioDao _apiarioDao = ApiarioDao();
@@ -76,7 +77,7 @@ class ExportService {
         );
       }
     } catch (e) {
-      print('Error exporting data: $e');
+      debugPrint('Error exporting data: $e');
       return null;
     }
   }
@@ -344,7 +345,7 @@ class ExportService {
         subject: 'Export dati Apiario Manager',
       );
     } catch (e) {
-      print('Error sharing file: $e');
+      debugPrint('Error sharing file: $e');
     }
   }
   

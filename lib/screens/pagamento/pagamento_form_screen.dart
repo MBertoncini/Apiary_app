@@ -13,9 +13,9 @@ import '../../widgets/loading_widget.dart';
 
 class PagamentoFormScreen extends StatefulWidget {
   final int? pagamentoId;
-  
+
   PagamentoFormScreen({this.pagamentoId});
-  
+
   @override
   _PagamentoFormScreenState createState() => _PagamentoFormScreenState();
 }
@@ -24,14 +24,14 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _importoController = TextEditingController();
   final _descrizioneController = TextEditingController();
-  
+
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   bool _isInitLoading = false;
   String? _errorMessage;
   List<Gruppo> _gruppi = [];
   Gruppo? _selectedGruppo;
-  
+
   @override
   void initState() {
     super.initState();
@@ -41,39 +41,39 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
       _loadGruppi();
     }
   }
-  
+
   @override
   void dispose() {
     _importoController.dispose();
     _descrizioneController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadPagamento() async {
     setState(() {
       _isInitLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final pagamentoService = PagamentoService(apiService);
-      
+
       final pagamento = await pagamentoService.getPagamento(widget.pagamentoId!);
-      
+
       _importoController.text = pagamento.importo.toString();
       _descrizioneController.text = pagamento.descrizione;
       _selectedDate = DateTime.parse(pagamento.data);
-      
+
       await _loadGruppi();
-      
+
       if (pagamento.gruppo != null) {
         _selectedGruppo = _gruppi.firstWhere(
           (g) => g.id == pagamento.gruppo,
           orElse: () => _gruppi.first,
         );
       }
-      
+
       setState(() {
         _isInitLoading = false;
       });
@@ -84,22 +84,22 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
       });
     }
   }
-  
+
   Future<void> _loadGruppi() async {
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
-      
+
       final response = await apiService.get('/gruppi/');
-      
+
       List<dynamic> gruppiJson = [];
       if (response is List) {
         gruppiJson = response;
       } else if (response is Map && response.containsKey('results')) {
         gruppiJson = response['results'] as List;
       }
-      
+
       final gruppi = gruppiJson.map((json) => Gruppo.fromJson(json)).toList();
-      
+
       setState(() {
         _gruppi = gruppi;
         // Seleziona il primo gruppo come default se ce ne sono
@@ -108,11 +108,11 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
         }
       });
     } catch (e) {
-      print('Errore caricamento gruppi: $e');
+      debugPrint('Errore caricamento gruppi: $e');
       // Non blocchiamo il form se i gruppi non sono disponibili
     }
   }
-  
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -126,22 +126,22 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
       });
     }
   }
-  
+
   Future<void> _savePagamento() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final pagamentoService = PagamentoService(apiService);
       final auth = Provider.of<AuthService>(context, listen: false);
-      
+
       final importo = double.parse(_importoController.text.replaceAll(',', '.'));
       final data = {
         'importo': importo,
@@ -150,7 +150,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
         'utente': auth.currentUser!.id,
         'gruppo': _selectedGruppo?.id,
       };
-      
+
       if (widget.pagamentoId != null) {
         await pagamentoService.updatePagamento(widget.pagamentoId!, data);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -162,7 +162,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
           SnackBar(content: Text('Pagamento creato con successo')),
         );
       }
-      
+
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
@@ -171,16 +171,16 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final formatDate = DateFormat('dd/MM/yyyy');
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.pagamentoId != null ? 'Modifica Pagamento' : 'Nuovo Pagamento'),
       ),
-      body: _isInitLoading 
+      body: _isInitLoading
           ? LoadingWidget()
           : _errorMessage != null && widget.pagamentoId != null
               ? ErrorDisplayWidget(
@@ -205,12 +205,12 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                               ),
                             ),
                           ),
-                          
+
                         // Importo
                         TextFormField(
                           controller: _importoController,
                           decoration: InputDecoration(
-                            labelText: 'Importo (€)',
+                            labelText: 'Importo (\u20AC)',
                             prefixIcon: Icon(Icons.euro),
                             border: OutlineInputBorder(),
                           ),
@@ -225,8 +225,8 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
-                        
+                        const SizedBox(height: 16),
+
                         // Data
                         InkWell(
                           onTap: () => _selectDate(context),
@@ -239,8 +239,8 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                             child: Text(formatDate.format(_selectedDate)),
                           ),
                         ),
-                        SizedBox(height: 16),
-                        
+                        const SizedBox(height: 16),
+
                         // Descrizione
                         TextFormField(
                           controller: _descrizioneController,
@@ -257,8 +257,8 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                           },
                           maxLines: 3,
                         ),
-                        SizedBox(height: 16),
-                        
+                        const SizedBox(height: 16),
+
                         // Gruppo (opzionale)
                         if (_gruppi.isNotEmpty)
                           DropdownButtonFormField<Gruppo>(
@@ -285,8 +285,8 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                               });
                             },
                           ),
-                        SizedBox(height: 32),
-                        
+                        const SizedBox(height: 32),
+
                         // Pulsante salva
                         SizedBox(
                           width: double.infinity,

@@ -18,7 +18,7 @@ class SyncService with ChangeNotifier {
   
   SyncService(this._apiService, this._storageService) {
     _loadLastSyncTime();
-    _startPeriodicSync();
+    // Periodic sync is now started on demand via startPeriodicSync()
   }
   
   Future<void> _loadLastSyncTime() async {
@@ -29,8 +29,9 @@ class SyncService with ChangeNotifier {
     }
   }
   
-  void _startPeriodicSync() {
-    // Sincronizza ogni X minuti (default: 30)
+  /// Call this to start periodic background sync (e.g. after login).
+  void startPeriodicSync() {
+    _syncTimer?.cancel();
     _syncTimer = Timer.periodic(
       Duration(minutes: AppConstants.defaultSyncInterval),
       (_) => syncData(),
@@ -58,7 +59,7 @@ class SyncService with ChangeNotifier {
       
       return true;
     } catch (e) {
-      print('Error during sync: $e');
+      debugPrint('Error during sync: $e');
       return false;
     } finally {
       _isSyncing = false;

@@ -62,13 +62,13 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
       try {
         spese = await service.getSpeseAttrezzatura(widget.attrezzaturaId);
       } catch (e) {
-        print('Errore caricamento spese: $e');
+        debugPrint('Errore caricamento spese: $e');
       }
 
       try {
         manutenzioni = await service.getManutenzioniAttrezzatura(widget.attrezzaturaId);
       } catch (e) {
-        print('Errore caricamento manutenzioni: $e');
+        debugPrint('Errore caricamento manutenzioni: $e');
       }
 
       setState(() {
@@ -248,7 +248,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
               ),
             ),
 
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Card statistiche
             Card(
@@ -261,7 +261,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                       'Statistiche',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
@@ -303,12 +303,12 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Nessuna spesa registrata',
               style: TextStyle(color: Colors.grey[600]),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton.icon(
               icon: Icon(Icons.add),
               label: Text('Aggiungi Spesa'),
@@ -360,12 +360,12 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.build, size: 64, color: Colors.grey[400]),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Nessuna manutenzione registrata',
               style: TextStyle(color: Colors.grey[600]),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton.icon(
               icon: Icon(Icons.add),
               label: Text('Aggiungi Manutenzione'),
@@ -476,7 +476,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
       child: Column(
         children: [
           Icon(icon, color: color),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
@@ -609,7 +609,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
               Navigator.pop(context);
               await _deleteAttrezzatura();
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: Text('Elimina'),
           ),
         ],

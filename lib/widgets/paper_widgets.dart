@@ -151,7 +151,7 @@ class DiaryEntry extends StatelessWidget {
                   title,
                   style: ThemeConstants.subheadingStyle,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   content,
                   style: ThemeConstants.handwrittenNotes,
@@ -186,7 +186,8 @@ class DiaryButton extends StatelessWidget {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: color ?? ThemeConstants.primaryColor,
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         textStyle: GoogleFonts.caveat(
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -203,10 +204,10 @@ class DiaryButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon),
-            SizedBox(width: 8),
+            Icon(icon, size: 20),
+            SizedBox(width: 6),
           ],
-          Text(label),
+          Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );

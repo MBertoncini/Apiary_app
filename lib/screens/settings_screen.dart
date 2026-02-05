@@ -21,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _lastSync = 'Mai';
   bool _isSyncing = false;
   int _cacheSize = 0;
-  
+
   @override
   void initState() {
     super.initState();
@@ -46,58 +46,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     }
   }
-  
+
   Future<void> _loadSyncInfo() async {
     // Implementazione esistente invariata
     try {
       final storageService = Provider.of<StorageService>(context, listen: false);
       final lastSyncTimestamp = await storageService.getLastSyncTimestamp();
-      
+
       if (lastSyncTimestamp != null) {
         final lastSyncDate = DateTime.parse(lastSyncTimestamp);
         setState(() {
           _lastSync = '${lastSyncDate.day.toString().padLeft(2, '0')}/${lastSyncDate.month.toString().padLeft(2, '0')}/${lastSyncDate.year} ${lastSyncDate.hour.toString().padLeft(2, '0')}:${lastSyncDate.minute.toString().padLeft(2, '0')}';
         });
       }
-      
+
       // Calcola dimensione cache approssimativa
       final apiari = await storageService.getStoredData('apiari');
       final arnie = await storageService.getStoredData('arnie');
       final controlli = await storageService.getStoredData('controlli');
       final regine = await storageService.getStoredData('regine');
-      
+
       setState(() {
         _cacheSize = apiari.length + arnie.length + controlli.length + regine.length;
       });
     } catch (e) {
-      print('Error loading sync info: $e');
+      debugPrint('Error loading sync info: $e');
     }
   }
-  
+
   Future<void> _syncData() async {
     // Implementazione esistente invariata
     setState(() {
       _isSyncing = true;
     });
-    
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
-      
+
       final lastSync = await storageService.getLastSyncTimestamp();
       final syncData = await apiService.syncData(lastSync: lastSync);
       await storageService.saveSyncData(syncData);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Sincronizzazione completata'),
           backgroundColor: ThemeConstants.successColor,
         ),
       );
-      
+
       _loadSyncInfo();
     } catch (e) {
-      print('Error during sync: $e');
+      debugPrint('Error during sync: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Errore durante la sincronizzazione'),
@@ -110,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     }
   }
-  
+
   Future<void> _clearCache() async {
     // Implementazione esistente invariata
     showDialog(
@@ -129,17 +129,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              
+
               final storageService = Provider.of<StorageService>(context, listen: false);
               await storageService.clearDataCache();
-              
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Cache cancellata'),
                   backgroundColor: ThemeConstants.successColor,
                 ),
               );
-              
+
               _loadSyncInfo();
             },
             child: Text('CONFERMA'),
@@ -151,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-  
+
   Future<void> _logout() async {
     // Implementazione esistente invariata
     showDialog(
@@ -171,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               final authService = Provider.of<AuthService>(context, listen: false);
               await authService.logout();
-              
+
               Navigator.of(context).pop();
               Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
             },
@@ -184,12 +184,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Diario dell\'Apicoltore'),
@@ -206,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: EdgeInsets.all(16),
           children: [
             DiaryTitle(title: 'Impostazioni'),
-            
+
             // Profilo utente
             PaperCard(
               child: Column(
@@ -216,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Profilo',
                     style: ThemeConstants.subheadingStyle,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       // Avatar personalizzato in stile diario
@@ -233,8 +233,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            (user?.username.isNotEmpty == true) 
-                                ? user!.username[0].toUpperCase() 
+                            (user?.username.isNotEmpty == true)
+                                ? user!.username[0].toUpperCase()
                                 : 'U',
                             style: GoogleFonts.caveat(
                               fontSize: 36,
@@ -256,7 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               user?.email ?? '',
                               style: ThemeConstants.bodyStyle.copyWith(
@@ -268,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   DiaryButton(
                     label: 'Esci',
                     onPressed: _logout,
@@ -278,8 +278,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            
+            const SizedBox(height: 16),
+
             // Sincronizzazione
             PaperCard(
               child: Column(
@@ -289,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Sincronizzazione',
                     style: ThemeConstants.subheadingStyle,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildDiarySettingItem(
                     'Ultima sincronizzazione',
                     _lastSync,
@@ -300,7 +300,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     '${_cacheSize > 1024 ? (_cacheSize / 1024).toStringAsFixed(1) + ' MB' : _cacheSize.toString() + ' KB'}',
                     Icons.storage,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -325,8 +325,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            
+            const SizedBox(height: 16),
+
             // Informazioni app
             PaperCard(
               child: Column(
@@ -336,7 +336,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Informazioni',
                     style: ThemeConstants.subheadingStyle,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildDiarySettingItem(
                     'Versione app',
                     _appVersion,
@@ -360,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-  
+
   Widget _buildDiarySettingItem(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),

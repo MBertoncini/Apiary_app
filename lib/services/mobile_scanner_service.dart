@@ -38,7 +38,7 @@ class MobileScannerService {
       
       return null;
     } catch (e) {
-      print('Error extracting QR data: $e');
+      debugPrint('Error extracting QR data: $e');
       return null;
     }
   }

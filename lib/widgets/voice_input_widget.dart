@@ -286,7 +286,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
                               color: Colors.red.shade800,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             'Error: ${voiceManager.error}',
                             style: TextStyle(
@@ -399,7 +399,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
             color: Colors.red,
             size: 48,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
             'Servizio di voce non disponibile',
             style: TextStyle(
@@ -407,7 +407,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> with SingleTickerPr
               fontSize: 16,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Controlla che il servizio di voce sia correttamente inizializzato.',
             textAlign: TextAlign.center,

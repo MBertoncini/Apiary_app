@@ -121,7 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   
                   // Messaggio di errore
                   if (_errorMessage.isNotEmpty)
@@ -158,7 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabled: !_isLoading,
                     textInputAction: TextInputAction.next,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Email
                   TextFormField(
@@ -181,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabled: !_isLoading,
                     textInputAction: TextInputAction.next,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Password
                   TextFormField(
@@ -214,7 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabled: !_isLoading,
                     textInputAction: TextInputAction.next,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Conferma Password
                   TextFormField(
@@ -247,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabled: !_isLoading,
                     onFieldSubmitted: (_) => _register(),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   
                   // Pulsante registrazione
                   ElevatedButton(
@@ -269,7 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Link login
                   TextButton(

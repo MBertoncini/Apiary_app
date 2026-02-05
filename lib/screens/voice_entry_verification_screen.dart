@@ -166,7 +166,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             size: 64,
             color: Colors.grey,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
             'Nessun dato da verificare',
             style: TextStyle(
@@ -174,14 +174,14 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Torna indietro e registra nuove ispezioni',
             style: TextStyle(
               color: ThemeConstants.textSecondaryColor,
             ),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => widget.onCancel(),
             child: Text('Torna indietro'),
@@ -212,7 +212,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               ),
             ],
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           
           // Location section
           _buildSectionTitle('Posizione'),
@@ -233,7 +233,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               ));
             },
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           // Date and type section
           _buildSectionTitle('Informazioni generali'),
@@ -252,7 +252,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               _updateEntry(entry.copyWith(tipoComando: value));
             },
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           // Queen section
           _buildSectionTitle('Regina'),
@@ -313,7 +313,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
                 ));
               },
             ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           // Frames section
           _buildSectionTitle('Telaini'),
@@ -367,7 +367,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               _updateEntry(entry.copyWith(forzaFamiglia: value));
             },
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           // Problems section
           _buildSectionTitle('Problemi'),
@@ -402,7 +402,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
                 _updateEntry(entry.copyWith(tipoProblema: value));
               },
             ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           // Notes section
           _buildSectionTitle('Note'),
@@ -414,7 +414,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               _updateEntry(entry.copyWith(note: value));
             },
           ),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
         ],
       ),
     );

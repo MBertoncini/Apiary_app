@@ -105,7 +105,7 @@ class ChartExporter {
         },
       );
     } catch (e) {
-      print('Errore nell\'esportazione del grafico: $e');
+      debugPrint('Errore nell\'esportazione del grafico: $e');
       
       // Feedback errore
       ScaffoldMessenger.of(context).showSnackBar(

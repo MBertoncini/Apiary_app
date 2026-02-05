@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -167,7 +168,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> implements AuthTokenPro
       
       return false;
     } catch (e) {
-      print('Token refresh error: $e');
+      debugPrint('Token refresh error: $e');
       return false;
     }
   }

@@ -1,10 +1,12 @@
 // lib/main.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'utils/route_generator.dart';
 import 'constants/app_constants.dart';
+import 'constants/theme_constants.dart';
 import 'database/database_helper.dart';
 import 'provider_setup.dart';
 
@@ -14,11 +16,11 @@ void main() {
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      print('======= FLUTTER ERROR =======');
-      print('${details.exception}');
-      print('======= STACK TRACE =======');
-      print('${details.stack}');
-      print('===========================');
+      if (kDebugMode) {
+        debugPrint('======= FLUTTER ERROR =======');
+        debugPrint('${details.exception}');
+        debugPrint('${details.stack}');
+      }
     };
 
     final dbHelper = DatabaseHelper();
@@ -31,23 +33,20 @@ void main() {
 
     runApp(
       MultiProvider(
-        providers: providers, // Usa i provider aggiornati definiti in provider_setup.dart
+        providers: providers,
         child: MaterialApp(
           title: AppConstants.appName,
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-          ),
+          theme: ThemeConstants.getTheme(),
           initialRoute: AppConstants.splashRoute,
-          onGenerateRoute: RouteGenerator.generateRoute, // Use the updated route generator
+          onGenerateRoute: RouteGenerator.generateRoute,
         ),
       ),
     );
   }, (Object error, StackTrace stack) {
-    print('======= UNCAUGHT ERROR =======');
-    print('$error');
-    print('======= STACK TRACE =======');
-    print('$stack');
-    print('============================');
+    if (kDebugMode) {
+      debugPrint('======= UNCAUGHT ERROR =======');
+      debugPrint('$error');
+      debugPrint('$stack');
+    }
   });
 }

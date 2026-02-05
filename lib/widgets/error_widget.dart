@@ -43,7 +43,7 @@ class ErrorDisplayWidget extends StatelessWidget {
                 size: 64,
                 color: ThemeConstants.errorColor.withOpacity(0.7),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 'Si è verificato un errore',
                 style: TextStyle(
@@ -52,7 +52,7 @@ class ErrorDisplayWidget extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 formattedMessage,
                 style: TextStyle(
@@ -60,7 +60,7 @@ class ErrorDisplayWidget extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: Icon(Icons.refresh),

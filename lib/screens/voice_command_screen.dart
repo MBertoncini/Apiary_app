@@ -102,7 +102,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                               color: ThemeConstants.primaryColor,
                             ),
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           _buildGuideItem(
                             icon: Icons.mic,
                             title: 'Inizia a parlare',
@@ -118,16 +118,16 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                             title: 'Verifica e salva',
                             description: 'Controlla i dati riconosciuti prima di salvarli nel database',
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Divider(),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
                             'Comandi supportati:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           _buildCommandExample(
                             '"Apiario Montagna arnia 3, regina presente, vista, nessuna cella reale, 4 telaini di covata, 3 di scorte"'
                           ),
@@ -137,21 +137,21 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                           _buildCommandExample(
                             '"Arnia 2, ispezione del 20 maggio 2025, 7 telaini totali, famiglia forte"'
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Divider(),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
                             'Suggerimenti:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text('• Parla chiaramente e a un ritmo normale'),
                           Text('• Menziona sempre il numero dell\'apiario e dell\'arnia'),
                           Text('• In modalità multipla, puoi effettuare registrazioni consecutive'),
                           Text('• Verifica i dati prima di salvarli definitivamente'),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Container(
                             padding: EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -198,11 +198,11 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                           ),
                           Divider(),
                           Text('Nuovo metodo di riconoscimento vocale:'),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text('• Utilizza API di riconoscimento vocale native'),
                           Text('• Richiede connessione internet'),
                           Text('• Supporta l\'italiano tramite il sistema operativo'),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           ListenableBuilder(
                             listenable: _voiceManager,
                             builder: (context, _) {
@@ -220,7 +220,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                               );
                             },
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -281,7 +281,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             
             // Microphone button
             InkWell(
@@ -325,7 +325,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             
             // Batch mode switch
             Row(
@@ -441,7 +441,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                     fontSize: 16,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   description,
                   style: TextStyle(

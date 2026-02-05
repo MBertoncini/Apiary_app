@@ -51,7 +51,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      SizedBox(height: 32),
+                      const SizedBox(height: 32),
                       
                       // Logo app
                       Container(
@@ -67,7 +67,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       
                       Text(
                         'Informativa sulla Sicurezza',
@@ -78,7 +78,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(height: 32),
+                      const SizedBox(height: 32),
                       
                       // Contenuto disclaimer
                       Container(
@@ -101,7 +101,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                           style: TextStyle(fontSize: 16),
                         ),
                       ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       
                       // Checkbox "non visualizzare più"
                       Row(
@@ -135,7 +135,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
               ),
               
               // Pulsanti
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(

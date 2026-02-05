@@ -143,7 +143,7 @@ class MCPService {
       final List<dynamic> apiari = response is List ? response : (response['results'] ?? []);
       return apiari;
     } catch (e) {
-      print('Errore nel recupero degli apiari: $e');
+      debugPrint('Errore nel recupero degli apiari: $e');
       return [];
     }
   }
@@ -155,7 +155,7 @@ class MCPService {
       final List<dynamic> arnie = response is List ? response : (response['results'] ?? []);
       return arnie;
     } catch (e) {
-      print('Errore nel recupero delle arnie: $e');
+      debugPrint('Errore nel recupero delle arnie: $e');
       return [];
     }
   }
@@ -181,7 +181,7 @@ class MCPService {
           DateTime.parse(t['data_fine']).isAfter(DateTime.now().subtract(Duration(days: 30))))
       ).take(10).toList();
     } catch (e) {
-      print('Errore nel recupero dei trattamenti: $e');
+      debugPrint('Errore nel recupero dei trattamenti: $e');
       return [];
     }
   }
@@ -193,7 +193,7 @@ class MCPService {
       final List<dynamic> trattamenti = response is List ? response : (response['results'] ?? []);
       return trattamenti;
     } catch (e) {
-      print('Errore nel recupero dei trattamenti attivi: $e');
+      debugPrint('Errore nel recupero dei trattamenti attivi: $e');
       return [];
     }
   }
@@ -222,7 +222,7 @@ class MCPService {
             final List<dynamic> config = json.decode(controllo['telaini_config']);
             telainiConfig = List<String>.from(config);
           } catch (e) {
-            print('Errore nel parsing della configurazione telaini: $e');
+            debugPrint('Errore nel parsing della configurazione telaini: $e');
             telainiConfig = List.filled(10, 'vuoto');
           }
         } else {
@@ -260,7 +260,7 @@ class MCPService {
       
       return controlliDettagliati;
     } catch (e) {
-      print('Errore nel recupero dei controlli dettagliati: $e');
+      debugPrint('Errore nel recupero dei controlli dettagliati: $e');
       return [];
     }
   }
@@ -297,7 +297,7 @@ class MCPService {
             final List<dynamic> config = json.decode(controllo['telaini_config']);
             telainiConfig = List<String>.from(config);
           } catch (e) {
-            print('Errore nel parsing della configurazione telaini: $e');
+            debugPrint('Errore nel parsing della configurazione telaini: $e');
             telainiConfig = List.filled(10, 'vuoto');
           }
         } else {
@@ -335,7 +335,7 @@ class MCPService {
       
       return controlliDettagliati;
     } catch (e) {
-      print('Errore nel recupero dei controlli recenti dettagliati: $e');
+      debugPrint('Errore nel recupero dei controlli recenti dettagliati: $e');
       return [];
     }
   }
@@ -352,7 +352,7 @@ class MCPService {
           final List<dynamic> config = json.decode(response['telaini_config']);
           telainiConfig = List<String>.from(config);
         } catch (e) {
-          print('Errore nel parsing della configurazione telaini: $e');
+          debugPrint('Errore nel parsing della configurazione telaini: $e');
           telainiConfig = List.filled(10, 'vuoto');
         }
       } else {
@@ -393,7 +393,7 @@ class MCPService {
         }
       };
     } catch (e) {
-      print('Errore nel recupero dei dettagli del controllo: $e');
+      debugPrint('Errore nel recupero dei dettagli del controllo: $e');
       return {'error': e.toString()};
     }
   }
@@ -429,7 +429,7 @@ class MCPService {
           final List<dynamic> config = json.decode(ultimoControllo['telaini_config']);
           telainiConfig = List<String>.from(config);
         } catch (e) {
-          print('Errore nel parsing della configurazione telaini: $e');
+          debugPrint('Errore nel parsing della configurazione telaini: $e');
           telainiConfig = List.filled(10, 'vuoto');
         }
       } else {
@@ -490,7 +490,7 @@ class MCPService {
         'note': ultimoControllo['note']
       };
     } catch (e) {
-      print('Errore nel recupero del riepilogo telaini: $e');
+      debugPrint('Errore nel recupero del riepilogo telaini: $e');
       return {'error': e.toString()};
     }
   }
@@ -504,7 +504,7 @@ class MCPService {
       // Filtra per fioriture attive
       return fioriture.where((f) => f['is_active'] == true).toList();
     } catch (e) {
-      print('Errore nel recupero delle fioriture attive: $e');
+      debugPrint('Errore nel recupero delle fioriture attive: $e');
       return [];
     }
   }
@@ -516,7 +516,7 @@ class MCPService {
       final List<dynamic> regine = response is List ? response : (response['results'] ?? []);
       return regine;
     } catch (e) {
-      print('Errore nel recupero delle regine: $e');
+      debugPrint('Errore nel recupero delle regine: $e');
       return [];
     }
   }
@@ -538,7 +538,7 @@ class MCPService {
                apiarioNome.toLowerCase().contains(query.toLowerCase());
       }).toList();
     } catch (e) {
-      print('Errore nella ricerca delle arnie: $e');
+      debugPrint('Errore nella ricerca delle arnie: $e');
       return [];
     }
   }
@@ -582,7 +582,7 @@ class MCPService {
                 final List<dynamic> config = json.decode(controllo['telaini_config']);
                 telainiConfig = List<String>.from(config);
               } catch (e) {
-                print('Errore nel parsing della configurazione telaini: $e');
+                debugPrint('Errore nel parsing della configurazione telaini: $e');
                 telainiConfig = List.filled(10, 'vuoto');
               }
             }
@@ -599,7 +599,7 @@ class MCPService {
             }));
           }
         } catch (e) {
-          print('Errore nel recupero dei controlli per arnia ${arnia['id']}: $e');
+          debugPrint('Errore nel recupero dei controlli per arnia ${arnia['id']}: $e');
         }
       }
       
@@ -610,7 +610,7 @@ class MCPService {
         'ultimi_controlli': controlliApiario,
       };
     } catch (e) {
-      print('Errore nel recupero delle informazioni dell\'apiario: $e');
+      debugPrint('Errore nel recupero delle informazioni dell\'apiario: $e');
       return {'error': e.toString()};
     }
   }
@@ -646,7 +646,7 @@ class MCPService {
             final List<dynamic> config = json.decode(controllo['telaini_config']);
             telainiConfig = List<String>.from(config);
           } catch (e) {
-            print('Errore nel parsing della configurazione telaini: $e');
+            debugPrint('Errore nel parsing della configurazione telaini: $e');
             telainiConfig = List.filled(10, 'vuoto');
           }
         } else {
@@ -693,7 +693,7 @@ class MCPService {
         'ultimo_controllo': ultimoControllo,
       };
     } catch (e) {
-      print('Errore nel recupero delle informazioni dell\'arnia: $e');
+      debugPrint('Errore nel recupero delle informazioni dell\'arnia: $e');
       return {'error': e.toString()};
     }
   }
@@ -851,7 +851,7 @@ class MCPService {
         'chart_type': 'line',
       };
     } catch (e) {
-      print('Errore nella generazione del grafico: $e');
+      debugPrint('Errore nella generazione del grafico: $e');
       return {'error': e.toString()};
     }
   }
@@ -919,7 +919,7 @@ class MCPService {
         'y_axis': 'Punteggio di salute (0-100)',
       };
     } catch (e) {
-      print('Errore nella generazione del grafico: $e');
+      debugPrint('Errore nella generazione del grafico: $e');
       return {'error': e.toString()};
     }
   }
@@ -977,7 +977,7 @@ class MCPService {
         'y_axis': 'Efficacia (%)',
       };
     } catch (e) {
-      print('Errore nella generazione del grafico: $e');
+      debugPrint('Errore nella generazione del grafico: $e');
       return {'error': e.toString()};
     }
   }
@@ -1079,7 +1079,7 @@ class MCPService {
         'y_axis': 'Kg di miele',
       };
     } catch (e) {
-      print('Errore nella generazione del grafico: $e');
+      debugPrint('Errore nella generazione del grafico: $e');
       return {'error': e.toString()};
     }
   }

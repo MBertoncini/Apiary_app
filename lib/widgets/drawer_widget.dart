@@ -6,14 +6,37 @@ import '../services/auth_service.dart';
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
-  
+
   AppDrawer({required this.currentRoute});
-  
+
+  /// Naviga a una schermata dal drawer.
+  /// - Se la destinazione è il dashboard, torna al dashboard rimuovendo tutto lo stack.
+  /// - Se si è già sulla schermata corrente, chiude semplicemente il drawer.
+  /// - Altrimenti, naviga alla schermata mantenendo il dashboard come radice dello stack.
+  void _navigateTo(BuildContext context, String route) {
+    Navigator.pop(context); // Chiude il drawer
+    if (currentRoute == route) return; // Già sulla schermata
+
+    if (route == AppConstants.dashboardRoute) {
+      // Torna al dashboard rimuovendo tutto lo stack sopra
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppConstants.dashboardRoute,
+        (r) => false,
+      );
+    } else {
+      // Naviga alla schermata mantenendo il dashboard come base
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        route,
+        (r) => r.settings.name == AppConstants.dashboardRoute,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
-    
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -25,8 +48,8 @@ class AppDrawer extends StatelessWidget {
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
               child: Text(
-                (user?.username.isNotEmpty == true) 
-                    ? user!.username[0].toUpperCase() 
+                (user?.username.isNotEmpty == true)
+                    ? user!.username[0].toUpperCase()
                     : 'A',
                 style: TextStyle(
                   fontSize: 24,
@@ -39,103 +62,68 @@ class AppDrawer extends StatelessWidget {
               color: ThemeConstants.primaryColor,
             ),
           ),
-          
+
           // Dashboard
           ListTile(
             leading: Icon(Icons.dashboard),
             title: Text('Dashboard'),
             selected: currentRoute == AppConstants.dashboardRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.dashboardRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.dashboardRoute),
           ),
-          
+
           // Apiari
           ListTile(
             leading: Icon(Icons.hive),
             title: Text('Apiari'),
             selected: currentRoute == AppConstants.apiarioListRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.apiarioListRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.apiarioListRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.apiarioListRoute),
           ),
-          
+
           // Arnie
           ListTile(
             leading: Icon(Icons.grid_view),
             title: Text('Arnie'),
             selected: currentRoute == AppConstants.arniaListRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.arniaListRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.arniaListRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.arniaListRoute),
           ),
-          
-          // Mappa - Aggiungiamo la nuova voce qui
+
+          // Mappa
           ListTile(
             leading: Icon(Icons.map),
             title: Text('Mappa Apiari'),
             selected: currentRoute == AppConstants.mappaRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.mappaRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.mappaRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.mappaRoute),
           ),
-          
+
           // Regine
           ListTile(
             leading: Icon(Icons.local_florist),
             title: Text('Regine'),
             selected: currentRoute == AppConstants.reginaListRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.reginaListRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.reginaListRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.reginaListRoute),
           ),
-          
+
           // Trattamenti
           ListTile(
             leading: Icon(Icons.medication),
             title: Text('Trattamenti sanitari'),
             selected: currentRoute == AppConstants.trattamentiRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.trattamentiRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.trattamentiRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.trattamentiRoute),
           ),
-          
+
           // Melari
           ListTile(
             leading: Icon(Icons.view_module),
             title: Text('Melari e produzioni'),
             selected: currentRoute == AppConstants.melariRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.melariRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.melariRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.melariRoute),
           ),
 
           // Attrezzature
@@ -144,57 +132,37 @@ class AppDrawer extends StatelessWidget {
             title: Text('Attrezzature'),
             selected: currentRoute == AppConstants.attrezzatureRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.attrezzatureRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.attrezzatureRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.attrezzatureRoute),
           ),
 
           // Divisore
           Divider(),
-          
+
           // Gruppi
           ListTile(
             leading: Icon(Icons.group),
             title: Text('Gruppi'),
             selected: currentRoute == AppConstants.gruppiListRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.gruppiListRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.gruppiListRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.gruppiListRoute),
           ),
-          
+
           // Pagamenti
           ListTile(
             leading: Icon(Icons.payments_outlined),
             title: Text('Pagamenti'),
             selected: currentRoute == AppConstants.pagamentiRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.pagamentiRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.pagamentiRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.pagamentiRoute),
           ),
-          
+
           // Impostazioni
           ListTile(
             leading: Icon(Icons.settings),
             title: Text('Impostazioni'),
             selected: currentRoute == AppConstants.settingsRoute,
             selectedColor: ThemeConstants.primaryColor,
-            onTap: () {
-              Navigator.pop(context);
-              if (currentRoute != AppConstants.settingsRoute) {
-                Navigator.of(context).pushReplacementNamed(AppConstants.settingsRoute);
-              }
-            },
+            onTap: () => _navigateTo(context, AppConstants.settingsRoute),
           ),
 
           // Voice command con Wit.ai
@@ -218,12 +186,7 @@ class AppDrawer extends StatelessWidget {
                         : null,
                   ),
                 ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  if (currentRoute != AppConstants.voiceCommandRoute) {
-                    Navigator.of(context).pushReplacementNamed(AppConstants.voiceCommandRoute);
-                  }
-                },
+                onTap: () => _navigateTo(context, AppConstants.voiceCommandRoute),
               ),
               Positioned(
                 right: 16,
@@ -246,14 +209,17 @@ class AppDrawer extends StatelessWidget {
               ),
             ],
           ),
-          
+
           // Logout
           ListTile(
             leading: Icon(Icons.logout),
             title: Text('Logout'),
             onTap: () async {
               await authService.logout();
-              Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                AppConstants.loginRoute,
+                (r) => false,
+              );
             },
           ),
         ],

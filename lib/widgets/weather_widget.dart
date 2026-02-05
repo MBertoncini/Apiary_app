@@ -103,12 +103,12 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                 size: 48,
                 color: Colors.grey,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextButton.icon(
                 icon: Icon(Icons.refresh),
                 label: Text('Riprova'),
@@ -156,7 +156,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -190,7 +190,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                               fontSize: 16,
                             ),
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
                             'Aggiornato: ${DateFormat('HH:mm').format(_currentWeather!.date ?? DateTime.now())}',
                             style: TextStyle(
@@ -203,9 +203,9 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Divider(),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 
                 // Dettagli
                 Row(
@@ -252,7 +252,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -275,7 +275,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           color: color,
           size: 24,
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
@@ -283,7 +283,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
             color: ThemeConstants.textSecondaryColor,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
@@ -324,11 +324,11 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             _getWeatherIcon(weather.weatherIcon ?? '', size: 32),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('${weather.temperature?.celsius?.toStringAsFixed(1) ?? "N/A"}°C'),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               '${weather.tempMin?.celsius?.toStringAsFixed(0) ?? "N/A"}° | ${weather.tempMax?.celsius?.toStringAsFixed(0) ?? "N/A"}°',
               style: TextStyle(

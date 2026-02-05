@@ -57,7 +57,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
           // Salva nella cache
           await ApiCacheHelper.saveToCache('attrezzature', _attrezzature);
         } catch (e) {
-          print('Errore API, utilizzo cache: $e');
+          debugPrint('Errore API, utilizzo cache: $e');
           _loadFromCache();
         }
       } else {
@@ -168,7 +168,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
               size: 80,
               color: Colors.grey[400],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               _attrezzature.isEmpty
                   ? 'Nessuna attrezzatura registrata'
@@ -178,7 +178,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                 color: Colors.grey[600],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             if (_attrezzature.isEmpty)
               ElevatedButton.icon(
                 icon: Icon(Icons.add),
@@ -325,7 +325,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                       setDialogState(() => tempStato = value!);
                     },
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     value: tempCondizione,
                     decoration: InputDecoration(

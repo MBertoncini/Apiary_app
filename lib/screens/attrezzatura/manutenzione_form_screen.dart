@@ -192,7 +192,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                     subtitle: Text(widget.attrezzaturaNome!),
                   ),
                 ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               if (_errorMessage != null)
                 Padding(
@@ -236,7 +236,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   setState(() => _selectedTipo = value!);
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Stato
               DropdownButtonFormField<String>(
@@ -264,7 +264,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   });
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Descrizione (required in Django)
               TextFormField(
@@ -283,7 +283,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                 },
                 maxLines: 2,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Data programmata (required in Django)
               InkWell(
@@ -301,7 +301,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Data esecuzione (se stato = completata o in_corso)
               if (_selectedStato == 'completata' || _selectedStato == 'in_corso')
@@ -345,7 +345,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   return null;
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Eseguito da
               TextFormField(
@@ -357,7 +357,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   hintText: 'Nome di chi ha eseguito la manutenzione',
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Prossima manutenzione
               InkWell(
@@ -391,7 +391,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Note
               TextFormField(
@@ -403,7 +403,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                 ),
                 maxLines: 2,
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Info pagamento automatico
               if (_costoController.text.isNotEmpty)
@@ -449,7 +449,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   ),
                 ),
 
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Pulsante salva
               SizedBox(

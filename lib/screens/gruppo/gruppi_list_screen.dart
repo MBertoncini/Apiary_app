@@ -161,7 +161,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Sei stato invitato da ${invito.invitatoDaUsername} con il ruolo di ${invito.getRuoloPropDisplay()}',
                       style: TextStyle(
@@ -182,7 +182,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                         fontSize: 12,
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -225,7 +225,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                 size: 64,
                 color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 'Non sei membro di nessun gruppo',
                 style: TextStyle(
@@ -233,7 +233,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                   fontSize: 18,
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               ElevatedButton.icon(
                 icon: Icon(Icons.add),
                 label: Text('Crea un nuovo gruppo'),
@@ -254,7 +254,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
           try {
             final gruppo = _gruppi[index];
             // Stampa di debug per verificare il tipo di apiariIds
-            print('Gruppo ${gruppo.nome} - apiariIds: ${gruppo.apiariIds} (${gruppo.apiariIds.runtimeType})');
+            debugPrint('Gruppo ${gruppo.nome} - apiariIds: ${gruppo.apiariIds} (${gruppo.apiariIds.runtimeType})');
             
             return Card(
               margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -310,7 +310,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                           Icon(Icons.chevron_right),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           Icon(
@@ -346,7 +346,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
               ),
             );
           } catch (e) {
-            print('Errore nella costruzione della card per il gruppo all\'indice $index: $e');
+            debugPrint('Errore nella costruzione della card per il gruppo all\'indice $index: $e');
             return ListTile(
               title: Text('Errore nel caricamento del gruppo'),
               subtitle: Text('$e'),
@@ -356,7 +356,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
         },
       );
     } catch (e) {
-      print('Errore globale in _buildGruppiList: $e');
+      debugPrint('Errore globale in _buildGruppiList: $e');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -366,18 +366,18 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
               size: 48,
               color: ThemeConstants.errorColor,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Errore nel caricamento dei gruppi',
               style: TextStyle(fontSize: 16),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               '$e',
               style: TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadData,
               child: Text('RIPROVA'),

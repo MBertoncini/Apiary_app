@@ -16,7 +16,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   late TabController _tabController;
   late Future<List<Melario>> _melariFuture;
   late ApiService _apiService;
-  
+
   @override
   void initState() {
     super.initState();
@@ -25,19 +25,19 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     _apiService = ApiService(authService);
     _refreshMelari();
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _refreshMelari() async {
     setState(() {
       _melariFuture = _loadMelari();
     });
   }
-  
+
   Future<List<Melario>> _loadMelari() async {
     try {
       final response = await _apiService.get(ApiConstants.melariUrl);
@@ -48,11 +48,11 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       }
       return [];
     } catch (e) {
-      print('Error loading melari: $e');
+      debugPrint('Error loading melari: $e');
       throw e;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,7 +94,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                     style: TextStyle(fontSize: 16),
                   ),
                 ),
-                
+
                 // Tab Smielature vuota
                 Center(
                   child: Text(
@@ -107,13 +107,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             );
           } else {
             final melari = snapshot.data!;
-            
+
             return TabBarView(
               controller: _tabController,
               children: [
                 // Tab Melari
                 _buildMelariTab(melari),
-                
+
                 // Tab Smielature - Per ora mostriamo una pagina placeholdere
                 Center(
                   child: Text(
@@ -130,28 +130,32 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
-  
+
   Widget _buildFloatingActionButton() {
     return Builder(builder: (context) {
       final currentTab = _tabController.index;
-      
+
       if (currentTab == 0) {
         // Melari tab
         return FloatingActionButton(
           child: Icon(Icons.add),
           tooltip: 'Aggiungi melario',
           onPressed: () {
-            // Dialog per selezionare l'arnia
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
                 title: Text('Aggiungi melario'),
-                content: Text('Seleziona un\'arnia dalla sua pagina di dettaglio per aggiungere un melario.'),
+                content: Text('Per aggiungere un melario, vai alla pagina di dettaglio di un\'arnia.'),
                 actions: [
                   TextButton(
-                    child: Text('OK'),
+                    child: Text('Annulla'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  TextButton(
+                    child: Text('Vai alle arnie'),
                     onPressed: () {
                       Navigator.of(context).pop();
+                      Navigator.of(context).pushNamed(AppConstants.arniaListRoute);
                     },
                   ),
                 ],
@@ -165,17 +169,21 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           child: Icon(Icons.add),
           tooltip: 'Nuova smielatura',
           onPressed: () {
-            // Dialog per selezionare l'apiario
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
                 title: Text('Nuova smielatura'),
-                content: Text('Vai alla pagina di un apiario per registrare una nuova smielatura.'),
+                content: Text('Per registrare una smielatura, vai alla pagina di dettaglio di un apiario.'),
                 actions: [
                   TextButton(
-                    child: Text('OK'),
+                    child: Text('Annulla'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  TextButton(
+                    child: Text('Vai agli apiari'),
                     onPressed: () {
                       Navigator.of(context).pop();
+                      Navigator.of(context).pushNamed(AppConstants.apiarioListRoute);
                     },
                   ),
                 ],
@@ -186,7 +194,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       }
     });
   }
-  
+
   Widget _buildMelariTab(List<Melario> melari) {
     if (melari.isEmpty) {
       return Center(
@@ -197,13 +205,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         ),
       );
     }
-    
+
     // Raggruppa melari per stato
     final melariPosizionati = melari.where((m) => m.stato == 'posizionato').toList();
     final melariRimossi = melari.where((m) => m.stato == 'rimosso').toList();
     final melariInSmielatura = melari.where((m) => m.stato == 'in_smielatura').toList();
     final melariSmielati = melari.where((m) => m.stato == 'smielato').toList();
-    
+
     return RefreshIndicator(
       onRefresh: _refreshMelari,
       child: ListView(
@@ -211,15 +219,15 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         children: [
           if (melariPosizionati.isNotEmpty) ...[
             _buildMelariSection('Melari Posizionati', melariPosizionati, Colors.green),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
           ],
           if (melariInSmielatura.isNotEmpty) ...[
             _buildMelariSection('Melari in Smielatura', melariInSmielatura, Colors.orange),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
           ],
           if (melariRimossi.isNotEmpty) ...[
             _buildMelariSection('Melari Rimossi', melariRimossi, Colors.blue),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
           ],
           if (melariSmielati.isNotEmpty) ...[
             _buildMelariSection('Melari Smielati', melariSmielati, Colors.grey),
@@ -228,7 +236,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       ),
     );
   }
-  
+
   Widget _buildMelariSection(String title, List<Melario> melari, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,7 +251,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         ),
         Divider(color: color),
         ...melari.map((melario) => MelarioListItem(
-          melario: melario, 
+          melario: melario,
           onStatusChanged: _refreshMelari,
           apiService: _apiService,
         )),
@@ -256,13 +264,13 @@ class MelarioListItem extends StatelessWidget {
   final Melario melario;
   final VoidCallback onStatusChanged;
   final ApiService apiService;
-  
+
   MelarioListItem({
     required this.melario,
     required this.onStatusChanged,
     required this.apiService,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -319,7 +327,7 @@ class MelarioListItem extends StatelessWidget {
       ),
     );
   }
-  
+
   String _getStatusDisplay() {
     switch (melario.stato) {
       case 'posizionato':
@@ -334,7 +342,7 @@ class MelarioListItem extends StatelessWidget {
         return melario.stato;
     }
   }
-  
+
   Widget _getStatusIcon() {
     switch (melario.stato) {
       case 'posizionato':
@@ -349,7 +357,7 @@ class MelarioListItem extends StatelessWidget {
         return Icon(Icons.help);
     }
   }
-  
+
   Widget? _buildActionButton(BuildContext context) {
     // Pulsanti variabili in base allo stato
     switch (melario.stato) {
@@ -375,7 +383,7 @@ class MelarioListItem extends StatelessWidget {
                 ],
               ),
             );
-            
+
             if (confirmed == true) {
               try {
                 await apiService.post(
@@ -413,7 +421,7 @@ class MelarioListItem extends StatelessWidget {
                 ],
               ),
             );
-            
+
             if (confirmed == true) {
               try {
                 await apiService.post(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
+import 'package:flutter/foundation.dart';
 
 class StorageService {
   // Salva dati di sincronizzazione
@@ -50,7 +51,7 @@ class StorageService {
         final DateTime date = DateTime.parse(timestamp);
         return date.toUtc().toIso8601String();
       } catch (e) {
-        print('Error parsing saved timestamp: $e');
+        debugPrint('Error parsing saved timestamp: $e');
       }
     }
     

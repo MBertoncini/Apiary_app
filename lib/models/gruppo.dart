@@ -1,4 +1,5 @@
 // File: lib/models/gruppo.dart
+import 'package:flutter/foundation.dart';
 class Gruppo {
   final int id;
   final String nome;
@@ -28,7 +29,7 @@ class Gruppo {
 
   factory Gruppo.fromJson(Map<String, dynamic> json) {
     // Log di debug
-    print('Gruppo - JSON ricevuto: $json');
+    debugPrint('Gruppo - JSON ricevuto: $json');
     
     // Gestione del creatore
     int creatoreId = 0;
@@ -45,7 +46,7 @@ class Gruppo {
           try {
             creatoreId = int.parse(json['creatore']);
           } catch (e) {
-            print('Errore parsing creatore ID: $e');
+            debugPrint('Errore parsing creatore ID: $e');
           }
           creatoreName = json['creatore_username'] ?? 'Utente $creatoreId';
         }
@@ -89,79 +90,45 @@ class Gruppo {
     try {
       return creatoreId == userId;
     } catch (e) {
-      print('Errore in isCreator: $e');
+      debugPrint('Errore in isCreator: $e');
       return false;
     }
   }
 
-  bool isAdmin(int userId) {
-    // Approccio molto più difensivo e esplicito
-    if (membri.isEmpty) return false;
-    
+  // FIX #9 - Helper per ottenere il ruolo di un utente nel gruppo
+  String? _getUserRole(int userId) {
     try {
-        for (var membro in membri) {
-          if (membro is Map<String, dynamic>) {
-            // Formato 1: utente è un ID, utente_username è il nome
-            var utenteId = membro['utente'];
-            if (utenteId != null) {
-              if (utenteId is String) {
-                try {
-                  utenteId = int.parse(utenteId);
-                } catch (e) {
-                  continue;
-                }
-              }
-              
-              if (utenteId == userId && membro['ruolo'] == 'admin') {
-                return true;
-              }
+      for (var membro in membri) {
+        if (membro is Map<String, dynamic>) {
+          var utenteId = membro['utente'];
+          if (utenteId != null) {
+            if (utenteId is String) {
+              try { utenteId = int.parse(utenteId); } catch (e) { continue; }
             }
-          } else if (membro is MembroGruppo) {
-            if (membro.utenteId == userId && membro.ruolo == 'admin') {
-              return true;
-            }
+            if (utenteId == userId) return membro['ruolo'] as String?;
           }
+        } else if (membro is MembroGruppo) {
+          if (membro.utenteId == userId) return membro.ruolo;
         }
-        return false;
+      }
     } catch (e) {
-        print('Errore in isAdmin: $e');
-        return false;
+      debugPrint('Errore in _getUserRole: $e');
     }
+    return null;
+  }
+
+  bool isAdmin(int userId) {
+    // FIX #9 - Se la lista membri è vuota (es. dalla lista gruppi),
+    // il creatore è sempre admin (come da logica server perform_create).
+    if (membri.isEmpty) {
+      return isCreator(userId);
+    }
+    return _getUserRole(userId) == 'admin';
   }
 
   bool isEditor(int userId) {
-    // Approccio molto più difensivo e esplicito
     if (membri.isEmpty) return false;
-    
-    try {
-        for (var membro in membri) {
-          if (membro is Map<String, dynamic>) {
-            // Formato 1: utente è un ID, utente_username è il nome
-            var utenteId = membro['utente'];
-            if (utenteId != null) {
-              if (utenteId is String) {
-                try {
-                  utenteId = int.parse(utenteId);
-                } catch (e) {
-                  continue;
-                }
-              }
-              
-              if (utenteId == userId && membro['ruolo'] == 'editor') {
-                return true;
-              }
-            }
-          } else if (membro is MembroGruppo) {
-            if (membro.utenteId == userId && membro.ruolo == 'editor') {
-              return true;
-            }
-          }
-        }
-        return false;
-    } catch (e) {
-        print('Errore in isEditor: $e');
-        return false;
-    }
+    return _getUserRole(userId) == 'editor';
   }
 
   // Metodo helper per ottenere il numero di membri
@@ -170,7 +137,7 @@ class Gruppo {
       if (membri.isNotEmpty) return membri.length;
       return membriCountFromApi ?? 0;
     } catch (e) {
-      print('Errore nel conteggio membri: $e');
+      debugPrint('Errore nel conteggio membri: $e');
       return membriCountFromApi ?? 0;
     }
   }
@@ -181,7 +148,7 @@ class Gruppo {
       if (apiariIds.isNotEmpty) return apiariIds.length;
       return apiariCountFromApi ?? 0;
     } catch (e) {
-      print('Errore nel conteggio apiari: $e');
+      debugPrint('Errore nel conteggio apiari: $e');
       return apiariCountFromApi ?? 0;
     }
   }
@@ -200,14 +167,14 @@ class Gruppo {
         try {
           return int.parse(id);
         } catch (e) {
-          print('Errore parsing apiarioId: $e');
+          debugPrint('Errore parsing apiarioId: $e');
           return 0;
         }
       } else {
         return 0;
       }
     } catch (e) {
-      print('Errore in getApiarioIdAsInt: $e');
+      debugPrint('Errore in getApiarioIdAsInt: $e');
       return 0;
     }
   }
@@ -229,7 +196,7 @@ class Gruppo {
       }
       return false;
     } catch (e) {
-      print('Errore in containsApiario: $e');
+      debugPrint('Errore in containsApiario: $e');
       return false;
     }
   }
@@ -265,7 +232,7 @@ class MembroGruppo {
 
   factory MembroGruppo.fromJson(Map<String, dynamic> json) {
     // Debug
-    print('MembroGruppo - JSON ricevuto: $json');
+    debugPrint('MembroGruppo - JSON ricevuto: $json');
     
     // Gestione sicura per id
     int id = json['id'] is String ? int.parse(json['id']) : json['id'];
@@ -326,7 +293,7 @@ class InvitoGruppo {
   });
 
   factory InvitoGruppo.fromJson(Map<String, dynamic> json) {
-    print('InvitoGruppo - JSON ricevuto: $json');
+    debugPrint('InvitoGruppo - JSON ricevuto: $json');
     // Gestione per id
     int id = json['id'] is String ? int.parse(json['id']) : json['id'];
     

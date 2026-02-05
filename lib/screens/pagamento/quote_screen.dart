@@ -20,34 +20,34 @@ class _QuoteScreenState extends State<QuoteScreen> {
   Gruppo? _selectedGruppo;
   bool _isLoading = true;
   String? _errorMessage;
-  
+
   @override
   void initState() {
     super.initState();
     _loadDati();
   }
-  
+
   Future<void> _loadDati() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final pagamentoService = PagamentoService(apiService);
-      
+
       // Carica i gruppi
       try {
         final response = await apiService.get('/gruppi/');
-        
+
         List<dynamic> gruppiJson = [];
         if (response is List) {
           gruppiJson = response;
         } else if (response is Map && response.containsKey('results')) {
           gruppiJson = response['results'] as List;
         }
-        
+
         setState(() {
           _gruppi = gruppiJson.map((json) => Gruppo.fromJson(json)).toList();
           if (_gruppi.isNotEmpty && _selectedGruppo == null) {
@@ -55,13 +55,13 @@ class _QuoteScreenState extends State<QuoteScreen> {
           }
         });
       } catch (e) {
-        print('Errore caricamento gruppi: $e');
+        debugPrint('Errore caricamento gruppi: $e');
         // Non bloccante
       }
-      
+
       // Carica le quote
       final quote = await pagamentoService.getQuote();
-      
+
       setState(() {
         _quote = quote;
         _isLoading = false;
@@ -73,39 +73,39 @@ class _QuoteScreenState extends State<QuoteScreen> {
       });
     }
   }
-  
+
   List<QuotaUtente> _getQuoteFiltered() {
     if (_selectedGruppo == null) {
       return _quote;
     }
     return _quote.where((quota) => quota.gruppo == _selectedGruppo!.id).toList();
   }
-  
+
   Future<void> _editQuota(QuotaUtente quota) async {
     final percentuale = await _showEditDialog(quota);
-    
+
     if (percentuale != null) {
       setState(() {
         _isLoading = true;
       });
-      
+
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
         final pagamentoService = PagamentoService(apiService);
-        
+
         await pagamentoService.updateQuota(
-          quota.id, 
+          quota.id,
           {
             'percentuale': percentuale,
             'utente': quota.utente,
             'gruppo': quota.gruppo,
           }
         );
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Quota aggiornata con successo')),
         );
-        
+
         _loadDati();
       } catch (e) {
         setState(() {
@@ -115,7 +115,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
       }
     }
   }
-  
+
   Future<double?> _showEditDialog(QuotaUtente quota) async {
     final controller = TextEditingController(text: quota.percentuale.toString());
     return showDialog<double>(
@@ -126,7 +126,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Modifica la percentuale per ${quota.utenteUsername}'),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             TextFormField(
               controller: controller,
               decoration: InputDecoration(
@@ -170,7 +170,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
       ),
     );
   }
-  
+
   Future<void> _deleteQuota(QuotaUtente quota) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -189,18 +189,18 @@ class _QuoteScreenState extends State<QuoteScreen> {
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       setState(() {
         _isLoading = true;
       });
-      
+
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
         final pagamentoService = PagamentoService(apiService);
-        
+
         final success = await pagamentoService.deleteQuota(quota.id);
-        
+
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Quota eliminata con successo')),
@@ -220,7 +220,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
       }
     }
   }
-  
+
   Future<void> _addQuota() async {
     if (_selectedGruppo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -228,25 +228,25 @@ class _QuoteScreenState extends State<QuoteScreen> {
       );
       return;
     }
-    
+
     // Mostra dialog per inserire nuova quota
     final quota = await _showAddDialog();
-    
+
     if (quota != null) {
       setState(() {
         _isLoading = true;
       });
-      
+
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
         final pagamentoService = PagamentoService(apiService);
-        
+
         await pagamentoService.createQuota(quota);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Quota aggiunta con successo')),
         );
-        
+
         _loadDati();
       } catch (e) {
         setState(() {
@@ -256,7 +256,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
       }
     }
   }
-  
+
   Future<Map<String, dynamic>?> _showAddDialog() async {
     final percentualeController = TextEditingController();
     final utenteIdController = TextEditingController();
@@ -289,7 +289,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
                   return null;
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: percentualeController,
                 decoration: InputDecoration(
@@ -342,14 +342,14 @@ class _QuoteScreenState extends State<QuoteScreen> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Gestione Quote'),
       ),
-      body: _isLoading 
+      body: _isLoading
           ? LoadingWidget()
           : _errorMessage != null
               ? ErrorDisplayWidget(
@@ -385,7 +385,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
                           },
                         ),
                       ),
-                    
+
                     Expanded(
                       child: _buildQuoteList(),
                     ),
@@ -398,21 +398,21 @@ class _QuoteScreenState extends State<QuoteScreen> {
       ),
     );
   }
-  
+
   Widget _buildQuoteList() {
     final quoteFiltered = _getQuoteFiltered();
-    
+
     if (quoteFiltered.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.pie_chart, 
-              size: 80, 
+              Icons.pie_chart,
+              size: 80,
               color: Colors.grey[400],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Nessuna quota trovata',
               style: TextStyle(
@@ -420,7 +420,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
                 color: Colors.grey[600],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: Icon(Icons.add),
               label: Text('Aggiungi Quota'),
@@ -430,7 +430,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
         ),
       );
     }
-    
+
     return ListView.builder(
       itemCount: quoteFiltered.length,
       itemBuilder: (context, index) {

@@ -123,7 +123,7 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
                             'Informazioni sul gruppo',
                             style: ThemeConstants.subheadingStyle,
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
                             widget.gruppo == null
                                 ? 'Crea un nuovo gruppo per collaborare con altri apicoltori. Potrai invitare membri e condividere apiari.'
@@ -136,7 +136,7 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   
                   // Campo nome
                   TextFormField(
@@ -150,7 +150,7 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
                     validator: Validators.required,
                     textInputAction: TextInputAction.next,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Campo descrizione
                   TextFormField(
@@ -164,7 +164,7 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
                     maxLines: 3,
                     textInputAction: TextInputAction.done,
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   
                   // Pulsante salva
                   ElevatedButton(

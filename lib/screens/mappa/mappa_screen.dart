@@ -98,7 +98,7 @@ class _MappaScreenState extends State<MappaScreen> {
       // Se abbiamo i permessi, ottieni la posizione
       await _getCurrentPosition();
     } catch (e) {
-      print('Error checking location permissions: $e');
+      debugPrint('Error checking location permissions: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -148,7 +148,7 @@ class _MappaScreenState extends State<MappaScreen> {
         );
       }
     } catch (e) {
-      print('Error getting current position: $e');
+      debugPrint('Error getting current position: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Errore nel recupero della posizione: ${e.toString()}')),
@@ -192,7 +192,7 @@ class _MappaScreenState extends State<MappaScreen> {
       final currentUser = _authService!.currentUser;
       final currentUserId = currentUser?.id;
 
-      print("Caricamento apiari e fioriture. User ID: $currentUserId");
+      debugPrint("Caricamento apiari e fioriture. User ID: $currentUserId");
 
       // Verifica la connettività e carica dall'API se possibile
       final isConnected = await ApiCacheHelper.isConnected();
@@ -229,10 +229,10 @@ class _MappaScreenState extends State<MappaScreen> {
             });
           }
 
-          print("Apiari caricati dall'API: ${apiari.length}");
-          print("Fioriture caricate dall'API: ${fioriture.length}");
+          debugPrint("Apiari caricati dall'API: ${apiari.length}");
+          debugPrint("Fioriture caricate dall'API: ${fioriture.length}");
         } catch (e) {
-          print('Errore API, fallback su cache locale: $e');
+          debugPrint('Errore API, fallback su cache locale: $e');
           apiari = await _storageService!.getStoredData('apiari');
           fioriture = await _storageService!.getStoredData('fioriture');
           if (mounted) {
@@ -250,7 +250,7 @@ class _MappaScreenState extends State<MappaScreen> {
             _isOffline = true;
           });
         }
-        print("Modalità offline - Apiari dalla cache: ${apiari.length}");
+        debugPrint("Modalità offline - Apiari dalla cache: ${apiari.length}");
       }
 
       // Filtra apiari in base ai permessi
@@ -260,7 +260,7 @@ class _MappaScreenState extends State<MappaScreen> {
         // Verifica le coordinate
         bool hasCoordinates = a['latitudine'] != null && a['longitudine'] != null;
         if (!hasCoordinates) {
-          print("Apiario senza coordinate: ${a['nome']}");
+          debugPrint("Apiario senza coordinate: ${a['nome']}");
           continue;
         }
 
@@ -275,17 +275,17 @@ class _MappaScreenState extends State<MappaScreen> {
         if (visibilita == 'pubblico') {
           // Visibile a tutti
           visible = true;
-          print("Apiario pubblico: ${a['nome']}");
+          debugPrint("Apiario pubblico: ${a['nome']}");
         } else if (visibilita == 'privato') {
           // Visibile solo al proprietario
           visible = proprietarioId == currentUserId;
-          print("Apiario privato: ${a['nome']}, visibile: $visible");
+          debugPrint("Apiario privato: ${a['nome']}, visibile: $visible");
         } else if (visibilita == 'gruppo' && condivisoConGruppo && gruppoId != null) {
           // Visibile agli utenti del gruppo
           visible = proprietarioId == currentUserId || _userBelongsToGroup(currentUserId, gruppoId);
-          print("Apiario di gruppo: ${a['nome']}, visibile: $visible");
+          debugPrint("Apiario di gruppo: ${a['nome']}, visibile: $visible");
         } else {
-          print("Apiario con visibilità non riconosciuta: ${a['nome']}, tipo: $visibilita");
+          debugPrint("Apiario con visibilità non riconosciuta: ${a['nome']}, tipo: $visibilita");
         }
 
         if (visible) {
@@ -293,7 +293,7 @@ class _MappaScreenState extends State<MappaScreen> {
         }
       }
 
-      print("Apiari visibili: ${apiariVisibili.length}");
+      debugPrint("Apiari visibili: ${apiariVisibili.length}");
 
       // Filtra fioriture
       List<dynamic> fioritureVisibili = [];
@@ -306,15 +306,15 @@ class _MappaScreenState extends State<MappaScreen> {
           fioritureVisibili.add(f);
         } else {
           if (!hasCoordinates) {
-            print("Fioritura senza coordinate: ${f['pianta']}");
+            debugPrint("Fioritura senza coordinate: ${f['pianta']}");
           }
           if (!isActive) {
-            print("Fioritura non attiva: ${f['pianta']}");
+            debugPrint("Fioritura non attiva: ${f['pianta']}");
           }
         }
       }
 
-      print("Fioriture visibili: ${fioritureVisibili.length}");
+      debugPrint("Fioriture visibili: ${fioritureVisibili.length}");
 
       if (mounted) {
         setState(() {
@@ -325,7 +325,7 @@ class _MappaScreenState extends State<MappaScreen> {
       }
 
     } catch (e) {
-      print('Error loading data: $e');
+      debugPrint('Error loading data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Errore durante il caricamento dei dati: ${e.toString()}')),
@@ -386,7 +386,7 @@ class _MappaScreenState extends State<MappaScreen> {
       
       return true;
     } catch (e) {
-      print('Errore nella verifica delle date della fioritura: $e');
+      debugPrint('Errore nella verifica delle date della fioritura: $e');
       return false;
     }
   }
@@ -498,7 +498,7 @@ class _MappaScreenState extends State<MappaScreen> {
                             ),
                           );
                         } catch (e) {
-                          print("Errore nel creare marker per apiario: $e");
+                          debugPrint("Errore nel creare marker per apiario: $e");
                           return Marker(
                             width: 0,
                             height: 0,
@@ -525,7 +525,7 @@ class _MappaScreenState extends State<MappaScreen> {
                             useRadiusInMeter: true,
                           );
                         } catch (e) {
-                          print("Errore nel creare circle per fioritura: $e");
+                          debugPrint("Errore nel creare circle per fioritura: $e");
                           return CircleMarker(
                             point: LatLng(0, 0),
                             radius: 0,
@@ -572,7 +572,7 @@ class _MappaScreenState extends State<MappaScreen> {
                             ),
                           );
                         } catch (e) {
-                          print("Errore nel creare marker per fioritura: $e");
+                          debugPrint("Errore nel creare marker per fioritura: $e");
                           return Marker(
                             width: 0,
                             height: 0,
@@ -627,7 +627,7 @@ class _MappaScreenState extends State<MappaScreen> {
                               fontSize: 14,
                             ),
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -648,7 +648,7 @@ class _MappaScreenState extends State<MappaScreen> {
                               Text('Apiario'),
                             ],
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -668,7 +668,7 @@ class _MappaScreenState extends State<MappaScreen> {
                               Text('Fioritura'),
                             ],
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -712,7 +712,7 @@ class _MappaScreenState extends State<MappaScreen> {
                               fontSize: 12,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text('Apiari: ${_apiari.length}', style: TextStyle(fontSize: 12)),
                           Text('Fioriture: ${_fioriture.length}', style: TextStyle(fontSize: 12)),
                         ],
@@ -739,7 +739,7 @@ class _MappaScreenState extends State<MappaScreen> {
                         ),
                         tooltip: 'Orienta a Nord',
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),

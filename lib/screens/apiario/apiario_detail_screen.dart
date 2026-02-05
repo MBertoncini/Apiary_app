@@ -75,7 +75,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           final meteoData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/meteo/');
           _datiMeteo = meteoData;
         } catch (e) {
-          print('Error loading meteo data: $e');
+          debugPrint('Error loading meteo data: $e');
         }
       } else {
         // Se non troviamo l'apiario in locale, prova a caricarlo dal server
@@ -107,7 +107,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       });
       
     } catch (e) {
-      print('Error loading apiario: $e');
+      debugPrint('Error loading apiario: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Errore durante il caricamento dei dati')),
       );
@@ -126,7 +126,10 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   }
   
   void _navigateToArniaCreate() {
-    // TODO: navigazione alla creazione arnia con apiario preimpostato
+    Navigator.of(context).pushNamed(
+      AppConstants.creaArniaRoute,
+      arguments: widget.apiarioId,
+    ).then((_) => _loadApiario());
   }
   
   void _navigateToControlloCreate(int arniaId) {
@@ -222,7 +225,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                           'Informazioni generali',
                           style: ThemeConstants.subheadingStyle,
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Posizione
                         Row(
@@ -254,7 +257,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Coordinate
                         if (_apiario!['latitudine'] != null && _apiario!['longitudine'] != null)
@@ -289,7 +292,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                           ),
                         
                         if (_apiario!['latitudine'] != null && _apiario!['longitudine'] != null)
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                         
                         // Monitoraggio meteo
                         Row(
@@ -321,7 +324,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Visibilità
                         Row(
@@ -357,7 +360,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         
                         // Condivisione
                         Row(
@@ -395,7 +398,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                     ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 
                 // Note
                 if (_apiario!['note'] != null && _apiario!['note'].isNotEmpty)
@@ -409,14 +412,14 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                             'Note',
                             style: ThemeConstants.subheadingStyle,
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(_apiario!['note']),
                         ],
                       ),
                     ),
                   ),
                 
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 
                 // Statistiche
                 Card(
@@ -429,7 +432,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                           'Statistiche',
                           style: ThemeConstants.subheadingStyle,
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
@@ -514,7 +517,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                       size: 64,
                       color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
                       'Nessuna arnia in questo apiario',
                       style: TextStyle(
@@ -522,11 +525,12 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                         fontSize: 16,
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: _navigateToArniaCreate,
                       icon: Icon(Icons.add),
                       label: Text('Aggiungi arnia'),
+                      style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
                     ),
                   ],
                 ),
@@ -588,7 +592,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                       ),
                                   ],
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
                                   'Installata il ${arnia['data_installazione']}',
                                   style: TextStyle(
@@ -597,7 +601,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                SizedBox(height: 16),
+                                const SizedBox(height: 16),
                                 Row(
                                   children: [
                                     Expanded(
@@ -609,6 +613,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                         ),
                                         style: ElevatedButton.styleFrom(
                                           padding: EdgeInsets.symmetric(horizontal: 4),
+                                          foregroundColor: Colors.white,
                                         ),
                                       ),
                                     ),
@@ -623,6 +628,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                         style: ElevatedButton.styleFrom(
                                           padding: EdgeInsets.symmetric(horizontal: 4),
                                           backgroundColor: ThemeConstants.secondaryColor,
+                                          foregroundColor: Colors.white,
                                         ),
                                       ),
                                     ),
@@ -648,7 +654,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                         size: 64,
                         color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
                         'Nessun trattamento sanitario registrato',
                         style: TextStyle(
@@ -656,13 +662,17 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                           fontSize: 16,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: () {
-                          // TODO: navigazione alla creazione trattamento
+                          Navigator.of(context).pushNamed(
+                            AppConstants.nuovoTrattamentoRoute,
+                            arguments: widget.apiarioId,
+                          ).then((_) => _loadApiario());
                         },
                         icon: Icon(Icons.add),
                         label: Text('Aggiungi trattamento'),
+                        style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
                       ),
                     ],
                   ),
@@ -726,7 +736,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                 ),
                               ],
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             
                             Row(
                               children: [
@@ -794,7 +804,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                 ),
                               ),
                             
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             
                             if (trattamento['note'] != null && trattamento['note'].isNotEmpty)
                               Padding(
@@ -805,7 +815,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                 ),
                               ),
                             
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
@@ -844,7 +854,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                         size: 64,
                         color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
                         'Monitoraggio meteo non attivato',
                         style: TextStyle(
@@ -852,11 +862,12 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                           fontSize: 16,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _editApiario,
                         icon: Icon(Icons.settings),
                         label: Text('Attiva monitoraggio meteo'),
+                        style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
                       ),
                     ],
                   ),
@@ -871,7 +882,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                             size: 64,
                             color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           Text(
                             'Nessun dato meteo disponibile',
                             style: TextStyle(
@@ -896,7 +907,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                   'Meteo attuale',
                                   style: ThemeConstants.subheadingStyle,
                                 ),
-                                SizedBox(height: 16),
+                                const SizedBox(height: 16),
                                 
                                 Row(
                                   children: [
@@ -939,9 +950,9 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                   ],
                                 ),
                                 
-                                SizedBox(height: 16),
+                                const SizedBox(height: 16),
                                 Divider(),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 
                                 // Dettagli meteo
                                 Row(
@@ -953,7 +964,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                           Icons.water_drop,
                                           color: Colors.blue,
                                         ),
-                                        SizedBox(height: 4),
+                                        const SizedBox(height: 4),
                                         Text(
                                           'Umidità',
                                           style: TextStyle(
@@ -975,7 +986,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                           Icons.air,
                                           color: Colors.blueGrey,
                                         ),
-                                        SizedBox(height: 4),
+                                        const SizedBox(height: 4),
                                         Text(
                                           'Vento',
                                           style: TextStyle(
@@ -997,7 +1008,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                           Icons.compress,
                                           color: Colors.purple,
                                         ),
-                                        SizedBox(height: 4),
+                                        const SizedBox(height: 4),
                                         Text(
                                           'Pressione',
                                           style: TextStyle(
@@ -1087,7 +1098,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                                 ),
                                               ],
                                             ),
-                                            SizedBox(height: 4),
+                                            const SizedBox(height: 4),
                                             Text(
                                               meteo['descrizione'] ?? 'Non disponibile',
                                               style: TextStyle(

@@ -95,11 +95,11 @@ class _LoginScreenState extends State<LoginScreen> {
             // Esegui la sincronizzazione completa
             final syncData = await apiService.syncData();
             await storageService.saveSyncData(syncData);
-            print('Post-login sync completata con successo');
+            debugPrint('Post-login sync completata con successo');
           } catch (e) {
             // Se la sync fallisce, prosegui comunque verso la dashboard
             // Le singole schermate caricheranno i dati autonomamente
-            print('Post-login sync fallita (non bloccante): $e');
+            debugPrint('Post-login sync fallita (non bloccante): $e');
           }
         }
 
@@ -169,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   
                   Text(
                     AppConstants.appName,
@@ -180,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   
                   Text(
                     _showDemoLogin
@@ -194,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   
                   if (_serverUnavailable) ...[
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Container(
                       padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -221,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ],
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   
                   // Messaggio di errore
                   if (_errorMessage != null)
@@ -260,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabled: !isLoading,
                     textInputAction: TextInputAction.next,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Password
                   TextFormField(
@@ -292,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabled: !isLoading,
                     onFieldSubmitted: (_) => _login(),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   
                   // Login button
                   ElevatedButton(
@@ -316,7 +316,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   
                   if (_showDemoLogin) ...[
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Center(
                       child: Text(
                         'Modalità demo disponibile! Usa "demo" come username e password',
@@ -330,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                   
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Link registrazione
                   TextButton(

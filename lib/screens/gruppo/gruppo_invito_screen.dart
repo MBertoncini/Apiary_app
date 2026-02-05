@@ -122,7 +122,7 @@ class _GruppoInvitoScreenState extends State<GruppoInvitoScreen> {
             fontSize: 16,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         RadioListTile<String>(
           title: Text('Amministratore'),
           subtitle: Text('Può gestire membri, inviti e modificare il gruppo'),
@@ -189,7 +189,7 @@ class _GruppoInvitoScreenState extends State<GruppoInvitoScreen> {
                                 'Invita al gruppo: ${_gruppo!.nome}',
                                 style: ThemeConstants.subheadingStyle,
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
                                 'Inserisci l\'indirizzo email della persona che vuoi invitare.',
                                 style: TextStyle(
@@ -200,7 +200,7 @@ class _GruppoInvitoScreenState extends State<GruppoInvitoScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       
                       // Campo email
                       TextFormField(
@@ -215,7 +215,7 @@ class _GruppoInvitoScreenState extends State<GruppoInvitoScreen> {
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                       ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       
                       // Selettore ruolo
                       Card(
@@ -224,7 +224,7 @@ class _GruppoInvitoScreenState extends State<GruppoInvitoScreen> {
                           child: _buildRuoloSelector(),
                         ),
                       ),
-                      SizedBox(height: 32),
+                      const SizedBox(height: 32),
                       
                       // Pulsante invita
                       ElevatedButton(
@@ -241,7 +241,7 @@ class _GruppoInvitoScreenState extends State<GruppoInvitoScreen> {
                         ),
                       ),
                       
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
                       // Informazione aggiuntiva
                       Text(
