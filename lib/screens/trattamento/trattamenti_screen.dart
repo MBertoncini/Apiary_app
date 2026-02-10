@@ -228,6 +228,16 @@ class TrattamentoListItem extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final deleteButton = ElevatedButton.icon(
+      icon: Icon(Icons.delete, size: 18),
+      label: Text('Elimina'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.red.shade700,
+        foregroundColor: Colors.white,
+      ),
+      onPressed: () => _confirmDeleteTrattamento(context),
+    );
+
     // Pulsanti variabili in base allo stato
     switch (trattamento.stato) {
       case 'programmato':
@@ -273,6 +283,7 @@ class TrattamentoListItem extends StatelessWidget {
                 }
               },
             ),
+            deleteButton,
           ],
         );
       case 'in_corso':
@@ -318,10 +329,52 @@ class TrattamentoListItem extends StatelessWidget {
                 }
               },
             ),
+            deleteButton,
           ],
         );
       default:
-        return Container(); // Nessun pulsante per trattamenti completati o annullati
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [deleteButton],
+        );
     }
+  }
+
+  void _confirmDeleteTrattamento(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Elimina Trattamento'),
+        content: Text(
+          'Sei sicuro di voler eliminare il trattamento "${trattamento.tipoTrattamentoNome}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await apiService.delete(
+                  '${ApiConstants.trattamentiUrl}${trattamento.id}/',
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Trattamento eliminato con successo')),
+                );
+                onStatusChanged();
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
   }
 }

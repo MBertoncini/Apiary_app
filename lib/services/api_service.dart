@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
+import '../constants/app_constants.dart';
+import '../utils/navigator_key.dart';
 import 'auth_token_provider.dart';
 
 /// AuthTokenProvider basato su token statici, usato dal background sync service.
@@ -87,69 +89,92 @@ class ApiService {
     };
   }
   
-  // Handler generico per le risposte
-  Future<dynamic> _handleResponse(http.Response response) async {
+  // Flag to prevent multiple simultaneous redirects to login
+  static bool _isRedirectingToLogin = false;
+
+  // Redirect to login page on session expiry
+  void _handleSessionExpired() {
+    if (_isRedirectingToLogin) return;
+    _isRedirectingToLogin = true;
+
+    debugPrint('Session expired: redirecting to login');
+    navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      AppConstants.loginRoute,
+      (route) => false,
+    );
+
+    // Reset flag after navigation completes
+    Future.delayed(const Duration(seconds: 2), () {
+      _isRedirectingToLogin = false;
+    });
+  }
+
+  // Execute an HTTP request with automatic token refresh + retry on 401
+  Future<http.Response> _executeWithRetry(
+    Future<http.Response> Function(Map<String, String> headers) request,
+  ) async {
+    var headers = await _headers;
+    var response = await request(headers);
+
+    if (response.statusCode == 401) {
+      // Try to refresh the token
+      final refreshed = await _authService.refreshToken();
+      if (refreshed) {
+        // Retry the request with the new token
+        headers = await _headers;
+        response = await request(headers);
+      } else {
+        // Refresh failed — session is truly expired
+        _handleSessionExpired();
+        throw Exception('Sessione scaduta. Effettua nuovamente il login.');
+      }
+    }
+
+    return response;
+  }
+
+  // Handler generico per le risposte (no longer handles 401 — that's in _executeWithRetry)
+  dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return {};
       return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      // Token scaduto, prova a rinnovarlo
-      final success = await _authService.refreshToken();
-      if (!success) {
-        throw Exception('Sessione scaduta. Effettua nuovamente il login.');
-      }
-      throw Exception('Token rinnovato. Riprova l\'operazione.');
     } else {
       throw Exception('Errore API: ${response.statusCode} ${response.body}');
     }
   }
-  
+
   // GET request
   Future<dynamic> get(String endpoint) async {
     final uri = Uri.parse(_buildUrl(endpoint));
-    final headers = await _headers;
-    
-    final response = await http.get(
-      uri,
-      headers: headers,
+    final response = await _executeWithRetry(
+      (headers) => http.get(uri, headers: headers),
     );
     return _handleResponse(response);
   }
-  
+
   // POST request
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     final uri = Uri.parse(_buildUrl(endpoint));
-    final headers = await _headers;
-    
-    final response = await http.post(
-      uri,
-      headers: headers,
-      body: json.encode(data),
+    final response = await _executeWithRetry(
+      (headers) => http.post(uri, headers: headers, body: json.encode(data)),
     );
     return _handleResponse(response);
   }
-  
+
   // PUT request (invece di patch)
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     final uri = Uri.parse(_buildUrl(endpoint));
-    final headers = await _headers;
-    
-    final response = await http.put(
-      uri,
-      headers: headers,
-      body: json.encode(data),
+    final response = await _executeWithRetry(
+      (headers) => http.put(uri, headers: headers, body: json.encode(data)),
     );
     return _handleResponse(response);
   }
-  
+
   // DELETE request
   Future<dynamic> delete(String endpoint) async {
     final uri = Uri.parse(_buildUrl(endpoint));
-    final headers = await _headers;
-    
-    final response = await http.delete(
-      uri,
-      headers: headers,
+    final response = await _executeWithRetry(
+      (headers) => http.delete(uri, headers: headers),
     );
     return _handleResponse(response);
   }

@@ -19,6 +19,9 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
   User? _currentUser;
   String? _lastError;
 
+  // Lock to prevent concurrent refresh attempts
+  Future<bool>? _refreshFuture;
+
   // Getters
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
@@ -51,56 +54,51 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         _token = savedToken;
         _refreshToken = savedRefreshToken;
 
-        // Prova a recuperare l'utente dalla cache
+        // Load cached user data for immediate display
         if (savedUserInfo != null) {
           try {
             _currentUser = User.fromJson(json.decode(savedUserInfo));
-            _isAuthenticated = true;
-            _isLoading = false;
-            notifyListeners();
-            
-            // Tenta di aggiornare i dati dell'utente in background
-            _fetchUserInfo().then((user) {
-              if (user != null) {
-                _currentUser = user;
-                notifyListeners();
-              }
-            }).catchError((_) {
-              // Fallback a modalità offline se non riesci a comunicare col server
-              _offlineMode = true;
-              notifyListeners();
-            });
-            
-            return true;
           } catch (e) {
             debugPrint('Error parsing saved user info: $e');
           }
         }
 
-        // Verifica la validità del token recuperando le info dell'utente
+        // Always validate the token by calling the server
         final userInfo = await _fetchUserInfo();
         if (userInfo != null) {
+          // Token is valid
           _currentUser = userInfo;
+          _isAuthenticated = true;
+          _offlineMode = false;
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+
+        // Token invalid — try refreshing
+        final refreshed = await refreshToken();
+        if (refreshed) {
           _isAuthenticated = true;
           _isLoading = false;
           notifyListeners();
           return true;
-        } else {
-          // Prova a estrarre info utente dal token
-          extractUserFromToken();
-          if (_currentUser != null) {
-            _isAuthenticated = true;
-            _isLoading = false;
-            notifyListeners();
-            return true;
-          }
-          
-          // Prova a rinnovare il token
-          final refreshed = await refreshToken();
+        }
+
+        // Both token and refresh failed.
+        // If we have a cached user AND the failure was due to network issues
+        // (offlineMode was set by _fetchUserInfo or refreshToken), allow offline access.
+        if (_offlineMode && _currentUser != null) {
+          _isAuthenticated = true;
           _isLoading = false;
           notifyListeners();
-          return refreshed;
+          return true;
         }
+
+        // Session is truly expired — force logout
+        await logout();
+        _isLoading = false;
+        notifyListeners();
+        return false;
       }
     } catch (e) {
       debugPrint('Error checking auth: $e');
@@ -270,17 +268,30 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     }
   }
 
-  // Rinnova il token di accesso usando il refresh token
+  // Rinnova il token di accesso usando il refresh token.
+  // Uses a lock to prevent concurrent refresh attempts from racing.
   Future<bool> refreshToken() async {
     if (_refreshToken == null) return false;
 
+    // If a refresh is already in progress, share its result
+    if (_refreshFuture != null) {
+      return _refreshFuture!;
+    }
+
+    _refreshFuture = _doRefreshToken();
     try {
-      // Prepara i dati per la richiesta
+      return await _refreshFuture!;
+    } finally {
+      _refreshFuture = null;
+    }
+  }
+
+  Future<bool> _doRefreshToken() async {
+    try {
       final data = {
         'refresh': _refreshToken,
       };
 
-      // Effettua la richiesta al server
       final response = await http.post(
         Uri.parse(ApiConstants.tokenRefreshUrl),
         body: data,
@@ -291,37 +302,60 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        
+
         // Aggiorna il token di accesso
         _token = responseData['access'];
-        
-        // Salva il nuovo token
+
+        // Se il server ruota anche il refresh token, aggiornalo
+        if (responseData['refresh'] != null) {
+          _refreshToken = responseData['refresh'];
+        }
+
+        // Salva i nuovi token
         final prefs = await SharedPreferences.getInstance();
         prefs.setString(AppConstants.tokenKey, _token!);
-        
+        if (_refreshToken != null) {
+          prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
+        }
+
         // Verifica la validità del nuovo token
         _currentUser = await _fetchUserInfo();
         if (_currentUser == null) {
           extractUserFromToken();
         }
-        
+
         _isAuthenticated = (_currentUser != null);
         _offlineMode = false;
-        
+
         notifyListeners();
         return _isAuthenticated;
       }
+
+      // Non-200 response (e.g., refresh token expired) — fall through to logout
+    } on SocketException {
+      debugPrint('Token refresh: network error (offline)');
+      if (_currentUser != null) {
+        _offlineMode = true;
+        notifyListeners();
+        return true;
+      }
+    } on TimeoutException {
+      debugPrint('Token refresh: timeout (offline)');
+      if (_currentUser != null) {
+        _offlineMode = true;
+        notifyListeners();
+        return true;
+      }
     } catch (e) {
       debugPrint('Token refresh error: $e');
-      // Se offline, continua in modalità offline
       if (_currentUser != null) {
         _offlineMode = true;
         notifyListeners();
         return true;
       }
     }
-    
-    // Se arriviamo qui, il refresh è fallito e non siamo in modalità offline
+
+    // If we get here, the refresh truly failed (not a network issue)
     await logout();
     return false;
   }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'utils/route_generator.dart';
+import 'utils/navigator_key.dart';
 import 'constants/app_constants.dart';
 import 'constants/theme_constants.dart';
 import 'database/database_helper.dart';
@@ -35,6 +36,7 @@ void main() {
       MultiProvider(
         providers: providers,
         child: MaterialApp(
+          navigatorKey: navigatorKey,
           title: AppConstants.appName,
           theme: ThemeConstants.getTheme(),
           initialRoute: AppConstants.splashRoute,

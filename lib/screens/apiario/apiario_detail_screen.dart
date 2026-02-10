@@ -142,6 +142,50 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   void _editApiario() {
     // TODO: navigazione alla modifica apiario
   }
+
+  void _confirmDeleteApiario() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Elimina Apiario'),
+        content: Text(
+          'Sei sicuro di voler eliminare "${_apiario?['nome']}"?\n\n'
+          'Verranno eliminate anche tutte le arnie, controlli, trattamenti e dati associati.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteApiario();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteApiario() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      await apiService.delete('${ApiConstants.apiariUrl}${widget.apiarioId}/');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apiario eliminato con successo')),
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+      );
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -173,6 +217,11 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             icon: Icon(Icons.edit),
             onPressed: _editApiario,
             tooltip: 'Modifica apiario',
+          ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: _confirmDeleteApiario,
+            tooltip: 'Elimina apiario',
           ),
           // Nuovo pulsante QR
           IconButton(

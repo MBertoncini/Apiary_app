@@ -100,10 +100,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         await storageService.saveSyncData(syncData);
       } catch (e) {
         debugPrint('Error during initial sync: $e');
+        // If session expired during sync, ApiService already redirected to login
+        if (!authService.isAuthenticated) return;
       }
 
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
     } else {
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
     }
   }

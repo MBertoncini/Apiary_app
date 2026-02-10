@@ -336,12 +336,22 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
               subtitle: Text(
                 '${spesa.getTipoDisplay()} - ${formatDate.format(spesa.data)}',
               ),
-              trailing: Text(
-                formatCurrency.format(spesa.importo),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: ThemeConstants.primaryColor,
-                ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    formatCurrency.format(spesa.importo),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: ThemeConstants.primaryColor,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red, size: 20),
+                    tooltip: 'Elimina spesa',
+                    onPressed: () => _confirmDeleteSpesa(spesa),
+                  ),
+                ],
               ),
             ),
           );
@@ -427,15 +437,24 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                   ),
                 ],
               ),
-              trailing: manutenzione.costo != null && manutenzione.costo! > 0
-                  ? Text(
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (manutenzione.costo != null && manutenzione.costo! > 0)
+                    Text(
                       formatCurrency.format(manutenzione.costo),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: ThemeConstants.primaryColor,
                       ),
-                    )
-                  : null,
+                    ),
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red, size: 20),
+                    tooltip: 'Elimina manutenzione',
+                    onPressed: () => _confirmDeleteManutenzione(manutenzione),
+                  ),
+                ],
+              ),
               isThreeLine: true,
             ),
           );
@@ -634,5 +653,85 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
         SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
       );
     }
+  }
+
+  void _confirmDeleteSpesa(SpesaAttrezzatura spesa) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Elimina Spesa'),
+        content: Text(
+          'Sei sicuro di voler eliminare la spesa "${spesa.descrizione}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final apiService = Provider.of<ApiService>(this.context, listen: false);
+                final service = AttrezzaturaService(apiService);
+                await service.deleteSpesaAttrezzatura(spesa.id);
+
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(content: Text('Spesa eliminata con successo')),
+                );
+
+                _loadData();
+              } catch (e) {
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteManutenzione(Manutenzione manutenzione) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Elimina Manutenzione'),
+        content: Text(
+          'Sei sicuro di voler eliminare la manutenzione "${manutenzione.getTipoDisplay()}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final apiService = Provider.of<ApiService>(this.context, listen: false);
+                final service = AttrezzaturaService(apiService);
+                await service.deleteManutenzione(manutenzione.id);
+
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(content: Text('Manutenzione eliminata con successo')),
+                );
+
+                _loadData();
+              } catch (e) {
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
   }
 }

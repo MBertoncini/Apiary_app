@@ -127,6 +127,11 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             icon: Icon(Icons.refresh),
             onPressed: _loadData,
           ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            tooltip: 'Elimina regina',
+            onPressed: _confirmDeleteRegina,
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -982,5 +987,48 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   Color _getContrastColor(Color backgroundColor) {
     double luminance = backgroundColor.computeLuminance();
     return luminance > 0.5 ? Colors.black : Colors.white;
+  }
+
+  void _confirmDeleteRegina() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Elimina Regina'),
+        content: Text(
+          'Sei sicuro di voler eliminare la regina dell\'arnia ${_regina!.arniaNumero ?? _regina!.arniaId}?\n\n'
+          'Questa azione non può essere annullata.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteRegina();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteRegina() async {
+    try {
+      await _apiService.delete('${ApiConstants.regineUrl}${widget.reginaId}/');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Regina eliminata con successo')),
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+      );
+    }
   }
 }

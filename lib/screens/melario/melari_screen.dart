@@ -359,86 +359,142 @@ class MelarioListItem extends StatelessWidget {
   }
 
   Widget? _buildActionButton(BuildContext context) {
+    final deleteButton = IconButton(
+      icon: Icon(Icons.delete, color: Colors.red),
+      tooltip: 'Elimina melario',
+      onPressed: () => _confirmDeleteMelario(context),
+    );
+
     // Pulsanti variabili in base allo stato
     switch (melario.stato) {
       case 'posizionato':
-        return IconButton(
-          icon: Icon(Icons.remove_circle_outline, color: Colors.blue),
-          tooltip: 'Rimuovi melario',
-          onPressed: () async {
-            final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text('Rimuovi melario'),
-                content: Text('Confermi di voler rimuovere questo melario dall\'arnia?'),
-                actions: [
-                  TextButton(
-                    child: Text('Annulla'),
-                    onPressed: () => Navigator.of(context).pop(false),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.remove_circle_outline, color: Colors.blue),
+              tooltip: 'Rimuovi melario',
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Rimuovi melario'),
+                    content: Text('Confermi di voler rimuovere questo melario dall\'arnia?'),
+                    actions: [
+                      TextButton(
+                        child: Text('Annulla'),
+                        onPressed: () => Navigator.of(context).pop(false),
+                      ),
+                      TextButton(
+                        child: Text('Conferma'),
+                        onPressed: () => Navigator.of(context).pop(true),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    child: Text('Conferma'),
-                    onPressed: () => Navigator.of(context).pop(true),
-                  ),
-                ],
-              ),
-            );
+                );
 
-            if (confirmed == true) {
-              try {
-                await apiService.post(
-                  '${ApiConstants.melariUrl}${melario.id}/rimuovi/',
-                  {},
-                );
-                onStatusChanged();
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Errore: $e')),
-                );
-              }
-            }
-          },
+                if (confirmed == true) {
+                  try {
+                    await apiService.post(
+                      '${ApiConstants.melariUrl}${melario.id}/rimuovi/',
+                      {},
+                    );
+                    onStatusChanged();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Errore: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+            deleteButton,
+          ],
         );
       case 'rimosso':
-        return IconButton(
-          icon: Icon(Icons.local_drink, color: Colors.orange),
-          tooltip: 'Invia in smielatura',
-          onPressed: () async {
-            final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text('Invia in smielatura'),
-                content: Text('Confermi di voler inviare questo melario in smielatura?'),
-                actions: [
-                  TextButton(
-                    child: Text('Annulla'),
-                    onPressed: () => Navigator.of(context).pop(false),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.local_drink, color: Colors.orange),
+              tooltip: 'Invia in smielatura',
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Invia in smielatura'),
+                    content: Text('Confermi di voler inviare questo melario in smielatura?'),
+                    actions: [
+                      TextButton(
+                        child: Text('Annulla'),
+                        onPressed: () => Navigator.of(context).pop(false),
+                      ),
+                      TextButton(
+                        child: Text('Conferma'),
+                        onPressed: () => Navigator.of(context).pop(true),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    child: Text('Conferma'),
-                    onPressed: () => Navigator.of(context).pop(true),
-                  ),
-                ],
-              ),
-            );
+                );
 
-            if (confirmed == true) {
+                if (confirmed == true) {
+                  try {
+                    await apiService.post(
+                      '${ApiConstants.melariUrl}${melario.id}/smielatura/',
+                      {},
+                    );
+                    onStatusChanged();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Errore: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+            deleteButton,
+          ],
+        );
+      default:
+        return deleteButton;
+    }
+  }
+
+  void _confirmDeleteMelario(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Elimina Melario'),
+        content: Text(
+          'Sei sicuro di voler eliminare il melario #${melario.id} dell\'arnia ${melario.arniaNumero}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
               try {
-                await apiService.post(
-                  '${ApiConstants.melariUrl}${melario.id}/smielatura/',
-                  {},
+                await apiService.delete(
+                  '${ApiConstants.melariUrl}${melario.id}/',
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Melario eliminato con successo')),
                 );
                 onStatusChanged();
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Errore: $e')),
+                  SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
                 );
               }
-            }
-          },
-        );
-      default:
-        return null; // Nessun pulsante per altri stati
-    }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
   }
 }

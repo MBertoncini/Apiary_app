@@ -155,7 +155,94 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   void _editArnia() {
     // TODO: navigazione alla modifica arnia
   }
-  
+
+  void _confirmDeleteArnia() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Elimina Arnia'),
+        content: Text(
+          'Sei sicuro di voler eliminare "Arnia ${_arnia?['numero']}"?\n\n'
+          'Verranno eliminati anche tutti i controlli, la regina e i melari associati.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteArnia();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteArnia() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      await apiService.delete('${ApiConstants.arnieUrl}${widget.arniaId}/');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Arnia eliminata con successo')),
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+      );
+    }
+  }
+
+  void _confirmDeleteControllo(dynamic controllo) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Elimina Controllo'),
+        content: Text(
+          'Sei sicuro di voler eliminare il controllo del ${controllo['data']}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteControllo(controllo['id']);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Elimina'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteControllo(int controlloId) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      await apiService.delete('${ApiConstants.controlliUrl}$controlloId/');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Controllo eliminato con successo')),
+      );
+
+      _loadArnia();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -191,6 +278,11 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             icon: Icon(Icons.edit),
             onPressed: _editArnia,
             tooltip: 'Modifica arnia',
+          ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: _confirmDeleteArnia,
+            tooltip: 'Elimina arnia',
           ),
           // Nuovo pulsante QR
           IconButton(
@@ -600,10 +692,15 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                     ],
                                   ),
                                 ),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  tooltip: 'Elimina controllo',
+                                  onPressed: () => _confirmDeleteControllo(controllo),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            
+
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
