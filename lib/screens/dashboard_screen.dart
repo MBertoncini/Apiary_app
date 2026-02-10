@@ -25,7 +25,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _apiari = [];
   List<dynamic> _trattamenti = [];
   List<dynamic> _fioriture = [];
-  List<dynamic> _controlli = [];  DateTime _lastSyncTime = DateTime.now();
+  List<dynamic> _controlli = [];
+  List<dynamic> _regine = [];
+  List<dynamic> _melari = [];
+  List<dynamic> _smielature = [];
+  DateTime _lastSyncTime = DateTime.now();
 
 
   // Variabili per la gestione del caricamento
@@ -33,11 +37,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoadingTrattamenti = true;
   bool _isLoadingFioriture = true;
   bool _isLoadingControlli = true;
+  bool _isLoadingRegine = true;
+  bool _isLoadingMelari = true;
+  bool _isLoadingSmielature = true;
 
   String? _apiariError;
   String? _trattamentiError;
   String? _fioritureError;
-  String? _controlliError;  
+  String? _controlliError;
+  String? _regineError;
+  String? _melariError;
+  String? _smielatureError;
+
   // Variabili per funzionalità aggiuntive
   Map<String, dynamic>? _weatherData;
   Map<String, List<dynamic>> _calendarEvents = {};
@@ -110,6 +121,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _isLoadingTrattamenti = true;
       _isLoadingFioriture = true;
       _isLoadingControlli = true;
+      _isLoadingRegine = true;
+      _isLoadingMelari = true;
+      _isLoadingSmielature = true;
     });
 
     final apiService = Provider.of<ApiService>(context, listen: false);
@@ -120,6 +134,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadTrattamentiData(apiService),
       _loadFioritureData(apiService),
       _loadControlliData(apiService),
+      _loadRegineData(apiService),
+      _loadMelariData(apiService),
+      _loadSmielaturaData(apiService),
     ]);
 
     // Prepara dati derivati
@@ -128,11 +145,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _lastSyncTime = DateTime.now();
 
     // Singolo setState per tutti i dati caricati -> un solo rebuild
-    if (mounted) setState(() {});
-
-    _cachedAlerts = _generateAlerts();
-
-    // Singolo setState per alerts aggiornati
     if (mounted) setState(() {});
   }
 
@@ -228,6 +240,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _loadRegineData(ApiService apiService) async {
+    try {
+      final response = await apiService.get('regine/');
+      if (response is List) {
+        _regine = response;
+      } else if (response is Map) {
+        _regine = response['results'] ?? [];
+      } else {
+        _regine = [];
+      }
+      _isLoadingRegine = false;
+    } catch (e) {
+      debugPrint('Error fetching regine: $e');
+      _regineError = e.toString();
+      _isLoadingRegine = false;
+    }
+  }
+
+  Future<void> _loadMelariData(ApiService apiService) async {
+    try {
+      final response = await apiService.get('melari/');
+      if (response is List) {
+        _melari = response;
+      } else if (response is Map) {
+        _melari = response['results'] ?? [];
+      } else {
+        _melari = [];
+      }
+      _isLoadingMelari = false;
+    } catch (e) {
+      debugPrint('Error fetching melari: $e');
+      _melariError = e.toString();
+      _isLoadingMelari = false;
+    }
+  }
+
+  Future<void> _loadSmielaturaData(ApiService apiService) async {
+    try {
+      final response = await apiService.get('smielature/');
+      if (response is List) {
+        _smielature = response;
+      } else if (response is Map) {
+        _smielature = response['results'] ?? [];
+      } else {
+        _smielature = [];
+      }
+      _isLoadingSmielature = false;
+    } catch (e) {
+      debugPrint('Error fetching smielature: $e');
+      _smielatureError = e.toString();
+      _isLoadingSmielature = false;
+    }
+  }
+
   Future<void> _refreshData() async {
     // Mostra messaggio di feedback durante la sincronizzazione
     ScaffoldMessenger.of(context).showSnackBar(
@@ -258,137 +324,160 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
   
+  void _addCalendarEvent(String dateStr, Map<String, dynamic> event) {
+    if (!_calendarEvents.containsKey(dateStr)) {
+      _calendarEvents[dateStr] = [];
+    }
+    _calendarEvents[dateStr]!.add(event);
+  }
+
+  String _dateKey(DateTime date) {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
+
+  void _addDateRangeEvents({
+    required String? startStr,
+    required String? endStr,
+    required Map<String, dynamic> eventTemplate,
+    int maxDays = 90,
+  }) {
+    if (startStr == null) return;
+    final start = DateTime.parse(startStr);
+    final end = endStr != null ? DateTime.parse(endStr) : start;
+    final days = end.difference(start).inDays.clamp(0, maxDays);
+    for (int i = 0; i <= days; i++) {
+      final d = start.add(Duration(days: i));
+      _addCalendarEvent(_dateKey(d), Map<String, dynamic>.from(eventTemplate));
+    }
+  }
+
   void _prepareCalendarEvents() {
     _calendarEvents = {};
-    
-    // Trattamenti (treatments)
+
+    // Trattamenti — span full date range + suspension + brood block
     for (var t in _trattamenti) {
-      if (t['data_inizio'] != null) {
-        DateTime date = DateTime.parse(t['data_inizio']);
-        String day = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-        
-        if (!_calendarEvents.containsKey(day)) {
-          _calendarEvents[day] = [];
-        }
-        
-        _calendarEvents[day]!.add({
+      final apiarioNome = t['apiario_nome'] ?? '';
+
+      // Main treatment period
+      _addDateRangeEvents(
+        startStr: t['data_inizio'],
+        endStr: t['data_fine'],
+        eventTemplate: {
           'type': 'trattamento',
-          'title': t['tipo_trattamento_nome'] ?? 'Trattamento',
+          'title': '${t['tipo_trattamento_nome'] ?? 'Trattamento'}${apiarioNome.isNotEmpty ? ' — $apiarioNome' : ''}',
           'id': t['id'],
           'color': Colors.purple,
-        });
+        },
+      );
+
+      // Suspension period (data_fine → data_fine_sospensione)
+      if (t['data_fine'] != null && t['data_fine_sospensione'] != null) {
+        final suspStart = DateTime.parse(t['data_fine']).add(const Duration(days: 1));
+        _addDateRangeEvents(
+          startStr: suspStart.toIso8601String().split('T')[0],
+          endStr: t['data_fine_sospensione'],
+          eventTemplate: {
+            'type': 'sospensione',
+            'title': 'Sospensione — ${t['tipo_trattamento_nome'] ?? 'Trattamento'}${apiarioNome.isNotEmpty ? ' ($apiarioNome)' : ''}',
+            'id': t['id'],
+            'color': Colors.deepOrange,
+          },
+        );
       }
-    }
-    
-    // Fioriture (flowering)
-    for (var f in _fioriture) {
-      if (f['data_inizio'] != null) {
-        DateTime date = DateTime.parse(f['data_inizio']);
-        String day = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-        
-        if (!_calendarEvents.containsKey(day)) {
-          _calendarEvents[day] = [];
-        }
-        
-        _calendarEvents[day]!.add({
-          'type': 'fioritura',
-          'title': f['pianta'] ?? 'Fioritura',
-          'id': f['id'],
-          'color': Colors.orange,
-        });
-      }
-    }
-    
-    // Controlli (inspections)
-    if (_controlli != null) {
-      for (var controllo in _controlli) {
-        if (controllo['data'] != null) {
-          DateTime date = DateTime.parse(controllo['data']);
-          String day = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-          
-          if (!_calendarEvents.containsKey(day)) {
-            _calendarEvents[day] = [];
-          }
-          
-          _calendarEvents[day]!.add({
-            'type': 'controllo',
-            'title': 'Controllo arnia ${controllo['arnia_numero']}',
-            'id': controllo['id'],
-            'color': Colors.blue,
-          });
-        }
+
+      // Brood block period (data_inizio_blocco → data_fine_blocco)
+      if (t['data_inizio_blocco'] != null && t['data_fine_blocco'] != null) {
+        _addDateRangeEvents(
+          startStr: t['data_inizio_blocco'],
+          endStr: t['data_fine_blocco'],
+          eventTemplate: {
+            'type': 'blocco_covata',
+            'title': 'Blocco covata — ${t['tipo_trattamento_nome'] ?? 'Trattamento'}${apiarioNome.isNotEmpty ? ' ($apiarioNome)' : ''}',
+            'id': t['id'],
+            'color': Colors.brown,
+          },
+        );
       }
     }
 
-    // Note: The following collections (_regine, _melari, _smielature)
-    // aren't defined in the current state. If you add them in the future,
-    // you can uncomment these sections.
-    
-    /* 
-    
-    // Regine (queens)
-    if (_regine != null) {
-      for (var regina in _regine) {
-        if (regina['data_introduzione'] != null) {
-          DateTime date = DateTime.parse(regina['data_introduzione']);
-          String day = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-          
-          if (!_calendarEvents.containsKey(day)) {
-            _calendarEvents[day] = [];
-          }
-          
-          _calendarEvents[day]!.add({
-            'type': 'regina',
-            'title': 'Regina introdotta',
-            'id': regina['id'],
-            'color': Colors.red,
-          });
-        }
+    // Fioriture — span full date range
+    for (var f in _fioriture) {
+      final apiarioNome = f['apiario_nome'] ?? '';
+      _addDateRangeEvents(
+        startStr: f['data_inizio'],
+        endStr: f['data_fine'],
+        eventTemplate: {
+          'type': 'fioritura',
+          'title': '${f['pianta'] ?? 'Fioritura'}${apiarioNome.isNotEmpty ? ' — $apiarioNome' : ''}',
+          'id': f['id'],
+          'color': Colors.orange,
+        },
+      );
+    }
+
+    // Controlli
+    for (var controllo in _controlli) {
+      if (controllo['data'] != null) {
+        final date = DateTime.parse(controllo['data']);
+        _addCalendarEvent(_dateKey(date), {
+          'type': 'controllo',
+          'title': 'Controllo arnia ${controllo['arnia_numero'] ?? ''}',
+          'id': controllo['id'],
+          'arnia_id': controllo['arnia'],
+          'color': Colors.blue,
+        });
       }
     }
-    
-    // Melari (honey supers)
-    if (_melari != null) {
-      for (var melario in _melari) {
-        if (melario['data_posizionamento'] != null) {
-          DateTime date = DateTime.parse(melario['data_posizionamento']);
-          String day = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-          
-          if (!_calendarEvents.containsKey(day)) {
-            _calendarEvents[day] = [];
-          }
-          
-          _calendarEvents[day]!.add({
-            'type': 'melario',
-            'title': 'Melario posizionato',
-            'id': melario['id'],
-            'color': Colors.green,
-          });
-        }
+
+    // Regine
+    for (var regina in _regine) {
+      if (regina['data_introduzione'] != null) {
+        final date = DateTime.parse(regina['data_introduzione']);
+        final arniaNr = regina['arnia_numero'] ?? '';
+        _addCalendarEvent(_dateKey(date), {
+          'type': 'regina',
+          'title': 'Regina introdotta${arniaNr.toString().isNotEmpty ? ' — arnia $arniaNr' : ''}',
+          'id': regina['id'],
+          'color': Colors.red,
+        });
       }
     }
-    
-    // Smielature (honey extractions)
-    if (_smielature != null) {
-      for (var smielatura in _smielature) {
-        if (smielatura['data'] != null) {
-          DateTime date = DateTime.parse(smielatura['data']);
-          String day = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-          
-          if (!_calendarEvents.containsKey(day)) {
-            _calendarEvents[day] = [];
-          }
-          
-          _calendarEvents[day]!.add({
-            'type': 'smielatura',
-            'title': 'Smielatura',
-            'id': smielatura['id'],
-            'color': Colors.amber,
-          });
-        }
+
+    // Melari — index both placement and removal dates
+    for (var melario in _melari) {
+      final arniaNr = melario['arnia_numero'] ?? '';
+      if (melario['data_posizionamento'] != null) {
+        final date = DateTime.parse(melario['data_posizionamento']);
+        _addCalendarEvent(_dateKey(date), {
+          'type': 'melario',
+          'title': 'Melario posizionato${arniaNr.toString().isNotEmpty ? ' — arnia $arniaNr' : ''}',
+          'id': melario['id'],
+          'color': Colors.green,
+        });
+      }
+      if (melario['data_rimozione'] != null) {
+        final date = DateTime.parse(melario['data_rimozione']);
+        _addCalendarEvent(_dateKey(date), {
+          'type': 'melario',
+          'title': 'Melario rimosso${arniaNr.toString().isNotEmpty ? ' — arnia $arniaNr' : ''}',
+          'id': melario['id'],
+          'color': Colors.green,
+        });
       }
     }
-    */
+
+    // Smielature
+    for (var smielatura in _smielature) {
+      if (smielatura['data'] != null) {
+        final date = DateTime.parse(smielatura['data']);
+        _addCalendarEvent(_dateKey(date), {
+          'type': 'smielatura',
+          'title': 'Smielatura${smielatura['tipo_miele'] != null ? ' — ${smielatura['tipo_miele']}' : ''}',
+          'id': smielatura['id'],
+          'color': Colors.amber,
+        });
+      }
+    }
   }
 
   
@@ -508,28 +597,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   void _nextMonth() {
     setState(() {
-      // Compute the first day of the next month
-      if (_focusedDay.month == 12) {
-        _focusedDay = DateTime(_focusedDay.year + 1, 1, 1);
+      if (_calendarFormat == 'week') {
+        _focusedDay = _focusedDay.add(const Duration(days: 7));
       } else {
-        _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
+        if (_focusedDay.month == 12) {
+          _focusedDay = DateTime(_focusedDay.year + 1, 1, 1);
+        } else {
+          _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
+        }
       }
-      
-      // Update visible days
       _generateVisibleDays();
     });
   }
 
   void _previousMonth() {
     setState(() {
-      // Compute the first day of the previous month
-      if (_focusedDay.month == 1) {
-        _focusedDay = DateTime(_focusedDay.year - 1, 12, 1);
+      if (_calendarFormat == 'week') {
+        _focusedDay = _focusedDay.subtract(const Duration(days: 7));
       } else {
-        _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
+        if (_focusedDay.month == 1) {
+          _focusedDay = DateTime(_focusedDay.year - 1, 12, 1);
+        } else {
+          _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
+        }
       }
-      
-      // Update visible days
       _generateVisibleDays();
     });
   }
@@ -601,7 +692,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       IconButton(
                         icon: Icon(Icons.arrow_back),
                         onPressed: _previousMonth,
-                        tooltip: 'Mese precedente',
+                        tooltip: _calendarFormat == 'week' ? 'Settimana precedente' : 'Mese precedente',
                       ),
                       TextButton(
                         onPressed: _toToday,
@@ -610,7 +701,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       IconButton(
                         icon: Icon(Icons.arrow_forward),
                         onPressed: _nextMonth,
-                        tooltip: 'Mese successivo',
+                        tooltip: _calendarFormat == 'week' ? 'Settimana successiva' : 'Mese successivo',
                       ),
                     ],
                   ),
@@ -663,13 +754,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   // Legend
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 16,
+                    spacing: 12,
+                    runSpacing: 4,
                     children: [
                       _buildCalendarLegendItem('Controlli', Colors.blue),
                       _buildCalendarLegendItem('Trattamenti', Colors.purple),
                       _buildCalendarLegendItem('Fioriture', Colors.orange),
                       _buildCalendarLegendItem('Regine', Colors.red),
                       _buildCalendarLegendItem('Melari', Colors.green),
+                      _buildCalendarLegendItem('Smielature', Colors.amber),
+                      _buildCalendarLegendItem('Sospensione', Colors.deepOrange),
+                      _buildCalendarLegendItem('Blocco covata', Colors.brown),
                     ],
                   ),
                 ],
@@ -682,21 +777,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
               : _buildWeekView(),
                 
           // Events for selected day
-          if (_selectedDay != null && selectedDayEvents.isNotEmpty)
+          if (_selectedDay != null)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Eventi del ${DateFormat('dd/MM/yyyy').format(_selectedDay!)}',
+                    _isSameDay(_selectedDay!, DateTime.now())
+                        ? 'Oggi — ${DateFormat('dd/MM/yyyy').format(_selectedDay!)}'
+                        : 'Eventi del ${DateFormat('dd/MM/yyyy').format(_selectedDay!)}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...selectedDayEvents.map((event) => _buildCalendarEventItem(event)).toList(),
+                  if (selectedDayEvents.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            _isSameDay(_selectedDay!, DateTime.now())
+                                ? 'Nessuna attività prevista per oggi.'
+                                : 'Nessun evento per questa giornata.',
+                            style: TextStyle(color: ThemeConstants.textSecondaryColor),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ...selectedDayEvents.map((event) => _buildCalendarEventItem(event)).toList(),
                 ],
               ),
             ),
@@ -833,28 +947,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
   
   Widget _buildWeekView() {
+    // Use _focusedDay as starting point, show 2 weeks starting from Monday
+    final int weekday = _focusedDay.weekday;
+    final startDate = _focusedDay.subtract(Duration(days: weekday - 1));
+
     return Container(
       height: 80,
       padding: EdgeInsets.symmetric(horizontal: 16.0),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: 14, // Mostra 14 giorni
+        itemCount: 14,
         itemBuilder: (context, index) {
-          final date = DateTime.now().add(Duration(days: index));
+          final date = startDate.add(Duration(days: index));
           final events = _getEventsForDay(date);
           final isSelected = _selectedDay != null && _isSameDay(_selectedDay!, date);
           final isToday = _isSameDay(date, DateTime.now());
-          
+
           return GestureDetector(
             onTap: () => _selectDay(date),
             child: Container(
               width: 60,
               margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected 
-                    ? ThemeConstants.primaryColor.withOpacity(0.3) 
-                    : events.isNotEmpty 
-                        ? ThemeConstants.primaryColor.withOpacity(0.1) 
+                color: isSelected
+                    ? ThemeConstants.primaryColor.withOpacity(0.3)
+                    : events.isNotEmpty
+                        ? ThemeConstants.primaryColor.withOpacity(0.1)
                         : null,
                 borderRadius: BorderRadius.circular(8),
                 border: isToday
@@ -887,25 +1005,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: ThemeConstants.primaryColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        if (events.length > 1) ...[
-                          SizedBox(width: 2),
+                        for (var i = 0; i < events.length.clamp(0, 3); i++)
                           Container(
                             width: 6,
                             height: 6,
+                            margin: EdgeInsets.symmetric(horizontal: 1),
                             decoration: BoxDecoration(
-                              color: ThemeConstants.primaryColor,
+                              color: events[i]['color'],
                               shape: BoxShape.circle,
                             ),
                           ),
-                        ],
                       ],
                     ),
                 ],
@@ -941,12 +1050,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
   
+  void _navigateFromEvent(Map<String, dynamic> event) {
+    final type = event['type'];
+    switch (type) {
+      case 'trattamento':
+      case 'sospensione':
+      case 'blocco_covata':
+        Navigator.of(context).pushNamed(AppConstants.trattamentiRoute);
+        break;
+      case 'controllo':
+        if (event['arnia_id'] != null) {
+          Navigator.of(context).pushNamed(
+            AppConstants.arniaDetailRoute,
+            arguments: event['arnia_id'],
+          );
+        }
+        break;
+      case 'regina':
+        Navigator.of(context).pushNamed(
+          AppConstants.reginaDetailRoute,
+          arguments: event['id'],
+        );
+        break;
+      case 'melario':
+      case 'smielatura':
+        Navigator.of(context).pushNamed(AppConstants.melariRoute);
+        break;
+      // fioritura — no detail screen, skip
+    }
+  }
+
   Widget _buildCalendarEventItem(Map<String, dynamic> event) {
     IconData icon;
     Color color = event['color'] ?? ThemeConstants.primaryColor;
-    
-    // Imposta l'icona in base al tipo di evento
-    switch(event['type']) {
+    final bool hasTap = event['type'] != 'fioritura';
+
+    switch (event['type']) {
       case 'trattamento':
         icon = Icons.medical_services;
         break;
@@ -962,32 +1101,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'melario':
         icon = Icons.archive;
         break;
+      case 'smielatura':
+        icon = Icons.opacity;
+        break;
+      case 'sospensione':
+        icon = Icons.block;
+        break;
+      case 'blocco_covata':
+        icon = Icons.egg_alt;
+        break;
       default:
         icon = Icons.event;
     }
-    
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              event['title'],
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
+
+    return InkWell(
+      onTap: hasTap ? () => _navigateFromEvent(event) : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                event['title'],
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ),
-          Icon(Icons.arrow_forward_ios, size: 14, color: ThemeConstants.textSecondaryColor),
-        ],
+            if (hasTap)
+              Icon(Icons.arrow_forward_ios, size: 14, color: ThemeConstants.textSecondaryColor),
+          ],
+        ),
       ),
     );
   }
