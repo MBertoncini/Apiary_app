@@ -7,7 +7,6 @@ import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/api_cache_helper.dart';
-import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 
@@ -21,9 +20,9 @@ class _MappaScreenState extends State<MappaScreen> {
   bool _isOffline = false;
   List<dynamic> _apiari = [];
   List<dynamic> _fioriture = [];
+  List<dynamic> _arnie = [];
   Position? _currentPosition;
   MapController _mapController = MapController();
-  AuthService? _authService;
   bool _permissionsChecked = false;
   StorageService? _storageService;
   
@@ -39,11 +38,6 @@ class _MappaScreenState extends State<MappaScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
-    // Inizializza i servizi
-    if (_authService == null) {
-      _authService = Provider.of<AuthService>(context);
-    }
     
     if (_storageService == null) {
       _storageService = Provider.of<StorageService>(context, listen: false);
@@ -140,18 +134,23 @@ class _MappaScreenState extends State<MappaScreen> {
         setState(() {
           _currentPosition = position;
         });
-        
-        // Centra mappa sulla posizione corrente
-        _mapController.move(
-          LatLng(position.latitude, position.longitude),
-          11.0,
-        );
+
+        // Centra mappa sulla posizione corrente (solo se il controller è già collegato)
+        try {
+          _mapController.move(
+            LatLng(position.latitude, position.longitude),
+            11.0,
+          );
+        } catch (_) {
+          // Il controller non è ancora inizializzato, la mappa userà
+          // _currentPosition come center al primo build
+        }
       }
     } catch (e) {
       debugPrint('Error getting current position: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nel recupero della posizione: ${e.toString()}')),
+          SnackBar(content: Text('Errore nel recupero della posizione')),
         );
       }
     } finally {
@@ -184,20 +183,13 @@ class _MappaScreenState extends State<MappaScreen> {
         _storageService = Provider.of<StorageService>(context, listen: false);
       }
 
-      // Verifichiamo che AuthService sia inizializzato
-      if (_authService == null) {
-        _authService = Provider.of<AuthService>(context);
-      }
-
-      final currentUser = _authService!.currentUser;
-      final currentUserId = currentUser?.id;
-
-      debugPrint("Caricamento apiari e fioriture. User ID: $currentUserId");
+      debugPrint("Caricamento apiari e fioriture");
 
       // Verifica la connettività e carica dall'API se possibile
       final isConnected = await ApiCacheHelper.isConnected();
       List<dynamic> apiari = [];
       List<dynamic> fioriture = [];
+      List<dynamic> arnie = [];
 
       if (isConnected) {
         try {
@@ -219,6 +211,14 @@ class _MappaScreenState extends State<MappaScreen> {
             fioriture = fioritureResponse['results'] ?? [];
           }
 
+          // Carica arnie dall'API
+          final arnieResponse = await apiService.get('arnie/');
+          if (arnieResponse is List) {
+            arnie = arnieResponse;
+          } else if (arnieResponse is Map) {
+            arnie = arnieResponse['results'] ?? [];
+          }
+
           // Salva nella cache per uso offline
           await ApiCacheHelper.saveToCache('apiari', apiari);
           await ApiCacheHelper.saveToCache('fioriture', fioriture);
@@ -235,6 +235,7 @@ class _MappaScreenState extends State<MappaScreen> {
           debugPrint('Errore API, fallback su cache locale: $e');
           apiari = await _storageService!.getStoredData('apiari');
           fioriture = await _storageService!.getStoredData('fioriture');
+          arnie = await _storageService!.getStoredData('arnie');
           if (mounted) {
             setState(() {
               _isOffline = true;
@@ -245,6 +246,7 @@ class _MappaScreenState extends State<MappaScreen> {
         // Offline: carica dalla cache locale
         apiari = await _storageService!.getStoredData('apiari');
         fioriture = await _storageService!.getStoredData('fioriture');
+        arnie = await _storageService!.getStoredData('arnie');
         if (mounted) {
           setState(() {
             _isOffline = true;
@@ -253,64 +255,56 @@ class _MappaScreenState extends State<MappaScreen> {
         debugPrint("Modalità offline - Apiari dalla cache: ${apiari.length}");
       }
 
-      // Filtra apiari in base ai permessi
+      // Filtra apiari: mostra tutti quelli con coordinate
+      // Il backend filtra già per permessi utente, quindi lato client
+      // filtriamo solo per la presenza di coordinate valide.
+      // Per dati offline/cache applichiamo lo stesso criterio (i dati
+      // in cache sono già stati ricevuti dall'API e quindi pre-filtrati).
       List<dynamic> apiariVisibili = [];
 
       for (var a in apiari) {
-        // Verifica le coordinate
         bool hasCoordinates = a['latitudine'] != null && a['longitudine'] != null;
         if (!hasCoordinates) {
           debugPrint("Apiario senza coordinate: ${a['nome']}");
           continue;
         }
-
-        // Filtra in base alla visibilità e ai permessi
-        final visibilita = a['visibilita_mappa'];
-        final proprietarioId = a['proprietario'];
-        final condivisoConGruppo = a['condiviso_con_gruppo'] == true;
-        final gruppoId = a['gruppo'];
-
-        bool visible = false;
-
-        if (visibilita == 'pubblico') {
-          // Visibile a tutti
-          visible = true;
-          debugPrint("Apiario pubblico: ${a['nome']}");
-        } else if (visibilita == 'privato') {
-          // Visibile solo al proprietario
-          visible = proprietarioId == currentUserId;
-          debugPrint("Apiario privato: ${a['nome']}, visibile: $visible");
-        } else if (visibilita == 'gruppo' && condivisoConGruppo && gruppoId != null) {
-          // Visibile agli utenti del gruppo
-          visible = proprietarioId == currentUserId || _userBelongsToGroup(currentUserId, gruppoId);
-          debugPrint("Apiario di gruppo: ${a['nome']}, visibile: $visible");
-        } else {
-          debugPrint("Apiario con visibilità non riconosciuta: ${a['nome']}, tipo: $visibilita");
-        }
-
-        if (visible) {
-          apiariVisibili.add(a);
-        }
+        apiariVisibili.add(a);
       }
 
       debugPrint("Apiari visibili: ${apiariVisibili.length}");
 
-      // Filtra fioriture
+      // Filtra fioriture: mostra tutte, attive e non attive.
+      // Per fioriture senza coordinate proprie, usa le coordinate dell'apiario associato.
       List<dynamic> fioritureVisibili = [];
 
       for (var f in fioriture) {
         bool hasCoordinates = f['latitudine'] != null && f['longitudine'] != null;
-        bool isActive = _isFiorituraActive(f);
 
-        if (hasCoordinates && isActive) {
+        if (!hasCoordinates) {
+          // Fallback: usa coordinate dell'apiario associato
+          final apiarioId = f['apiario'];
+          if (apiarioId != null) {
+            final parentApiario = apiari.firstWhere(
+              (a) => a['id'] == apiarioId,
+              orElse: () => null,
+            );
+            if (parentApiario != null &&
+                parentApiario['latitudine'] != null &&
+                parentApiario['longitudine'] != null) {
+              f['latitudine'] = parentApiario['latitudine'];
+              f['longitudine'] = parentApiario['longitudine'];
+              hasCoordinates = true;
+              debugPrint("Fioritura '${f['pianta']}': coordinate ereditate da apiario");
+            }
+          }
+        }
+
+        if (hasCoordinates) {
+          // Segna se è attiva o meno per differenziare la visualizzazione
+          f['_isActive'] = _isFiorituraActive(f);
           fioritureVisibili.add(f);
         } else {
-          if (!hasCoordinates) {
-            debugPrint("Fioritura senza coordinate: ${f['pianta']}");
-          }
-          if (!isActive) {
-            debugPrint("Fioritura non attiva: ${f['pianta']}");
-          }
+          debugPrint("Fioritura senza coordinate (né proprie né apiario): ${f['pianta']}");
         }
       }
 
@@ -320,6 +314,7 @@ class _MappaScreenState extends State<MappaScreen> {
         setState(() {
           _apiari = apiariVisibili;
           _fioriture = fioritureVisibili;
+          _arnie = arnie;
           _isLoading = false;
         });
       }
@@ -338,17 +333,6 @@ class _MappaScreenState extends State<MappaScreen> {
         });
       }
     }
-  }
-  
-  // Verifica se l'utente appartiene a un gruppo.
-  // Nota: l'API Django filtra gia' i dati per utente, quindi se un apiario
-  // condiviso con un gruppo arriva dall'API, l'utente ne fa parte.
-  // Questo check serve come ulteriore validazione lato client.
-  bool _userBelongsToGroup(int? userId, int gruppoId) {
-    if (userId == null) return false;
-    // Se l'apiario e' stato restituito dall'API, il backend ha gia' verificato
-    // che l'utente appartenga al gruppo. Ritorna true.
-    return true;
   }
   
   // Verifica se una fioritura è attiva
@@ -397,7 +381,172 @@ class _MappaScreenState extends State<MappaScreen> {
       arguments: apiarioId,
     );
   }
-  
+
+  void _showApiarioInfo(Map<String, dynamic> apiario) {
+    final arnieCount = _getArnieCountForApiario(apiario['id']);
+    final posizione = apiario['posizione'] ?? '';
+    final hasGroupAccess = apiario['condiviso_con_gruppo'] == true ||
+        apiario['visibilita_mappa'] == 'pubblico' ||
+        apiario['proprietario_username'] != null;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: ThemeConstants.cardColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: EdgeInsets.only(top: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header con nome e icona
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: ThemeConstants.primaryColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.hive, color: Colors.white, size: 24),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                apiario['nome'] ?? 'Apiario',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: ThemeConstants.textPrimaryColor,
+                                ),
+                              ),
+                              if (posizione.isNotEmpty)
+                                Text(
+                                  posizione,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: ThemeConstants.textSecondaryColor,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Divider(height: 1, color: ThemeConstants.dividerColor),
+                    SizedBox(height: 12),
+                    // Info row
+                    Row(
+                      children: [
+                        _infoChip(Icons.grid_view, '$arnieCount arnie'),
+                        SizedBox(width: 12),
+                        if (apiario['proprietario_username'] != null)
+                          _infoChip(Icons.person_outline, '${apiario['proprietario_username']}'),
+                        if (apiario['condiviso_con_gruppo'] == true) ...[
+                          SizedBox(width: 12),
+                          _infoChip(Icons.group, 'Gruppo'),
+                        ],
+                      ],
+                    ),
+                    if (apiario['note'] != null && apiario['note'].toString().isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        apiario['note'],
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: ThemeConstants.textSecondaryColor,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    SizedBox(height: 16),
+                    // Pulsante per navigare al dettaglio
+                    if (hasGroupAccess)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _navigateToApiarioDetail(apiario['id']);
+                          },
+                          icon: Icon(Icons.open_in_new, size: 18),
+                          label: Text('Apri dettaglio'),
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: ThemeConstants.backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: ThemeConstants.dividerColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: ThemeConstants.textSecondaryColor),
+          SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: ThemeConstants.textSecondaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _getArnieCountForApiario(int apiarioId) {
+    return _arnie.where((a) => a['apiario'] == apiarioId).length;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -431,14 +580,15 @@ class _MappaScreenState extends State<MappaScreen> {
                 FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    center: _currentPosition != null 
+                    center: _currentPosition != null
                         ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
                         : LatLng(41.9028, 12.4964), // Default a Roma
                     zoom: 9.0,
                     maxZoom: 18.0,
                     minZoom: 3.0,
-                    // Abilita le opzioni interattive per la mappa
                     interactiveFlags: InteractiveFlag.all,
+                    enableMultiFingerGestureRace: true,
+                    rotationThreshold: 15.0,
                   ),
                   children: [
                     TileLayer(
@@ -451,13 +601,13 @@ class _MappaScreenState extends State<MappaScreen> {
                         try {
                           final lat = double.parse(apiario['latitudine'].toString());
                           final lng = double.parse(apiario['longitudine'].toString());
-                          
+
                           return Marker(
                             width: 50.0,
                             height: 50.0,
                             point: LatLng(lat, lng),
                             builder: (ctx) => GestureDetector(
-                              onTap: () => _navigateToApiarioDetail(apiario['id']),
+                              onTap: () => _showApiarioInfo(apiario),
                               child: Column(
                                 children: [
                                   Container(
@@ -465,6 +615,13 @@ class _MappaScreenState extends State<MappaScreen> {
                                     decoration: BoxDecoration(
                                       color: ThemeConstants.primaryColor,
                                       shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black26,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     child: Icon(
                                       Icons.hive,
@@ -508,20 +665,21 @@ class _MappaScreenState extends State<MappaScreen> {
                         }
                       }).toList(),
                     ),
-                    // Circles per fioriture
+                    // Circles per fioriture (opacità diversa per attive/inattive)
                     CircleLayer(
                       circles: _fioriture.map((fioritura) {
                         try {
                           final lat = double.parse(fioritura['latitudine'].toString());
                           final lng = double.parse(fioritura['longitudine'].toString());
                           final raggio = fioritura['raggio'] != null ? double.parse(fioritura['raggio'].toString()) : 500.0;
-                          
+                          final isActive = fioritura['_isActive'] == true;
+
                           return CircleMarker(
                             point: LatLng(lat, lng),
                             radius: raggio,
-                            color: Colors.green.withOpacity(0.3),
-                            borderColor: Colors.green,
-                            borderStrokeWidth: 2.0,
+                            color: (isActive ? Colors.green : Colors.grey).withOpacity(isActive ? 0.3 : 0.15),
+                            borderColor: isActive ? Colors.green : Colors.grey,
+                            borderStrokeWidth: isActive ? 2.0 : 1.0,
                             useRadiusInMeter: true,
                           );
                         } catch (e) {
@@ -536,37 +694,40 @@ class _MappaScreenState extends State<MappaScreen> {
                         }
                       }).toList(),
                     ),
-                    // Marker per fioriture
+                    // Marker per fioriture (opacità diversa per attive/inattive)
                     MarkerLayer(
                       markers: _fioriture.map((fioritura) {
                         try {
                           final lat = double.parse(fioritura['latitudine'].toString());
                           final lng = double.parse(fioritura['longitudine'].toString());
-                          
+                          final isActive = fioritura['_isActive'] == true;
+
                           return Marker(
                             width: 30.0,
                             height: 30.0,
                             point: LatLng(lat, lng),
                             builder: (ctx) => GestureDetector(
                               onTap: () {
-                                // Mostra info fioritura
                                 _showFiorituraInfo(fioritura);
                               },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black26,
-                                      blurRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.local_florist,
-                                  color: Colors.green,
-                                  size: 16,
+                              child: Opacity(
+                                opacity: isActive ? 1.0 : 0.5,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.local_florist,
+                                    color: isActive ? Colors.green : Colors.grey,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                             ),
@@ -611,7 +772,7 @@ class _MappaScreenState extends State<MappaScreen> {
                 
                 // Legenda
                 Positioned(
-                  right: 16,
+                  left: 16,
                   bottom: 16,
                   child: Card(
                     child: Padding(
@@ -665,7 +826,30 @@ class _MappaScreenState extends State<MappaScreen> {
                                 ),
                               ),
                               SizedBox(width: 8),
-                              Text('Fioritura'),
+                              Text('Fioritura attiva'),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Opacity(
+                                opacity: 0.5,
+                                child: Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.15),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text('Fioritura inattiva'),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -694,32 +878,6 @@ class _MappaScreenState extends State<MappaScreen> {
                   ),
                 ),
                 
-                // Contatore elementi
-                Positioned(
-                  left: 16,
-                  top: 16,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Elementi sulla mappa',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text('Apiari: ${_apiari.length}', style: TextStyle(fontSize: 12)),
-                          Text('Fioriture: ${_fioriture.length}', style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
                 
                 // Pulsante freccina del nord
                 Positioned(
