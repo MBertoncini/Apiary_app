@@ -24,6 +24,13 @@ import '../screens/regina/regina_detail_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
 import '../screens/trattamento/trattamento_form_screen.dart';
 import '../screens/melario/melari_screen.dart';
+import '../screens/melario/smielatura_detail_screen.dart';
+import '../screens/melario/smielatura_form_screen.dart';
+import '../screens/melario/invasettamento_form_screen.dart';
+import '../screens/vendita/vendite_screen.dart';
+import '../screens/vendita/vendita_detail_screen.dart';
+import '../screens/vendita/vendita_form_screen.dart';
+import '../screens/vendita/cliente_form_screen.dart';
 import '../screens/mappa/mappa_screen.dart';
 import '../screens/pagamento/pagamenti_screen.dart';
 import '../screens/pagamento/pagamento_detail_screen.dart';
@@ -168,7 +175,47 @@ class RouteGenerator {
       // Routes for honey super and production management
       case AppConstants.melariRoute:
         return MaterialPageRoute(builder: (_) => MelariScreen());
-      
+
+      case AppConstants.smielaturaDetailRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => SmielaturaDetailScreen(smielaturaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.smielaturaCreateRoute:
+        return MaterialPageRoute(
+          builder: (_) => SmielaturaFormScreen(initialData: args),
+        );
+
+      case AppConstants.invasettamentoCreateRoute:
+        return MaterialPageRoute(
+          builder: (_) => InvasettamentoFormScreen(initialData: args as Map<String, dynamic>?),
+        );
+
+      // Routes for vendite
+      case AppConstants.venditeRoute:
+        return MaterialPageRoute(builder: (_) => VenditeScreen());
+
+      case AppConstants.venditaDetailRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => VenditaDetailScreen(venditaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.venditaCreateRoute:
+        return MaterialPageRoute(
+          builder: (_) => VenditaFormScreen(venditaId: args as int?),
+        );
+
+      case AppConstants.clienteCreateRoute:
+        return MaterialPageRoute(
+          builder: (_) => ClienteFormScreen(clienteId: args as int?),
+        );
+
       // Route for map
       case AppConstants.mappaRoute:
         return MaterialPageRoute(builder: (_) => MappaScreen());

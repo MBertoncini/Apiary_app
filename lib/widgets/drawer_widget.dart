@@ -135,6 +135,15 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, AppConstants.attrezzatureRoute),
           ),
 
+          // Vendite
+          ListTile(
+            leading: Icon(Icons.store),
+            title: Text('Vendite'),
+            selected: currentRoute == AppConstants.venditeRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () => _navigateTo(context, AppConstants.venditeRoute),
+          ),
+
           // Divisore
           Divider(),
 

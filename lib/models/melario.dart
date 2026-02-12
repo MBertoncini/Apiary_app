@@ -9,8 +9,9 @@ class Melario {
   final String dataPosizionamento;
   final String? dataRimozione;
   final String stato;
+  final double? pesoStimato;
   final String? note;
-  
+
   Melario({
     required this.id,
     required this.arnia,
@@ -22,6 +23,7 @@ class Melario {
     required this.dataPosizionamento,
     this.dataRimozione,
     required this.stato,
+    this.pesoStimato,
     this.note,
   });
   
@@ -37,6 +39,7 @@ class Melario {
       dataPosizionamento: json['data_posizionamento'],
       dataRimozione: json['data_rimozione'],
       stato: json['stato'],
+      pesoStimato: double.tryParse(json['peso_stimato']?.toString() ?? ''),
       note: json['note'],
     );
   }
@@ -53,6 +56,7 @@ class Melario {
       'data_posizionamento': dataPosizionamento,
       'data_rimozione': dataRimozione,
       'stato': stato,
+      'peso_stimato': pesoStimato,
       'note': note,
     };
   }

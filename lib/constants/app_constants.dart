@@ -48,6 +48,15 @@ class AppConstants {
   static const String smielaturaListRoute = "/smielature";
   static const String smielaturaCreateRoute = "/smielatura/create";
   static const String smielaturaDetailRoute = "/smielatura/detail";
+
+  // Route per invasettamento
+  static const String invasettamentoCreateRoute = "/invasettamento/create";
+
+  // Route per vendite e clienti
+  static const String venditeRoute = "/vendite";
+  static const String venditaDetailRoute = "/vendita/detail";
+  static const String venditaCreateRoute = "/vendita/create";
+  static const String clienteCreateRoute = "/cliente/create";
   
   // Route per gestione gruppi
   static const String gruppiListRoute = "/gruppi";

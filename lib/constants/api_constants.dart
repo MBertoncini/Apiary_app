@@ -76,6 +76,15 @@ class ApiConstants {
   static const String manutenzioniUrl = baseUrl + apiPrefix + '/manutenzioni/';
   static const String attrezzaturaManutenzioniUrl = baseUrl + apiPrefix + '/attrezzatura/{attrezzatura_id}/manutenzioni/';
 
+  // Endpoint invasettamenti
+  static const String invasettamentiUrl = baseUrl + apiPrefix + '/invasettamenti/';
+
+  // Endpoint clienti
+  static const String clientiUrl = baseUrl + apiPrefix + '/clienti/';
+
+  // Endpoint vendite
+  static const String venditeUrl = baseUrl + apiPrefix + '/vendite/';
+
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';
   
