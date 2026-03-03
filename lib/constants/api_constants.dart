@@ -85,6 +85,9 @@ class ApiConstants {
   // Endpoint vendite
   static const String venditeUrl = baseUrl + apiPrefix + '/vendite/';
 
+  // Endpoint analisi telaini
+  static const String analisiTelainiUrl = baseUrl + apiPrefix + '/analisi-telaini/';
+
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';
   

@@ -90,6 +90,10 @@ class AppConstants {
   // Route per QR scanner
   static const String qrScannerRoute = "/qr_scanner";
 
+  // Route per analisi telaino
+  static const String analisiTelainoRoute = "/analisi-telaino";
+  static const String analisiTelainoListRoute = "/analisi-telaini";
+
   // Route per input vocale
   static const String voiceCommandRoute = "/voice_command";
   static const String voiceVerificationRoute = "/voice/verification";

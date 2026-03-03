@@ -10,7 +10,7 @@ class DatabaseHelper {
 
   static Database? _database;
   final String _databaseName = "apiario_manager.db";
-  final int _databaseVersion = 1;
+  final int _databaseVersion = 2;
 
   // Tabelle
   final String tableApiari = 'apiari';
@@ -22,6 +22,7 @@ class DatabaseHelper {
   final String tableMelari = 'melari';
   final String tableSmielature = 'smielature';
   final String tableSyncStatus = 'sync_status';
+  final String tableAnalisiTelaini = 'analisi_telaini';
 
   DatabaseHelper._internal();
 
@@ -252,6 +253,31 @@ class DatabaseHelper {
       )
     ''');
 
+    // Tabella Analisi Telaini
+    await db.execute('''
+      CREATE TABLE $tableAnalisiTelaini (
+        id INTEGER PRIMARY KEY,
+        arnia INTEGER NOT NULL,
+        arnia_numero INTEGER,
+        numero_telaino INTEGER NOT NULL,
+        facciata TEXT NOT NULL,
+        data TEXT,
+        conteggio_api INTEGER NOT NULL DEFAULT 0,
+        conteggio_regine INTEGER NOT NULL DEFAULT 0,
+        conteggio_fuchi INTEGER NOT NULL DEFAULT 0,
+        conteggio_celle_reali INTEGER NOT NULL DEFAULT 0,
+        confidence_media REAL NOT NULL DEFAULT 0.0,
+        note TEXT,
+        immagine TEXT,
+        utente INTEGER,
+        utente_username TEXT,
+        data_registrazione TEXT,
+        sync_status TEXT NOT NULL,
+        last_updated INTEGER NOT NULL,
+        FOREIGN KEY (arnia) REFERENCES $tableArnie(id) ON DELETE CASCADE
+      )
+    ''');
+
     // Tabella Stato Sincronizzazione
     await db.execute('''
       CREATE TABLE $tableSyncStatus (
@@ -279,7 +305,29 @@ class DatabaseHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Gestione aggiornamenti schema per future versioni
     if (oldVersion < 2) {
-      // Aggiungi migrazioni per versione 2
+      await db.execute('''
+        CREATE TABLE $tableAnalisiTelaini (
+          id INTEGER PRIMARY KEY,
+          arnia INTEGER NOT NULL,
+          arnia_numero INTEGER,
+          numero_telaino INTEGER NOT NULL,
+          facciata TEXT NOT NULL,
+          data TEXT,
+          conteggio_api INTEGER NOT NULL DEFAULT 0,
+          conteggio_regine INTEGER NOT NULL DEFAULT 0,
+          conteggio_fuchi INTEGER NOT NULL DEFAULT 0,
+          conteggio_celle_reali INTEGER NOT NULL DEFAULT 0,
+          confidence_media REAL NOT NULL DEFAULT 0.0,
+          note TEXT,
+          immagine TEXT,
+          utente INTEGER,
+          utente_username TEXT,
+          data_registrazione TEXT,
+          sync_status TEXT NOT NULL,
+          last_updated INTEGER NOT NULL,
+          FOREIGN KEY (arnia) REFERENCES $tableArnie(id) ON DELETE CASCADE
+        )
+      ''');
     }
   }
 
@@ -406,7 +454,8 @@ class DatabaseHelper {
     
     final tables = [
       tableApiari, tableArnie, tableControlli, tableRegine,
-      tableFioriture, tableTrattamenti, tableMelari, tableSmielature
+      tableFioriture, tableTrattamenti, tableMelari, tableSmielature,
+      tableAnalisiTelaini
     ];
     
     for (final table in tables) {

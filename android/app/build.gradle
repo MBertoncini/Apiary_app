@@ -61,6 +61,10 @@ android {
         }
     }
 
+    aaptOptions {
+        noCompress "tflite"
+    }
+
     packagingOptions {
         resources {
             excludes += [

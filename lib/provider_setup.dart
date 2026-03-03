@@ -14,6 +14,8 @@ import 'services/wit_data_processor.dart';
 import 'services/voice_input_manager.dart'; // Updated to use the new class
 import 'services/voice_feedback_service.dart';
 import 'services/audio_service.dart';
+import 'services/bee_detection_service.dart';
+import 'services/analisi_telaino_service.dart';
 
 List<SingleChildWidget> providers = [
   // Storage service (independent)
@@ -40,6 +42,18 @@ List<SingleChildWidget> providers = [
   // MCP service (depends on API)
   ProxyProvider<ApiService, MCPService>(
     update: (_, apiService, __) => MCPService(apiService),
+  ),
+
+  // Bee Detection Service (independent, lazy)
+  Provider<BeeDetectionService>(
+    create: (_) => BeeDetectionService(),
+    lazy: true,
+    dispose: (_, service) => service.dispose(),
+  ),
+
+  // Analisi Telaino Service (depends on API)
+  ProxyProvider<ApiService, AnalisiTelainoService>(
+    update: (_, apiService, __) => AnalisiTelainoService(apiService),
   ),
 
   // Audio Service (independent, lazy)

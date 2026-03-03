@@ -44,6 +44,8 @@ import '../screens/attrezzatura/attrezzatura_form_screen.dart';
 import '../screens/attrezzatura/spesa_attrezzatura_form_screen.dart';
 import '../screens/attrezzatura/manutenzione_form_screen.dart';
 import '../screens/voice_entry_verification_screen.dart';
+import '../screens/analisi_telaino/analisi_telaino_screen.dart';
+import '../screens/analisi_telaino/analisi_telaino_list_screen.dart';
 
 class RouteGenerator {
  
@@ -292,6 +294,23 @@ class RouteGenerator {
       // Route for voice input with Wit.ai - Updated to use the new class
       case AppConstants.voiceCommandRoute:
         return MaterialPageRoute(builder: (_) => VoiceCommandScreen());
+
+      // Route for analisi telaino
+      case AppConstants.analisiTelainoRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => AnalisiTelainoScreen(arniaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.analisiTelainoListRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => AnalisiTelainoListScreen(arniaId: args),
+          );
+        }
+        return _errorRoute();
 
       // Route for voice entry verification
       case AppConstants.voiceVerificationRoute:

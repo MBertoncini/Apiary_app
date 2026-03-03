@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/analisi_telaino_service.dart';
+import '../../models/analisi_telaino.dart';
 import '../mobile_scanner_wrapper_screen.dart';
 import '../../widgets/qr_generator_widget.dart';
 import '../../services/mobile_scanner_service.dart';
@@ -25,13 +28,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   Map<String, dynamic>? _regina;
   List<dynamic> _controlli = [];
   List<dynamic> _melari = [];
+  List<AnalisiTelaino> _analisiTelaini = [];
   
   late TabController _tabController;
   
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadArnia();
   }
   
@@ -95,6 +99,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         final allMelari = await storageService.getStoredData('melari');
         _melari = allMelari.where((m) => m['arnia'] == widget.arniaId).toList();
         _melari.sort((a, b) => b['data_posizionamento'].compareTo(a['data_posizionamento']));
+
+        // Carica analisi telaini
+        try {
+          final analisiService = Provider.of<AnalisiTelainoService>(context, listen: false);
+          _analisiTelaini = await analisiService.getAnalisiByArnia(widget.arniaId);
+        } catch (e) {
+          debugPrint('Error loading analisi telaini: $e');
+        }
       } else {
         // Se non troviamo l'arnia in locale, prova a caricarla dal server
         try {
@@ -144,6 +156,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     );
   }
   
+  void _navigateToAnalisiTelaino() async {
+    final result = await Navigator.of(context).pushNamed(
+      AppConstants.analisiTelainoRoute,
+      arguments: widget.arniaId,
+    );
+    if (result == true) _loadArnia();
+  }
+
   void _navigateToReginaCreate() {
     // TODO: navigazione alla creazione regina con arnia preimpostata
   }
@@ -312,6 +332,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             Tab(text: 'Info'),
             Tab(text: 'Controlli'),
             Tab(text: 'Regina'),
+            Tab(text: 'Analisi'),
           ],
         ),
       ),
@@ -977,12 +998,120 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                     ],
                   ),
                 ),
+
+          // Tab Analisi Telaini
+          _analisiTelaini.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.analytics_outlined,
+                        size: 64,
+                        color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Nessuna analisi registrata',
+                        style: TextStyle(
+                          color: ThemeConstants.textSecondaryColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _navigateToAnalisiTelaino(),
+                        icon: Icon(Icons.camera_alt),
+                        label: Text('Avvia Analisi'),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.all(16),
+                  itemCount: _analisiTelaini.length,
+                  itemBuilder: (context, index) {
+                    final analisi = _analisiTelaini[index];
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.analytics, color: Colors.amber),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Telaino ${analisi.numeroTelaino} - Facciata ${analisi.facciata}',
+                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        analisi.data ?? '',
+                                        style: TextStyle(fontSize: 13, color: ThemeConstants.textSecondaryColor),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                _buildControlloTag('Api: ${analisi.conteggioApi}', Icons.bug_report, Colors.orange),
+                                _buildControlloTag('Regine: ${analisi.conteggioRegine}', Icons.star, Colors.purple),
+                                _buildControlloTag('Fuchi: ${analisi.conteggioFuchi}', Icons.circle, Colors.blue),
+                                _buildControlloTag('Celle R.: ${analisi.conteggioCelleReali}', Icons.hexagon_outlined, Colors.amber),
+                              ],
+                            ),
+                            if (analisi.note != null && analisi.note!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  analisi.note!,
+                                  style: TextStyle(fontSize: 13, color: ThemeConstants.textSecondaryColor),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToControlloCreate,
-        child: Icon(Icons.add),
-        tooltip: 'Registra controllo',
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        children: [
+          SpeedDialChild(
+            child: Icon(Icons.check_circle),
+            label: 'Registra Controllo',
+            onTap: _navigateToControlloCreate,
+          ),
+          SpeedDialChild(
+            child: Icon(Icons.analytics),
+            label: 'Analisi Telaino',
+            onTap: () => _navigateToAnalisiTelaino(),
+          ),
+        ],
       ),
     );
   }

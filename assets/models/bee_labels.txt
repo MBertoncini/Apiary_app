@@ -1,0 +1,4 @@
+bees
+queenbees
+drone
+royal cell
