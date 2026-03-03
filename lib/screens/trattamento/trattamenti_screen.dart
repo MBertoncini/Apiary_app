@@ -44,12 +44,15 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
   Future<List<TrattamentoSanitario>> _loadTrattamenti() async {
     try {
       final response = await _apiService.get(ApiConstants.trattamentiUrl);
+      List<dynamic> items;
       if (response is List) {
-        return response
-            .map((item) => TrattamentoSanitario.fromJson(item))
-            .toList();
+        items = response;
+      } else if (response is Map && response.containsKey('results')) {
+        items = response['results'] as List;
+      } else {
+        return [];
       }
-      return [];
+      return items.map((item) => TrattamentoSanitario.fromJson(item)).toList();
     } catch (e) {
       debugPrint('Error loading trattamenti: $e');
       throw e;

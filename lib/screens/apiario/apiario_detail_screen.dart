@@ -59,18 +59,57 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       
       if (apiario != null) {
         _apiario = apiario;
-        
-        // Carica dati correlati
+
+        // Carica dati correlati da locale come fallback rapido
         final allArnie = await storageService.getStoredData('arnie');
         _arnie = allArnie.where((a) => a['apiario'] == widget.apiarioId).toList();
-        
+
         final allTrattamenti = await storageService.getStoredData('trattamenti');
         _trattamenti = allTrattamenti.where((t) => t['apiario'] == widget.apiarioId).toList();
-        
+
         final allFioriture = await storageService.getStoredData('fioriture');
         _fioriture = allFioriture.where((f) => f['apiario'] == widget.apiarioId).toList();
-        
-        // Carica dati dal server
+
+        // Aggiorna sempre da server: arnie
+        try {
+          final arnieData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/arnie/');
+          List<dynamic> fetched = [];
+          if (arnieData is List) {
+            fetched = arnieData;
+          } else if (arnieData is Map && arnieData.containsKey('results')) {
+            fetched = arnieData['results'] as List;
+          }
+          if (fetched.isNotEmpty) _arnie = fetched;
+        } catch (e) {
+          debugPrint('Error fetching arnie from apiario endpoint, trying global: $e');
+          // Fallback: endpoint globale filtrato lato client
+          try {
+            final allArnieData = await apiService.get(ApiConstants.arnieUrl);
+            List<dynamic> all = [];
+            if (allArnieData is List) {
+              all = allArnieData;
+            } else if (allArnieData is Map && allArnieData.containsKey('results')) {
+              all = allArnieData['results'] as List;
+            }
+            final filtered = all.where((a) => a['apiario'] == widget.apiarioId).toList();
+            if (filtered.isNotEmpty) _arnie = filtered;
+          } catch (e2) {
+            debugPrint('Error fetching arnie from global endpoint: $e2');
+          }
+        }
+
+        try {
+          final trattamentiData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/trattamenti/');
+          if (trattamentiData is List) {
+            _trattamenti = trattamentiData;
+          } else if (trattamentiData is Map && trattamentiData.containsKey('results')) {
+            _trattamenti = trattamentiData['results'] as List;
+          }
+        } catch (e) {
+          debugPrint('Error fetching trattamenti from API: $e');
+        }
+
+        // Carica dati meteo dal server
         try {
           final meteoData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/meteo/');
           _datiMeteo = meteoData;
