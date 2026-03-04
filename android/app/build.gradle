@@ -25,7 +25,7 @@ if (flutterVersionName == null) {
 android {
     namespace "com.example.Apiary"
     compileSdk 35
-    ndkVersion "25.2.9519653"
+    ndkVersion "26.3.11579264"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -43,7 +43,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.Apiary"
-        minSdk 24
+        minSdk 26
         targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

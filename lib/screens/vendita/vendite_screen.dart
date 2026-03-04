@@ -5,9 +5,11 @@ import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../models/vendita.dart';
 import '../../models/cliente.dart';
+import '../../models/gruppo.dart';
 
 class VenditeScreen extends StatefulWidget {
   @override
@@ -17,10 +19,22 @@ class VenditeScreen extends StatefulWidget {
 class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late ApiService _apiService;
+  late StorageService _storageService;
   List<Vendita> _vendite = [];
   List<Cliente> _clienti = [];
+  List<Gruppo> _gruppi = [];
+  // null = tutti (personali + gruppo), -1 = solo personali, >0 = gruppo specifico
+  int? _filtroGruppoId;
   bool _isLoading = true;
   String? _errorMessage;
+
+  static const String _cacheKeyVendite = 'vendite';
+  static const String _cacheKeyClienti = 'clienti';
+
+  static const _mesiItaliani = [
+    'Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+    'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre',
+  ];
 
   @override
   void initState() {
@@ -28,7 +42,8 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() { setState(() {}); });
     final authService = Provider.of<AuthService>(context, listen: false);
-    _apiService = ApiService(authService);
+    _apiService     = ApiService(authService);
+    _storageService = Provider.of<StorageService>(context, listen: false);
     _loadData();
   }
 
@@ -39,19 +54,131 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   }
 
   Future<void> _loadData() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() { _errorMessage = null; });
+
+    final cachedVendite = await _storageService.getStoredData(_cacheKeyVendite);
+    final cachedClienti = await _storageService.getStoredData(_cacheKeyClienti);
+    if (cachedVendite.isNotEmpty || cachedClienti.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          if (cachedVendite.isNotEmpty) {
+            _vendite = cachedVendite.map((e) => Vendita.fromJson(e as Map<String, dynamic>)).toList();
+          }
+          if (cachedClienti.isNotEmpty) {
+            _clienti = cachedClienti.map((e) => Cliente.fromJson(e as Map<String, dynamic>)).toList();
+          }
+          _isLoading = false;
+        });
+      }
+    }
+
     try {
-      final venditeRes = await _apiService.get(ApiConstants.venditeUrl);
-      final clientiRes = await _apiService.get(ApiConstants.clientiUrl);
-      setState(() {
-        _vendite = (venditeRes as List).map((e) => Vendita.fromJson(e)).toList();
-        _clienti = (clientiRes as List).map((e) => Cliente.fromJson(e)).toList();
-        _isLoading = false;
-      });
+      final results = await Future.wait([
+        _apiService.get(ApiConstants.venditeUrl),
+        _apiService.get(ApiConstants.clientiUrl),
+        _apiService.get(ApiConstants.gruppiUrl),
+      ]);
+      final venditeList = results[0] is List ? results[0] as List : (results[0]['results'] as List? ?? []);
+      final clientiList = results[1] is List ? results[1] as List : (results[1]['results'] as List? ?? []);
+      final gruppiList  = results[2] is List ? results[2] as List : (results[2]['results'] as List? ?? []);
+
+      await Future.wait([
+        _storageService.saveData(_cacheKeyVendite, venditeList),
+        _storageService.saveData(_cacheKeyClienti, clientiList),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _vendite = venditeList.map((e) => Vendita.fromJson(e as Map<String, dynamic>)).toList();
+          _clienti = clientiList.map((e) => Cliente.fromJson(e as Map<String, dynamic>)).toList();
+          _gruppi  = gruppiList.map((e) => Gruppo.fromJson(e as Map<String, dynamic>)).toList();
+          _isLoading = false;
+          _errorMessage = null;
+        });
+      }
     } catch (e) {
-      setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; });
+      if (!mounted) return;
+      if (_vendite.isEmpty && _clienti.isEmpty) {
+        setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; });
+      } else {
+        setState(() { _isLoading = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
+        );
+      }
     }
   }
+
+  // ── Filtering ────────────────────────────────────────────────────
+
+  List<Vendita> get _venditeFiltered {
+    if (_filtroGruppoId == null) return _vendite;
+    if (_filtroGruppoId == -1)   return _vendite.where((v) => v.gruppoId == null).toList();
+    return _vendite.where((v) => v.gruppoId == _filtroGruppoId).toList();
+  }
+
+  List<Cliente> get _clientiFiltered {
+    if (_filtroGruppoId == null) return _clienti;
+    if (_filtroGruppoId == -1)   return _clienti.where((c) => c.gruppoId == null).toList();
+    return _clienti.where((c) => c.gruppoId == _filtroGruppoId).toList();
+  }
+
+  Widget _buildGruppoFilterBar() {
+    if (_gruppi.isEmpty) return SizedBox.shrink();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          ChoiceChip(
+            label: Text('Tutti'),
+            selected: _filtroGruppoId == null,
+            onSelected: (_) => setState(() { _filtroGruppoId = null; }),
+          ),
+          SizedBox(width: 6),
+          ChoiceChip(
+            label: Text('Personali'),
+            selected: _filtroGruppoId == -1,
+            onSelected: (_) => setState(() { _filtroGruppoId = -1; }),
+          ),
+          ..._gruppi.map((g) => Padding(
+            padding: EdgeInsets.only(left: 6),
+            child: ChoiceChip(
+              label: Text(g.nome),
+              selected: _filtroGruppoId == g.id,
+              selectedColor: ThemeConstants.primaryColor.withOpacity(0.25),
+              onSelected: (_) => setState(() { _filtroGruppoId = g.id; }),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────
+
+  Color _canaleColor(String canale) {
+    switch (canale) {
+      case 'mercatino': return Colors.orange.shade400;
+      case 'negozio':   return Colors.blue.shade400;
+      case 'online':    return Colors.purple.shade400;
+      case 'privato':   return Colors.green.shade500;
+      default:          return Colors.grey.shade500;
+    }
+  }
+
+  String _canaleLabel(String canale) {
+    const map = {
+      'mercatino': 'Mercatino',
+      'negozio':   'Negozio',
+      'online':    'Online',
+      'privato':   'Privato',
+      'altro':     'Altro',
+    };
+    return map[canale] ?? canale;
+  }
+
+  // ── Build ────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -90,55 +217,162 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   }
 
   Widget _buildVenditeTab() {
-    if (_vendite.isEmpty) {
-      return Center(child: Text('Nessuna vendita registrata', style: TextStyle(fontSize: 16)));
-    }
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: EdgeInsets.all(16),
-        itemCount: _vendite.length,
-        itemBuilder: (context, index) {
-          final v = _vendite[index];
-          return Card(
-            margin: EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              leading: Icon(Icons.receipt_long, color: ThemeConstants.primaryColor),
-              title: Text(v.clienteNome ?? 'Cliente #${v.cliente}'),
-              subtitle: Text('${v.data} - ${v.dettagli.length} articoli'),
-              trailing: Text('${v.totale?.toStringAsFixed(2) ?? '0.00'} \u20AC',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              onTap: () => Navigator.pushNamed(context, AppConstants.venditaDetailRoute, arguments: v.id).then((_) => _loadData()),
+    final now = DateTime.now();
+    final filtered = _venditeFiltered;
+    final meseCorrente = filtered.where((v) {
+      final d = DateTime.tryParse(v.data);
+      return d != null && d.year == now.year && d.month == now.month;
+    }).toList();
+    final totaleMese = meseCorrente.fold<double>(0, (sum, v) => sum + (v.totale ?? 0));
+
+    return Column(
+      children: [
+        _buildGruppoFilterBar(),
+        // Summary bar
+        Container(
+          width: double.infinity,
+          color: ThemeConstants.primaryColor.withOpacity(0.12),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_mesiItaliani[now.month - 1]} ${now.year}',
+                style: TextStyle(fontWeight: FontWeight.bold, color: ThemeConstants.primaryColor),
+              ),
+              Text(
+                '${meseCorrente.length} vendite  •  ${totaleMese.toStringAsFixed(2)} €',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ],
+          ),
+        ),
+        if (filtered.isEmpty)
+          Expanded(child: Center(child: Text('Nessuna vendita registrata', style: TextStyle(fontSize: 16))))
+        else
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadData,
+              child: ListView.builder(
+                padding: EdgeInsets.all(16),
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
+                  final v = filtered[index];
+                  return Card(
+                    margin: EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => Navigator.pushNamed(
+                        context, AppConstants.venditaDetailRoute, arguments: v.id,
+                      ).then((_) => _loadData()),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            Icon(Icons.receipt_long, color: ThemeConstants.primaryColor),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(v.displayName,
+                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                  SizedBox(height: 2),
+                                  Text('${v.data}  ·  ${v.dettagli.length} articoli',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                  if (v.gruppoNome != null)
+                                    Padding(
+                                      padding: EdgeInsets.only(top: 2),
+                                      child: Row(children: [
+                                        Icon(Icons.group, size: 11, color: ThemeConstants.primaryColor),
+                                        SizedBox(width: 3),
+                                        Text(v.gruppoNome!, style: TextStyle(fontSize: 11, color: ThemeConstants.primaryColor)),
+                                      ]),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('${v.totale?.toStringAsFixed(2) ?? '0.00'} €',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                SizedBox(height: 4),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _canaleColor(v.canale),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(_canaleLabel(v.canale),
+                                      style: TextStyle(fontSize: 11, color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-          );
-        },
-      ),
+          ),
+      ],
     );
   }
 
   Widget _buildClientiTab() {
-    if (_clienti.isEmpty) {
-      return Center(child: Text('Nessun cliente registrato', style: TextStyle(fontSize: 16)));
-    }
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: EdgeInsets.all(16),
-        itemCount: _clienti.length,
-        itemBuilder: (context, index) {
-          final c = _clienti[index];
-          return Card(
-            margin: EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              leading: Icon(Icons.person, color: ThemeConstants.primaryColor),
-              title: Text(c.nome),
-              subtitle: Text([if (c.telefono != null) c.telefono!, if (c.email != null) c.email!].join(' - ')),
-              trailing: Text('${c.venditeCount ?? 0} vendite'),
-              onTap: () => Navigator.pushNamed(context, AppConstants.clienteCreateRoute, arguments: c.id).then((_) => _loadData()),
+    final filtered = _clientiFiltered;
+    return Column(
+      children: [
+        _buildGruppoFilterBar(),
+        if (filtered.isEmpty)
+          Expanded(child: Center(child: Text('Nessun cliente registrato', style: TextStyle(fontSize: 16))))
+        else
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadData,
+              child: ListView.builder(
+                padding: EdgeInsets.all(16),
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
+                  final c = filtered[index];
+                  return Card(
+                    margin: EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(Icons.person, color: ThemeConstants.primaryColor),
+                      title: Text(c.nome),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (c.telefono != null || c.email != null)
+                            Text([
+                              if (c.telefono != null) c.telefono!,
+                              if (c.email != null) c.email!,
+                            ].join(' - ')),
+                          if (c.gruppoNome != null)
+                            Padding(
+                              padding: EdgeInsets.only(top: 2),
+                              child: Row(children: [
+                                Icon(Icons.group, size: 12, color: ThemeConstants.primaryColor),
+                                SizedBox(width: 4),
+                                Text(c.gruppoNome!, style: TextStyle(fontSize: 11, color: ThemeConstants.primaryColor)),
+                              ]),
+                            ),
+                        ],
+                      ),
+                      trailing: Text('${c.venditeCount ?? 0} vendite'),
+                      onTap: () => Navigator.pushNamed(
+                        context, AppConstants.clienteCreateRoute, arguments: c.id,
+                      ).then((_) => _loadData()),
+                    ),
+                  );
+                },
+              ),
             ),
-          );
-        },
-      ),
+          ),
+      ],
     );
   }
 }

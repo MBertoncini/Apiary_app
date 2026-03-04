@@ -88,30 +88,26 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
   }
   
   Future<void> _loadGruppi() async {
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    // Mostra subito dalla cache
+    final cached = await storageService.getStoredData('gruppi');
+    if (cached.isNotEmpty && mounted) {
+      setState(() { _gruppi = cached; _gruppiLoading = false; });
+    }
+
+    // Aggiorna sempre dal server
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
-      final response = await apiService.get('gruppi/');
-      List<dynamic> gruppi;
-      if (response is List) {
-        gruppi = response;
-      } else if (response is Map) {
-        gruppi = response['results'] ?? [];
-      } else {
-        gruppi = [];
-      }
+      final response = await apiService.get(ApiConstants.gruppiUrl);
+      final gruppi = response is List ? response : (response['results'] as List? ?? []);
+      await storageService.saveData('gruppi', gruppi);
       if (mounted) {
-        setState(() {
-          _gruppi = gruppi;
-          _gruppiLoading = false;
-        });
+        setState(() { _gruppi = gruppi; _gruppiLoading = false; });
       }
     } catch (e) {
       debugPrint('Error loading gruppi: $e');
-      if (mounted) {
-        setState(() {
-          _gruppiLoading = false;
-        });
-      }
+      if (mounted) setState(() { _gruppiLoading = false; });
     }
   }
 

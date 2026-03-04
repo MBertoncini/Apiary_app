@@ -6,8 +6,10 @@ import '../../constants/api_constants.dart';  // Aggiunto per risolvere l'errore
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
-import '../../widgets/qr_generator_widget.dart';  
-import '../../services/mobile_scanner_service.dart'; 
+import '../../widgets/qr_generator_widget.dart';
+import '../../services/mobile_scanner_service.dart';
+import 'widgets/apiario_map_widget.dart';
+import 'apiario_form_screen.dart'; 
 
 class ApiarioDetailScreen extends StatefulWidget {
   final int apiarioId;
@@ -25,7 +27,9 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   List<dynamic> _trattamenti = [];
   List<dynamic> _fioriture = [];
   List<dynamic> _datiMeteo = [];
-  
+  // true quando ApiarioMapWidget è in edit mode → blocca swipe del TabBarView
+  bool _mapEditMode = false;
+
   late TabController _tabController;
   
   @override
@@ -99,10 +103,13 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         }
 
         try {
-          final trattamentiData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/trattamenti/');
+          // Usa il filtro ?apiario= supportato dal backend
+          final trattamentiData = await apiService.get(
+              '${ApiConstants.trattamentiUrl}?apiario=${widget.apiarioId}');
           if (trattamentiData is List) {
             _trattamenti = trattamentiData;
-          } else if (trattamentiData is Map && trattamentiData.containsKey('results')) {
+          } else if (trattamentiData is Map &&
+              trattamentiData.containsKey('results')) {
             _trattamenti = trattamentiData['results'] as List;
           }
         } catch (e) {
@@ -179,7 +186,12 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   }
   
   void _editApiario() {
-    // TODO: navigazione alla modifica apiario
+    if (_apiario == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ApiarioFormScreen(apiario: _apiario),
+      ),
+    ).then((_) => _loadApiario());
   }
 
   void _confirmDeleteApiario() {
@@ -296,6 +308,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       ),
       body: TabBarView(
         controller: _tabController,
+        physics: _mapEditMode ? const NeverScrollableScrollPhysics() : null,
         children: [
           // Tab Info
           SingleChildScrollView(
@@ -594,143 +607,15 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             ),
           ),
           
-        // Tab Arnie
-        _arnie.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.grid_view_outlined,
-                      size: 64,
-                      color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Nessuna arnia in questo apiario',
-                      style: TextStyle(
-                        color: ThemeConstants.textSecondaryColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _navigateToArniaCreate,
-                      icon: Icon(Icons.add),
-                      label: Text('Aggiungi arnia'),
-                      style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
-                    ),
-                  ],
-                ),
-              )
-            : GridView.builder(
-                padding: EdgeInsets.all(16),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.85,
-                ),
-                itemCount: _arnie.length,
-                itemBuilder: (context, index) {
-                  final arnia = _arnie[index];
-                  return Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => _navigateToArniaDetail(arnia['id']),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: 20,
-                            color: Color(int.parse(arnia['colore_hex'].replaceAll('#', '0xFF'))),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Arnia ${arnia['numero']}',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (!arnia['attiva'])
-                                      Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'Inattiva',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.red,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Installata il ${arnia['data_installazione']}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: ThemeConstants.textSecondaryColor,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () => _navigateToArniaDetail(arnia['id']),
-                                        child: Text(
-                                          'Dettagli',
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: EdgeInsets.symmetric(horizontal: 4),
-                                          foregroundColor: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () => _navigateToControlloCreate(arnia['id']),
-                                        child: Text(
-                                          'Controllo',
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: EdgeInsets.symmetric(horizontal: 4),
-                                          backgroundColor: ThemeConstants.secondaryColor,
-                                          foregroundColor: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),          
+        // Tab Arnie – mappa simulata
+        ApiarioMapWidget(
+          arnie: _arnie,
+          apiarioId: widget.apiarioId,
+          onArniaTap: _navigateToArniaDetail,
+          onAddArnia: _navigateToArniaCreate,
+          onEditModeChanged: (active) => setState(() => _mapEditMode = active),
+        ),
+
           // Tab Trattamenti
           _trattamenti.isEmpty
               ? Center(
@@ -754,7 +639,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.of(context).pushNamed(
-                            AppConstants.nuovoTrattamentoRoute,
+                            AppConstants.trattamentoCreateRoute,
                             arguments: widget.apiarioId,
                           ).then((_) => _loadApiario());
                         },
@@ -765,7 +650,28 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                     ],
                   ),
                 )
-              : ListView.builder(
+              : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Nuovo trattamento'),
+                            onPressed: () => Navigator.of(context)
+                                .pushNamed(
+                                  AppConstants.trattamentoCreateRoute,
+                                  arguments: widget.apiarioId,
+                                )
+                                .then((_) => _loadApiario()),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
                   padding: EdgeInsets.all(16),
                   itemCount: _trattamenti.length,
                   itemBuilder: (context, index) {
@@ -929,8 +835,11 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                       ),
                     );
                   },
-                ),
-          
+                      ),  // ListView.builder
+                    ),    // Expanded
+                  ],      // Column children
+                ),        // Column
+
           // Tab Meteo
           _apiario!['monitoraggio_meteo'] == false
               ? Center(

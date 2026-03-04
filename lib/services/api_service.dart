@@ -162,11 +162,20 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  // PUT request (invece di patch)
+  // PUT request
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     final uri = Uri.parse(_buildUrl(endpoint));
     final response = await _executeWithRetry(
       (headers) => http.put(uri, headers: headers, body: json.encode(data)),
+    );
+    return _handleResponse(response);
+  }
+
+  // PATCH request (aggiornamento parziale)
+  Future<dynamic> patch(String endpoint, Map<String, dynamic> data) async {
+    final uri = Uri.parse(_buildUrl(endpoint));
+    final response = await _executeWithRetry(
+      (headers) => http.patch(uri, headers: headers, body: json.encode(data)),
     );
     return _handleResponse(response);
   }

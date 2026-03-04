@@ -24,6 +24,7 @@ import '../screens/regina/regina_detail_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
 import '../screens/trattamento/trattamento_form_screen.dart';
 import '../screens/melario/melari_screen.dart';
+import '../screens/melario/melario_form_screen.dart';
 import '../screens/melario/smielatura_detail_screen.dart';
 import '../screens/melario/smielatura_form_screen.dart';
 import '../screens/melario/invasettamento_form_screen.dart';
@@ -166,10 +167,18 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => TrattamentiScreen());
         
       case AppConstants.nuovoTrattamentoRoute:
-        // Check if an apiary is specified
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => TrattamentoFormScreen(apiarioId: args),
+          );
+        }
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => TrattamentoFormScreen(
+              apiarioId: args['apiarioId'] as int?,
+              arniaId: args['arniaId'] as int?,
+              trattamentoId: args['trattamentoId'] as int?,
+            ),
           );
         }
         return MaterialPageRoute(builder: (_) => TrattamentoFormScreen());
@@ -177,6 +186,17 @@ class RouteGenerator {
       // Routes for honey super and production management
       case AppConstants.melariRoute:
         return MaterialPageRoute(builder: (_) => MelariScreen());
+
+      case AppConstants.melarioCreateRoute:
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => MelarioFormScreen(
+              preselectedApiarioId: args['apiarioId'] as int?,
+              preselectedArniaId: args['arniaId'] as int?,
+            ),
+          );
+        }
+        return MaterialPageRoute(builder: (_) => const MelarioFormScreen());
 
       case AppConstants.smielaturaDetailRoute:
         if (args is int) {

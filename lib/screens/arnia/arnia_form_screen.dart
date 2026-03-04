@@ -5,7 +5,6 @@ import '../../constants/api_constants.dart';
 import '../../models/arnia.dart';
 import '../../models/apiario.dart';  // Import the Apiario model
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';  // Import StorageService
 
 class ArniaFormScreen extends StatefulWidget {
@@ -57,8 +56,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
   @override
   void initState() {
     super.initState();
-    final authService = Provider.of<AuthService>(context, listen: false);
-    _apiService = ApiService(authService);
+    _apiService = Provider.of<ApiService>(context, listen: false);
     _storageService = Provider.of<StorageService>(context, listen: false);
     
     // Carica tutti gli apiari disponibili
@@ -84,56 +82,57 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
 
   // Carica tutti gli apiari disponibili
   Future<void> _loadApiari() async {
-    setState(() {
-      _loadingApiari = true;
-    });
+    setState(() { _loadingApiari = true; });
 
+    // Mostra subito dati dalla cache
+    final cached = await _storageService.getStoredData('apiari');
+    if (cached.isNotEmpty && mounted) {
+      setState(() {
+        _apiari = List<Map<String, dynamic>>.from(cached);
+        _loadingApiari = false;
+      });
+    }
+
+    // Aggiorna sempre dal server
     try {
-      // Prima tenta di caricare dal local storage
-      final apiariFromStorage = await _storageService.getStoredData('apiari');
-      
-      if (apiariFromStorage.isNotEmpty) {
+      final res = await _apiService.get(ApiConstants.apiariUrl);
+      final list = res is List ? res : (res['results'] as List? ?? []);
+      await _storageService.saveData('apiari', list);
+      if (mounted) {
         setState(() {
-          _apiari = List<Map<String, dynamic>>.from(apiariFromStorage);
+          _apiari = List<Map<String, dynamic>>.from(list);
           _loadingApiari = false;
         });
-      } else {
-        // Se non ci sono dati in locale, carica dalla API
-        final apiariFromApi = await _apiService.get(ApiConstants.apiariUrl);
-        
-        if (apiariFromApi is List) {
-          setState(() {
-            _apiari = List<Map<String, dynamic>>.from(apiariFromApi);
-            _loadingApiari = false;
-          });
-          
-          // Salva i dati per uso futuro
-          await _storageService.saveData('apiari', _apiari);
-        }
       }
     } catch (e) {
       debugPrint('Errore nel caricare gli apiari: $e');
-      setState(() {
-        _loadingApiari = false;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore nel caricare gli apiari')),
-      );
+      if (mounted) {
+        setState(() { _loadingApiari = false; });
+        if (_apiari.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Errore nel caricare gli apiari')),
+          );
+        }
+      }
     }
   }
   
   Future<void> _loadApiarioName() async {
-    if (_apiarioId != null) {
-      try {
-        final apiario = await _apiService.get(ApiConstants.apiariUrl + _apiarioId.toString() + '/');
-        setState(() {
-          _apiarioNome = apiario['nome'];
-        });
-      } catch (e) {
-        // In caso di errore, lascia il nome vuoto
-        debugPrint('Errore nel caricare il nome dell\'apiario: $e');
-      }
+    if (_apiarioId == null) return;
+    // Try from already-loaded list first
+    final found = _apiari.firstWhere(
+      (a) => a['id'] == _apiarioId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (found.isNotEmpty) {
+      if (mounted) setState(() { _apiarioNome = found['nome']; });
+      return;
+    }
+    try {
+      final apiario = await _apiService.get('${ApiConstants.apiariUrl}$_apiarioId/');
+      if (mounted) setState(() { _apiarioNome = apiario['nome']; });
+    } catch (e) {
+      debugPrint('Errore nel caricare il nome dell\'apiario: $e');
     }
   }
 
@@ -197,20 +196,23 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
         if (widget.arnia != null) {
           // Modalità modifica
           await _apiService.put(ApiConstants.arnieUrl + widget.arnia!.id.toString() + '/', data);
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Arnia aggiornata con successo')),
           );
         } else {
           // Modalità creazione
           await _apiService.post(ApiConstants.arnieUrl, data);
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Arnia creata con successo')),
           );
         }
-        
+
         // Torna indietro
         Navigator.of(context).pop();
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Errore: $e')),
         );

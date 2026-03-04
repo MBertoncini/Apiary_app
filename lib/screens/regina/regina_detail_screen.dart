@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
 import '../../models/regina.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
+import 'regina_form_screen.dart';
 
 class ReginaDetailScreen extends StatefulWidget {
   final int reginaId;
@@ -73,11 +75,9 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     });
 
     try {
-      final url = ApiConstants.replaceParams(
-        ApiConstants.reginaGenealogiaUrl,
-        {'regina_id': widget.reginaId.toString()},
+      final response = await _apiService.get(
+        '${ApiConstants.regineUrl}${widget.reginaId}/genealogy/',
       );
-      final response = await _apiService.get(url);
       debugPrint('Genealogia API response: $response');
 
       setState(() {
@@ -215,23 +215,16 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                 ElevatedButton.icon(
                   icon: Icon(Icons.edit),
                   label: Text('Modifica'),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Funzionalita di modifica non ancora implementata')),
-                    );
-                  },
+                  onPressed: _editRegina,
                 ),
                 ElevatedButton.icon(
                   icon: Icon(Icons.swap_horiz),
                   label: Text('Sostituisci'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Funzionalita di sostituzione non ancora implementata')),
-                    );
-                  },
+                  onPressed: _showSostituisciDialog,
                 ),
               ],
             ),
@@ -348,17 +341,6 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               ),
             ],
 
-            // Nonna materna
-            if (_genealogia!['nonna_materna'] != null) ...[
-              _buildGenealogiaConnector(),
-              _buildGenealogiaReginaCard(
-                'Nonna Materna',
-                _genealogia!['nonna_materna'],
-                Colors.purple,
-                Icons.elderly_woman,
-              ),
-            ],
-
             // Figlie
             if (_genealogia!['figlie'] != null &&
                 (_genealogia!['figlie'] as List).isNotEmpty) ...[
@@ -390,32 +372,68 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               }).toList(),
             ],
 
-            // Sorelle
-            if (_genealogia!['sorelle'] != null &&
-                (_genealogia!['sorelle'] as List).isNotEmpty) ...[
+            // Storia nelle arnie
+            if (_genealogia!['storia_arnia'] != null &&
+                (_genealogia!['storia_arnia'] as List).isNotEmpty) ...[
               const SizedBox(height: 24),
               Divider(),
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: Text(
-                  'Sorelle (${(_genealogia!['sorelle'] as List).length})',
+                  'Storia nelle arnie',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
+                    color: Colors.blueGrey,
                   ),
                 ),
               ),
               const SizedBox(height: 8),
-              ...(_genealogia!['sorelle'] as List).map<Widget>((sorella) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _buildGenealogiaReginaCard(
-                    'Sorella',
-                    sorella,
-                    Colors.indigo,
-                    Icons.people,
+              ...(_genealogia!['storia_arnia'] as List).map<Widget>((entry) {
+                final m = entry as Map<String, dynamic>;
+                final arniaNum = m['arnia_numero']?.toString() ?? m['arnia']?.toString() ?? '?';
+                final inizio = m['data_inizio'] ?? '';
+                final fine = m['data_fine'];
+                final motivo = m['motivo_fine'];
+                final nota = m['note'];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.home, size: 18, color: Colors.blueGrey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Arnia $arniaNum',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const Spacer(),
+                            if (fine == null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text('Attuale', style: TextStyle(fontSize: 11, color: Colors.green[700])),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text('Dal: $inizio', style: const TextStyle(fontSize: 13)),
+                        if (fine != null)
+                          Text('Al: $fine', style: const TextStyle(fontSize: 13)),
+                        if (motivo != null && motivo.toString().isNotEmpty)
+                          Text('Motivo: $motivo', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                        if (nota != null && nota.toString().isNotEmpty)
+                          Text(nota.toString(), style: TextStyle(fontSize: 13, color: Colors.grey[700], fontStyle: FontStyle.italic)),
+                      ],
+                    ),
                   ),
                 );
               }).toList(),
@@ -638,7 +656,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
       'data_introduzione', 'data_inserimento', 'data_nascita', 'data_rimozione',
       'note', 'is_attiva', 'attiva', 'marcata', 'colore_marcatura', 'codice_marcatura',
       'fecondata', 'selezionata', 'docilita', 'produttivita', 'resistenza_malattie',
-      'tendenza_sciamatura', 'madre', 'nonna_materna', 'figlie', 'sorelle'};
+      'tendenza_sciamatura', 'madre', 'figlie', 'storia_arnia'};
 
     final extraKeys = _genealogia!.keys.where((k) => !standardKeys.contains(k)).toList();
 
@@ -987,6 +1005,147 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   Color _getContrastColor(Color backgroundColor) {
     double luminance = backgroundColor.computeLuminance();
     return luminance > 0.5 ? Colors.black : Colors.white;
+  }
+
+  Future<void> _editRegina() async {
+    if (_regina == null) return;
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReginaFormScreen(
+          arniaId: _regina!.arniaId,
+          reginaData: _regina!.toJson(),
+          reginaId: widget.reginaId,
+        ),
+      ),
+    );
+    if (result == true) _loadData();
+  }
+
+  Future<void> _showSostituisciDialog() async {
+    if (_regina == null) return;
+    final fmt = DateFormat('yyyy-MM-dd');
+    String motivoFine = 'sostituzione';
+    DateTime dataFine = DateTime.now();
+    bool isLoading = false;
+
+    const motiviOptions = [
+      {'id': 'sostituzione', 'label': 'Sostituzione programmata'},
+      {'id': 'morte', 'label': 'Morte naturale'},
+      {'id': 'sciamatura', 'label': 'Sciamatura'},
+      {'id': 'problema_sanitario', 'label': 'Problema sanitario'},
+      {'id': 'altro', 'label': 'Altro'},
+    ];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 16, right: 16, top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Sostituisci Regina',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(
+                'La regina attuale verrà rimossa. Potrai subito aggiungerne una nuova.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: 'Motivo', border: OutlineInputBorder()),
+                value: motivoFine,
+                items: motiviOptions
+                    .map((m) => DropdownMenuItem(
+                        value: m['id'], child: Text(m['label']!)))
+                    .toList(),
+                onChanged: (v) => setSheetState(() => motivoFine = v!),
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: dataFine,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setSheetState(() => dataFine = picked);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                      labelText: 'Data rimozione', border: OutlineInputBorder()),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(fmt.format(dataFine)),
+                      const Icon(Icons.calendar_today, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white),
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        setSheetState(() => isLoading = true);
+                        try {
+                          await _apiService.post(
+                            '${ApiConstants.regineUrl}${widget.reginaId}/sostituisci/',
+                            {'motivo_fine': motivoFine, 'data_fine': fmt.format(dataFine)},
+                          );
+                          if (!mounted) return;
+                          Navigator.of(ctx).pop();
+                          // Navigate to add new queen, then pop this screen
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ReginaFormScreen(arniaId: _regina!.arniaId),
+                            ),
+                          );
+                          if (!mounted) return;
+                          Navigator.of(context).pop(true);
+                        } catch (e) {
+                          setSheetState(() => isLoading = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Errore: $e')));
+                        }
+                      },
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('CONFERMA SOSTITUZIONE',
+                          style: TextStyle(fontSize: 16)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Annulla'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _confirmDeleteRegina() {

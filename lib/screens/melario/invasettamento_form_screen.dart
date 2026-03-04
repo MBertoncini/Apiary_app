@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
 
 class InvasettamentoFormScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -14,6 +15,7 @@ class InvasettamentoFormScreen extends StatefulWidget {
 class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late ApiService _apiService;
+  late StorageService _storageService;
   bool _isLoading = false;
   bool _isLoadingData = true;
 
@@ -35,6 +37,7 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
     super.initState();
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService = ApiService(authService);
+    _storageService = Provider.of<StorageService>(context, listen: false);
     _loadInitialData();
   }
 
@@ -48,12 +51,25 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    try {
-      final smielatureResponse = await _apiService.get(ApiConstants.produzioniUrl);
+    // Mostra subito dalla cache
+    final cached = await _storageService.getStoredData('smielature');
+    if (cached.isNotEmpty && mounted) {
       setState(() {
-        _smielature = (smielatureResponse as List).map((e) => e as Map<String, dynamic>).toList();
+        _smielature = cached.map((e) => e as Map<String, dynamic>).toList();
         _isLoadingData = false;
       });
+    }
+
+    try {
+      final smielatureResponse = await _apiService.get(ApiConstants.produzioniUrl);
+      final smielatureList = smielatureResponse is List ? smielatureResponse : (smielatureResponse['results'] as List? ?? []);
+      await _storageService.saveData('smielature', smielatureList);
+      if (mounted) {
+        setState(() {
+          _smielature = smielatureList.map((e) => e as Map<String, dynamic>).toList();
+          _isLoadingData = false;
+        });
+      }
 
       if (_isEditing) {
         final data = widget.initialData!;
@@ -66,8 +82,15 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
         _noteController.text = data['note'] ?? '';
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() { _isLoadingData = false; });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore caricamento: $e')));
+      if (_smielature.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore caricamento: $e')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
+        );
+      }
     }
   }
 

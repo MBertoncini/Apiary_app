@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
+import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../models/melario.dart';
 import '../../models/invasettamento.dart';
@@ -22,6 +23,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   List<Invasettamento> _invasettamenti = [];
   bool _isLoading = true;
   String? _errorMessage;
+  // null = tutti; '' = personali; non-empty = nome gruppo
+  String? _filtroGruppo;
 
   @override
   void initState() {
@@ -46,10 +49,14 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       final smielatureRes = await _apiService.get(ApiConstants.produzioniUrl);
       final invasettamentiRes = await _apiService.get(ApiConstants.invasettamentiUrl);
 
+      final melariList = melariRes is List ? melariRes : (melariRes['results'] as List? ?? []);
+      final smielatureList = smielatureRes is List ? smielatureRes : (smielatureRes['results'] as List? ?? []);
+      final invasettamentiList = invasettamentiRes is List ? invasettamentiRes : (invasettamentiRes['results'] as List? ?? []);
+
       setState(() {
-        _melari = (melariRes as List).map((item) => Melario.fromJson(item)).toList();
-        _smielature = (smielatureRes as List).map((item) => item as Map<String, dynamic>).toList();
-        _invasettamenti = (invasettamentiRes as List).map((item) => Invasettamento.fromJson(item)).toList();
+        _melari = melariList.map((item) => Melario.fromJson(item)).toList();
+        _smielature = smielatureList.map((item) => item as Map<String, dynamic>).toList();
+        _invasettamenti = invasettamentiList.map((item) => Invasettamento.fromJson(item)).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -115,26 +122,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           child: Icon(Icons.add),
           tooltip: 'Aggiungi melario',
           onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text('Aggiungi melario'),
-                content: Text('Per aggiungere un melario, vai alla pagina di dettaglio di un\'arnia.'),
-                actions: [
-                  TextButton(
-                    child: Text('Annulla'),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  TextButton(
-                    child: Text('Vai alle arnie'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pushNamed(AppConstants.arniaListRoute);
-                    },
-                  ),
-                ],
-              ),
-            );
+            Navigator.pushNamed(context, AppConstants.melarioCreateRoute)
+                .then((result) { if (result == true) _refreshAll(); });
           },
         );
       } else if (currentTab == 1) {
@@ -159,47 +148,112 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     });
   }
 
-  // ==================== MELARI TAB ====================
+  // ==================== GROUP FILTER ====================
 
-  Widget _buildMelariTab() {
-    if (_melari.isEmpty) {
-      return Center(
-        child: Text(
-          'Nessun melario trovato.\nAggiungi melari dalle schede delle singole arnie.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16),
-        ),
-      );
+  /// Collect all unique gruppo names present across melari + smielature + invasettamenti.
+  List<String> get _allGruppiNomi {
+    final nomi = <String>{};
+    for (final m in _melari) {
+      if (m.apiarioGruppoNome != null) nomi.add(m.apiarioGruppoNome!);
     }
+    for (final s in _smielature) {
+      final g = s['apiario_gruppo_nome'] as String?;
+      if (g != null) nomi.add(g);
+    }
+    for (final i in _invasettamenti) {
+      if (i.apiarioGruppoNome != null) nomi.add(i.apiarioGruppoNome!);
+    }
+    return nomi.toList()..sort();
+  }
 
-    final melariPosizionati = _melari.where((m) => m.stato == 'posizionato').toList();
-    final melariRimossi = _melari.where((m) => m.stato == 'rimosso').toList();
-    final melariInSmielatura = _melari.where((m) => m.stato == 'in_smielatura').toList();
-    final melariSmielati = _melari.where((m) => m.stato == 'smielato').toList();
-
-    return RefreshIndicator(
-      onRefresh: _refreshAll,
-      child: ListView(
-        padding: EdgeInsets.all(16),
+  Widget _buildGruppoFilterBar() {
+    final gruppiNomi = _allGruppiNomi;
+    if (gruppiNomi.isEmpty) return SizedBox.shrink();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
         children: [
-          if (melariPosizionati.isNotEmpty) ...[
-            _buildMelariSection('Melari Posizionati', melariPosizionati, Colors.green),
-            const SizedBox(height: 16),
-          ],
-          if (melariInSmielatura.isNotEmpty) ...[
-            _buildMelariSection('Melari in Smielatura', melariInSmielatura, Colors.orange),
-            const SizedBox(height: 16),
-          ],
-          if (melariRimossi.isNotEmpty) ...[
-            _buildMelariSection('Melari Rimossi', melariRimossi, Colors.blue),
-            const SizedBox(height: 16),
-          ],
-          if (melariSmielati.isNotEmpty) ...[
-            _buildMelariSection('Melari Smielati', melariSmielati, Colors.grey),
-          ],
+          ChoiceChip(
+            label: Text('Tutti'),
+            selected: _filtroGruppo == null,
+            onSelected: (_) => setState(() { _filtroGruppo = null; }),
+          ),
+          SizedBox(width: 6),
+          ChoiceChip(
+            label: Text('Personali'),
+            selected: _filtroGruppo == '',
+            onSelected: (_) => setState(() { _filtroGruppo = ''; }),
+          ),
+          ...gruppiNomi.map((nome) => Padding(
+            padding: EdgeInsets.only(left: 6),
+            child: ChoiceChip(
+              label: Text(nome),
+              selected: _filtroGruppo == nome,
+              selectedColor: ThemeConstants.primaryColor.withOpacity(0.25),
+              onSelected: (_) => setState(() { _filtroGruppo = nome; }),
+            ),
+          )),
         ],
       ),
     );
+  }
+
+  bool _matchesFiltro(String? gruppoNome) {
+    if (_filtroGruppo == null) return true;
+    if (_filtroGruppo == '') return gruppoNome == null;
+    return gruppoNome == _filtroGruppo;
+  }
+
+  // ==================== MELARI TAB ====================
+
+  Widget _buildMelariTab() {
+    final filtered = _melari.where((m) => _matchesFiltro(m.apiarioGruppoNome)).toList();
+
+    if (filtered.isEmpty) {
+      return Column(children: [
+        _buildGruppoFilterBar(),
+        Expanded(child: Center(
+          child: Text(
+            'Nessun melario trovato.\nAggiungi melari dalle schede delle singole arnie.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16),
+          ),
+        )),
+      ]);
+    }
+
+    final melariPosizionati   = filtered.where((m) => m.stato == 'posizionato').toList();
+    final melariRimossi       = filtered.where((m) => m.stato == 'rimosso').toList();
+    final melariInSmielatura  = filtered.where((m) => m.stato == 'in_smielatura').toList();
+    final melariSmielati      = filtered.where((m) => m.stato == 'smielato').toList();
+
+    return Column(children: [
+      _buildGruppoFilterBar(),
+      Expanded(child: RefreshIndicator(
+        onRefresh: _refreshAll,
+        child: ListView(
+          padding: EdgeInsets.all(16),
+          children: [
+            if (melariPosizionati.isNotEmpty) ...[
+              _buildMelariSection('Melari Posizionati', melariPosizionati, Colors.green),
+              const SizedBox(height: 16),
+            ],
+            if (melariInSmielatura.isNotEmpty) ...[
+              _buildMelariSection('Melari in Smielatura', melariInSmielatura, Colors.orange),
+              const SizedBox(height: 16),
+            ],
+            if (melariRimossi.isNotEmpty) ...[
+              _buildMelariSection('Melari Rimossi', melariRimossi, Colors.blue),
+              const SizedBox(height: 16),
+            ],
+            if (melariSmielati.isNotEmpty) ...[
+              _buildMelariSection('Melari Smielati', melariSmielati, Colors.grey),
+            ],
+          ],
+        ),
+      )),
+    ]);
   }
 
   Widget _buildMelariSection(String title, List<Melario> melari, Color color) {
@@ -220,92 +274,108 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   // ==================== SMIELATURE TAB ====================
 
   Widget _buildSmielatureTab() {
-    if (_smielature.isEmpty) {
-      return Center(
-        child: Text('Nessuna smielatura registrata', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
-      );
+    final filtered = _smielature
+        .where((s) => _matchesFiltro(s['apiario_gruppo_nome'] as String?))
+        .toList();
+
+    if (filtered.isEmpty) {
+      return Column(children: [
+        _buildGruppoFilterBar(),
+        Expanded(child: Center(
+          child: Text('Nessuna smielatura registrata', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+        )),
+      ]);
     }
 
-    // Summary calculations
     double totalKg = 0;
     final Map<String, double> byTipo = {};
-    for (final s in _smielature) {
+    for (final s in filtered) {
       final qty = double.tryParse(s['quantita_miele']?.toString() ?? '0') ?? 0;
       totalKg += qty;
       final tipo = s['tipo_miele']?.toString() ?? 'Altro';
       byTipo[tipo] = (byTipo[tipo] ?? 0) + qty;
     }
 
-    return RefreshIndicator(
-      onRefresh: _refreshAll,
-      child: ListView(
-        padding: EdgeInsets.all(16),
-        children: [
-          // Summary card
-          Card(
-            color: Colors.amber.shade50,
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
+    return Column(children: [
+      _buildGruppoFilterBar(),
+      Expanded(child: RefreshIndicator(
+        onRefresh: _refreshAll,
+        child: ListView(
+          padding: EdgeInsets.all(16),
+          children: [
+            Card(
+              color: Colors.amber.shade50,
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
                       Icon(Icons.local_drink, color: Colors.amber.shade700),
                       SizedBox(width: 8),
                       Text('Riepilogo Produzioni', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildSummaryItem('Totale', '${totalKg.toStringAsFixed(1)} kg'),
-                      _buildSummaryItem('Smielature', '${_smielature.length}'),
-                      _buildSummaryItem('Tipi', '${byTipo.length}'),
-                    ],
-                  ),
-                  if (byTipo.isNotEmpty) ...[
+                    ]),
                     SizedBox(height: 12),
-                    Divider(),
-                    ...byTipo.entries.map((e) => Padding(
-                      padding: EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(e.key, style: TextStyle(fontWeight: FontWeight.w500)),
-                          Text('${e.value.toStringAsFixed(1)} kg'),
-                        ],
-                      ),
-                    )),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildSummaryItem('Totale', '${totalKg.toStringAsFixed(1)} kg'),
+                        _buildSummaryItem('Smielature', '${filtered.length}'),
+                        _buildSummaryItem('Tipi', '${byTipo.length}'),
+                      ],
+                    ),
+                    if (byTipo.isNotEmpty) ...[
+                      SizedBox(height: 12),
+                      Divider(),
+                      ...byTipo.entries.map((e) => Padding(
+                        padding: EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(e.key, style: TextStyle(fontWeight: FontWeight.w500)),
+                            Text('${e.value.toStringAsFixed(1)} kg'),
+                          ],
+                        ),
+                      )),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          SizedBox(height: 16),
-
-          // Smielature list
-          ...List.generate(_smielature.length, (i) {
-            final s = _smielature[i];
-            final melariCount = (s['melari'] as List?)?.length ?? s['melari_count'] ?? 0;
-            return Card(
-              margin: EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(Icons.local_drink, color: Colors.amber),
-                title: Text('${s['tipo_miele']} - ${s['quantita_miele']} kg'),
-                subtitle: Text('${s['data']} - ${s['apiario_nome']} - $melariCount melari'),
-                trailing: Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: s['id'])
-                      .then((_) => _refreshAll());
-                },
-              ),
-            );
-          }),
-        ],
-      ),
-    );
+            SizedBox(height: 16),
+            ...List.generate(filtered.length, (i) {
+              final s = filtered[i];
+              final melariCount = (s['melari'] as List?)?.length ?? s['melari_count'] ?? 0;
+              final gruppoNome = s['apiario_gruppo_nome'] as String?;
+              return Card(
+                margin: EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Icon(Icons.local_drink, color: Colors.amber),
+                  title: Text('${s['tipo_miele']} - ${s['quantita_miele']} kg'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${s['data']} - ${s['apiario_nome']} - $melariCount melari'),
+                      if (gruppoNome != null)
+                        Row(children: [
+                          Icon(Icons.group, size: 11, color: ThemeConstants.primaryColor),
+                          SizedBox(width: 3),
+                          Text(gruppoNome, style: TextStyle(fontSize: 11, color: ThemeConstants.primaryColor)),
+                        ]),
+                    ],
+                  ),
+                  trailing: Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: s['id'])
+                        .then((_) => _refreshAll());
+                  },
+                ),
+              );
+            }),
+          ],
+        ),
+      )),
+    ]);
   }
 
   Widget _buildSummaryItem(String label, String value) {
@@ -321,16 +391,23 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   // ==================== INVASETTAMENTO TAB ====================
 
   Widget _buildInvasettamentoTab() {
-    if (_invasettamenti.isEmpty) {
-      return Center(
-        child: Text('Nessun invasettamento registrato', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
-      );
+    final filtered = _invasettamenti
+        .where((inv) => _matchesFiltro(inv.apiarioGruppoNome))
+        .toList();
+
+    if (filtered.isEmpty) {
+      return Column(children: [
+        _buildGruppoFilterBar(),
+        Expanded(child: Center(
+          child: Text('Nessun invasettamento registrato', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+        )),
+      ]);
     }
 
     // Summary calculations
     final Map<int, int> vasettiPerFormato = {};
     double totalKgInvasettati = 0;
-    for (final inv in _invasettamenti) {
+    for (final inv in filtered) {
       vasettiPerFormato[inv.formatoVasetto] = (vasettiPerFormato[inv.formatoVasetto] ?? 0) + inv.numeroVasetti;
       totalKgInvasettati += inv.kgTotali ?? 0;
     }
@@ -341,11 +418,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       totalKgSmielati += double.tryParse(s['quantita_miele']?.toString() ?? '0') ?? 0;
     }
 
-    return RefreshIndicator(
-      onRefresh: _refreshAll,
-      child: ListView(
-        padding: EdgeInsets.all(16),
-        children: [
+    return Column(children: [
+      _buildGruppoFilterBar(),
+      Expanded(child: RefreshIndicator(
+        onRefresh: _refreshAll,
+        child: ListView(
+          padding: EdgeInsets.all(16),
+          children: [
           // Summary card
           Card(
             color: Colors.teal.shade50,
@@ -390,14 +469,25 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           SizedBox(height: 16),
 
           // Invasettamenti list
-          ...List.generate(_invasettamenti.length, (i) {
-            final inv = _invasettamenti[i];
+          ...List.generate(filtered.length, (i) {
+            final inv = filtered[i];
             return Card(
               margin: EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: Icon(Icons.inventory_2, color: Colors.teal),
                 title: Text('${inv.tipoMiele} - ${inv.formatoVasetto}g x${inv.numeroVasetti}'),
-                subtitle: Text('${inv.data} - ${inv.kgTotali?.toStringAsFixed(2) ?? 0} kg${inv.lotto != null ? ' - Lotto: ${inv.lotto}' : ''}'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${inv.data} - ${inv.kgTotali?.toStringAsFixed(2) ?? 0} kg${inv.lotto != null ? ' - Lotto: ${inv.lotto}' : ''}'),
+                    if (inv.apiarioGruppoNome != null)
+                      Row(children: [
+                        Icon(Icons.group, size: 11, color: ThemeConstants.primaryColor),
+                        SizedBox(width: 3),
+                        Text(inv.apiarioGruppoNome!, style: TextStyle(fontSize: 11, color: ThemeConstants.primaryColor)),
+                      ]),
+                  ],
+                ),
                 trailing: PopupMenuButton(
                   itemBuilder: (context) => [
                     PopupMenuItem(value: 'edit', child: Text('Modifica')),
@@ -443,8 +533,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             );
           }),
         ],
-      ),
-    );
+        ),
+      )),
+    ]);
   }
 
   Widget _buildSummaryItemColored(String label, String value, Color color) {
@@ -486,6 +577,12 @@ class MelarioListItem extends StatelessWidget {
             if (melario.pesoStimato != null)
               Text('Peso stimato: ${melario.pesoStimato!.toStringAsFixed(2)} kg',
                   style: TextStyle(fontWeight: FontWeight.w500, color: Colors.amber.shade700)),
+            if (melario.apiarioGruppoNome != null)
+              Row(children: [
+                Icon(Icons.group, size: 11, color: Colors.indigo),
+                SizedBox(width: 3),
+                Text(melario.apiarioGruppoNome!, style: TextStyle(fontSize: 11, color: Colors.indigo)),
+              ]),
           ],
         ),
         isThreeLine: true,

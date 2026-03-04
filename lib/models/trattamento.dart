@@ -17,7 +17,9 @@ class TrattamentoSanitario {
   final String? dataFineBlocco;
   final String? metodoBlocco;
   final String? noteBlocco;
-  
+  final String? metodoApplicazione;
+  final String? apiarioGruppoNome;
+
   TrattamentoSanitario({
     required this.id,
     required this.apiario,
@@ -37,6 +39,8 @@ class TrattamentoSanitario {
     this.dataFineBlocco,
     this.metodoBlocco,
     this.noteBlocco,
+    this.metodoApplicazione,
+    this.apiarioGruppoNome,
   });
   
   factory TrattamentoSanitario.fromJson(Map<String, dynamic> json) {
@@ -59,11 +63,13 @@ class TrattamentoSanitario {
       utenteUsername: json['utente_username'],
       arnie: arnieList,
       note: json['note'],
-      bloccoCovataAttivo: json['blocco_covata_attivo'],
+      bloccoCovataAttivo: json['blocco_covata_attivo'] == true || json['blocco_covata_attivo'] == 1,
       dataInizioBlocco: json['data_inizio_blocco'],
       dataFineBlocco: json['data_fine_blocco'],
       metodoBlocco: json['metodo_blocco'],
       noteBlocco: json['note_blocco'],
+      metodoApplicazione: json['metodo_applicazione'],
+      apiarioGruppoNome: json['apiario_gruppo_nome'],
     );
   }
   
@@ -87,6 +93,7 @@ class TrattamentoSanitario {
       'data_fine_blocco': dataFineBlocco,
       'metodo_blocco': metodoBlocco,
       'note_blocco': noteBlocco,
+      'metodo_applicazione': metodoApplicazione,
     };
   }
   

@@ -9,8 +9,12 @@ class Melario {
   final String dataPosizionamento;
   final String? dataRimozione;
   final String stato;
+  final String tipoMelario;
+  final String statoFavi;
+  final bool escludiRegina;
   final double? pesoStimato;
   final String? note;
+  final String? apiarioGruppoNome;
 
   Melario({
     required this.id,
@@ -23,10 +27,14 @@ class Melario {
     required this.dataPosizionamento,
     this.dataRimozione,
     required this.stato,
+    this.tipoMelario = 'standard',
+    this.statoFavi = 'costruiti',
+    this.escludiRegina = true,
     this.pesoStimato,
     this.note,
+    this.apiarioGruppoNome,
   });
-  
+
   factory Melario.fromJson(Map<String, dynamic> json) {
     return Melario(
       id: json['id'],
@@ -39,11 +47,15 @@ class Melario {
       dataPosizionamento: json['data_posizionamento'],
       dataRimozione: json['data_rimozione'],
       stato: json['stato'],
+      tipoMelario: json['tipo_melario'] ?? 'standard',
+      statoFavi: json['stato_favi'] ?? 'costruiti',
+      escludiRegina: json['escludi_regina'] ?? true,
       pesoStimato: double.tryParse(json['peso_stimato']?.toString() ?? ''),
       note: json['note'],
+      apiarioGruppoNome: json['apiario_gruppo_nome'],
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -56,6 +68,9 @@ class Melario {
       'data_posizionamento': dataPosizionamento,
       'data_rimozione': dataRimozione,
       'stato': stato,
+      'tipo_melario': tipoMelario,
+      'stato_favi': statoFavi,
+      'escludi_regina': escludiRegina,
       'peso_stimato': pesoStimato,
       'note': note,
     };

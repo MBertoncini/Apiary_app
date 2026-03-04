@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../constants/app_constants.dart';
@@ -7,10 +8,14 @@ import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/analisi_telaino_service.dart';
+import '../../services/controllo_service.dart';
 import '../../models/analisi_telaino.dart';
 import '../mobile_scanner_wrapper_screen.dart';
+import '../regina/regina_form_screen.dart';
 import '../../widgets/qr_generator_widget.dart';
 import '../../services/mobile_scanner_service.dart';
+import '../../models/arnia.dart';
+import 'arnia_form_screen.dart';
 
 class ArniaDetailScreen extends StatefulWidget {
   final int arniaId;
@@ -26,6 +31,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   Map<String, dynamic>? _arnia;
   Map<String, dynamic>? _apiario;
   Map<String, dynamic>? _regina;
+  Map<String, dynamic>? _reginaGenealogia;
   List<dynamic> _controlli = [];
   List<dynamic> _melari = [];
   List<AnalisiTelaino> _analisiTelaini = [];
@@ -78,22 +84,43 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           orElse: () => null,
         );
 
-        // Se la regina non e' in locale, prova a caricarla dal server
-        if (_regina == null) {
-          try {
-            final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
-            if (reginaData != null && reginaData is Map<String, dynamic> && reginaData.containsKey('id')) {
-              _regina = reginaData;
+        // Prova sempre a caricare la regina dal server (aggiornata dopo ogni creazione/sostituzione)
+        try {
+          final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
+          if (reginaData != null && reginaData is Map<String, dynamic> && reginaData.containsKey('id')) {
+            _regina = reginaData;
+            // Aggiorna lo StorageService locale per i prossimi accessi offline
+            final regineAggiornate = [...regine.where((r) => r['arnia'] != widget.arniaId), reginaData];
+            await storageService.saveData('regine', regineAggiornate);
+
+            // Carica genealogia della regina
+            try {
+              final genealogiaData = await apiService.get(
+                '${ApiConstants.regineUrl}${reginaData['id']}/genealogy/',
+              );
+              if (genealogiaData is Map<String, dynamic>) {
+                _reginaGenealogia = genealogiaData;
+              }
+            } catch (_) {
+              // Genealogia non disponibile (endpoint non ancora deployato)
             }
-          } catch (e) {
-            debugPrint('Regina non trovata dal server per arnia ${widget.arniaId}: $e');
+          }
+        } catch (e) {
+          // Nessuna regina sul server – usa il dato locale se presente
+          if (_regina == null) {
+            debugPrint('Regina non trovata per arnia ${widget.arniaId}: $e');
           }
         }
         
-        // Carica controlli e ordina per data (più recenti prima)
-        final allControlli = await storageService.getStoredData('controlli');
-        _controlli = allControlli.where((c) => c['arnia'] == widget.arniaId).toList();
-        _controlli.sort((a, b) => b['data'].compareTo(a['data']));
+        // Carica controlli dal ControlloService (SQLite DAO – stessa sorgente usata dal form)
+        try {
+          final controlloService = ControlloService(apiService);
+          _controlli = await controlloService.getControlliByArnia(widget.arniaId);
+          _controlli.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+        } catch (e) {
+          debugPrint('Error loading controlli: $e');
+          _controlli = [];
+        }
         
         // Carica melari
         final allMelari = await storageService.getStoredData('melari');
@@ -149,11 +176,12 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     }
   }
   
-  void _navigateToControlloCreate() {
-    Navigator.of(context).pushNamed(
+  void _navigateToControlloCreate() async {
+    await Navigator.of(context).pushNamed(
       AppConstants.controlloCreateRoute,
       arguments: widget.arniaId,
     );
+    _loadArnia();
   }
   
   void _navigateToAnalisiTelaino() async {
@@ -164,16 +192,181 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     if (result == true) _loadArnia();
   }
 
-  void _navigateToReginaCreate() {
-    // TODO: navigazione alla creazione regina con arnia preimpostata
+  Future<void> _navigateToReginaCreate() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReginaFormScreen(arniaId: widget.arniaId),
+      ),
+    );
+    if (result == true) _loadArnia();
+  }
+
+  Future<void> _navigateToReginaEdit() async {
+    if (_regina == null) return;
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReginaFormScreen(
+          arniaId: widget.arniaId,
+          reginaData: Map<String, dynamic>.from(_regina!),
+          reginaId: _regina!['id'] as int,
+        ),
+      ),
+    );
+    if (result == true) _loadArnia();
+  }
+
+  Future<void> _showSostituisciDialog() async {
+    if (_regina == null) return;
+    final int reginaId = _regina!['id'] as int;
+    final apiService = Provider.of<ApiService>(context, listen: false);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final fmt = DateFormat('yyyy-MM-dd');
+
+    String motivoFine = 'sostituzione';
+    DateTime dataFine = DateTime.now();
+    bool isLoading = false;
+
+    const motiviOptions = [
+      {'id': 'sostituzione', 'label': 'Sostituzione programmata'},
+      {'id': 'morte', 'label': 'Morte naturale'},
+      {'id': 'sciamatura', 'label': 'Sciamatura'},
+      {'id': 'problema_sanitario', 'label': 'Problema sanitario'},
+      {'id': 'altro', 'label': 'Altro'},
+    ];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 16, right: 16, top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Sostituisci Regina',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(
+                'La regina attuale verrà rimossa. Potrai subito aggiungerne una nuova.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: 'Motivo', border: OutlineInputBorder()),
+                value: motivoFine,
+                items: motiviOptions
+                    .map((m) => DropdownMenuItem(
+                        value: m['id'], child: Text(m['label']!)))
+                    .toList(),
+                onChanged: (v) => setSheetState(() => motivoFine = v!),
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: dataFine,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setSheetState(() => dataFine = picked);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                      labelText: 'Data rimozione', border: OutlineInputBorder()),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(fmt.format(dataFine)),
+                      const Icon(Icons.calendar_today, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white),
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        setSheetState(() => isLoading = true);
+                        try {
+                          await apiService.post(
+                            '${ApiConstants.regineUrl}$reginaId/sostituisci/',
+                            {'motivo_fine': motivoFine, 'data_fine': fmt.format(dataFine)},
+                          );
+                          // Rimuovi dal cache locale
+                          final regine = await storageService.getStoredData('regine');
+                          await storageService.saveData('regine',
+                              regine.where((r) => r['id'] != reginaId).toList());
+                          if (!mounted) return;
+                          Navigator.of(ctx).pop();
+                          // Aggiungi subito la nuova regina
+                          final result = await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ReginaFormScreen(arniaId: widget.arniaId),
+                            ),
+                          );
+                          if (result == true || result == null) _loadArnia();
+                        } catch (e) {
+                          setSheetState(() => isLoading = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Errore: $e')));
+                        }
+                      },
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('CONFERMA SOSTITUZIONE',
+                          style: TextStyle(fontSize: 16)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Annulla'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
   
   void _navigateToMelarioCreate() {
-    // TODO: navigazione alla creazione melario con arnia preimpostata
+    if (_arnia == null) return;
+    Navigator.of(context).pushNamed(
+      AppConstants.melarioCreateRoute,
+      arguments: {
+        'arniaId': _arnia!['id'] as int,
+        'apiarioId': _arnia!['apiario'] as int?,
+      },
+    ).then((result) { if (result == true) _loadArnia(); });
   }
   
   void _editArnia() {
-    // TODO: navigazione alla modifica arnia
+    if (_arnia == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ArniaFormScreen(arnia: Arnia.fromJson(_arnia!)),
+      ),
+    ).then((_) => _loadArnia());
   }
 
   void _confirmDeleteArnia() {
@@ -995,6 +1188,136 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             ),
                           ),
                         ),
+
+                      // Azioni regina
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.edit),
+                              label: const Text('Modifica'),
+                              onPressed: _navigateToReginaEdit,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.swap_horiz),
+                              label: const Text('Sostituisci'),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white),
+                              onPressed: _showSostituisciDialog,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Genealogia
+                      if (_reginaGenealogia != null) ...[
+                        const SizedBox(height: 16),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Genealogia', style: ThemeConstants.subheadingStyle),
+                                const SizedBox(height: 12),
+
+                                // Madre
+                                Row(
+                                  children: [
+                                    const Icon(Icons.arrow_upward, size: 18, color: Colors.amber),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Madre: ',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        _reginaGenealogia!['madre'] != null
+                                            ? '${_reginaGenealogia!['madre']['razza']} – Arnia ${_reginaGenealogia!['madre']['arnia_numero']}'
+                                            : 'Regina fondatrice',
+                                        style: TextStyle(
+                                          color: _reginaGenealogia!['madre'] != null
+                                              ? Colors.black87
+                                              : ThemeConstants.textSecondaryColor,
+                                          fontStyle: _reginaGenealogia!['madre'] != null
+                                              ? FontStyle.normal
+                                              : FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                // Figlie
+                                if ((_reginaGenealogia!['figlie'] as List?)?.isNotEmpty == true) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.arrow_downward, size: 18, color: Colors.green),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Figlie: ',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          (_reginaGenealogia!['figlie'] as List)
+                                              .map((f) => '${f['razza']} (Arnia ${f['arnia_numero']})')
+                                              .join(', '),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+
+                                // Storia nell'arnia
+                                if ((_reginaGenealogia!['storia_arnia'] as List?)?.isNotEmpty == true) ...[
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Storia nell\'arnia',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ...(_reginaGenealogia!['storia_arnia'] as List).map((s) {
+                                    final fine = s['data_fine'] as String?;
+                                    final periodo = '${s['data_inizio']}'
+                                        '${fine != null ? ' → $fine' : ' → in corso'}';
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.history, size: 14, color: Colors.grey),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              periodo,
+                                              style: const TextStyle(fontSize: 13),
+                                            ),
+                                          ),
+                                          if (s['motivo_fine'] != null)
+                                            Text(
+                                              s['motivo_fine'],
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: ThemeConstants.textSecondaryColor,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -21,7 +21,11 @@
       "Bash(find:*)",
       "Bash(xargs:*)",
       "Bash(findstr:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(flutter devices:*)",
+      "Bash(flutter run:*)",
+      "Bash(pip show:*)",
+      "Bash(pip install:*)"
     ]
   }
 }

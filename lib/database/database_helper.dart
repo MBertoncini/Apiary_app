@@ -10,7 +10,7 @@ class DatabaseHelper {
 
   static Database? _database;
   final String _databaseName = "apiario_manager.db";
-  final int _databaseVersion = 2;
+  final int _databaseVersion = 3;
 
   // Tabelle
   final String tableApiari = 'apiari';
@@ -108,6 +108,7 @@ class DatabaseHelper {
         celle_reali INTEGER NOT NULL,
         numero_celle_reali INTEGER NOT NULL,
         regina_sostituita INTEGER NOT NULL,
+        telaini_config TEXT,
         sync_status TEXT NOT NULL,
         last_updated INTEGER NOT NULL,
         FOREIGN KEY (arnia) REFERENCES $tableArnie(id) ON DELETE CASCADE
@@ -329,6 +330,11 @@ class DatabaseHelper {
         )
       ''');
     }
+    if (oldVersion < 3) {
+      await db.execute(
+        'ALTER TABLE $tableControlli ADD COLUMN telaini_config TEXT;'
+      );
+    }
   }
 
   // Metodi CRUD generici
@@ -445,6 +451,14 @@ class DatabaseHelper {
   Future<T> inTransaction<T>(Future<T> Function(Transaction txn) action) async {
     final db = await database;
     return await db.transaction(action);
+  }
+
+  /// Returns the set of column names actually present in [table].
+  /// Used by DAOs to strip server fields that don't exist in the local schema yet.
+  Future<Set<String>> getTableColumns(String table) async {
+    final db = await database;
+    final rows = await db.rawQuery('PRAGMA table_info($table)');
+    return rows.map((r) => r['name'] as String).toSet();
   }
 
   // Metodi di pulizia

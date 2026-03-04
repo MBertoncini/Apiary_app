@@ -8,6 +8,8 @@ class Cliente {
   final int utente;
   final String? utenteUsername;
   final int? venditeCount;
+  final int? gruppoId;
+  final String? gruppoNome;
 
   Cliente({
     required this.id,
@@ -19,6 +21,8 @@ class Cliente {
     required this.utente,
     this.utenteUsername,
     this.venditeCount,
+    this.gruppoId,
+    this.gruppoNome,
   });
 
   factory Cliente.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,8 @@ class Cliente {
       utente: json['utente'],
       utenteUsername: json['utente_username'],
       venditeCount: json['vendite_count'],
+      gruppoId: json['gruppo'],
+      gruppoNome: json['gruppo_nome'],
     );
   }
 

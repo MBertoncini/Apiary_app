@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
+import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../models/trattamento.dart';
-import '../../widgets/loading_widget.dart';
-import '../../widgets/error_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
@@ -19,6 +18,8 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
   late TabController _tabController;
   late Future<List<TrattamentoSanitario>> _trattamentiFuture;
   late ApiService _apiService;
+  // null = tutti; '' = personali; non-empty = nome gruppo
+  String? _filtroGruppo;
 
   @override
   void initState() {
@@ -103,14 +104,20 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
                     icon: Icon(Icons.add),
                     label: Text('Nuovo trattamento'),
                     onPressed: () {
-                      Navigator.of(context).pushNamed(AppConstants.nuovoTrattamentoRoute);
+                      Navigator.of(context).pushNamed(AppConstants.trattamentoCreateRoute);
                     },
                   ),
                 ],
               ),
             );
           } else {
-            final trattamenti = snapshot.data!;
+            final all = snapshot.data!;
+            final trattamenti = _filtroGruppo == null
+                ? all
+                : _filtroGruppo == ''
+                    ? all.where((t) => t.apiarioGruppoNome == null).toList()
+                    : all.where((t) => t.apiarioGruppoNome == _filtroGruppo).toList();
+
             final trattamentiAttivi = trattamenti
                 .where((t) => t.stato == 'programmato' || t.stato == 'in_corso')
                 .toList();
@@ -118,17 +125,27 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
                 .where((t) => t.stato == 'completato')
                 .toList();
 
-            return TabBarView(
-              controller: _tabController,
+            // Collect unique group names from ALL data for the chip bar
+            final gruppiNomi = all
+                .map((t) => t.apiarioGruppoNome)
+                .whereType<String>()
+                .toSet()
+                .toList()..sort();
+
+            return Column(
               children: [
-                // Tab Trattamenti Attivi
-                _buildTrattamentiList(trattamentiAttivi, 'Nessun trattamento attivo'),
-
-                // Tab Trattamenti Completati
-                _buildTrattamentiList(trattamentiCompletati, 'Nessun trattamento completato'),
-
-                // Tab Tutti i Trattamenti
-                _buildTrattamentiList(trattamenti, 'Nessun trattamento trovato'),
+                if (gruppiNomi.isNotEmpty)
+                  _buildGruppoFilterBar(gruppiNomi),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildTrattamentiList(trattamentiAttivi, 'Nessun trattamento attivo'),
+                      _buildTrattamentiList(trattamentiCompletati, 'Nessun trattamento completato'),
+                      _buildTrattamentiList(trattamenti, 'Nessun trattamento trovato'),
+                    ],
+                  ),
+                ),
               ],
             );
           }
@@ -137,8 +154,39 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () {
-          Navigator.of(context).pushNamed(AppConstants.nuovoTrattamentoRoute);
+          Navigator.of(context).pushNamed(AppConstants.trattamentoCreateRoute);
         },
+      ),
+    );
+  }
+
+  Widget _buildGruppoFilterBar(List<String> gruppiNomi) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          ChoiceChip(
+            label: Text('Tutti'),
+            selected: _filtroGruppo == null,
+            onSelected: (_) => setState(() { _filtroGruppo = null; }),
+          ),
+          SizedBox(width: 6),
+          ChoiceChip(
+            label: Text('Personali'),
+            selected: _filtroGruppo == '',
+            onSelected: (_) => setState(() { _filtroGruppo = ''; }),
+          ),
+          ...gruppiNomi.map((nome) => Padding(
+            padding: EdgeInsets.only(left: 6),
+            child: ChoiceChip(
+              label: Text(nome),
+              selected: _filtroGruppo == nome,
+              selectedColor: ThemeConstants.primaryColor.withOpacity(0.25),
+              onSelected: (_) => setState(() { _filtroGruppo = nome; }),
+            ),
+          )),
+        ],
       ),
     );
   }
@@ -182,25 +230,75 @@ class TrattamentoListItem extends StatelessWidget {
     required this.apiService,
   });
 
+  String _metodoLabel(String metodo) {
+    const labels = {
+      'strisce': 'Strisce',
+      'gocciolato': 'Gocciolato',
+      'sublimato': 'Sublimato',
+      'altro': 'Altro',
+    };
+    return labels[metodo] ?? metodo;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final metodo = trattamento.metodoApplicazione;
+    final subtitleParts = [
+      'Apiario: ${trattamento.apiarioNome}',
+      if (metodo != null && metodo.isNotEmpty) _metodoLabel(metodo),
+    ];
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ExpansionTile(
         leading: _getStatusIcon(),
         title: Text(trattamento.tipoTrattamentoNome),
-        subtitle: Text('Apiario: ${trattamento.apiarioNome}'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(subtitleParts.join(' · ')),
+            if (trattamento.apiarioGruppoNome != null)
+              Row(children: [
+                Icon(Icons.group, size: 12, color: Colors.indigo),
+                SizedBox(width: 3),
+                Text(trattamento.apiarioGruppoNome!,
+                    style: TextStyle(fontSize: 11, color: Colors.indigo)),
+              ]),
+          ],
+        ),
         children: [
           Padding(
             padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (trattamento.metodoApplicazione != null &&
+                    trattamento.metodoApplicazione!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.science, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          _metodoLabel(trattamento.metodoApplicazione!),
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
                 Text('Inizio: ${trattamento.dataInizio}'),
                 if (trattamento.dataFine != null)
                   Text('Fine: ${trattamento.dataFine}'),
                 if (trattamento.dataFineSospensione != null)
                   Text('Fine sospensione: ${trattamento.dataFineSospensione}'),
+                if (trattamento.arnie != null && trattamento.arnie!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Arnie: ${trattamento.arnie!.length} selezionate',
+                      style: const TextStyle(color: Colors.blueGrey),
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 if (trattamento.note != null && trattamento.note!.isNotEmpty)
                   Text('Note: ${trattamento.note}'),
@@ -230,10 +328,25 @@ class TrattamentoListItem extends StatelessWidget {
     }
   }
 
+  Future<void> _changeStato(BuildContext context, String nuovoStato) async {
+    try {
+      await apiService.patch(
+        '${ApiConstants.trattamentiUrl}${trattamento.id}/',
+        {'stato': nuovoStato},
+      );
+      onStatusChanged();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Errore: $e')));
+      }
+    }
+  }
+
   Widget _buildActionButtons(BuildContext context) {
     final deleteButton = ElevatedButton.icon(
-      icon: Icon(Icons.delete, size: 18),
-      label: Text('Elimina'),
+      icon: const Icon(Icons.delete_forever, size: 18),
+      label: const Text('Elimina'),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.red.shade700,
         foregroundColor: Colors.white,
@@ -247,45 +360,27 @@ class TrattamentoListItem extends StatelessWidget {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            ElevatedButton(
-              child: Text('Avvia'),
+            // "Avvia" = il trattamento è iniziato (programmato → in corso)
+            ElevatedButton.icon(
+              icon: const Icon(Icons.play_arrow, size: 18),
+              label: const Text('Avvia'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
-              ),
-              onPressed: () async {
-                try {
-                  await apiService.post(
-                    '${ApiConstants.trattamentiUrl}${trattamento.id}/stato/in_corso/',
-                    {},
-                  );
-                  onStatusChanged();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Errore: $e')),
-                  );
-                }
-              },
-            ),
-            ElevatedButton(
-              child: Text('Annulla'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () async {
-                try {
-                  await apiService.post(
-                    '${ApiConstants.trattamentiUrl}${trattamento.id}/stato/annullato/',
-                    {},
-                  );
-                  onStatusChanged();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Errore: $e')),
-                  );
-                }
-              },
+              onPressed: () => _changeStato(context, 'in_corso'),
             ),
+            // "Annulla" = il trattamento non verrà eseguito (resta in archivio)
+            ElevatedButton.icon(
+              icon: const Icon(Icons.cancel_outlined, size: 18),
+              label: const Text('Annulla'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => _changeStato(context, 'annullato'),
+            ),
+            // "Elimina" = rimuove definitivamente il record
             deleteButton,
           ],
         );
@@ -293,44 +388,25 @@ class TrattamentoListItem extends StatelessWidget {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            ElevatedButton(
-              child: Text('Completa'),
+            // "Completa" = trattamento terminato con successo
+            ElevatedButton.icon(
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Completa'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-              ),
-              onPressed: () async {
-                try {
-                  await apiService.post(
-                    '${ApiConstants.trattamentiUrl}${trattamento.id}/stato/completato/',
-                    {},
-                  );
-                  onStatusChanged();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Errore: $e')),
-                  );
-                }
-              },
-            ),
-            ElevatedButton(
-              child: Text('Annulla'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () async {
-                try {
-                  await apiService.post(
-                    '${ApiConstants.trattamentiUrl}${trattamento.id}/stato/annullato/',
-                    {},
-                  );
-                  onStatusChanged();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Errore: $e')),
-                  );
-                }
-              },
+              onPressed: () => _changeStato(context, 'completato'),
+            ),
+            // "Annulla" = interrompi il trattamento prima del termine
+            ElevatedButton.icon(
+              icon: const Icon(Icons.cancel_outlined, size: 18),
+              label: const Text('Interrompi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => _changeStato(context, 'annullato'),
             ),
             deleteButton,
           ],

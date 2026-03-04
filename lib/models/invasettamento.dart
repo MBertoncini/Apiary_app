@@ -12,6 +12,7 @@ class Invasettamento {
   final String? note;
   final String? dataRegistrazione;
   final double? kgTotali;
+  final String? apiarioGruppoNome;
 
   Invasettamento({
     required this.id,
@@ -27,6 +28,7 @@ class Invasettamento {
     this.note,
     this.dataRegistrazione,
     this.kgTotali,
+    this.apiarioGruppoNome,
   });
 
   factory Invasettamento.fromJson(Map<String, dynamic> json) {
@@ -44,6 +46,7 @@ class Invasettamento {
       note: json['note'],
       dataRegistrazione: json['data_registrazione'],
       kgTotali: double.tryParse(json['kg_totali']?.toString() ?? ''),
+      apiarioGruppoNome: json['apiario_gruppo_nome'],
     );
   }
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
+import '../../models/gruppo.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
 
 class ClienteFormScreen extends StatefulWidget {
   final int? clienteId;
@@ -14,6 +16,7 @@ class ClienteFormScreen extends StatefulWidget {
 class _ClienteFormScreenState extends State<ClienteFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late ApiService _apiService;
+  late StorageService _storageService;
   bool _isLoading = false;
   bool _isLoadingData = false;
 
@@ -23,6 +26,9 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
   final _indirizzoController = TextEditingController();
   final _noteController = TextEditingController();
 
+  List<Gruppo> _gruppi = [];
+  int? _selectedGruppoId;
+
   bool get _isEditing => widget.clienteId != null;
 
   @override
@@ -30,6 +36,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     super.initState();
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService = ApiService(authService);
+    _storageService = Provider.of<StorageService>(context, listen: false);
+    _loadGruppi();
     if (_isEditing) _loadCliente();
   }
 
@@ -43,19 +51,52 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     super.dispose();
   }
 
+  Future<void> _loadGruppi() async {
+    try {
+      final res = await _apiService.get(ApiConstants.gruppiUrl);
+      final list = res is List ? res : (res['results'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _gruppi = list.map((e) => Gruppo.fromJson(e as Map<String, dynamic>)).toList();
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _populateFromJson(Map<String, dynamic> data) {
+    _nomeController.text = data['nome'] ?? '';
+    _telefonoController.text = data['telefono'] ?? '';
+    _emailController.text = data['email'] ?? '';
+    _indirizzoController.text = data['indirizzo'] ?? '';
+    _noteController.text = data['note'] ?? '';
+    _selectedGruppoId = data['gruppo'];
+  }
+
   Future<void> _loadCliente() async {
     setState(() { _isLoadingData = true; });
+
+    // Try cache first for instant display
+    final cached = await _storageService.getStoredData('clienti');
+    final cachedMap = cached.cast<Map<String, dynamic>>().firstWhere(
+      (c) => c['id'] == widget.clienteId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (cachedMap.isNotEmpty && mounted) {
+      _populateFromJson(cachedMap);
+      setState(() { _isLoadingData = false; });
+    }
+
+    // Fetch from server for fresh data
     try {
       final data = await _apiService.get('${ApiConstants.clientiUrl}${widget.clienteId}/');
-      _nomeController.text = data['nome'] ?? '';
-      _telefonoController.text = data['telefono'] ?? '';
-      _emailController.text = data['email'] ?? '';
-      _indirizzoController.text = data['indirizzo'] ?? '';
-      _noteController.text = data['note'] ?? '';
+      if (mounted) _populateFromJson(data);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      if (mounted && cachedMap.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      }
     }
-    setState(() { _isLoadingData = false; });
+
+    if (mounted) setState(() { _isLoadingData = false; });
   }
 
   Future<void> _submit() async {
@@ -68,6 +109,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       'email': _emailController.text.isEmpty ? null : _emailController.text,
       'indirizzo': _indirizzoController.text.isEmpty ? null : _indirizzoController.text,
       'note': _noteController.text.isEmpty ? null : _noteController.text,
+      'gruppo': _selectedGruppoId,
     };
 
     try {
@@ -76,6 +118,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       } else {
         await _apiService.post(ApiConstants.clientiUrl, data);
       }
+      // Invalidate clienti cache so next load refreshes
+      await _storageService.saveData('clienti', []);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_isEditing ? 'Cliente aggiornato' : 'Cliente creato')),
       );
@@ -103,6 +147,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     if (confirmed == true) {
       try {
         await _apiService.delete('${ApiConstants.clientiUrl}${widget.clienteId}/');
+        // Invalidate clienti cache
+        await _storageService.saveData('clienti', []);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cliente eliminato')));
         Navigator.pop(context, true);
       } catch (e) {
@@ -159,6 +205,23 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                       decoration: InputDecoration(labelText: 'Note', border: OutlineInputBorder()),
                       maxLines: 3,
                     ),
+                    if (_gruppi.isNotEmpty) ...[
+                      SizedBox(height: 16),
+                      DropdownButtonFormField<int?>(
+                        value: _selectedGruppoId,
+                        decoration: InputDecoration(
+                          labelText: 'Condividi con gruppo',
+                          hintText: '— solo personale —',
+                          prefixIcon: Icon(Icons.group),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          DropdownMenuItem<int?>(value: null, child: Text('— solo personale —')),
+                          ..._gruppi.map((g) => DropdownMenuItem<int?>(value: g.id, child: Text(g.nome))),
+                        ],
+                        onChanged: (val) => setState(() { _selectedGruppoId = val; }),
+                      ),
+                    ],
                     SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: _isLoading ? null : _submit,

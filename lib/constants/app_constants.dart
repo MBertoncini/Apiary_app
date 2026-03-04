@@ -44,6 +44,7 @@ class AppConstants {
   
   // Route per melari e produzioni
   static const String melariRoute = "/melari";
+  static const String melarioCreateRoute = "/melario/create";
   static const String melarioDetailRoute = "/melario/detail";
   static const String smielaturaListRoute = "/smielature";
   static const String smielaturaCreateRoute = "/smielatura/create";

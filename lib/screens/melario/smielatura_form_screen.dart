@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
 
 class SmielaturaFormScreen extends StatefulWidget {
   final dynamic initialData; // null for new, Map for edit, int for apiarioId pre-selection
@@ -14,6 +15,7 @@ class SmielaturaFormScreen extends StatefulWidget {
 class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late ApiService _apiService;
+  late StorageService _storageService;
   bool _isLoading = false;
   bool _isLoadingData = true;
 
@@ -35,6 +37,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
     super.initState();
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService = ApiService(authService);
+    _storageService = Provider.of<StorageService>(context, listen: false);
     _loadInitialData();
   }
 
@@ -47,15 +50,37 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    try {
-      final apiariResponse = await _apiService.get(ApiConstants.apiariUrl);
-      final melariResponse = await _apiService.get(ApiConstants.melariUrl);
-
+    // Mostra subito dalla cache
+    final cachedApiari = await _storageService.getStoredData('apiari');
+    final cachedMelari = await _storageService.getStoredData('melari');
+    if ((cachedApiari.isNotEmpty || cachedMelari.isNotEmpty) && mounted) {
       setState(() {
-        _apiari = (apiariResponse as List).map((e) => e as Map<String, dynamic>).toList();
-        _melari = (melariResponse as List).map((e) => e as Map<String, dynamic>).toList();
+        if (cachedApiari.isNotEmpty) _apiari = cachedApiari.map((e) => e as Map<String, dynamic>).toList();
+        if (cachedMelari.isNotEmpty) _melari = cachedMelari.map((e) => e as Map<String, dynamic>).toList();
         _isLoadingData = false;
       });
+    }
+
+    try {
+      final results = await Future.wait([
+        _apiService.get(ApiConstants.apiariUrl),
+        _apiService.get(ApiConstants.melariUrl),
+      ]);
+      final apiariList = results[0] is List ? results[0] : (results[0]['results'] as List? ?? []);
+      final melariList = results[1] is List ? results[1] : (results[1]['results'] as List? ?? []);
+
+      await Future.wait([
+        _storageService.saveData('apiari', apiariList),
+        _storageService.saveData('melari', melariList),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _apiari = apiariList.map((e) => e as Map<String, dynamic>).toList();
+          _melari = melariList.map((e) => e as Map<String, dynamic>).toList();
+          _isLoadingData = false;
+        });
+      }
 
       if (_isEditing) {
         final data = widget.initialData as Map<String, dynamic>;
@@ -69,8 +94,15 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
         _selectedApiarioId = widget.initialData as int;
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() { _isLoadingData = false; });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore caricamento dati: $e')));
+      if (_apiari.isEmpty && _melari.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore caricamento dati: $e')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
+        );
+      }
     }
   }
 

@@ -37,6 +37,10 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
   List<Gruppo> _gruppi = [];
   Gruppo? _selectedGruppo;
 
+  // Payer: list of {id, username} for group members
+  List<Map<String, dynamic>> _membriGruppo = [];
+  int? _selectedPagatoDaId;     // null = the uploader pays
+
   bool _isLoading = false;
   bool _isInitLoading = false;
   String? _errorMessage;
@@ -136,6 +140,31 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
     }
   }
 
+  Future<void> _loadMembriGruppo(int gruppoId) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final response = await apiService.get('/gruppi/$gruppoId/membri/');
+      final List<dynamic> list = response is List
+          ? response
+          : (response['results'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _membriGruppo = list.map((m) => {
+            'id': m['utente'],
+            'username': m['utente_username'] ?? '—',
+          }).toList();
+          // reset payer if they're no longer in the new group
+          if (_selectedPagatoDaId != null &&
+              !_membriGruppo.any((m) => m['id'] == _selectedPagatoDaId)) {
+            _selectedPagatoDaId = null;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Errore caricamento membri gruppo: $e');
+    }
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -183,6 +212,8 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
         'note': _noteController.text.isNotEmpty ? _noteController.text : null,
         'condiviso_con_gruppo': _condivisoConGruppo,
         'gruppo': _condivisoConGruppo ? _selectedGruppo?.id : null,
+        if (!isEditing && _condivisoConGruppo && _selectedPagatoDaId != null)
+          'pagato_da': _selectedPagatoDaId,
       };
 
       if (isEditing) {
@@ -426,7 +457,15 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                     subtitle: Text('Le spese verranno condivise con i membri del gruppo'),
                                     value: _condivisoConGruppo,
                                     onChanged: (value) {
-                                      setState(() => _condivisoConGruppo = value);
+                                      setState(() {
+                                        _condivisoConGruppo = value;
+                                        if (value && _selectedGruppo != null) {
+                                          _loadMembriGruppo(_selectedGruppo!.id);
+                                        } else if (!value) {
+                                          _membriGruppo = [];
+                                          _selectedPagatoDaId = null;
+                                        }
+                                      });
                                     },
                                   ),
                                   if (_condivisoConGruppo) ...[
@@ -443,8 +482,30 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                       }).toList(),
                                       onChanged: (value) {
                                         setState(() => _selectedGruppo = value);
+                                        if (value != null) _loadMembriGruppo(value.id);
                                       },
                                     ),
+                                    if (!isEditing && _membriGruppo.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      DropdownButtonFormField<int?>(
+                                        value: _selectedPagatoDaId,
+                                        decoration: InputDecoration(
+                                          labelText: 'Chi ha pagato?',
+                                          hintText: '— io stesso —',
+                                          prefixIcon: Icon(Icons.payments),
+                                          border: OutlineInputBorder(),
+                                          helperText: 'Indica il membro del gruppo che ha effettivamente sostenuto la spesa',
+                                        ),
+                                        items: [
+                                          DropdownMenuItem<int?>(value: null, child: Text('— io stesso —')),
+                                          ..._membriGruppo.map((m) => DropdownMenuItem<int?>(
+                                            value: m['id'] as int,
+                                            child: Text(m['username'] as String),
+                                          )),
+                                        ],
+                                        onChanged: (val) => setState(() { _selectedPagatoDaId = val; }),
+                                      ),
+                                    ],
                                   ],
                                 ],
                               ),

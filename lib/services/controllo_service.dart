@@ -28,26 +28,41 @@ class ControlloService {
       } catch (e) {
         // Fallback al salvataggio offline se l'API fallisce
         debugPrint('Errore salvataggio online, uso offline: $e');
-        final id = await _controlloDao.insert(data);
-        
+        final offlineData = _prepareOfflineData(data);
+        final id = await _controlloDao.insert(offlineData);
+
         // Crea una versione con ID locale per l'UI
-        data['id'] = id;
-        data['sync_status'] = 'pending';
-        
-        return data;
+        offlineData['id'] = id;
+        offlineData['sync_status'] = 'pending';
+
+        return offlineData;
       }
     } else {
       // Offline - salva localmente
-      final id = await _controlloDao.insert(data);
+      final offlineData = _prepareOfflineData(data);
+      final id = await _controlloDao.insert(offlineData);
       
       // Crea una versione con ID locale per l'UI
-      data['id'] = id;
-      data['sync_status'] = 'pending';
-      
-      return data;
+      offlineData['id'] = id;
+      offlineData['sync_status'] = 'pending';
+
+      return offlineData;
     }
   }
-  
+
+  /// Prepara i dati per l'inserimento offline assicurando che
+  /// tutti i campi NOT NULL abbiano un valore di default.
+  Map<String, dynamic> _prepareOfflineData(Map<String, dynamic> data) {
+    final d = Map<String, dynamic>.from(data);
+    d['arnia_numero'] = d['arnia_numero'] ?? 0;
+    d['apiario_nome'] = d['apiario_nome'] ?? '';
+    d['apiario_id'] = d['apiario_id'] ?? 0;
+    d['utente'] = d['utente'] ?? 0;
+    d['utente_username'] = d['utente_username'] ?? '';
+    d['data_creazione'] = d['data_creazione'] ?? DateTime.now().toIso8601String();
+    return d;
+  }
+
   // Aggiorna un controllo esistente (online o offline)
   Future<Map<String, dynamic>> updateControllo(int id, Map<String, dynamic> data) async {
     // Verifica connettività
