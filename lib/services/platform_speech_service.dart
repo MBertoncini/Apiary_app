@@ -81,9 +81,13 @@ class PlatformSpeechService with ChangeNotifier {
     // Update listening state based on status
     _isListening = _speech.isListening; // More reliable than checking status string 'listening'
 
+    // Clear processing flag when listening starts (startup/init is done)
+    if (!wasListening && _isListening) {
+      _isProcessing = false;
+    }
+
     if (status == stt.SpeechToText.doneStatus && wasListening) {
         debugPrint('[PlatformSpeech] Listening done.');
-        // If listening stops unexpectedly, ensure processing is false
         if(_isListening == false && _isProcessing){
            _isProcessing = false;
         }
@@ -98,16 +102,52 @@ class PlatformSpeechService with ChangeNotifier {
   }
 
 
-  // --- Corrected Error handler ---
-  // Use the imported type directly (no 'stt.' prefix needed)
-  void _onSpeechError(SpeechRecognitionError error) { // <--- CORRECTED TYPE USAGE
+  void _onSpeechError(SpeechRecognitionError error) {
     debugPrint('[PlatformSpeech] Speech error: ${error.errorMsg}, Permanent: ${error.permanent}');
+
+    // error_client = Android engine crash / session overlap — non-fatal.
+    // Force re-init so the next startListening() reinitialises cleanly,
+    // but don't expose an error message so the manager can retry silently.
+    if (error.errorMsg == 'error_client') {
+      _isListening = false;
+      _isProcessing = false;
+      _isInitialized = false;
+      notifyListeners();
+      return;
+    }
+
+    // error_speech_timeout = engine timed out waiting for speech (natural end of session).
+    // Treat as a silent stop so the continuous-mode loop in the manager can finalize
+    // the accumulated buffer instead of showing a raw error string.
+    if (error.errorMsg == 'error_speech_timeout') {
+      _isListening = false;
+      _isProcessing = false;
+      notifyListeners();
+      return;
+    }
+
+    // "error no match" = the engine found no speech in this sub-session.
+    // During continuous-mode restarts this is expected (silence between words).
+    // Treat it as a silent stop so the manager's buffer-accumulation loop can
+    // either keep accumulating or finalize cleanly, without discarding the buffer.
+    if (error.errorMsg == 'error no match' || error.errorMsg == 'error_no_match') {
+      _isListening = false;
+      _isProcessing = false;
+      notifyListeners();
+      return;
+    }
+
     _error = 'Errore: ${error.errorMsg}';
     _isListening = false;
-    _isProcessing = false; // Ensure processing stops on error
+    _isProcessing = false;
+
+    // On permanent errors the underlying engine is dead — force re-init next time
+    if (error.permanent) {
+      _isInitialized = false;
+    }
+
     notifyListeners();
   }
-  // --- End of corrected handler ---
 
 
  // ... (hasMicrophonePermission, startListening, stopListening are the same) ...
@@ -174,34 +214,24 @@ class PlatformSpeechService with ChangeNotifier {
     try {
       debugPrint('[PlatformSpeech] Starting listening with locale: $_languageCode');
 
-      bool success = await _speech.listen(
+      // speech_to_text v7+ returns Future<void> — do not assign to bool
+      await _speech.listen(
         onResult: _onSpeechResult,
         localeId: _languageCode,
-        listenMode: stt.ListenMode.confirmation,
-        cancelOnError: true,
-        partialResults: true,
-        onDevice: false,
+        pauseFor: const Duration(seconds: 8),
+        listenFor: const Duration(seconds: 30),
+        listenOptions: stt.SpeechListenOptions(
+          listenMode: stt.ListenMode.dictation,
+          // cancelOnError: false so a brief "no match" mid-session doesn't kill the whole session
+          cancelOnError: false,
+          partialResults: true,
+          onDevice: false,
+        ),
       );
 
-      // _isListening state is primarily managed by _onSpeechStatus
-      // Setting _isProcessing false here might be premature if listen fails immediately
-      // Let status/error handlers manage _isProcessing state more reliably.
-      // _isProcessing = false; // Removed from here
-
-      if (!success) {
-        _error = 'Non è stato possibile avviare l\'ascolto.';
-        debugPrint('[PlatformSpeech] Failed to start listening (listen returned false).');
-        _isListening = false; // Ensure state is consistent
-        _isProcessing = false; // Explicitly set processing false on failure
-        notifyListeners(); // Notify about the failure state
-        return false; // Return failure
-      } else {
-        debugPrint('[PlatformSpeech] Listening potentially started (waiting for status confirmation).');
-        // Don't notify here, wait for _onSpeechStatus to confirm 'listening'
-      }
-
-      // Success here means the command was accepted, not necessarily that listening *is* active yet.
-      return true; // Return true indicating the attempt was made
+      debugPrint('[PlatformSpeech] listen() called — waiting for status confirmation.');
+      // State is managed by _onSpeechStatus / _onSpeechError
+      return true;
     } catch (e) {
       debugPrint('[PlatformSpeech] Error starting speech recognition: $e');
       _error = 'Errore nell\'avvio dell\'ascolto: $e';
@@ -212,14 +242,46 @@ class PlatformSpeechService with ChangeNotifier {
     }
   }
 
+  /// Short listen session used only to detect a trigger word.
+  /// Uses dictation mode with partial results so the trigger word is
+  /// detected as soon as Android returns any partial recognition.
+  Future<bool> startListeningForTrigger() async {
+    if (_isListening || _isProcessing) return false;
+    if (!_isInitialized) {
+      if (!await _initSpeech()) return false;
+    }
+
+    _transcription = '';
+    _error = null;
+    notifyListeners();
+
+    try {
+      debugPrint('[PlatformSpeech] Starting trigger listen');
+      await _speech.listen(
+        onResult: _onSpeechResult,
+        localeId: _languageCode,
+        pauseFor: const Duration(milliseconds: 1500),
+        listenFor: const Duration(seconds: 10),
+        listenOptions: stt.SpeechListenOptions(
+          // confirmation mode is not supported on all Android devices;
+          // dictation + partialResults lets us detect the word immediately.
+          listenMode: stt.ListenMode.dictation,
+          cancelOnError: false,
+          partialResults: true,
+          onDevice: false,
+        ),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[PlatformSpeech] Error starting trigger listen: $e');
+      return false;
+    }
+  }
+
   Future<void> stopListening() async {
     if (!_isListening && !_speech.isListening) {
       debugPrint('[PlatformSpeech] Not currently listening.');
       return;
-    }
-     if (_isProcessing && _isListening) { // Allow stop if processing but not listening (e.g. init failed)
-       debugPrint('[PlatformSpeech] Currently processing other operation, cannot stop now.');
-       return;
     }
 
     _isProcessing = true; // Indicate stopping process started

@@ -9,9 +9,6 @@ import 'services/sync_service.dart';
 import 'services/mcp_service.dart';
 import 'services/chat_service.dart';
 // Import services
-import 'services/wit_speech_recognition_service.dart';
-import 'services/wit_data_processor.dart';
-import 'services/voice_input_manager.dart'; // Updated to use the new class
 import 'services/voice_feedback_service.dart';
 import 'services/audio_service.dart';
 import 'services/bee_detection_service.dart';
@@ -28,20 +25,22 @@ List<SingleChildWidget> providers = [
     create: (_) => AuthService(),
   ),
 
-  // API service (depends on auth)
+  // API service (depends on auth) - reuse existing instance; AuthService is held
+  // by reference so the same ApiService always sees the latest token.
   ProxyProvider<AuthService, ApiService>(
-    update: (_, authService, __) => ApiService(authService),
+    update: (_, authService, prev) => prev ?? ApiService(authService),
   ),
 
   // Sync service (depends on API and storage) - periodic sync NOT auto-started
   ProxyProvider2<ApiService, StorageService, SyncService>(
-    update: (_, apiService, storageService, __) =>
-        SyncService(apiService, storageService),
+    update: (_, apiService, storageService, prev) =>
+        prev ?? SyncService(apiService, storageService),
+    dispose: (_, service) => service.dispose(),
   ),
 
   // MCP service (depends on API)
   ProxyProvider<ApiService, MCPService>(
-    update: (_, apiService, __) => MCPService(apiService),
+    update: (_, apiService, prev) => prev ?? MCPService(apiService),
   ),
 
   // Bee Detection Service (independent, lazy)
@@ -53,7 +52,7 @@ List<SingleChildWidget> providers = [
 
   // Analisi Telaino Service (depends on API)
   ProxyProvider<ApiService, AnalisiTelainoService>(
-    update: (_, apiService, __) => AnalisiTelainoService(apiService),
+    update: (_, apiService, prev) => prev ?? AnalisiTelainoService(apiService),
   ),
 
   // Audio Service (independent, lazy)
@@ -87,32 +86,6 @@ List<SingleChildWidget> providers = [
     },
   ),
 
-  // Wit.ai speech recognition service (lazy - only initialized when voice features used)
-  ChangeNotifierProvider<WitSpeechRecognitionService>(
-    create: (_) => WitSpeechRecognitionService(),
-    lazy: true,
-  ),
-
-  // Wit.ai data processor (lazy)
-  ChangeNotifierProvider<WitDataProcessor>(
-    create: (_) => WitDataProcessor(),
-    lazy: true,
-  ),
-
-  // Voice input manager (lazy)
-  ChangeNotifierProxyProvider2<WitSpeechRecognitionService, WitDataProcessor, VoiceInputManager>(
-    create: (context) => VoiceInputManager(
-      Provider.of<WitSpeechRecognitionService>(context, listen: false),
-      Provider.of<WitDataProcessor>(context, listen: false),
-    ),
-    lazy: true,
-    update: (_, speechService, dataProcessor, previousManager) {
-      if (previousManager != null) {
-        return previousManager;
-      }
-      return VoiceInputManager(speechService, dataProcessor);
-    },
-  ),
 ];
 
 // You can also add configurations for tests and mocks if needed

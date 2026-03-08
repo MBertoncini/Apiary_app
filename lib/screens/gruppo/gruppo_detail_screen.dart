@@ -7,6 +7,7 @@ import '../../services/gruppo_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../utils/date_formatters.dart';
 import '../../widgets/error_widget.dart';
 
 class GruppoDetailScreen extends StatefulWidget {
@@ -18,41 +19,43 @@ class GruppoDetailScreen extends StatefulWidget {
   _GruppoDetailScreenState createState() => _GruppoDetailScreenState();
 }
 
-class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTickerProviderStateMixin {
+class _GruppoDetailScreenState extends State<GruppoDetailScreen>
+    with TickerProviderStateMixin {
   bool _isLoading = true;
   Gruppo? _gruppo;
   List<dynamic> _apiariCondivisi = [];
+  List<InvitoGruppo> _inviti = [];
   String? _errorMessage;
   late GruppoService _gruppoService;
   late TabController _tabController;
   int _currentIndex = 0;
+  bool _isAdmin = false;
+  bool _isCreator = false;
 
   @override
   void initState() {
     super.initState();
-    final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
     final storageService = Provider.of<StorageService>(context, listen: false);
-    
     _gruppoService = GruppoService(apiService, storageService);
-    _tabController = TabController(length: 2, vsync: this); // Solo 2 tab ora: Membri e Apiari
-    
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {
-          _currentIndex = _tabController.index;
-          debugPrint('Tab cambiato a: $_currentIndex');
-        });
-      }
-    });
-    
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadData();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {
+        _currentIndex = _tabController.index;
+      });
+    }
   }
 
   Future<void> _loadData() async {
@@ -62,30 +65,43 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
     });
 
     try {
-      // Carica gruppo e apiari (non più inviti)
       final results = await Future.wait([
         _gruppoService.getGruppoDetail(widget.gruppoId),
         _gruppoService.getApiariGruppo(widget.gruppoId),
       ]);
 
-      setState(() {
-        _gruppo = results[0] as Gruppo;
-        
-        // Salva gli apiari
+      final gruppo = results[0] as Gruppo;
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = authService.currentUser;
+
+      final newIsAdmin = user != null && gruppo.isAdmin(user.id);
+      final newIsCreator = user != null && gruppo.isCreator(user.id);
+
+      List<InvitoGruppo> inviti = [];
+      if (newIsAdmin) {
         try {
-          var apiari = results[1];
-          if (apiari is List) {
-            debugPrint('Apiari caricati: ${apiari.length}');
-            _apiariCondivisi = apiari;
-          } else {
-            debugPrint('Formato apiari non riconosciuto: ${apiari.runtimeType}');
-            _apiariCondivisi = [];
-          }
+          inviti = await _gruppoService.getGruppoInviti(widget.gruppoId);
         } catch (e) {
-          debugPrint('Errore nel processare gli apiari: $e');
-          _apiariCondivisi = [];
+          debugPrint('Errore nel caricamento degli inviti: $e');
         }
-        
+      }
+
+      // Reinitialise TabController if admin status changed (2 tabs → 3 tabs or vice versa)
+      final neededTabs = newIsAdmin ? 3 : 2;
+      if (_tabController.length != neededTabs) {
+        _tabController.removeListener(_onTabChanged);
+        _tabController.dispose();
+        _tabController = TabController(length: neededTabs, vsync: this);
+        _tabController.addListener(_onTabChanged);
+      }
+
+      setState(() {
+        _gruppo = gruppo;
+        _apiariCondivisi = results[1] is List ? results[1] as List : [];
+        _inviti = inviti;
+        _isAdmin = newIsAdmin;
+        _isCreator = newIsCreator;
+        _currentIndex = 0;
         _isLoading = false;
       });
     } catch (e) {
@@ -96,206 +112,117 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
     }
   }
 
+  // ──────────────────────────────────────────────────────────
+  // Navigation helpers
+  // ──────────────────────────────────────────────────────────
+
   void _navigateToApiarioDetail(dynamic apiarioId) {
-    debugPrint('_navigateToApiarioDetail chiamato con: $apiarioId (${apiarioId.runtimeType})');
-    try {
-      // Converti l'ID in intero
-      int id;
-      if (apiarioId is String) {
-        try {
-          id = int.parse(apiarioId);
-          debugPrint('Convertito ID da String a int: $apiarioId -> $id');
-        } catch (e) {
-          debugPrint('Errore nella conversione dell\'ID: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('ID apiario non valido: $apiarioId'),
-              backgroundColor: ThemeConstants.errorColor,
-            ),
-          );
-          return;
-        }
-      } else if (apiarioId is int) {
-        id = apiarioId;
-        debugPrint('ID già intero: $id');
-      } else {
-        debugPrint('Tipo ID non supportato: ${apiarioId.runtimeType}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Formato ID apiario non supportato'),
-            backgroundColor: ThemeConstants.errorColor,
-          ),
-        );
-        return;
-      }
-      
-      // Naviga alla pagina di dettaglio
-      debugPrint('Navigazione a dettaglio apiario con ID: $id');
-      Navigator.of(context).pushNamed(
-        AppConstants.apiarioDetailRoute,
-        arguments: id,
-      );
-    } catch (e, stackTrace) {
-      debugPrint('Errore in _navigateToApiarioDetail: $e');
-      debugPrint('Stack trace: $stackTrace');
+    int id;
+    if (apiarioId is int) {
+      id = apiarioId;
+    } else if (apiarioId is String) {
+      id = int.tryParse(apiarioId) ?? 0;
+    } else {
+      id = 0;
+    }
+    if (id == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore nell\'accesso ai dettagli dell\'apiario: $e'),
+          content: Text('ID apiario non valido'),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
+      return;
     }
+    Navigator.of(context).pushNamed(AppConstants.apiarioDetailRoute, arguments: id);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    try {
-      debugPrint('=== INIZIO BUILD CON INDICE: $_currentIndex ===');
-      
-      final authService = Provider.of<AuthService>(context);
-      final user = authService.currentUser;
-      
-      bool isAdmin = false;
-      bool isCreator = false;
-      
-      try {
-        isAdmin = user != null && (_gruppo?.isAdmin(user.id) ?? false);
-        isCreator = user != null && (_gruppo?.isCreator(user.id) ?? false);
-      } catch (e) {
-        debugPrint('Errore nella verifica dei permessi: $e');
-        isAdmin = false;
-        isCreator = false;
-      }
-      
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(_gruppo?.nome ?? 'Dettaglio Gruppo'),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.refresh),
-              onPressed: _loadData,
-              tooltip: 'Aggiorna',
-            ),
-          ],
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: [
-              Tab(icon: Icon(Icons.people), text: 'Membri'),
-              Tab(icon: Icon(Icons.hive), text: 'Apiari'),
-            ],
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-                debugPrint('onTap: cambiato tab a $_currentIndex');
-              });
-            },
-          ),
-        ),
-        body: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? ErrorDisplayWidget(
-                    errorMessage: _errorMessage!,
-                    onRetry: _loadData,
-                  )
-                : _gruppo == null
-                    ? Center(child: Text('Gruppo non trovato'))
-                    : IndexedStack(
-                        index: _currentIndex,
-                        children: [
-                          _buildMembriTab(),
-                          _buildApiariTab(),
-                        ],
-                      ),
-        bottomNavigationBar: isCreator
-            ? BottomAppBar(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _showDeleteGruppoDialog(context);
-                    },
-                    icon: Icon(Icons.delete_forever),
-                    label: Text('ELIMINA GRUPPO'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ThemeConstants.errorColor,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              )
-            : null,
-      );
-    } catch (e, stackTrace) {
-      debugPrint('=== ERRORE CRITICO IN BUILD ===');
-      debugPrint('$e');
-      debugPrint('=== STACK TRACE ===');
-      debugPrint('$stackTrace');
-      
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Errore'),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: ThemeConstants.errorColor),
-              const SizedBox(height: 16),
-              Text('Si è verificato un errore: $e'),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('TORNA INDIETRO'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+  void _navigateToEditGruppo() {
+    if (_gruppo == null) return;
+    Navigator.of(context)
+        .pushNamed(AppConstants.gruppoCreateRoute, arguments: _gruppo)
+        .then((_) => _loadData());
   }
 
-  Future<void> _showDeleteGruppoDialog(BuildContext context) async {
-    final confirmDelete = await showDialog<bool>(
+  void _navigateToInvita() {
+    Navigator.of(context)
+        .pushNamed(AppConstants.gruppoInvitoRoute, arguments: widget.gruppoId)
+        .then((_) => _loadData());
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Dialogs – Cambia ruolo
+  // ──────────────────────────────────────────────────────────
+
+  Future<void> _showCambiaRuoloDialog(
+      BuildContext context, dynamic membro, int membroId) async {
+    String currentRole = 'viewer';
+    if (membro is MembroGruppo) {
+      currentRole = membro.ruolo;
+    } else if (membro is Map<String, dynamic>) {
+      currentRole = membro['ruolo'] ?? 'viewer';
+    }
+
+    final selectedRole = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Elimina gruppo'),
-        content: Text('Sei sicuro di voler eliminare questo gruppo? Questa azione non può essere annullata.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('ANNULLA'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('ELIMINA'),
-            style: TextButton.styleFrom(
-              foregroundColor: ThemeConstants.errorColor,
-            ),
-          ),
-        ],
-      ),
-    ) ?? false;
+      builder: (ctx) {
+        String tempRole = currentRole;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text('Cambia ruolo'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<String>(
+                    title: Text('Amministratore'),
+                    subtitle: Text('Può gestire membri e inviti'),
+                    value: 'admin',
+                    groupValue: tempRole,
+                    onChanged: (v) => setDialogState(() => tempRole = v!),
+                  ),
+                  RadioListTile<String>(
+                    title: Text('Editor'),
+                    subtitle: Text('Può modificare dati'),
+                    value: 'editor',
+                    groupValue: tempRole,
+                    onChanged: (v) => setDialogState(() => tempRole = v!),
+                  ),
+                  RadioListTile<String>(
+                    title: Text('Visualizzatore'),
+                    subtitle: Text('Solo lettura'),
+                    value: 'viewer',
+                    groupValue: tempRole,
+                    onChanged: (v) => setDialogState(() => tempRole = v!),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('ANNULLA'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, tempRole),
+                  child: Text('SALVA'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
 
-    if (!confirmDelete) return;
+    if (selectedRole == null || selectedRole == currentRole) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
-      await _gruppoService.deleteGruppo(widget.gruppoId);
-      
+      await _gruppoService.updateMembroRuolo(
+          widget.gruppoId, membroId, selectedRole);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gruppo eliminato'),
-        ),
+        SnackBar(content: Text('Ruolo aggiornato')),
       );
-      
-      // Torna alla lista gruppi
-      Navigator.of(context).pushReplacementNamed(AppConstants.gruppiListRoute);
+      _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -303,190 +230,478 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
-  
-  // Tab Membri
-  Widget _buildMembriTab() {
+
+  // ──────────────────────────────────────────────────────────
+  // Dialogs – Rimuovi membro
+  // ──────────────────────────────────────────────────────────
+
+  Future<void> _showRimuoviMembroDialog(BuildContext context, dynamic membro,
+      int membroId, String username) async {
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Rimuovi membro'),
+            content:
+                Text('Sei sicuro di voler rimuovere $username dal gruppo?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('ANNULLA'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(
+                    foregroundColor: ThemeConstants.errorColor),
+                child: Text('RIMUOVI'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    setState(() => _isLoading = true);
     try {
-      if (_gruppo == null) return Container();
+      await _gruppoService.removeMembro(widget.gruppoId, membroId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$username rimosso dal gruppo')),
+      );
+      _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore: ${e.toString()}'),
+          backgroundColor: ThemeConstants.errorColor,
+        ),
+      );
+      setState(() => _isLoading = false);
+    }
+  }
 
-      final authService = Provider.of<AuthService>(context);
-      final user = authService.currentUser;
-      
-      final bool isAdmin = user != null && _gruppo!.isAdmin(user.id);
+  // ──────────────────────────────────────────────────────────
+  // Dialogs – Elimina gruppo
+  // ──────────────────────────────────────────────────────────
 
-      if (_gruppo!.membri.isEmpty) {
-        return Center(
-          child: Text('Nessun membro trovato'),
-        );
+  Future<void> _showDeleteGruppoDialog() async {
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Elimina gruppo'),
+            content: Text(
+                'Sei sicuro di voler eliminare questo gruppo? Questa azione non può essere annullata.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('ANNULLA'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(
+                    foregroundColor: ThemeConstants.errorColor),
+                child: Text('ELIMINA'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _gruppoService.deleteGruppo(widget.gruppoId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gruppo eliminato')),
+      );
+      Navigator.of(context)
+          .pushReplacementNamed(AppConstants.gruppiListRoute);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore: ${e.toString()}'),
+          backgroundColor: ThemeConstants.errorColor,
+        ),
+      );
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Dialogs – Lascia gruppo
+  // ──────────────────────────────────────────────────────────
+
+  Future<void> _showLeaveGroupDialog() async {
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Lascia gruppo'),
+            content: Text(
+                'Sei sicuro di voler lasciare il gruppo "${_gruppo!.nome}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('ANNULLA'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(
+                    foregroundColor: ThemeConstants.errorColor),
+                child: Text('LASCIA'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
+    if (user == null) return;
+
+    // Find current user's MembroGruppo ID
+    int membroId = 0;
+    for (var m in _gruppo!.membri) {
+      if (m is MembroGruppo && m.utenteId == user.id) {
+        membroId = m.id;
+        break;
+      } else if (m is Map<String, dynamic>) {
+        int utenteId = 0;
+        final utente = m['utente'];
+        if (utente is int) {
+          utenteId = utente;
+        } else if (utente is Map) {
+          utenteId = utente['id'] ?? 0;
+        }
+        if (utenteId == user.id) {
+          final id = m['id'];
+          if (id is int) {
+            membroId = id;
+          } else if (id is String) {
+            membroId = int.tryParse(id) ?? 0;
+          }
+          break;
+        }
       }
+    }
 
-      return ListView.builder(
-        itemCount: _gruppo!.membri.length,
-        itemBuilder: (context, index) {
-          try {
-            final membro = _gruppo!.membri[index];
-            
-            // Controllo aggiuntivo per gestire diversi tipi di membri
-            String username = '';
-            String ruolo = '';
-            bool isCreator = false;
-            int membroId = 0;
-            int utenteId = 0;
-            
-            if (membro is MembroGruppo) {
-              username = membro.username;
-              ruolo = membro.ruolo;
-              membroId = membro.id;
-              utenteId = membro.utenteId;
-            } else if (membro is Map<String, dynamic>) {
-              username = membro['username'] ?? membro['utente_username'] ?? 'Sconosciuto';
-              ruolo = membro['ruolo'] ?? 'Sconosciuto';
-              
-              // Estrai l'ID del membro in modo sicuro
-              var id = membro['id'];
-              if (id is int) {
-                membroId = id;
-              } else if (id is String) {
-                try {
-                  membroId = int.parse(id);
-                } catch (e) {
-                  debugPrint('Errore nel parsing dell\'ID membro: $e');
-                }
-              }
-              
-              // Estrai l'ID dell'utente in modo sicuro
-              var utente = membro['utente'];
-              if (utente is int) {
-                utenteId = utente;
-              } else if (utente is String) {
-                try {
-                  utenteId = int.parse(utente);
-                } catch (e) {
-                  debugPrint('Errore nel parsing dell\'ID utente: $e');
-                }
-              } else if (utente is Map) {
-                utenteId = utente['id'] ?? 0;
-              }
-            } else {
-              debugPrint('Tipo membro non riconosciuto: ${membro.runtimeType}');
-              return ListTile(
-                title: Text('Membro non valido'),
-                subtitle: Text('Errore nel formato dei dati'),
-              );
-            }
-            
-            // Verifica se il membro è il creatore del gruppo
-            isCreator = utenteId == _gruppo!.creatoreId;
-            
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundColor: ThemeConstants.primaryColor,
+    if (membroId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossibile trovare il tuo profilo nel gruppo'),
+          backgroundColor: ThemeConstants.errorColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _gruppoService.removeMembro(widget.gruppoId, membroId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hai lasciato il gruppo')),
+      );
+      Navigator.of(context)
+          .pushReplacementNamed(AppConstants.gruppiListRoute);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore: ${e.toString()}'),
+          backgroundColor: ThemeConstants.errorColor,
+        ),
+      );
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Annulla invito
+  // ──────────────────────────────────────────────────────────
+
+  Future<void> _annullaInvito(InvitoGruppo invito) async {
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Annulla invito'),
+            content: Text('Annullare l\'invito per ${invito.email}?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('NO'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(
+                    foregroundColor: ThemeConstants.errorColor),
+                child: Text('ANNULLA INVITO'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    try {
+      await _gruppoService.annullaInvito(widget.gruppoId, invito.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invito annullato')),
+      );
+      _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore: ${e.toString()}'),
+          backgroundColor: ThemeConstants.errorColor,
+        ),
+      );
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Build
+  // ──────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Tab> tabs = [
+      Tab(icon: Icon(Icons.people), text: 'Membri'),
+      Tab(icon: Icon(Icons.hive), text: 'Apiari'),
+      if (_isAdmin) Tab(icon: Icon(Icons.mail_outline), text: 'Inviti'),
+    ];
+
+    final List<Widget> tabViews = [
+      _buildMembriTab(),
+      _buildApiariTab(),
+      if (_isAdmin) _buildInvitiTab(),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_gruppo?.nome ?? 'Dettaglio Gruppo'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _loadData,
+            tooltip: 'Aggiorna',
+          ),
+          if (_isAdmin)
+            IconButton(
+              icon: Icon(Icons.person_add),
+              onPressed: _navigateToInvita,
+              tooltip: 'Invita membro',
+            ),
+          if (_isAdmin || _isCreator)
+            IconButton(
+              icon: Icon(Icons.edit),
+              onPressed: _navigateToEditGruppo,
+              tooltip: 'Modifica gruppo',
+            ),
+        ],
+        bottom: _isLoading || _errorMessage != null || _gruppo == null
+            ? null
+            : TabBar(
+                controller: _tabController,
+                tabs: tabs,
+                onTap: (index) {
+                  setState(() => _currentIndex = index);
+                },
+              ),
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? ErrorDisplayWidget(
+                  errorMessage: _errorMessage!,
+                  onRetry: _loadData,
+                )
+              : _gruppo == null
+                  ? Center(child: Text('Gruppo non trovato'))
+                  : IndexedStack(
+                      index: _currentIndex,
+                      children: tabViews,
+                    ),
+      bottomNavigationBar: _isLoading || _gruppo == null
+          ? null
+          : BottomAppBar(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: _isCreator
+                    ? ElevatedButton.icon(
+                        onPressed: _showDeleteGruppoDialog,
+                        icon: Icon(Icons.delete_forever),
+                        label: Text('ELIMINA GRUPPO'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ThemeConstants.errorColor,
+                          foregroundColor: Colors.white,
+                        ),
+                      )
+                    : OutlinedButton.icon(
+                        onPressed: _showLeaveGroupDialog,
+                        icon: Icon(Icons.exit_to_app),
+                        label: Text('LASCIA GRUPPO'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ThemeConstants.errorColor,
+                          side: BorderSide(color: ThemeConstants.errorColor),
+                        ),
+                      ),
+              ),
+            ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Tab – Membri
+  // ──────────────────────────────────────────────────────────
+
+  Widget _buildMembriTab() {
+    if (_gruppo == null) return Container();
+
+    if (_gruppo!.membri.isEmpty) {
+      return Center(child: Text('Nessun membro trovato'));
+    }
+
+    return ListView.builder(
+      itemCount: _gruppo!.membri.length,
+      itemBuilder: (context, index) {
+        final membro = _gruppo!.membri[index];
+
+        String username = '';
+        String ruolo = '';
+        bool isCreatorMember = false;
+        int membroId = 0;
+        int utenteId = 0;
+
+        if (membro is MembroGruppo) {
+          username = membro.username;
+          ruolo = membro.ruolo;
+          membroId = membro.id;
+          utenteId = membro.utenteId;
+        } else if (membro is Map<String, dynamic>) {
+          username =
+              membro['username'] ?? membro['utente_username'] ?? 'Sconosciuto';
+          ruolo = membro['ruolo'] ?? 'viewer';
+          final rawId = membro['id'];
+          if (rawId is int) {
+            membroId = rawId;
+          } else if (rawId is String) {
+            membroId = int.tryParse(rawId) ?? 0;
+          }
+          final utente = membro['utente'];
+          if (utente is int) {
+            utenteId = utente;
+          } else if (utente is String) {
+            utenteId = int.tryParse(utente) ?? 0;
+          } else if (utente is Map) {
+            utenteId = utente['id'] ?? 0;
+          }
+        } else {
+          return ListTile(
+            title: Text('Membro non valido'),
+            subtitle: Text('Errore nel formato dei dati'),
+          );
+        }
+
+        isCreatorMember = utenteId == _gruppo!.creatoreId;
+
+        // Don't show admin menu for the creator
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: ThemeConstants.primaryColor,
+            child: Text(
+              username.isNotEmpty ? username[0].toUpperCase() : 'U',
+              style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          title: Text(username),
+          subtitle: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: ThemeConstants.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Text(
-                  username.isNotEmpty ? username[0].toUpperCase() : 'U',
+                  _getRuoloDisplay(ruolo),
                   style: TextStyle(
-                    color: Colors.white,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
+                    color: ThemeConstants.primaryColor,
                   ),
                 ),
               ),
-              title: Text(username),
-              subtitle: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: ThemeConstants.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _getRuoloDisplay(ruolo),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: ThemeConstants.primaryColor,
-                      ),
+              if (isCreatorMember) ...[
+                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Creatore',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber.shade800,
                     ),
                   ),
-                  SizedBox(width: 8),
-                  if (isCreator)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Creatore',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber.shade800,
-                        ),
+                ),
+              ],
+            ],
+          ),
+          trailing: _isAdmin && !isCreatorMember
+              ? PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'cambiaRuolo') {
+                      _showCambiaRuoloDialog(context, membro, membroId);
+                    } else if (value == 'rimuovi') {
+                      _showRimuoviMembroDialog(
+                          context, membro, membroId, username);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'cambiaRuolo',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18),
+                          SizedBox(width: 8),
+                          Text('Cambia ruolo'),
+                        ],
                       ),
                     ),
-                ],
-              ),
-              trailing: isAdmin && !isCreator
-                  ? PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'cambiaRuolo') {
-                          _showCambiaRuoloDialog(context, membro, membroId);
-                        } else if (value == 'rimuovi') {
-                          _showRimuoviMembroDialog(context, membro, membroId, username);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'cambiaRuolo',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, size: 18),
-                              SizedBox(width: 8),
-                              Text('Cambia ruolo'),
-                            ],
+                    PopupMenuItem(
+                      value: 'rimuovi',
+                      child: Row(
+                        children: [
+                          Icon(Icons.person_remove,
+                              size: 18,
+                              color: ThemeConstants.errorColor),
+                          SizedBox(width: 8),
+                          Text(
+                            'Rimuovi dal gruppo',
+                            style:
+                                TextStyle(color: ThemeConstants.errorColor),
                           ),
-                        ),
-                        PopupMenuItem(
-                          value: 'rimuovi',
-                          child: Row(
-                            children: [
-                              Icon(Icons.person_remove, size: 18, color: ThemeConstants.errorColor),
-                              SizedBox(width: 8),
-                              Text(
-                                'Rimuovi dal gruppo',
-                                style: TextStyle(color: ThemeConstants.errorColor),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  : null,
-            );
-          } catch (e) {
-            debugPrint('Errore nella costruzione della tile membro[$index]: $e');
-            return ListTile(
-              title: Text('Errore'),
-              subtitle: Text('$e'),
-              textColor: ThemeConstants.errorColor,
-            );
-          }
-        },
-      );
-    } catch (e, stackTrace) {
-      debugPrint('Errore nel tab membri: $e');
-      debugPrint('Stack trace: $stackTrace');
-      return Center(
-        child: Text('Errore nel caricamento dei membri: $e'),
-      );
-    }
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              : null,
+        );
+      },
+    );
   }
-  
+
   String _getRuoloDisplay(String ruolo) {
     switch (ruolo) {
       case 'admin':
@@ -499,170 +714,181 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen> with SingleTick
         return ruolo;
     }
   }
-  
-  Future<void> _showCambiaRuoloDialog(BuildContext context, dynamic membro, int membroId) async {
-    // Implementazione sicura ma semplificata
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Funzionalità temporaneamente disabilitata'),
-      ),
-    );
-  }
-  
-  Future<void> _showRimuoviMembroDialog(BuildContext context, dynamic membro, int membroId, String username) async {
-    // Implementazione sicura ma semplificata
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Funzionalità temporaneamente disabilitata'),
-      ),
-    );
-  }
-  
-  // Tab Apiari
+
+  // ──────────────────────────────────────────────────────────
+  // Tab – Apiari
+  // ──────────────────────────────────────────────────────────
+
   Widget _buildApiariTab() {
-    try {
-      debugPrint('=== INIZIO COSTRUZIONE TAB APIARI ===');
-      
-      if (_apiariCondivisi.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.hive_outlined,
+    if (_apiariCondivisi.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.hive_outlined,
                 size: 64,
-                color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Nessun apiario condiviso con questo gruppo',
-                style: TextStyle(
-                  color: ThemeConstants.textSecondaryColor,
-                  fontSize: 18,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        );
-      }
+                color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'Nessun apiario condiviso con questo gruppo',
+              style: TextStyle(
+                  color: ThemeConstants.textSecondaryColor, fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
 
-      debugPrint('Numero apiari condivisi: ${_apiariCondivisi.length}');
+    return ListView.builder(
+      itemCount: _apiariCondivisi.length,
+      itemBuilder: (context, index) {
+        final apiario = _apiariCondivisi[index];
+        if (apiario is! Map<String, dynamic>) {
+          return SizedBox.shrink();
+        }
+        final nome = apiario['nome'] ?? 'Apiario senza nome';
+        final posizione =
+            apiario['posizione'] ?? 'Posizione non specificata';
+        final proprietarioNome =
+            apiario['proprietario_username'] ?? 'N/D';
+        final apiarioId = apiario['id'];
 
-      return ListView.builder(
-        itemCount: _apiariCondivisi.length,
-        itemBuilder: (context, index) {
-          try {
-            final apiario = _apiariCondivisi[index];
-            
-            // Estrai in modo sicuro le informazioni necessarie
-            String nome = '';
-            String posizione = '';
-            String proprietarioNome = '';
-            dynamic apiarioId;
-            
-            if (apiario is Map<String, dynamic>) {
-              nome = apiario['nome'] ?? 'Apiario senza nome';
-              posizione = apiario['posizione'] ?? 'Posizione non specificata';
-              proprietarioNome = apiario['proprietario_username'] ?? 'N/D';
-              apiarioId = apiario['id'];
-            } else {
-              debugPrint('Tipo apiario non riconosciuto: ${apiario.runtimeType}');
-              return ListTile(
-                title: Text('Apiario non valido'),
-                subtitle: Text('Errore nel formato dei dati'),
-              );
-            }
-            
-            return Card(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: InkWell(
-                onTap: () {
-                  if (apiarioId != null) {
-                    _navigateToApiarioDetail(apiarioId);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Impossibile visualizzare i dettagli: ID apiario mancante'),
-                        backgroundColor: ThemeConstants.errorColor,
-                      ),
-                    );
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        return Card(
+          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: InkWell(
+            onTap: apiarioId != null
+                ? () => _navigateToApiarioDetail(apiarioId)
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              nome,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Icon(Icons.chevron_right),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        posizione,
-                        style: TextStyle(
-                          color: ThemeConstants.textSecondaryColor,
+                      Expanded(
+                        child: Text(
+                          nome,
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.person,
-                            size: 16,
+                      Icon(Icons.chevron_right),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    posizione,
+                    style: TextStyle(
+                        color: ThemeConstants.textSecondaryColor),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.person,
+                          size: 16,
+                          color: ThemeConstants.textSecondaryColor),
+                      SizedBox(width: 4),
+                      Text(
+                        'Proprietario: $proprietarioNome',
+                        style: TextStyle(
                             color: ThemeConstants.textSecondaryColor,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Proprietario: $proprietarioNome',
-                            style: TextStyle(
-                              color: ThemeConstants.textSecondaryColor,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                            fontSize: 12),
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Tab – Inviti (solo admin)
+  // ──────────────────────────────────────────────────────────
+
+  Widget _buildInvitiTab() {
+    if (_inviti.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.mail_outline,
+                size: 64,
+                color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'Nessun invito in sospeso',
+              style: TextStyle(
+                  color: ThemeConstants.textSecondaryColor, fontSize: 18),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: Icon(Icons.person_add),
+              label: Text('Invita membro'),
+              onPressed: _navigateToInvita,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: EdgeInsets.only(bottom: 80),
+          itemCount: _inviti.length,
+          itemBuilder: (context, index) {
+            final invito = _inviti[index];
+            return Card(
+              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor:
+                      ThemeConstants.primaryColor.withOpacity(0.15),
+                  child: Icon(Icons.email,
+                      color: ThemeConstants.primaryColor),
+                ),
+                title: Text(invito.email),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ruolo: ${invito.getRuoloPropDisplay()}'),
+                    Text(
+                      'Scade: ${DateFormatter.formatDate(invito.dataScadenza)}',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+                isThreeLine: true,
+                trailing: IconButton(
+                  icon: Icon(Icons.cancel,
+                      color: ThemeConstants.errorColor),
+                  tooltip: 'Annulla invito',
+                  onPressed: () => _annullaInvito(invito),
                 ),
               ),
             );
-          } catch (e) {
-            debugPrint('Errore nella costruzione della card apiario[$index]: $e');
-            return Card(
-              color: Colors.red.shade50,
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text('Errore nel caricamento dell\'apiario: $e'),
-              ),
-            );
-          }
-        },
-      );
-    } catch (e, stackTrace) {
-      debugPrint('=== ERRORE NEL TAB APIARI ===');
-      debugPrint('$e');
-      debugPrint('=== STACK TRACE ===');
-      debugPrint('$stackTrace');
-      return Center(
-        child: Text('Errore nel caricamento degli apiari: $e'),
-      );
-    }
+          },
+        ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton(
+            onPressed: _navigateToInvita,
+            child: Icon(Icons.person_add),
+            tooltip: 'Invita membro',
+          ),
+        ),
+      ],
+    );
   }
 }

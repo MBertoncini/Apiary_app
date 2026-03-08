@@ -1,0 +1,156 @@
+# Dizionario correzione post-STT – Terminologia apistica italiana
+# Formato: parola_errata - parola_corretta
+# Le voci multi-parola (es. "a ta - a tasca") sono supportate.
+# Il dizionario vive in: lib/services/bee_vocabulary_corrector.dart
+
+# ── Arnia / Arnie ────────────────────────────────────────────────────────────
+arma - arnia
+armia - arnia
+alnia - arnia
+arni - arnie
+artie - arnie
+annie - arnie
+
+# ── Apiario ──────────────────────────────────────────────────────────────────
+appliario - apiario
+appiario - apiario
+apiamo - apiario
+al piario - apiario
+
+# ── Telaini / Telaino ────────────────────────────────────────────────────────
+terreni - telaini
+terrani - telaini
+terremoti - telaini
+teloni - telaini
+telane - telaini
+telain - telaini
+telaine - telaino
+telaione - telaino
+
+# ── Covata ───────────────────────────────────────────────────────────────────
+codata - covata
+cravata - covata
+cravatta - covata
+corvata - covata
+cubata - covata
+cavata - covata
+lobata - covata
+cobata - covata
+
+# ── Melario / Melari ─────────────────────────────────────────────────────────
+melanio - melario
+melaio - melario
+mellario - melario
+menari - melari
+melali - melari
+
+# ── Regina / Regine ──────────────────────────────────────────────────────────
+resina - regina
+retina - regina
+vegina - regina
+reina - regina
+regime - regine
+resine - regine
+
+# ── Fuchi / Fuco ─────────────────────────────────────────────────────────────
+fucky - fuchi
+fucci - fuchi
+fruchi - fuchi
+foco - fuco
+
+# ── Varroa ───────────────────────────────────────────────────────────────────
+varro - varroa
+barro - varroa
+vaiolo - varroa
+barroa - varroa
+varra - varroa
+variola - varroa
+
+# ── Nosema ───────────────────────────────────────────────────────────────────
+nosena - nosema
+nossema - nosema
+
+# ── Sciamatura / Sciame ───────────────────────────────────────────────────────
+chiamatura - sciamatura
+ciamatura - sciamatura
+siamatura - sciamatura
+schiamatura - sciamatura
+sciam atura - sciamatura
+chiame - sciame
+siame - sciame
+
+# ── Diaframma ────────────────────────────────────────────────────────────────
+diagramma - diaframma
+diagrammi - diaframmi
+dia framma - diaframma
+
+# ── Propoli ──────────────────────────────────────────────────────────────────
+propolis - propoli
+proprio li - propoli
+
+# ── Celle reali (multi-parola) ───────────────────────────────────────────────
+cella reale - celle reali
+celle reale - celle reali
+cella reali - celle reali
+
+# ── Uova fresche (multi-parola) ──────────────────────────────────────────────
+nova fresche - uova fresche
+uva fresche - uova fresche
+nove fresche - uova fresche
+
+# ── Scorte ───────────────────────────────────────────────────────────────────
+discorsi - di scorte
+di sgorte - di scorte
+
+# ── A tasca (multi-parola) ───────────────────────────────────────────────────
+a ta - a tasca
+a tazza - a tasca
+a task - a tasca
+
+# ── Calistrip ────────────────────────────────────────────────────────────────
+kalistrip - calistrip
+callistrip - calistrip
+calli strip - calistrip
+
+# ── Acido ossalico ───────────────────────────────────────────────────────────
+ossalisco - ossalico
+oxalico - ossalico
+
+# ── Smielatura ───────────────────────────────────────────────────────────────
+smiellatura - smielatura
+smieliatura - smielatura
+
+# ── Opercoli ─────────────────────────────────────────────────────────────────
+obercoli - opercoli
+
+# ── Polline ──────────────────────────────────────────────────────────────────
+poline - polline
+polling - polline
+
+# ── Nutritore ────────────────────────────────────────────────────────────────
+nutritor - nutritore
+nutridor - nutritore
+
+# ── Invernamento (multi-parola) ──────────────────────────────────────────────
+inverno mento - invernamento
+inver namento - invernamento
+
+# ── Sciroppo ─────────────────────────────────────────────────────────────────
+siroppo - sciroppo
+sciroppio - sciroppo
+
+# ── Apistano ─────────────────────────────────────────────────────────────────
+apistanno - apistano
+api stano - apistano
+
+# ── Bayvarol ─────────────────────────────────────────────────────────────────
+bay varol - bayvarol
+baivarol - bayvarol
+
+# ── Ordine parole forza famiglia (multi-parola) ──────────────────────────────
+forte famiglia - famiglia forte
+debole famiglia - famiglia debole
+normale famiglia - famiglia normale
+
+# ── Duplicati fonetici ───────────────────────────────────────────────────────
+un un - un

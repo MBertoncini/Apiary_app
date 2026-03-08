@@ -94,6 +94,14 @@ class NotificationService {
         importance: Importance.high,
       );
       
+      // Canale per gruppi
+      const AndroidNotificationChannel gruppiChannel = AndroidNotificationChannel(
+        'gruppi_channel',
+        'Gruppi',
+        description: 'Notifiche relative agli inviti e ai gruppi collaborativi',
+        importance: Importance.high,
+      );
+
       // Canale per sincronizzazione
       const AndroidNotificationChannel syncChannel = AndroidNotificationChannel(
         'sync_channel',
@@ -112,8 +120,27 @@ class NotificationService {
       
       await _flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(gruppiChannel);
+
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(syncChannel);
     }
+  }
+
+  // Mostra notifica per un nuovo invito al gruppo
+  Future<void> showInvitazioneGruppoNotification({
+    required int invitoId,
+    required String gruppoNome,
+    required String invitatoDaUsername,
+  }) async {
+    await showNotification(
+      id: 'invito_$invitoId'.hashCode,
+      title: 'Nuovo invito al gruppo',
+      body: '$invitatoDaUsername ti ha invitato a unirsi a "$gruppoNome"',
+      payload: 'gruppi',
+      channelId: 'gruppi_channel',
+    );
   }
   
   // Mostra una notifica immediata

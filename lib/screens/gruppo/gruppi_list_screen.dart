@@ -4,9 +4,9 @@ import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../models/gruppo.dart';
 import '../../services/gruppo_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../services/notification_service.dart';
 import '../../utils/date_formatters.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
@@ -22,16 +22,17 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
   List<InvitoGruppo> _inviti = [];
   String? _errorMessage;
   late GruppoService _gruppoService;
+  late StorageService _storageService;
 
   @override
   void initState() {
     super.initState();
-    final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
     final storageService = Provider.of<StorageService>(context, listen: false);
     
     _gruppoService = GruppoService(apiService, storageService);
-    
+    _storageService = storageService;
+
     _loadData();
   }
 
@@ -48,9 +49,34 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
         _gruppoService.getInvitiRicevuti(),
       ]);
 
+      final nuoviInviti = results[1] as List<InvitoGruppo>;
+
+      // Notifica per inviti nuovi mai visti prima
+      try {
+        final storedIds = await _storageService.getStoredData('seen_inviti_ids');
+        final seenIds = Set<int>.from(
+          storedIds.map((e) => e is int ? e : int.tryParse(e.toString()) ?? -1),
+        );
+        for (final invito in nuoviInviti) {
+          if (!seenIds.contains(invito.id)) {
+            await NotificationService().showInvitazioneGruppoNotification(
+              invitoId: invito.id,
+              gruppoNome: invito.gruppoNome,
+              invitatoDaUsername: invito.invitatoDaUsername,
+            );
+          }
+        }
+        await _storageService.saveData(
+          'seen_inviti_ids',
+          nuoviInviti.map((i) => i.id).toList(),
+        );
+      } catch (e) {
+        debugPrint('Errore notifiche inviti: $e');
+      }
+
       setState(() {
         _gruppi = results[0] as List<Gruppo>;
-        _inviti = results[1] as List<InvitoGruppo>;
+        _inviti = nuoviInviti;
         _isLoading = false;
       });
     } catch (e) {
@@ -253,9 +279,6 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
         itemBuilder: (context, index) {
           try {
             final gruppo = _gruppi[index];
-            // Stampa di debug per verificare il tipo di apiariIds
-            debugPrint('Gruppo ${gruppo.nome} - apiariIds: ${gruppo.apiariIds} (${gruppo.apiariIds.runtimeType})');
-            
             return Card(
               margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: InkWell(

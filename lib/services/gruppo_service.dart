@@ -231,7 +231,7 @@ class GruppoService {
       'ruolo_proposto': ruolo,
     };
     
-    final String endpoint = '${ApiConstants.gruppiUrl}$gruppoId/inviti/';
+    final String endpoint = '${ApiConstants.gruppiUrl}$gruppoId/invita/';
     final response = await _apiService.post(endpoint, data);
     return InvitoGruppo.fromJson(response);
   }

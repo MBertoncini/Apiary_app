@@ -99,6 +99,15 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, AppConstants.mappaRoute),
           ),
 
+          // Fioriture
+          ListTile(
+            leading: Icon(Icons.eco),
+            title: Text('Fioriture'),
+            selected: currentRoute == AppConstants.fioritureListRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () => _navigateTo(context, AppConstants.fioritureListRoute),
+          ),
+
           // Regine
           ListTile(
             leading: Icon(Icons.local_florist),
@@ -174,49 +183,13 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, AppConstants.settingsRoute),
           ),
 
-          // Voice command con Wit.ai
-          Stack(
-            children: [
-              ListTile(
-                leading: Icon(
-                  Icons.mic,
-                  color: currentRoute == AppConstants.voiceCommandRoute
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey,
-                ),
-                title: Text(
-                  'Inserimento vocale con Wit.ai',
-                  style: TextStyle(
-                    color: currentRoute == AppConstants.voiceCommandRoute
-                        ? Theme.of(context).primaryColor
-                        : null,
-                    fontWeight: currentRoute == AppConstants.voiceCommandRoute
-                        ? FontWeight.bold
-                        : null,
-                  ),
-                ),
-                onTap: () => _navigateTo(context, AppConstants.voiceCommandRoute),
-              ),
-              Positioned(
-                right: 16,
-                top: 8,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    'NEW',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          // Inserimento vocale
+          ListTile(
+            leading: Icon(Icons.mic),
+            title: Text('Inserimento vocale'),
+            selected: currentRoute == AppConstants.voiceCommandRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () => _navigateTo(context, AppConstants.voiceCommandRoute),
           ),
 
           // Logout

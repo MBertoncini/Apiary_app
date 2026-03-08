@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../constants/theme_constants.dart';
 import 'package:intl/intl.dart';
 
-class FormattedMessageWidget extends StatelessWidget {
+class FormattedMessageWidget extends StatefulWidget {
   final String message;
   final DateTime timestamp;
   final bool isUser;
@@ -18,20 +18,43 @@ class FormattedMessageWidget extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<FormattedMessageWidget> createState() => _FormattedMessageWidgetState();
+}
+
+class _FormattedMessageWidgetState extends State<FormattedMessageWidget> {
+  late List<Widget> _cachedParts;
+
+  @override
+  void initState() {
+    super.initState();
+    _cachedParts = _parseMessageParts(widget.message);
+  }
+
+  @override
+  void didUpdateWidget(FormattedMessageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message != widget.message || oldWidget.isUser != widget.isUser) {
+      _cachedParts = _parseMessageParts(widget.message);
+    }
+  }
+
+  // convenience getters to keep _parseMessageParts unchanged
+  bool get isUser => widget.isUser;
+
+  @override
   Widget build(BuildContext context) {
-    // Parsa il messaggio per individuare le diverse parti
-    final formattedParts = _parseMessageParts(message);
+    final formattedParts = _cachedParts;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: isUser 
-            ? ThemeConstants.primaryColor 
-            : ThemeConstants.backgroundColor.withOpacity(0.8),
+        color: isUser
+            ? ThemeConstants.primaryColor
+            : const Color(0xCCF8F5E6), // backgroundColor at 0.8 opacity
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: ThemeConstants.black05,
             blurRadius: 2,
             offset: Offset(0, 1),
           ),
@@ -42,32 +65,32 @@ class FormattedMessageWidget extends StatelessWidget {
         children: [
           // Contenuto formattato del messaggio
           ...formattedParts,
-          
+
           // Timestamp e pulsante retry
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                DateFormat('HH:mm').format(timestamp),
+                DateFormat('HH:mm').format(widget.timestamp),
                 style: TextStyle(
                   fontSize: 10,
-                  color: isUser 
-                      ? Colors.white.withOpacity(0.7) 
+                  color: isUser
+                      ? ThemeConstants.white70
                       : ThemeConstants.textSecondaryColor,
                 ),
               ),
               
               // Pulsante di ripetizione solo per messaggi utente
-              if (isUser && onRetry != null) ...[
-                SizedBox(width: 4),
+              if (isUser && widget.onRetry != null) ...[
+                const SizedBox(width: 4),
                 InkWell(
-                  onTap: onRetry,
-                  child: Padding(
+                  onTap: widget.onRetry,
+                  child: const Padding(
                     padding: EdgeInsets.all(2.0),
                     child: Icon(
                       Icons.refresh,
                       size: 12,
-                      color: Colors.white.withOpacity(0.7),
+                      color: ThemeConstants.white70,
                     ),
                   ),
                 ),

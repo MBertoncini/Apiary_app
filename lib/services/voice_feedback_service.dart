@@ -1,7 +1,7 @@
 // lib/services/voice_feedback_service.dart
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
-import '../constants/theme_constants.dart';
+import '../widgets/voice_animations.dart';
 import 'audio_service.dart';
 
 /// Servizio per fornire feedback visivo, sonoro e tattile durante l'input vocale
@@ -127,113 +127,24 @@ class VoiceFeedbackService {
   }
   
   // === METODI PER COMPONENTI VISUALI ===
-  
-  // Widget animato per il pulsante del microfono
+
   Widget buildAnimatedMicButton({
     required bool isListening,
     required bool isProcessing,
     required VoidCallback onPressed,
   }) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 300),
-        width: isListening ? 100 : 80,
-        height: isListening ? 100 : 80,
-        decoration: BoxDecoration(
-          color: isProcessing 
-              ? Colors.orange 
-              : (isListening ? Colors.red : ThemeConstants.primaryColor),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: isListening 
-                  ? Colors.red.withOpacity(0.5) 
-                  : ThemeConstants.primaryColor.withOpacity(0.3),
-              spreadRadius: isListening ? 4 : 2,
-              blurRadius: isListening ? 8 : 5,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Center(
-          child: AnimatedSwitcher(
-            duration: Duration(milliseconds: 200),
-            transitionBuilder: (Widget child, Animation<double> animation) {
-              return ScaleTransition(scale: animation, child: child);
-            },
-            child: isProcessing
-                ? CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    strokeWidth: 3,
-                  )
-                : Icon(
-                    isListening ? Icons.stop : Icons.mic,
-                    color: Colors.white,
-                    size: isListening ? 40 : 32,
-                    key: ValueKey<bool>(isListening),
-                  ),
-          ),
-        ),
-      ),
+    return VoiceMicButton(
+      isListening: isListening,
+      isProcessing: isProcessing,
+      onPressed: onPressed,
     );
   }
 
-  // Widget per l'animazione di pulsazione
   Widget buildPulsingAnimation(bool isActive) {
-    if (!isActive) return SizedBox.shrink();
-    
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300),
-      width: 150,
-      height: 150,
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 600),
-          curve: Curves.easeInOut,
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    );
+    return VoicePulsingRings(isActive: isActive);
   }
 
-  // Widget per l'animazione della forma d'onda
   Widget buildWaveformAnimation(bool isActive) {
-    if (!isActive) return SizedBox.shrink();
-    
-    return Container(
-      height: 40,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(
-          9,
-          (index) => _buildWaveBar(index % 3 == 0 ? 1.0 : 0.7),
-        ),
-      ),
-    );
-  }
-  
-  // Helper per costruire una barra della forma d'onda
-  Widget _buildWaveBar(double heightFactor) {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300 + (300 * heightFactor).toInt()),
-      curve: Curves.easeInOut,
-      margin: EdgeInsets.symmetric(horizontal: 2),
-      width: 4,
-      height: 30 * heightFactor,
-      decoration: BoxDecoration(
-        color: ThemeConstants.primaryColor.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(2),
-      ),
-    );
+    return VoiceWaveform(isActive: isActive);
   }
 }

@@ -49,13 +49,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     
     try {
       final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/auth/register/'),
-        body: {
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/register/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
           'username': _usernameController.text.trim(),
           'email': _emailController.text.trim(),
           'password1': _passwordController.text,
           'password2': _confirmPasswordController.text,
-        },
+        }),
       );
       
       final data = json.decode(response.body);
@@ -72,14 +73,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         // Errore di registrazione
         String errorMsg = 'Errore durante la registrazione.';
-        if (data.containsKey('username')) {
-          errorMsg = data['username'][0];
-        } else if (data.containsKey('email')) {
-          errorMsg = data['email'][0];
-        } else if (data.containsKey('password1')) {
-          errorMsg = data['password1'][0];
-        } else if (data.containsKey('non_field_errors')) {
-          errorMsg = data['non_field_errors'][0];
+        if (data is Map) {
+          if (data.containsKey('username')) {
+            final v = data['username'];
+            errorMsg = v is List ? v[0] : v.toString();
+          } else if (data.containsKey('email')) {
+            final v = data['email'];
+            errorMsg = v is List ? v[0] : v.toString();
+          } else if (data.containsKey('password1')) {
+            final v = data['password1'];
+            errorMsg = v is List ? v[0] : v.toString();
+          } else if (data.containsKey('non_field_errors')) {
+            final v = data['non_field_errors'];
+            errorMsg = v is List ? v[0] : v.toString();
+          } else if (data.containsKey('detail')) {
+            errorMsg = data['detail'].toString();
+          }
         }
         
         setState(() {

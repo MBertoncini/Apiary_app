@@ -52,6 +52,7 @@ class ApiConstants {
   static const String gruppiUrl = baseUrl + apiPrefix + '/gruppi/';
   static const String gruppoDetailUrl = baseUrl + apiPrefix + '/gruppi/'; // Era '/gruppo/' - corretto a '/gruppi/'
   static const String gruppoMembriUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/membri/';
+  static const String gruppoInvitaUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/invita/';
   static const String gruppoInvitiUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/inviti/';
   static const String gruppoApiariUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/apiari/';
   
@@ -87,6 +88,13 @@ class ApiConstants {
 
   // Endpoint analisi telaini
   static const String analisiTelainiUrl = baseUrl + apiPrefix + '/analisi-telaini/';
+
+  // Endpoint layout mappa apiario
+  static const String apiarioMapLayoutUrl = baseUrl + apiPrefix + '/apiari/{apiario_id}/map_layout/';
+
+  // Endpoint nuclei
+  static const String nucleiUrl = baseUrl + apiPrefix + '/nuclei/';
+  static const String nucleoConvertUrl = baseUrl + apiPrefix + '/nuclei/{nucleo_id}/converti_in_arnia/';
 
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';

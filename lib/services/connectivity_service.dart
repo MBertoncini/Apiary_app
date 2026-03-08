@@ -5,16 +5,17 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 class ConnectivityService {
   final Connectivity _connectivity = Connectivity();
   final StreamController<bool> _connectionChangeController = StreamController<bool>.broadcast();
-  
+  StreamSubscription? _connectivitySubscription;
+
   Stream<bool> get connectionChange => _connectionChangeController.stream;
   bool _hasConnection = false;
-  
+
   ConnectivityService() {
     // Inizializza lo stato
     _checkConnection();
-    
+
     // Ascolta cambiamenti di connettività
-    _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
   }
   
   /// Controlla lo stato attuale della connessione
@@ -41,6 +42,7 @@ class ConnectivityService {
   }
   
   void dispose() {
+    _connectivitySubscription?.cancel();
     _connectionChangeController.close();
   }
 }

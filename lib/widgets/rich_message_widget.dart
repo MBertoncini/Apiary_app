@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../constants/theme_constants.dart';
 import 'package:intl/intl.dart';
 
-class RichMessageWidget extends StatelessWidget {
+class RichMessageWidget extends StatefulWidget {
   final String message;
   final DateTime timestamp;
   final bool isUser;
@@ -18,17 +18,41 @@ class RichMessageWidget extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<RichMessageWidget> createState() => _RichMessageWidgetState();
+}
+
+class _RichMessageWidgetState extends State<RichMessageWidget> {
+  late Widget _cachedContent;
+
+  @override
+  void initState() {
+    super.initState();
+    _cachedContent = _buildFormattedContent();
+  }
+
+  @override
+  void didUpdateWidget(RichMessageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message != widget.message || oldWidget.isUser != widget.isUser) {
+      _cachedContent = _buildFormattedContent();
+    }
+  }
+
+  bool get isUser => widget.isUser;
+  String get message => widget.message;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: isUser 
-            ? ThemeConstants.primaryColor 
-            : ThemeConstants.backgroundColor.withOpacity(0.8),
+        color: isUser
+            ? ThemeConstants.primaryColor
+            : const Color(0xCCF8F5E6), // backgroundColor at 0.8 opacity
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: ThemeConstants.black05,
             blurRadius: 2,
             offset: Offset(0, 1),
           ),
@@ -37,34 +61,34 @@ class RichMessageWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Contenuto formattato del messaggio
-          _buildFormattedContent(),
-          
+          // Contenuto formattato del messaggio (cached)
+          _cachedContent,
+
           // Timestamp e pulsante retry
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                DateFormat('HH:mm').format(timestamp),
+                DateFormat('HH:mm').format(widget.timestamp),
                 style: TextStyle(
                   fontSize: 10,
-                  color: isUser 
-                      ? Colors.white.withOpacity(0.7) 
+                  color: isUser
+                      ? ThemeConstants.white70
                       : ThemeConstants.textSecondaryColor,
                 ),
               ),
-              
+
               // Pulsante di ripetizione solo per messaggi utente
-              if (isUser && onRetry != null) ...[
-                SizedBox(width: 4),
+              if (isUser && widget.onRetry != null) ...[
+                const SizedBox(width: 4),
                 InkWell(
-                  onTap: onRetry,
-                  child: Padding(
+                  onTap: widget.onRetry,
+                  child: const Padding(
                     padding: EdgeInsets.all(2.0),
                     child: Icon(
                       Icons.refresh,
                       size: 12,
-                      color: Colors.white.withOpacity(0.7),
+                      color: ThemeConstants.white70,
                     ),
                   ),
                 ),

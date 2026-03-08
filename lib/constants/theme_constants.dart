@@ -16,6 +16,17 @@ class ThemeConstants {
   static const Color successColor = Color(0xFF688148);  // Verde oliva
   static const Color cardColor = Color(0xFFFFFDF5);  // Carta chiara
 
+  // Pre-computed opacity variants (avoids withOpacity() allocation in hot paths)
+  static const Color primaryColor10 = Color(0x1AD3A121);  // primaryColor.withOpacity(0.1)
+  static const Color primaryColor30 = Color(0x4DD3A121);  // primaryColor.withOpacity(0.3)
+  static const Color primaryColor05 = Color(0x0DD3A121);  // primaryColor.withOpacity(0.05)
+  static const Color primaryColorHint = Color(0x80D3A121); // primaryColor.withOpacity(0.5)
+  static const Color secondaryColor30 = Color(0x4D8B5E00); // secondaryColor.withOpacity(0.3)
+  static const Color black10 = Color(0x1A000000);          // Colors.black.withOpacity(0.1)
+  static const Color black05 = Color(0x0D000000);          // Colors.black.withOpacity(0.05)
+  static const Color white70 = Color(0xB3FFFFFF);          // Colors.white.withOpacity(0.7)
+  static const Color grey50 = Color(0x809E9E9E);           // Colors.grey.withOpacity(0.5)
+
   // Ombre e texture
   static const BoxShadow paperShadow = BoxShadow(
     color: Color(0x33000000),

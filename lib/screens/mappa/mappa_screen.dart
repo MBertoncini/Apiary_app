@@ -25,6 +25,7 @@ class _MappaScreenState extends State<MappaScreen> {
   MapController _mapController = MapController();
   bool _permissionsChecked = false;
   StorageService? _storageService;
+  bool _showRaggioVolo = true; // raggio di volo api ~3km
   
   @override
   void initState() {
@@ -566,6 +567,14 @@ class _MappaScreenState extends State<MappaScreen> {
         ),
         actions: [
           IconButton(
+            icon: Icon(
+              _showRaggioVolo ? Icons.radar : Icons.radar_outlined,
+              color: _showRaggioVolo ? Colors.amber : null,
+            ),
+            tooltip: _showRaggioVolo ? 'Nascondi raggio di volo' : 'Mostra raggio di volo (3 km)',
+            onPressed: () => setState(() => _showRaggioVolo = !_showRaggioVolo),
+          ),
+          IconButton(
             icon: Icon(Icons.sync),
             tooltip: 'Sincronizza dati',
             onPressed: _loadData,
@@ -595,6 +604,32 @@ class _MappaScreenState extends State<MappaScreen> {
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.apiario_manager',
                     ),
+                    // Raggio di volo (3 km) per ogni apiario
+                    if (_showRaggioVolo)
+                      CircleLayer(
+                        circles: _apiari.map((apiario) {
+                          try {
+                            final lat = double.parse(apiario['latitudine'].toString());
+                            final lng = double.parse(apiario['longitudine'].toString());
+                            return CircleMarker(
+                              point: LatLng(lat, lng),
+                              radius: 3000,
+                              color: Colors.amber.withOpacity(0.08),
+                              borderColor: Colors.amber.withOpacity(0.55),
+                              borderStrokeWidth: 1.5,
+                              useRadiusInMeter: true,
+                            );
+                          } catch (_) {
+                            return CircleMarker(
+                              point: LatLng(0, 0),
+                              radius: 0,
+                              color: Colors.transparent,
+                              borderColor: Colors.transparent,
+                              borderStrokeWidth: 0,
+                            );
+                          }
+                        }).toList(),
+                      ),
                     // Marker per apiari
                     MarkerLayer(
                       markers: _apiari.map((apiario) {
@@ -810,6 +845,27 @@ class _MappaScreenState extends State<MappaScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
+                          if (_showRaggioVolo)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.08),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.amber.withOpacity(0.55),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Raggio volo (3 km)'),
+                              ],
+                            ),
+                          if (_showRaggioVolo) const SizedBox(height: 4),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -903,11 +959,28 @@ class _MappaScreenState extends State<MappaScreen> {
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: "btnPosition", // Hero tag unico
-        onPressed: _getCurrentPosition,
-        child: Icon(Icons.my_location),
-        tooltip: 'Centra sulla posizione attuale',
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: "btnNuovaFiorituraMappa",
+            mini: true,
+            tooltip: 'Aggiungi fioritura',
+            onPressed: () async {
+              final result = await Navigator.of(context)
+                  .pushNamed(AppConstants.fiorituraCreateRoute);
+              if (result == true) _loadData();
+            },
+            child: Icon(Icons.eco),
+          ),
+          SizedBox(height: 8),
+          FloatingActionButton(
+            heroTag: "btnPosition",
+            onPressed: _getCurrentPosition,
+            child: Icon(Icons.my_location),
+            tooltip: 'Centra sulla posizione attuale',
+          ),
+        ],
       ),
     );
   }
@@ -964,6 +1037,18 @@ class _MappaScreenState extends State<MappaScreen> {
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
+                if ((fioritura['n_conferme'] ?? 0) > 0)
+                  ListTile(
+                    leading: Icon(Icons.people_outline, size: 18),
+                    title: Text('Conferme community'),
+                    subtitle: Text(
+                      fioritura['intensita_media'] != null
+                          ? '${fioritura['n_conferme']} apicoltori · intensità media ${(fioritura['intensita_media'] as num).toStringAsFixed(1)}/5'
+                          : '${fioritura['n_conferme']} apicoltori',
+                    ),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
               ],
             ),
           ),
@@ -971,6 +1056,17 @@ class _MappaScreenState extends State<MappaScreen> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text('Chiudi'),
+            ),
+            ElevatedButton.icon(
+              icon: Icon(Icons.open_in_new, size: 16),
+              label: Text('Dettaglio'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamed(
+                  AppConstants.fiorituraDetailRoute,
+                  arguments: fioritura['id'] as int,
+                );
+              },
             ),
           ],
         );

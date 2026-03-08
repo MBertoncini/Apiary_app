@@ -1,0 +1,11 @@
+// lib/config/api_keys.dart.example
+// Copy this file to api_keys.dart and fill in your real keys.
+// api_keys.dart is in .gitignore and must NEVER be committed.
+
+class ApiKeys {
+  // Wit.ai token — https://wit.ai
+  static const String witAiToken = 'YOUR_WIT_AI_TOKEN';
+
+  // Gemini API key — https://aistudio.google.com/app/apikey
+  static const String geminiApiKey = 'YOUR_GEMINI_API_KEY';
+}

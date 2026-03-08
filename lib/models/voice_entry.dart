@@ -169,7 +169,7 @@ class VoiceEntry {
   
   // Convert to database-ready map for "controllo" type
   Map<String, dynamic> toControlloData() {
-    return {
+    final map = <String, dynamic>{
       'apiario_id': apiarioId,
       'arnia_id': arniaId,
       'data': DateFormat('yyyy-MM-dd').format(data ?? DateTime.now()),
@@ -185,6 +185,9 @@ class VoiceEntry {
       'problemi_sanitari': problemiSanitari ?? false,
       'note': note ?? '',
     };
+    if (forzaFamiglia != null) map['forza_famiglia'] = forzaFamiglia;
+    if (tipoProblema != null) map['tipo_problema'] = tipoProblema;
+    return map;
   }
   
   // Human-readable representation of the entry
@@ -259,9 +262,9 @@ class VoiceEntry {
   
   // Check if this is a valid entry that has required fields
   bool isValid() {
-    // Minimum requirements: apiario and arnia identification
-    return (apiarioId != null || apiarioNome != null) && 
-           (arniaId != null || arniaNumero != null);
+    // Minimum requirement: at least an arnia must be identified.
+    // Apiario context is optional (can be set later in verification screen).
+    return arniaId != null || arniaNumero != null;
   }
 }
 

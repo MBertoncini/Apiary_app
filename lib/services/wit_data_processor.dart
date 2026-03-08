@@ -4,12 +4,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
+import '../config/api_keys.dart';
 import 'voice_data_processor.dart';
 
 class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
   // Constants
   static const String _witApiUrl = 'https://api.wit.ai/message';
-  static const String _witApiToken = '2NJ4OP6FZXEWAJ56GC7PET2KOKXIXJZM'; // Stesso token usato per Speech
+  static const String _witApiToken = ApiKeys.witAiToken;
   
   // Stato
   bool _isProcessing = false;

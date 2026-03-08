@@ -15,7 +15,7 @@ class PaperCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16.0),
     this.elevation = 2.0,
-    this.showTexture = true,
+    this.showTexture = false,
     this.onTap,
   }) : super(key: key);
 
@@ -30,7 +30,7 @@ class PaperCard extends StatelessWidget {
           borderRadius: ThemeConstants.paperRadius,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: ThemeConstants.black10,
               blurRadius: elevation * 2,
               spreadRadius: elevation * 0.2,
               offset: Offset(elevation * 0.5, elevation * 0.8),
@@ -81,7 +81,7 @@ class DiaryTitle extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   dividerColor ?? ThemeConstants.primaryColor,
-                  dividerColor?.withOpacity(0.3) ?? ThemeConstants.primaryColor.withOpacity(0.3),
+                  dividerColor?.withOpacity(0.3) ?? ThemeConstants.primaryColor30,
                 ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
@@ -120,8 +120,8 @@ class DiaryEntry extends StatelessWidget {
         children: [
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: ThemeConstants.primaryColor.withOpacity(0.1),
+            decoration: const BoxDecoration(
+              color: ThemeConstants.primaryColor10,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(4),
@@ -195,7 +195,7 @@ class DiaryButton extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
           side: BorderSide(
-            color: color?.withOpacity(0.5) ?? ThemeConstants.secondaryColor.withOpacity(0.3),
+            color: color?.withOpacity(0.5) ?? ThemeConstants.secondaryColor30,
             width: 1,
           ),
         ),

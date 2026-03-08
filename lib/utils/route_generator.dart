@@ -18,6 +18,7 @@ import '../screens/mobile_scanner_wrapper_screen.dart';
 import '../screens/arnia/arnia_detail_screen.dart';
 import '../screens/arnia/arnia_list_screen.dart';
 import '../screens/arnia/arnia_form_screen.dart';
+import '../screens/nucleo/nucleo_detail_screen.dart';
 import '../screens/controllo/controllo_form_screen.dart';
 import '../screens/regina/regina_list_screen.dart';
 import '../screens/regina/regina_detail_screen.dart';
@@ -47,6 +48,10 @@ import '../screens/attrezzatura/manutenzione_form_screen.dart';
 import '../screens/voice_entry_verification_screen.dart';
 import '../screens/analisi_telaino/analisi_telaino_screen.dart';
 import '../screens/analisi_telaino/analisi_telaino_list_screen.dart';
+import '../screens/fioritura/fioritura_list_screen.dart';
+import '../screens/fioritura/fioritura_form_screen.dart';
+import '../screens/fioritura/fioritura_detail_screen.dart';
+import '../models/fioritura.dart' show Fioritura;
 
 class RouteGenerator {
  
@@ -122,10 +127,17 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => ArniaListScreen());
             
       case AppConstants.arniaDetailRoute:
-        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => ArniaDetailScreen(arniaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.nucleoDetailRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => NucleoDetailScreen(nucleoId: args),
           );
         }
         return _errorRoute();
@@ -328,6 +340,25 @@ class RouteGenerator {
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => AnalisiTelainoListScreen(arniaId: args),
+          );
+        }
+        return _errorRoute();
+
+      // Routes for fioriture
+      case AppConstants.fioritureListRoute:
+        return MaterialPageRoute(builder: (_) => FiorituraListScreen());
+
+      case AppConstants.fiorituraCreateRoute:
+        return MaterialPageRoute(
+          builder: (_) => FiorituraFormScreen(
+            fioritura: args is Fioritura ? args : null,
+          ),
+        );
+
+      case AppConstants.fiorituraDetailRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            builder: (_) => FiorituraDetailScreen(fiorituraId: args),
           );
         }
         return _errorRoute();

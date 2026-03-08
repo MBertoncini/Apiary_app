@@ -25,6 +25,9 @@ class AppConstants {
   static const String arniaListRoute = "/arnie";
   static const String arniaDetailRoute = "/arnia/detail";
   static const String arniaCreateRoute = "/arnia/create";
+
+  // Route per nuclei
+  static const String nucleoDetailRoute = "/nucleo/detail";
   @Deprecated('Usa arniaCreateRoute')
   static const String creaArniaRoute = arniaCreateRoute;
   static const String controlloCreateRoute = "/controllo/create";
@@ -67,6 +70,11 @@ class AppConstants {
   static const String gruppoMembriRoute = "/gruppo/membri";
   static const String gruppoApiariRoute = "/gruppo/apiari";
   
+  // Route per fioriture
+  static const String fioritureListRoute = "/fioriture";
+  static const String fiorituraDetailRoute = "/fioritura/detail";
+  static const String fiorituraCreateRoute = "/fioritura/create";
+
   // Route per la mappa
   static const String mappaRoute = "/mappa";
   static const String mappaApiariRoute = "/mappa/apiari";

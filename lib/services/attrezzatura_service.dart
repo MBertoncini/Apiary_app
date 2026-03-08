@@ -106,10 +106,12 @@ class AttrezzaturaService {
         debugPrint('Errore creazione SpesaAttrezzatura per acquisto: $e');
       }
 
-      // Crea Pagamento
+      // Crea Pagamento: se pagato_da è specificato, il pagante è quell'utente
+      // (chi ha effettivamente sborsato il denaro), non chi ha inserito il record.
+      final pagatoDaId = data['pagato_da'] as int? ?? userId;
       try {
         await _pagamentoService.createPagamento({
-          'utente': userId,
+          'utente': pagatoDaId,
           'importo': prezzoAcquisto,
           'data': dataAcquisto,
           'descrizione': 'Acquisto attrezzatura: ${attrezzatura.nome}',

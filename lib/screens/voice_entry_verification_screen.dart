@@ -29,30 +29,59 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   String? _error;
   int _currentIndex = 0;
   List<VoiceEntry> _editedEntries = [];
-  
+  // Controllers keyed by field name, rebuilt only when the entry index changes.
+  final Map<String, TextEditingController> _controllers = {};
+
   @override
   void initState() {
     super.initState();
-    // Create deep copy of entries for editing
     _editedEntries = List.from(widget.batch.entries);
+    _rebuildControllers();
+  }
+
+  void _rebuildControllers() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    _controllers.clear();
+    if (_editedEntries.isEmpty) return;
+    final e = _editedEntries[_currentIndex];
+    _controllers['apiarioNome'] = TextEditingController(text: e.apiarioNome ?? '');
+    _controllers['arniaNumero'] = TextEditingController(text: e.arniaNumero?.toString() ?? '');
+    _controllers['numeroCelleReali'] = TextEditingController(text: e.numeroCelleReali?.toString() ?? '');
+    _controllers['telainiTotali'] = TextEditingController(text: e.telainiTotali?.toString() ?? '');
+    _controllers['telainiCovata'] = TextEditingController(text: e.telainiCovata?.toString() ?? '');
+    _controllers['telainiScorte'] = TextEditingController(text: e.telainiScorte?.toString() ?? '');
+    _controllers['tipoProblema'] = TextEditingController(text: e.tipoProblema ?? '');
+    _controllers['note'] = TextEditingController(text: e.note ?? '');
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
   }
   
   void _nextEntry() {
     if (_currentIndex < _editedEntries.length - 1) {
       setState(() {
         _currentIndex++;
+        _rebuildControllers();
       });
     }
   }
-  
+
   void _previousEntry() {
     if (_currentIndex > 0) {
       setState(() {
         _currentIndex--;
+        _rebuildControllers();
       });
     }
   }
-  
+
   void _removeEntry() {
     setState(() {
       _editedEntries.removeAt(_currentIndex);
@@ -60,6 +89,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
         _currentIndex = _editedEntries.length - 1;
       }
       if (_currentIndex < 0) _currentIndex = 0;
+      _rebuildControllers();
     });
   }
   
@@ -218,14 +248,14 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           _buildSectionTitle('Posizione'),
           _buildTextField(
             label: 'Apiario',
-            value: entry.apiarioNome,
+            controllerKey: 'apiarioNome',
             onChanged: (value) {
               _updateEntry(entry.copyWith(apiarioNome: value));
             },
           ),
           _buildTextField(
             label: 'Arnia',
-            value: entry.arniaNumero?.toString(),
+            controllerKey: 'arniaNumero',
             keyboardType: TextInputType.number,
             onChanged: (value) {
               _updateEntry(entry.copyWith(
@@ -305,7 +335,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           if (entry.celleReali == true)
             _buildTextField(
               label: 'Numero celle reali',
-              value: entry.numeroCelleReali?.toString(),
+              controllerKey: 'numeroCelleReali',
               keyboardType: TextInputType.number,
               onChanged: (value) {
                 _updateEntry(entry.copyWith(
@@ -322,7 +352,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               Expanded(
                 child: _buildTextField(
                   label: 'Totali',
-                  value: entry.telainiTotali?.toString(),
+                  controllerKey: 'telainiTotali',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     _updateEntry(entry.copyWith(
@@ -335,7 +365,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               Expanded(
                 child: _buildTextField(
                   label: 'Covata',
-                  value: entry.telainiCovata?.toString(),
+                  controllerKey: 'telainiCovata',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     _updateEntry(entry.copyWith(
@@ -348,7 +378,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               Expanded(
                 child: _buildTextField(
                   label: 'Scorte',
-                  value: entry.telainiScorte?.toString(),
+                  controllerKey: 'telainiScorte',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     _updateEntry(entry.copyWith(
@@ -397,7 +427,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           if (entry.problemiSanitari == true)
             _buildTextField(
               label: 'Tipo di problema',
-              value: entry.tipoProblema,
+              controllerKey: 'tipoProblema',
               onChanged: (value) {
                 _updateEntry(entry.copyWith(tipoProblema: value));
               },
@@ -408,7 +438,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           _buildSectionTitle('Note'),
           _buildTextField(
             label: 'Note aggiuntive',
-            value: entry.note,
+            controllerKey: 'note',
             maxLines: 3,
             onChanged: (value) {
               _updateEntry(entry.copyWith(note: value));
@@ -479,7 +509,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   
   Widget _buildTextField({
     required String label,
-    String? value,
+    required String controllerKey,
     Function(String)? onChanged,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
@@ -487,7 +517,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextField(
-        controller: TextEditingController(text: value),
+        controller: _controllers[controllerKey],
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(),

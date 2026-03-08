@@ -56,6 +56,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Cache per alerts (evita ricalcolo ad ogni build)
   List<Map<String, dynamic>> _cachedAlerts = [];
 
+  // Evita di refreshare il profilo ad ogni visita: max una volta ogni 5 minuti
+  static DateTime? _lastProfileRefresh;
+
   // Variabili per ricerca
   bool _isSearching = false;
   String _searchQuery = '';
@@ -79,10 +82,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _selectedDay = _focusedDay;
     _generateVisibleDays();
     _loadData();
-    // Aggiungi questo per forzare l'aggiornamento del profilo utente
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AuthService>(context, listen: false).refreshUserProfile();
-    });
+    // Aggiorna il profilo utente al massimo una volta ogni 5 minuti
+    final now = DateTime.now();
+    if (_lastProfileRefresh == null ||
+        now.difference(_lastProfileRefresh!) > const Duration(minutes: 5)) {
+      _lastProfileRefresh = now;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Provider.of<AuthService>(context, listen: false).refreshUserProfile();
+        }
+      });
+    }
   }
    
   void _generateVisibleDays() {
@@ -724,7 +734,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ? ThemeConstants.primaryColor
                             : ThemeConstants.textSecondaryColor,
                           backgroundColor: _calendarFormat == 'month'
-                            ? ThemeConstants.primaryColor.withOpacity(0.1)
+                            ? ThemeConstants.primaryColor10
                             : Colors.transparent,
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         ),
@@ -743,7 +753,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ? ThemeConstants.primaryColor
                             : ThemeConstants.textSecondaryColor,
                           backgroundColor: _calendarFormat == 'week'
-                            ? ThemeConstants.primaryColor.withOpacity(0.1)
+                            ? ThemeConstants.primaryColor10
                             : Colors.transparent,
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         ),
@@ -883,61 +893,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final isSelected = _isSameDay(date, _selectedDay);
               final isThisMonth = date.month == month;
               final events = _getEventsForDay(date);
-              
-              return InkWell(
+              return _CalendarDayCell(
+                date: date,
+                isToday: isToday,
+                isSelected: isSelected,
+                isThisMonth: isThisMonth,
+                events: events,
                 onTap: () => _selectDay(date),
-                child: Container(
-                  margin: EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? ThemeConstants.primaryColor.withOpacity(0.3)
-                        : events.isNotEmpty
-                            ? ThemeConstants.primaryColor.withOpacity(0.1)
-                            : null,
-                    borderRadius: BorderRadius.circular(4),
-                    border: isToday
-                        ? Border.all(
-                            color: ThemeConstants.primaryColor,
-                            width: 1,
-                          )
-                        : null,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        date.day.toString(),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isThisMonth
-                              ? isSelected
-                                  ? Colors.black
-                                  : Colors.black87
-                              : Colors.grey.withOpacity(0.5),
-                        ),
-                      ),
-                      if (events.isNotEmpty)
-                        const SizedBox(height: 4),
-                      if (events.isNotEmpty)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            for (var i = 0; i < events.length.clamp(0, 3); i++)
-                              Container(
-                                width: 6,
-                                height: 6,
-                                margin: EdgeInsets.symmetric(horizontal: 1),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: events[i]['color'],
-                                ),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
               );
             },
           ),
@@ -970,16 +932,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? ThemeConstants.primaryColor.withOpacity(0.3)
+                    ? ThemeConstants.primaryColor30
                     : events.isNotEmpty
-                        ? ThemeConstants.primaryColor.withOpacity(0.1)
+                        ? ThemeConstants.primaryColor10
                         : null,
                 borderRadius: BorderRadius.circular(8),
                 border: isToday
-                    ? Border.all(
-                        color: ThemeConstants.primaryColor,
-                        width: 2,
-                      )
+                    ? Border.all(color: ThemeConstants.primaryColor, width: 2)
                     : null,
               ),
               child: Column(
@@ -2182,6 +2141,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
     ),
+    );
+  }
+}
+
+/// Extracted calendar cell – allows Flutter to skip rebuild for unchanged cells
+class _CalendarDayCell extends StatelessWidget {
+  final DateTime date;
+  final bool isToday;
+  final bool isSelected;
+  final bool isThisMonth;
+  final List<dynamic> events;
+  final VoidCallback onTap;
+
+  const _CalendarDayCell({
+    required this.date,
+    required this.isToday,
+    required this.isSelected,
+    required this.isThisMonth,
+    required this.events,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? ThemeConstants.primaryColor30
+              : events.isNotEmpty
+                  ? ThemeConstants.primaryColor10
+                  : null,
+          borderRadius: BorderRadius.circular(4),
+          border: isToday
+              ? Border.all(color: ThemeConstants.primaryColor, width: 1)
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              date.day.toString(),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isThisMonth
+                    ? (isSelected ? Colors.black : Colors.black87)
+                    : ThemeConstants.grey50,
+              ),
+            ),
+            if (events.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var i = 0; i < events.length.clamp(0, 3); i++)
+                    Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: events[i]['color'] as Color,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

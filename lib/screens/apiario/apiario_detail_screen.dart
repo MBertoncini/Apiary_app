@@ -36,6 +36,8 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    // Rebuild quando si cambia tab, così il FAB si aggiorna
+    _tabController.addListener(() => setState(() {}));
     _loadApiario();
   }
   
@@ -614,6 +616,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           onArniaTap: _navigateToArniaDetail,
           onAddArnia: _navigateToArniaCreate,
           onEditModeChanged: (active) => setState(() => _mapEditMode = active),
+          onNucleoConverted: _loadApiario,
         ),
 
           // Tab Trattamenti
@@ -1124,11 +1127,14 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                     ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToArniaCreate,
-        child: Icon(Icons.add),
-        tooltip: 'Aggiungi arnia',
-      ),
+      // Sul tab mappa (index 1) lo SpeedDial interno al widget gestisce tutto
+      floatingActionButton: _tabController.index == 1
+          ? null
+          : FloatingActionButton(
+              onPressed: _navigateToArniaCreate,
+              child: Icon(Icons.add),
+              tooltip: 'Aggiungi arnia',
+            ),
     );
   }
 }
