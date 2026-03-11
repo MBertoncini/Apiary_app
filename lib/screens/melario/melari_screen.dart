@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../models/melario.dart';
 import '../../models/invasettamento.dart';
+import '../../models/arnia.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 
@@ -21,6 +22,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   List<Melario> _melari = [];
   List<Map<String, dynamic>> _smielature = [];
   List<Invasettamento> _invasettamenti = [];
+  List<Arnia> _arnie = [];
   bool _isLoading = true;
   String? _errorMessage;
   // null = tutti; '' = personali; non-empty = nome gruppo
@@ -45,18 +47,27 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   Future<void> _refreshAll() async {
     setState(() { _isLoading = true; _errorMessage = null; });
     try {
-      final melariRes = await _apiService.get(ApiConstants.melariUrl);
-      final smielatureRes = await _apiService.get(ApiConstants.produzioniUrl);
-      final invasettamentiRes = await _apiService.get(ApiConstants.invasettamentiUrl);
+      final results = await Future.wait([
+        _apiService.get(ApiConstants.melariUrl),
+        _apiService.get(ApiConstants.produzioniUrl),
+        _apiService.get(ApiConstants.invasettamentiUrl),
+        _apiService.get(ApiConstants.arnieUrl),
+      ]);
+      final melariRes = results[0];
+      final smielatureRes = results[1];
+      final invasettamentiRes = results[2];
+      final arnieRes = results[3];
 
       final melariList = melariRes is List ? melariRes : (melariRes['results'] as List? ?? []);
       final smielatureList = smielatureRes is List ? smielatureRes : (smielatureRes['results'] as List? ?? []);
       final invasettamentiList = invasettamentiRes is List ? invasettamentiRes : (invasettamentiRes['results'] as List? ?? []);
+      final arnieList = arnieRes is List ? arnieRes : (arnieRes['results'] as List? ?? []);
 
       setState(() {
         _melari = melariList.map((item) => Melario.fromJson(item)).toList();
         _smielature = smielatureList.map((item) => item as Map<String, dynamic>).toList();
         _invasettamenti = invasettamentiList.map((item) => Invasettamento.fromJson(item)).toList();
+        _arnie = arnieList.map((item) => Arnia.fromJson(item)).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -75,7 +86,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Melari'),
+            Tab(icon: Icon(Icons.hive, size: 18), text: 'Alveari'),
             Tab(text: 'Smielature'),
             Tab(text: 'Invasettamento'),
           ],
@@ -104,7 +115,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildMelariTab(),
+                    _buildVistaAlveariTab(),
                     _buildSmielatureTab(),
                     _buildInvasettamentoTab(),
                   ],
@@ -206,70 +217,6 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   }
 
   // ==================== MELARI TAB ====================
-
-  Widget _buildMelariTab() {
-    final filtered = _melari.where((m) => _matchesFiltro(m.apiarioGruppoNome)).toList();
-
-    if (filtered.isEmpty) {
-      return Column(children: [
-        _buildGruppoFilterBar(),
-        Expanded(child: Center(
-          child: Text(
-            'Nessun melario trovato.\nAggiungi melari dalle schede delle singole arnie.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16),
-          ),
-        )),
-      ]);
-    }
-
-    final melariPosizionati   = filtered.where((m) => m.stato == 'posizionato').toList();
-    final melariRimossi       = filtered.where((m) => m.stato == 'rimosso').toList();
-    final melariInSmielatura  = filtered.where((m) => m.stato == 'in_smielatura').toList();
-    final melariSmielati      = filtered.where((m) => m.stato == 'smielato').toList();
-
-    return Column(children: [
-      _buildGruppoFilterBar(),
-      Expanded(child: RefreshIndicator(
-        onRefresh: _refreshAll,
-        child: ListView(
-          padding: EdgeInsets.all(16),
-          children: [
-            if (melariPosizionati.isNotEmpty) ...[
-              _buildMelariSection('Melari Posizionati', melariPosizionati, Colors.green),
-              const SizedBox(height: 16),
-            ],
-            if (melariInSmielatura.isNotEmpty) ...[
-              _buildMelariSection('Melari in Smielatura', melariInSmielatura, Colors.orange),
-              const SizedBox(height: 16),
-            ],
-            if (melariRimossi.isNotEmpty) ...[
-              _buildMelariSection('Melari Rimossi', melariRimossi, Colors.blue),
-              const SizedBox(height: 16),
-            ],
-            if (melariSmielati.isNotEmpty) ...[
-              _buildMelariSection('Melari Smielati', melariSmielati, Colors.grey),
-            ],
-          ],
-        ),
-      )),
-    ]);
-  }
-
-  Widget _buildMelariSection(String title, List<Melario> melari, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-        Divider(color: color),
-        ...melari.map((melario) => MelarioListItem(
-          melario: melario,
-          onStatusChanged: _refreshAll,
-          apiService: _apiService,
-        )),
-      ],
-    );
-  }
 
   // ==================== SMIELATURE TAB ====================
 
@@ -547,180 +494,504 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       ],
     );
   }
-}
 
-class MelarioListItem extends StatelessWidget {
-  final Melario melario;
-  final VoidCallback onStatusChanged;
-  final ApiService apiService;
+  // ==================== VISTA ALVEARI TAB ====================
 
-  MelarioListItem({
-    required this.melario,
-    required this.onStatusChanged,
-    required this.apiService,
-  });
+  static const double _superW = 140.0;
+  static const double _superH = 44.0;
+  static const double _nidoH  = 80.0;
 
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      child: ListTile(
-        leading: _getStatusIcon(),
-        title: Text('Melario #${melario.id} - Arnia ${melario.arniaNumero}'),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Posizionamento: ${melario.dataPosizionamento}'),
-            if (melario.dataRimozione != null)
-              Text('Rimozione: ${melario.dataRimozione}'),
-            Text('${melario.numeroTelaini} telaini - Posizione ${melario.posizione}'),
-            if (melario.pesoStimato != null)
-              Text('Peso stimato: ${melario.pesoStimato!.toStringAsFixed(2)} kg',
-                  style: TextStyle(fontWeight: FontWeight.w500, color: Colors.amber.shade700)),
-            if (melario.apiarioGruppoNome != null)
-              Row(children: [
-                Icon(Icons.group, size: 11, color: Colors.indigo),
-                SizedBox(width: 3),
-                Text(melario.apiarioGruppoNome!, style: TextStyle(fontSize: 11, color: Colors.indigo)),
-              ]),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: _buildActionButton(context),
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('Dettaglio Melario'),
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('ID: ${melario.id}'),
-                    Text('Arnia: ${melario.arniaNumero}'),
-                    Text('Apiario: ${melario.apiarioNome}'),
-                    Text('Stato: ${_getStatusDisplay()}'),
-                    Text('Numero telaini: ${melario.numeroTelaini}'),
-                    Text('Posizione: ${melario.posizione}'),
-                    Text('Data posizionamento: ${melario.dataPosizionamento}'),
-                    if (melario.dataRimozione != null)
-                      Text('Data rimozione: ${melario.dataRimozione}'),
-                    if (melario.pesoStimato != null)
-                      Text('Peso stimato: ${melario.pesoStimato!.toStringAsFixed(2)} kg'),
-                    if (melario.note != null && melario.note!.isNotEmpty)
-                      Text('Note: ${melario.note}'),
-                  ],
+  Widget _buildVistaAlveariTab() {
+    final activeMelari = _melari
+        .where((m) => m.stato == 'posizionato' || m.stato == 'in_smielatura')
+        .toList();
+
+    // Group melari by arnia ID
+    final Map<int, List<Melario>> melariByArnia = {};
+    for (final m in activeMelari) {
+      melariByArnia.putIfAbsent(m.arnia, () => []).add(m);
+    }
+
+    // Group arnie by apiario
+    final Map<int, List<Arnia>> arnieByApiario = {};
+    for (final a in _arnie.where((a) => a.attiva)) {
+      arnieByApiario.putIfAbsent(a.apiario, () => []).add(a);
+    }
+
+    // Collect all apiario IDs (from arnie and from melari)
+    final apiarioNomi = <int, String>{};
+    for (final m in _melari) {
+      apiarioNomi[m.apiarioId] = m.apiarioNome;
+    }
+    for (final a in _arnie) {
+      apiarioNomi[a.apiario] = a.apiarioNome;
+    }
+    final allApiarioIds = apiarioNomi.keys.toList()..sort();
+
+    if (allApiarioIds.isEmpty) {
+      return Center(child: Text('Nessun dato disponibile'));
+    }
+
+    final totPosizionati  = _melari.where((m) => m.stato == 'posizionato').length;
+    final totInSmielatura = _melari.where((m) => m.stato == 'in_smielatura').length;
+
+    return RefreshIndicator(
+      onRefresh: _refreshAll,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildHiveStats(totPosizionati, totInSmielatura),
+          const SizedBox(height: 12),
+          _buildHiveLegend(),
+          const SizedBox(height: 16),
+          ...allApiarioIds.map((apiarioId) {
+            final arnieInApiario = (arnieByApiario[apiarioId] ?? [])
+              ..sort((a, b) => a.numero.compareTo(b.numero));
+
+            // Collect arnia IDs that have melari but may not be in _arnie list
+            final arniaIdsFromMelari = _melari
+                .where((m) => m.apiarioId == apiarioId)
+                .map((m) => m.arnia)
+                .toSet();
+            final arniaIdsFromArnie = arnieInApiario.map((a) => a.id).toSet();
+            final extraIds = arniaIdsFromMelari.difference(arniaIdsFromArnie);
+
+            // Build a combined ordered list of Arnia objects
+            final arnieToShow = [...arnieInApiario];
+            for (final extraId in extraIds) {
+              final m = _melari.firstWhere((m) => m.arnia == extraId, orElse: () => _melari.first);
+              arnieToShow.add(Arnia(
+                id: extraId, apiario: apiarioId, apiarioNome: apiarioNomi[apiarioId] ?? '',
+                numero: m.arniaNumero, colore: '', coloreHex: '#F5A623',
+                dataInstallazione: '', attiva: true,
+              ));
+            }
+            arnieToShow.sort((a, b) => a.numero.compareTo(b.numero));
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  apiarioNomi[apiarioId] ?? 'Apiario $apiarioId',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeConstants.primaryColor,
+                  ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Chiudi'),
-                  onPressed: () => Navigator.of(context).pop(),
+                Divider(color: ThemeConstants.primaryColor.withOpacity(0.3)),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: arnieToShow.map((arnia) {
+                      final melariOnArnia = melariByArnia[arnia.id] ?? [];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 20),
+                        child: _buildHiveCol(arnia, melariOnArnia),
+                      );
+                    }).toList(),
+                  ),
                 ),
+                const SizedBox(height: 28),
               ],
-            ),
-          );
-        },
+            );
+          }).toList(),
+        ],
       ),
     );
   }
 
-  String _getStatusDisplay() {
-    switch (melario.stato) {
-      case 'posizionato': return 'Posizionato';
-      case 'rimosso': return 'Rimosso';
-      case 'in_smielatura': return 'In Smielatura';
-      case 'smielato': return 'Smielato';
-      default: return melario.stato;
+  Widget _buildHiveCol(Arnia arnia, List<Melario> melariOnArnia) {
+    // Sort: highest posizione at top visually (rendered first in column)
+    final activeMelari = melariOnArnia
+        .where((m) => m.stato == 'posizionato' || m.stato == 'in_smielatura')
+        .toList()
+      ..sort((a, b) => b.posizione.compareTo(a.posizione));
+
+    final hasQE = activeMelari.any((m) => m.escludiRegina);
+
+    Color arniaColor;
+    try {
+      arniaColor = Color(int.parse(arnia.coloreHex.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      arniaColor = const Color(0xFFF5A623);
     }
-  }
 
-  Widget _getStatusIcon() {
-    switch (melario.stato) {
-      case 'posizionato': return Icon(Icons.check_circle, color: Colors.green);
-      case 'rimosso': return Icon(Icons.remove_circle, color: Colors.blue);
-      case 'in_smielatura': return Icon(Icons.hourglass_top, color: Colors.orange);
-      case 'smielato': return Icon(Icons.done_all, color: Colors.grey);
-      default: return Icon(Icons.help);
-    }
-  }
-
-  Widget? _buildActionButton(BuildContext context) {
-    final deleteButton = IconButton(
-      icon: Icon(Icons.delete, color: Colors.red),
-      tooltip: 'Elimina melario',
-      onPressed: () => _confirmDeleteMelario(context),
-    );
-
-    switch (melario.stato) {
-      case 'posizionato':
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(Icons.remove_circle_outline, color: Colors.blue),
-              tooltip: 'Rimuovi melario',
-              onPressed: () => _showRemoveDialog(context),
-            ),
-            deleteButton,
+    return SizedBox(
+      width: _superW + 20,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Add melario button
+          _buildAddSuperBtn(arnia.id),
+          const SizedBox(height: 4),
+          // Melari stacked
+          ...activeMelari.map((m) => Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: _buildMelarioBox(m),
+          )),
+          // Queen excluder
+          if (hasQE) ...[
+            _buildQEBar(),
+            const SizedBox(height: 2),
           ],
-        );
-      case 'rimosso':
-        return Row(
+          // Nido
+          _buildNidoBox(),
+          const SizedBox(height: 3),
+          // Base board
+          Container(
+            width: _superW + 10,
+            height: 8,
+            decoration: BoxDecoration(
+              color: const Color(0xFF3D200A),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Legs
+          SizedBox(
+            width: _superW - 18,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [_buildLeg(), _buildLeg()],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Label
+          _buildArniaLabel(arnia.numero, arniaColor, activeMelari.length),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMelarioBox(Melario m) {
+    final isPosizionato  = m.stato == 'posizionato';
+    final isInSmielatura = m.stato == 'in_smielatura';
+
+    List<Color> gradientColors;
+    Color borderColor;
+    Color textColor;
+
+    if (isPosizionato) {
+      gradientColors = [const Color(0xFFFFCF70), const Color(0xFFF5A623), const Color(0xFFE08C15)];
+      borderColor = const Color(0xFFC07A0A);
+      textColor   = const Color(0xFF5C3A00);
+    } else if (isInSmielatura) {
+      gradientColors = [const Color(0xFFFFAF5A), const Color(0xFFFF7A00), const Color(0xFFE06200)];
+      borderColor = const Color(0xFFC05000);
+      textColor   = Colors.white;
+    } else {
+      gradientColors = [const Color(0xFFD8EEF5), const Color(0xFFB8D8E8)];
+      borderColor = Colors.grey.shade400;
+      textColor   = Colors.grey.shade700;
+    }
+
+    String tipoLabel;
+    switch (m.tipoMelario) {
+      case 'tre_quarti': tipoLabel = '3/4'; break;
+      case 'meta':       tipoLabel = '1/2'; break;
+      default:           tipoLabel = 'Std'; break;
+    }
+
+    return GestureDetector(
+      onTap: () => _showMelarioBottomSheet(m),
+      child: Container(
+        width: _superW,
+        height: _superH,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+            stops: gradientColors.length == 3 ? const [0.0, 0.55, 1.0] : const [0.0, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: borderColor, width: 1.5),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 2, offset: const Offset(0, 1))],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('🍯 ${m.numeroTelaini} favi',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textColor)),
+                Text('Pos. ${m.posizione} · $tipoLabel',
+                    style: TextStyle(fontSize: 9, color: textColor.withOpacity(0.75))),
+              ],
+            ),
+            if (isInSmielatura)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.22),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text('Smiel.', style: TextStyle(fontSize: 8, color: textColor)),
+              )
+            else if (isPosizionato)
+              Icon(Icons.touch_app, size: 14, color: textColor.withOpacity(0.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQEBar() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: _superW,
+          height: 7,
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFC8B08A), width: 1),
+            borderRadius: BorderRadius.circular(1),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(1),
+            child: CustomPaint(painter: _QEPainter()),
+          ),
+        ),
+        Positioned(
+          right: -26,
+          top: -3,
+          child: Text('QE',
+              style: TextStyle(fontSize: 8, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNidoBox() {
+    return Container(
+      width: _superW,
+      constraints: const BoxConstraints(minHeight: _nidoH),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFA06840), Color(0xFF7A4E2A), Color(0xFF5C3518)],
+          stops: [0.0, 0.5, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFF3D200A), width: 1.5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '🐝 NIDO',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFFFE4B5).withOpacity(0.8),
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeg() {
+    return Container(
+      width: 10,
+      height: 18,
+      decoration: const BoxDecoration(
+        color: Color(0xFF3D200A),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(4),
+          bottomRight: Radius.circular(4),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddSuperBtn(int arniaId) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          AppConstants.melarioCreateRoute,
+          arguments: {'arniaId': arniaId},
+        ).then((result) { if (result == true) _refreshAll(); });
+      },
+      child: Container(
+        width: _superW,
+        height: 28,
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFF5A623), width: 1.5),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.add, size: 14, color: Color(0xFFF5A623)),
+            const Text(' Melario',
+                style: TextStyle(fontSize: 11, color: Color(0xFFF5A623), fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArniaLabel(int numero, Color color, int melariCount) {
+    return Column(
+      children: [
+        Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: Icon(Icons.local_drink, color: Colors.orange),
-              tooltip: 'Invia in smielatura',
-              onPressed: () async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text('Invia in smielatura'),
-                    content: Text('Confermi di voler inviare questo melario in smielatura?'),
-                    actions: [
-                      TextButton(child: Text('Annulla'), onPressed: () => Navigator.of(context).pop(false)),
-                      TextButton(child: Text('Conferma'), onPressed: () => Navigator.of(context).pop(true)),
-                    ],
-                  ),
-                );
-                if (confirmed == true) {
-                  try {
-                    await apiService.post('${ApiConstants.melariUrl}${melario.id}/smielatura/', {});
-                    onStatusChanged();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
-                  }
-                }
+            Container(
+              width: 10, height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 4),
+            Text('Arnia #$numero',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        Text(
+          melariCount == 0
+              ? 'nessun melario'
+              : '$melariCount melari${melariCount == 1 ? 'o' : 'i'}',
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHiveStats(int posizionati, int inSmielatura) {
+    return Row(
+      children: [
+        Expanded(child: Card(
+          color: const Color(0xFFFFF3D0),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: Column(children: [
+              Text('$posizionati',
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFF5A623))),
+              Text('Posizionati', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+            ]),
+          ),
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: Card(
+          color: const Color(0xFFFFF0E0),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: Column(children: [
+              Text('$inSmielatura',
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFF7A00))),
+              Text('In smielatura', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+            ]),
+          ),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildHiveLegend() {
+    return Wrap(
+      spacing: 12, runSpacing: 4,
+      children: [
+        _legendItem(const Color(0xFF7A4E2A), 'Nido'),
+        _legendItem(const Color(0xFFF5A623), 'Posizionato'),
+        _legendItem(const Color(0xFFFF7A00), 'In smielatura'),
+      ],
+    );
+  }
+
+  Widget _legendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14, height: 14,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+      ],
+    );
+  }
+
+  void _showMelarioBottomSheet(Melario m) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Melario #${m.id}',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('${m.numeroTelaini} telaini · Posizione ${m.posizione} · ${_tipoLabel(m.tipoMelario)}'),
+            if (m.pesoStimato != null)
+              Text('Peso stimato: ${m.pesoStimato!.toStringAsFixed(1)} kg',
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 12),
+            if (m.stato == 'posizionato')
+              ListTile(
+                leading: const Icon(Icons.remove_circle_outline, color: Colors.blue),
+                title: const Text('Rimuovi melario'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showRemoveDialogFromView(m);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Elimina melario'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDeleteFromView(m);
               },
             ),
-            deleteButton,
           ],
-        );
-      default:
-        return deleteButton;
+        ),
+      ),
+    );
+  }
+
+  String _tipoLabel(String tipo) {
+    switch (tipo) {
+      case 'tre_quarti': return '3/4';
+      case 'meta':       return '1/2';
+      default:           return 'Standard';
     }
   }
 
-  void _showRemoveDialog(BuildContext context) {
-    final pesoController = TextEditingController();
-
+  void _showRemoveDialogFromView(Melario m) {
+    final pesoCtrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Rimuovi melario'),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rimuovi melario'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Confermi di voler rimuovere questo melario dall\'arnia?'),
-            SizedBox(height: 16),
+            const Text('Confermi di voler rimuovere questo melario?'),
+            const SizedBox(height: 16),
             TextField(
-              controller: pesoController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
+              controller: pesoCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
                 labelText: 'Peso stimato (kg)',
-                hintText: 'Es: 12.5',
                 border: OutlineInputBorder(),
                 suffixText: 'kg',
               ),
@@ -728,60 +999,74 @@ class MelarioListItem extends StatelessWidget {
           ],
         ),
         actions: [
-          TextButton(child: Text('Annulla'), onPressed: () => Navigator.of(context).pop()),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
           TextButton(
-            child: Text('Conferma'),
             onPressed: () async {
-              Navigator.of(context).pop();
+              Navigator.pop(ctx);
               try {
-                final peso = double.tryParse(pesoController.text);
-                // First update peso_stimato if provided
-                if (peso != null) {
-                  await apiService.put(
-                    '${ApiConstants.melariUrl}${melario.id}/',
-                    {...melario.toJson(), 'peso_stimato': peso, 'stato': 'rimosso', 'data_rimozione': DateTime.now().toIso8601String().split('T')[0]},
-                  );
-                } else {
-                  await apiService.put(
-                    '${ApiConstants.melariUrl}${melario.id}/',
-                    {...melario.toJson(), 'stato': 'rimosso', 'data_rimozione': DateTime.now().toIso8601String().split('T')[0]},
-                  );
-                }
-                onStatusChanged();
+                final peso = double.tryParse(pesoCtrl.text);
+                await _apiService.put(
+                  '${ApiConstants.melariUrl}${m.id}/',
+                  {
+                    ...m.toJson(),
+                    'stato': 'rimosso',
+                    'data_rimozione': DateTime.now().toIso8601String().split('T')[0],
+                    if (peso != null) 'peso_stimato': peso,
+                  },
+                );
+                _refreshAll();
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
               }
             },
+            child: const Text('Conferma'),
           ),
         ],
       ),
     );
   }
 
-  void _confirmDeleteMelario(BuildContext context) {
+  void _confirmDeleteFromView(Melario m) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Elimina Melario'),
-        content: Text('Sei sicuro di voler eliminare il melario #${melario.id} dell\'arnia ${melario.arniaNumero}?'),
+        title: const Text('Elimina melario'),
+        content: Text('Eliminare il melario #${m.id}?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Annulla')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await apiService.delete('${ApiConstants.melariUrl}${melario.id}/');
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Melario eliminato con successo')));
-                onStatusChanged();
+                await _apiService.delete('${ApiConstants.melariUrl}${m.id}/');
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Melario eliminato')));
+                _refreshAll();
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore durante l\'eliminazione: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: const Text('Elimina'),
           ),
         ],
       ),
     );
   }
+}
+
+class _QEPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD0C0A0)
+      ..strokeWidth = 3;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+      x += 6;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_QEPainter oldDelegate) => false;
 }
