@@ -1,0 +1,329 @@
+  ---
+  Modulo Vendite e Clienti — Apiary Manager
+
+  Documento tecnico di specifica funzionale
+  Flutter mobile app — Backend Django/DRF su PythonAnywhere
+
+  ---
+  1. Panoramica generale
+
+  Il modulo gestisce la pipeline di vendita del miele prodotto dall'apiario. Consente di censire una rubrica di clienti
+  e di registrare le singole transazioni di vendita, ciascuna composta da uno o più articoli (tipo di miele × formato
+  vasetto × quantità × prezzo). I dati risiedono esclusivamente sul server (nessuna cache locale): ogni operazione è una
+   chiamata REST autenticata verso il backend Django.
+
+  ---
+  2. Modello dati
+
+  2.1 Cliente
+
+  ┌─────────────────┬─────────┬──────────────┬─────────────────────────────────┐
+  │      Campo      │  Tipo   │ Obbligatorio │              Note               │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ id              │ int     │ — (server)   │ PK auto-incrementale            │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ nome            │ String  │ ✓            │ Nome o ragione sociale          │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ telefono        │ String? │ —            │                                 │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ email           │ String? │ —            │                                 │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ indirizzo       │ String? │ —            │ Max 2 righe nel form            │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ note            │ String? │ —            │ Testo libero                    │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ utente          │ int     │ — (server)   │ FK all'utente proprietario      │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ utente_username │ String? │ — (server)   │ Denormalizzato, solo lettura    │
+  ├─────────────────┼─────────┼──────────────┼─────────────────────────────────┤
+  │ vendite_count   │ int?    │ — (server)   │ Aggregato calcolato dal backend │
+  └─────────────────┴─────────┴──────────────┴─────────────────────────────────┘
+
+  2.2 Vendita
+
+  ┌────────────────────┬────────────────────────┬──────────────┬────────────────────────────────┐
+  │       Campo        │          Tipo          │ Obbligatorio │              Note              │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ id                 │ int                    │ — (server)   │ PK                             │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ data               │ String (ISO 8601 date) │ ✓            │ Data della transazione         │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ cliente            │ int                    │ ✓            │ FK a Cliente                   │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ cliente_nome       │ String?                │ — (server)   │ Denormalizzato                 │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ utente             │ int                    │ — (server)   │ FK all'utente                  │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ utente_username    │ String?                │ — (server)   │ Denormalizzato                 │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ note               │ String?                │ —            │                                │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ data_registrazione │ String?                │ — (server)   │ Timestamp creazione automatico │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ dettagli           │ List<DettaglioVendita> │ —            │ Array embedded nella risposta  │
+  ├────────────────────┼────────────────────────┼──────────────┼────────────────────────────────┤
+  │ totale             │ double?                │ — (server)   │ Somma calcolata server-side    │
+  └────────────────────┴────────────────────────┴──────────────┴────────────────────────────────┘
+
+  2.3 DettaglioVendita (riga ordine)
+
+  ┌─────────────────┬─────────┬──────────────┬───────────────────────────────────────────────────┐
+  │      Campo      │  Tipo   │ Obbligatorio │                       Note                        │
+  ├─────────────────┼─────────┼──────────────┼───────────────────────────────────────────────────┤
+  │ id              │ int?    │ — (server)   │ PK                                                │
+  ├─────────────────┼─────────┼──────────────┼───────────────────────────────────────────────────┤
+  │ vendita         │ int?    │ — (server)   │ FK alla Vendita                                   │
+  ├─────────────────┼─────────┼──────────────┼───────────────────────────────────────────────────┤
+  │ tipo_miele      │ String  │ ✓            │ Testo libero (es. "Acacia", "Millefiori")         │
+  ├─────────────────┼─────────┼──────────────┼───────────────────────────────────────────────────┤
+  │ formato_vasetto │ int     │ ✓            │ Enum: 250, 500, 1000 (grammi)                     │
+  ├─────────────────┼─────────┼──────────────┼───────────────────────────────────────────────────┤
+  │ quantita        │ int     │ ✓            │ Numero di vasetti                                 │
+  ├─────────────────┼─────────┼──────────────┼───────────────────────────────────────────────────┤
+  │ prezzo_unitario │ double  │ ✓            │ Prezzo del singolo vasetto                        │
+  ├─────────────────┼─────────┼──────────────┼───────────────────────────────────────────────────┤
+  │ subtotale       │ double? │ — (server)   │ quantita × prezzo_unitario, calcolato server-side │
+  └─────────────────┴─────────┴──────────────┴───────────────────────────────────────────────────┘
+
+  ---
+  3. Endpoint REST
+
+  Tutti gli endpoint usano il prefisso https://cible99.pythonanywhere.com/api/v1/.
+
+  ┌─────────────────────────┬────────┬───────────────────────────────────┐
+  │       Operazione        │ Metodo │                URL                │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Lista clienti           │ GET    │ /clienti/                         │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Crea cliente            │ POST   │ /clienti/                         │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Dettaglio cliente       │ GET    │ /clienti/{id}/                    │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Modifica cliente        │ PUT    │ /clienti/{id}/                    │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Elimina cliente         │ DELETE │ /clienti/{id}/                    │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Lista vendite           │ GET    │ /vendite/                         │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Crea vendita            │ POST   │ /vendite/                         │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Dettaglio vendita       │ GET    │ /vendite/{id}/                    │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Modifica vendita        │ PUT    │ /vendite/{id}/                    │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Elimina vendita         │ DELETE │ /vendite/{id}/                    │
+  ├─────────────────────────┼────────┼───────────────────────────────────┤
+  │ Aggiungi riga a vendita │ POST   │ /vendite/{id}/aggiungi_dettaglio/ │
+  └─────────────────────────┴────────┴───────────────────────────────────┘
+
+  La lista supporta sia risposta paginata ({ "results": [...] }) sia array semplice — il client gestisce entrambe le
+  forme.
+
+  ---
+  4. Architettura delle schermate
+
+  Il modulo è composto da 4 schermate Flutter + il router named-route:
+
+  VenditeScreen          → /vendite
+  VenditaDetailScreen    → /vendita/detail  (arg: int venditaId)
+  VenditaFormScreen      → /vendita/create  (arg: int? venditaId — null = creazione)
+  ClienteFormScreen      → /cliente/create  (arg: int? clienteId — null = creazione)
+
+  ---
+  5. Funzionalità dettagliate per schermata
+
+  5.1 VenditeScreen — Lista vendite e clienti
+
+  Entry point del modulo, accessibile dal drawer di navigazione globale.
+
+  Struttura UI:
+  - AppBar con titolo "Vendite", pulsante refresh manuale (icona), e due tab: Vendite | Clienti
+  - FloatingActionButton contestuale: cambia target in base al tab attivo
+    - Tab Vendite → naviga a VenditaFormScreen (creazione)
+    - Tab Clienti → naviga a ClienteFormScreen (creazione)
+  - RefreshIndicator su entrambi i tab (pull-to-refresh)
+  - Gestione stati: loading spinner / messaggio di errore con "Riprova" / lista vuota
+
+  Tab Vendite — ogni Card mostra:
+  - Icona ricevuta
+  - Nome cliente (o "Cliente #ID" se il nome non è disponibile)
+  - Data + numero di articoli nel dettaglio
+  - Totale in grassetto (es. 12.50 €) allineato a destra
+  - onTap → naviga a VenditaDetailScreen; al ritorno ricarica la lista
+
+  Tab Clienti — ogni Card mostra:
+  - Icona persona
+  - Nome cliente
+  - Telefono e/o email (concatenati con " - " se entrambi presenti)
+  - Contatore vendite effettuate (es. 3 vendite)
+  - onTap → naviga a ClienteFormScreen in modalità modifica; al ritorno ricarica la lista
+
+  Caricamento dati: le due liste (vendite e clienti) vengono recuperate in parallelo con due GET simultanee al montaggio
+   del widget.
+
+  ---
+  5.2 VenditaFormScreen — Creazione / modifica vendita
+
+  Schermata duale: funziona sia come form di nuova vendita che di modifica in base al parametro venditaId ricevuto.
+
+  Campi del form:
+
+  ┌─────────┬───────────────────────────────────────────────────────────────┬─────────────────────────────────────┐
+  │  Campo  │                            Widget                             │             Validazione             │
+  ├─────────┼───────────────────────────────────────────────────────────────┼─────────────────────────────────────┤
+  │ Cliente │ DropdownButtonFormField popolato con lista clienti dal server │ Obbligatorio                        │
+  ├─────────┼───────────────────────────────────────────────────────────────┼─────────────────────────────────────┤
+  │ Data    │ InkWell + InputDecorator che apre DatePicker                  │ Default: oggi; range 2020 → +1 anno │
+  ├─────────┼───────────────────────────────────────────────────────────────┼─────────────────────────────────────┤
+  │ Note    │ TextFormField multiriga (3 righe)                             │ Opzionale                           │
+  └─────────┴───────────────────────────────────────────────────────────────┴─────────────────────────────────────┘
+
+  Sezione articoli (dettagli):
+
+  Ogni riga è un _DettaglioItem con stato locale, renderizzato come Card:
+  - TextFormField "Tipo miele" (testo libero, obbligatorio)
+  - DropdownButtonFormField "Formato": 250g / 500g / 1000g (default 500g)
+  - TextFormField "Qty" (numerico intero, obbligatorio)
+  - TextFormField "Prezzo €" (numerico decimale, obbligatorio)
+  - Subtotale calcolato in real-time (quantita × prezzo_unitario) mostrato in grigio sotto ogni riga
+
+  Pulsanti per gestire le righe:
+  - "Aggiungi articolo" (OutlinedButton + icona +) aggiunge una nuova riga vuota
+  - Icona cestino su ogni riga (visibile solo se ci sono ≥ 2 righe) rimuove quella specifica
+
+  Totale generale: Card evidenziata (sfondo ambra) con il totale aggregato di tutti gli articoli, aggiornato in
+  real-time.
+
+  Salvataggio (flusso a due passi):
+  1. POST /vendite/ oppure PUT /vendite/{id}/ per la testata (cliente, data, note)
+  2. Per ogni riga dettaglio: POST /vendite/{venditaId}/aggiungi_dettaglio/ — chiamate sequenziali, una per riga
+
+  Modalità modifica: al caricamento, recupera la vendita dal server e pre-popola tutti i campi incluse le righe
+  dettaglio.
+
+  ---
+  5.3 VenditaDetailScreen — Dettaglio vendita
+
+  Visualizzazione read-only di una singola vendita con gestione CRUD inline.
+
+  AppBar actions:
+  - Icona matita → naviga a VenditaFormScreen in modalità modifica; al ritorno ricarica
+  - Icona cestino → AlertDialog di conferma → DELETE /vendite/{id}/ → torna alla lista
+
+  Layout body:
+  - Card superiore con:
+    - Totale in grande (28sp, colore primario, centrato)
+    - Data transazione
+    - Nome cliente
+    - Note (solo se presenti)
+  - Lista di Card per ogni riga dettaglio:
+    - Titolo: {tipo_miele} - {formato}g
+    - Sottotitolo: {qty} x {prezzo} €
+    - Trailing: subtotale della riga in grassetto
+
+  Gestione errori: usa i widget riutilizzabili LoadingWidget e ErrorDisplayWidget (con pulsante retry).
+
+  ---
+  5.4 ClienteFormScreen — Creazione / modifica cliente
+
+  Form duale per gestione anagrafica clienti.
+
+  Campi:
+
+  ┌───────────┬────────────────────────────┬──────────────┐
+  │   Campo   │         Tipo input         │ Validazione  │
+  ├───────────┼────────────────────────────┼──────────────┤
+  │ Nome      │ Testo                      │ Obbligatorio │
+  ├───────────┼────────────────────────────┼──────────────┤
+  │ Telefono  │ TextInputType.phone        │ Opzionale    │
+  ├───────────┼────────────────────────────┼──────────────┤
+  │ Email     │ TextInputType.emailAddress │ Opzionale    │
+  ├───────────┼────────────────────────────┼──────────────┤
+  │ Indirizzo │ Testo multiriga (2 righe)  │ Opzionale    │
+  ├───────────┼────────────────────────────┼──────────────┤
+  │ Note      │ Testo multiriga (3 righe)  │ Opzionale    │
+  └───────────┴────────────────────────────┴──────────────┘
+
+  AppBar: in modalità modifica mostra icona cestino → AlertDialog di conferma → DELETE /clienti/{id}/ → torna alla
+  lista.
+
+  Salvataggio:
+  - Creazione: POST /clienti/
+  - Modifica: PUT /clienti/{id}/
+  - I campi opzionali vuoti vengono inviati come null (non stringa vuota)
+
+  ---
+  6. Flussi di navigazione
+
+  Drawer
+    └── VenditeScreen (/vendite)
+          ├── [Tab Vendite] Card.onTap ──→ VenditaDetailScreen
+          │     ├── Icona Edit ──────────→ VenditaFormScreen (modifica)
+          │     └── Icona Delete ────────→ DELETE + pop
+          ├── [Tab Vendite] FAB ──────────→ VenditaFormScreen (nuovo)
+          ├── [Tab Clienti] Card.onTap ───→ ClienteFormScreen (modifica)
+          └── [Tab Clienti] FAB ──────────→ ClienteFormScreen (nuovo)
+
+  Ogni navigazione con .then((_) => _loadData()) garantisce il refresh della lista al ritorno.
+
+  ---
+  7. Gestione autenticazione
+
+  Tutte le chiamate passano per ApiService, che:
+  - Inietta il JWT Bearer token nell'header Authorization
+  - Gestisce il refresh automatico del token alla scadenza con retry della chiamata originale
+  - Lancia eccezioni in caso di errore HTTP, catturate da ogni schermata con try/catch e presentate tramite SnackBar
+
+  ---
+  8. Limitazioni e note tecniche attuali
+
+  ┌────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────┐
+  │      Aspetto       │                                           Stato                                            │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Nessuna cache      │ Ogni apertura schermata richiede connettività — nessuna modalità offline                   │
+  │ locale             │                                                                                            │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Modifica dettagli  │ In modalità edit, i dettagli esistenti vengono ri-aggiunti tramite aggiungi_dettaglio: il  │
+  │                    │ backend deve gestire la sostituzione (non è un PUT sui singoli dettagli)                   │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Filtraggio/ricerca │ Non implementato — la lista mostra tutte le vendite/clienti dell'utente senza filtri       │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Ordinamento        │ Dipende dall'ordinamento restituito dal server (nessun sort lato client)                   │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Paginazione        │ Il client legge results[] se la risposta è paginata, ma non implementa caricamento pagine  │
+  │                    │ successive (carica solo la prima pagina)                                                   │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Tipo miele         │ Campo testo libero — non è un enum/dropdown con valori predefiniti                         │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Dettaglio cliente  │ Non esiste una schermata dedicata con lo storico vendite per cliente — il vendite_count è  │
+  │                    │ visibile solo nella lista                                                                  │
+  └────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  9. File sorgente di riferimento
+
+  ┌────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+  │                      File                      │                  Responsabilità                  │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/models/vendita.dart                        │ DTO Vendita + DettaglioVendita (fromJson/toJson) │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/models/cliente.dart                        │ DTO Cliente (fromJson/toJson)                    │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/screens/vendita/vendite_screen.dart        │ Lista con tab Vendite/Clienti                    │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/screens/vendita/vendita_form_screen.dart   │ Form creazione/modifica vendita                  │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/screens/vendita/vendita_detail_screen.dart │ Dettaglio vendita con edit/delete                │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/screens/vendita/cliente_form_screen.dart   │ Form creazione/modifica cliente                  │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/constants/api_constants.dart               │ URL base: /api/v1/vendite/, /api/v1/clienti/     │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/constants/app_constants.dart               │ Route names: /vendite, /vendita/detail, ecc.     │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ lib/utils/route_generator.dart                 │ Named-route router con passaggio argomenti       │
+  └────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+  ---
+  Il documento descrive lo stato del codice attuale (marzo 2026). Le limitazioni nella sezione 8 possono essere usate
+  come base per un backlog di miglioramenti.
