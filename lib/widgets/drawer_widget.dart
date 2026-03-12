@@ -192,6 +192,32 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, AppConstants.voiceCommandRoute),
           ),
 
+          // Offrici un caffè
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFF5A623).withOpacity(0.18),
+                  const Color(0xFFF5A623).withOpacity(0.06),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ListTile(
+              leading: const Text('☕', style: TextStyle(fontSize: 20)),
+              title: const Text(
+                'Offrici un caffè',
+                style: TextStyle(
+                  color: Color(0xFFD4880A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              selected: currentRoute == AppConstants.donazioneRoute,
+              onTap: () => _navigateTo(context, AppConstants.donazioneRoute),
+            ),
+          ),
+
           // Logout
           ListTile(
             leading: Icon(Icons.logout),

@@ -52,6 +52,7 @@ import '../screens/fioritura/fioritura_list_screen.dart';
 import '../screens/fioritura/fioritura_form_screen.dart';
 import '../screens/fioritura/fioritura_detail_screen.dart';
 import '../models/fioritura.dart' show Fioritura;
+import '../screens/donazione/donazione_screen.dart';
 
 class RouteGenerator {
  
@@ -322,6 +323,9 @@ class RouteGenerator {
 
       case AppConstants.chatRoute:
         return MaterialPageRoute(builder: (_) => ChatScreen());
+
+      case AppConstants.donazioneRoute:
+        return MaterialPageRoute(builder: (_) => const DonazioneScreen());
         
       // Route for voice input with Wit.ai - Updated to use the new class
       case AppConstants.voiceCommandRoute:

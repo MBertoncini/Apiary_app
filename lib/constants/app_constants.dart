@@ -95,6 +95,9 @@ class AppConstants {
 
   // Route per chat
   static const String chatRoute = "/chat";
+
+  // Route per donazione / feedback
+  static const String donazioneRoute = "/donazione";
   
   // Route per QR scanner
   static const String qrScannerRoute = "/qr_scanner";
