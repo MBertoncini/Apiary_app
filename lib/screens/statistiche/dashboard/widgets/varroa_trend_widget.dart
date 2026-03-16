@@ -1,0 +1,126 @@
+import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../../../../services/statistiche_service.dart';
+
+class VarroaTrendWidget extends StatefulWidget {
+  final StatisticheService service;
+  const VarroaTrendWidget({super.key, required this.service});
+
+  @override
+  State<VarroaTrendWidget> createState() => _VarroaTrendWidgetState();
+}
+
+class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
+  Map<String, dynamic>? _data;
+  String? _error;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final data = await widget.service.getVarroaTrend();
+      setState(() { _data = data; _loading = false; });
+    } catch (e) {
+      setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.bug_report, color: Color(0xFFD4A017)),
+                const SizedBox(width: 8),
+                const Text('Trattamenti Sanitari nel Tempo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(icon: const Icon(Icons.refresh, size: 18), onPressed: _load),
+              ],
+            ),
+            const Divider(),
+            if (_loading)
+              const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            else if (_error != null)
+              Center(child: Column(children: [const Icon(Icons.error_outline, color: Colors.red), TextButton(onPressed: _load, child: const Text('Riprova'))]))
+            else if (_data != null)
+              _buildChart(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChart() {
+    final mesi = List<String>.from(_data!['mesi'] ?? []);
+    final serie = _data!['serie'] as List;
+
+    if (mesi.isEmpty || serie.isEmpty) {
+      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessun trattamento nel periodo')));
+    }
+
+    final colors = [Colors.red, Colors.blue, Colors.green, Colors.orange, Colors.purple];
+    final linee = serie.asMap().entries.map((entry) {
+      final s = entry.value;
+      final valori = List<double>.from((s['valori'] as List).map((v) => (v as num).toDouble()));
+      return LineChartBarData(
+        spots: valori.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
+        isCurved: true,
+        color: colors[entry.key % colors.length],
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(show: false),
+      );
+    }).toList();
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 180,
+          child: LineChart(
+            LineChartData(
+              lineBarsData: linee,
+              titlesData: FlTitlesData(
+                bottomTitles: AxisTitles(sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: (mesi.length / 4).ceilToDouble(),
+                  getTitlesWidget: (v, _) {
+                    final idx = v.toInt();
+                    if (idx < 0 || idx >= mesi.length) return const SizedBox();
+                    return Text(mesi[idx].substring(5), style: const TextStyle(fontSize: 10));
+                  },
+                )),
+                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 24, getTitlesWidget: (v, _) => Text('${v.toInt()}', style: const TextStyle(fontSize: 10)))),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              gridData: const FlGridData(show: true, drawVerticalLine: false),
+              borderData: FlBorderData(show: false),
+            ),
+          ),
+        ),
+        // Legenda
+        Wrap(
+          spacing: 12,
+          children: serie.asMap().entries.map((entry) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 12, height: 3, color: colors[entry.key % colors.length]),
+              const SizedBox(width: 4),
+              Text(entry.value['apiario_nome'] ?? '', style: const TextStyle(fontSize: 11)),
+            ],
+          )).toList(),
+        ),
+      ],
+    );
+  }
+}

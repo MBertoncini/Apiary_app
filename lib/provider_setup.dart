@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 import 'services/auth_service.dart';
+import 'services/connectivity_service.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'services/sync_service.dart';
@@ -15,6 +16,12 @@ import 'services/bee_detection_service.dart';
 import 'services/analisi_telaino_service.dart';
 
 List<SingleChildWidget> providers = [
+  // Connectivity service (independent)
+  Provider<ConnectivityService>(
+    create: (_) => ConnectivityService(),
+    dispose: (_, service) => service.dispose(),
+  ),
+
   // Storage service (independent)
   Provider<StorageService>(
     create: (_) => StorageService(),
@@ -68,22 +75,13 @@ List<SingleChildWidget> providers = [
     lazy: true,
   ),
 
-  // Chat Service (depends on API and MCP) - lazy, created on first access
-  ChangeNotifierProxyProvider2<ApiService, MCPService, ChatService>(
+  // Chat Service (depends on API) - lazy, created on first access
+  ChangeNotifierProxyProvider<ApiService, ChatService>(
     create: (context) => ChatService(
       Provider.of<ApiService>(context, listen: false),
-      Provider.of<MCPService>(context, listen: false),
-      '0',
     ),
     lazy: true,
-    update: (context, apiService, mcpService, previousChat) {
-      if (previousChat != null) {
-        return previousChat;
-      }
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.currentUser?.id.toString() ?? '0';
-      return ChatService(apiService, mcpService, userId);
-    },
+    update: (context, apiService, previousChat) => previousChat ?? ChatService(apiService),
   ),
 
 ];

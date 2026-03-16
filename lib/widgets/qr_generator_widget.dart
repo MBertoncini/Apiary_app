@@ -41,10 +41,10 @@ class QrGeneratorWidget extends StatelessWidget {
       // È un apiario
       final apiario = entity;
       qrData = service.generateApiarioQrData(
-        apiario['id'], 
-        apiario['nome'], 
-        apiario['latitudine'] as double?, 
-        apiario['longitudine'] as double?
+        apiario['id'],
+        apiario['nome'],
+        double.tryParse(apiario['latitudine']?.toString() ?? ''),
+        double.tryParse(apiario['longitudine']?.toString() ?? ''),
       );
       title = apiario['nome'];
       details = 'Posizione: ${apiario['posizione'] ?? "Non specificata"}';

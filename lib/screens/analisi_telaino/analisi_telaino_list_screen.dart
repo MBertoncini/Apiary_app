@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
+import '../../database/dao/analisi_telaino_dao.dart';
 import '../../models/analisi_telaino.dart';
 import '../../services/analisi_telaino_service.dart';
 
@@ -15,7 +16,7 @@ class AnalisiTelainoListScreen extends StatefulWidget {
 
 class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
   List<AnalisiTelaino> _analisi = [];
-  bool _isLoading = true;
+  bool _isRefreshing = true;
 
   @override
   void initState() {
@@ -24,15 +25,24 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
   }
 
   Future<void> _loadAnalisi() async {
-    setState(() => _isLoading = true);
+    setState(() => _isRefreshing = true);
+    // Fase 1: cache SQLite
+    try {
+      final dao = AnalisiTelainoDao();
+      final cached = await dao.getByArnia(widget.arniaId);
+      if (cached.isNotEmpty && mounted) {
+        setState(() => _analisi = cached.map((m) => AnalisiTelaino.fromJson(m)).toList());
+      }
+    } catch (_) {}
+    // Fase 2: server
     try {
       final service = Provider.of<AnalisiTelainoService>(context, listen: false);
       final analisi = await service.getAnalisiByArnia(widget.arniaId);
-      setState(() => _analisi = analisi);
+      if (mounted) setState(() => _analisi = analisi);
     } catch (e) {
       debugPrint('Error loading analisi: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isRefreshing = false);
     }
   }
 
@@ -42,18 +52,25 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
       appBar: AppBar(
         title: const Text('Analisi Telaini'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _analisi.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadAnalisi,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _analisi.length,
-                    itemBuilder: (context, index) => _buildAnalisiCard(_analisi[index]),
-                  ),
-                ),
+      body: Column(
+        children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _analisi.isEmpty
+                ? const SizedBox.shrink()
+                : _analisi.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _loadAnalisi,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _analisi.length,
+                          itemBuilder: (context, index) => _buildAnalisiCard(_analisi[index]),
+                        ),
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.pushNamed(

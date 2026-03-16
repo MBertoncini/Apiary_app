@@ -43,9 +43,29 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     _refreshQueueCount();
     _checkConnectivity();
     _voiceManager.addListener(_onVoiceManagerChanged);
+    // Restore any data that survived a previous app kill.
+    // Verification draft takes priority (furthest along in the pipeline).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _restoreVerificationDraft();
+      await _restoreDraft();
+    });
   }
 
   void _onVoiceManagerChanged() {
+    // Auto-save pending transcriptions as a crash-recovery draft.
+    if (_voiceManager.isBatchMode) {
+      if (_voiceManager.pendingTranscriptions.isNotEmpty) {
+        // Fire-and-forget: SharedPreferences write is fast.
+        _queueService.saveDraft(
+          _voiceManager.pendingTranscriptions,
+          _contextApiarioId,
+          _contextApiarioNome,
+        );
+      } else {
+        _queueService.clearDraft();
+      }
+    }
+
     if (_voiceManager.batchStopRequested) {
       _voiceManager.clearBatchStop();
       final transcriptions =
@@ -54,6 +74,96 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
         _handleTranscriptionsReady(transcriptions);
       }
     }
+  }
+
+  /// If the app was killed during a batch session, move the draft to the
+  /// offline queue and notify the user via a snackbar.
+  Future<void> _restoreDraft() async {
+    final draft = await _queueService.loadDraft();
+    if (draft == null) return;
+    final raw = draft['transcriptions'] as List<dynamic>? ?? [];
+    final transcriptions =
+        raw.cast<String>().where((t) => t.isNotEmpty).toList();
+    if (transcriptions.isEmpty) {
+      await _queueService.clearDraft();
+      return;
+    }
+    // Move to the offline queue so the user can process them at any time.
+    await _queueService.clearDraft();
+    await _queueService.addBatchToQueue(
+      transcriptions,
+      draft['apiario_id'] as int?,
+      draft['apiario_nome'] as String?,
+    );
+    await _refreshQueueCount();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${transcriptions.length} trascrizioni recuperate dalla sessione precedente. '
+          'Premi la coda per elaborarle.',
+        ),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
+  /// If the app was killed during the verification step (Gemini tokens already
+  /// spent), reload the draft and navigate straight to the verification screen.
+  Future<void> _restoreVerificationDraft() async {
+    final entries = await _queueService.loadVerificationDraft();
+    if (entries.isEmpty) return;
+    if (!mounted) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dati non salvati trovati'),
+        content: Text(
+          'Sono presenti ${entries.length} schede di controllo elaborate da Gemini '
+          'che non sono state salvate. Vuoi riprenderle?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('SCARTA'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('RIPRENDI'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) {
+      await _queueService.clearVerificationDraft();
+      return;
+    }
+
+    if (!mounted) return;
+    final batch = VoiceEntryBatch();
+    for (final e in entries) batch.add(e);
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VoiceEntryVerificationScreen(
+          batch: batch,
+          onSuccess: (results) {
+            Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Dati recuperati e salvati (${results.length} record)'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          },
+          onCancel: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
   }
 
   void _initializeServices() {
@@ -146,9 +256,15 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
           },
           onSendToAI: (editedTranscriptions) async {
             final entries = <VoiceEntry>[];
+            // Track the index up to which items have been successfully
+            // dispatched to Gemini so we can re-queue the rest on early stop.
+            int firstUnprocessedIndex = 0;
             for (int i = 0; i < editedTranscriptions.length; i++) {
               final text = editedTranscriptions[i];
-              if (text.isEmpty) continue;
+              if (text.isEmpty) {
+                firstUnprocessedIndex = i + 1;
+                continue;
+              }
               // Best-effort: use stored per-item context by original index.
               if (i < queue.length) {
                 _dataProcessor.setContext(
@@ -163,6 +279,9 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
               if (entry != null) entries.add(entry);
               if (_dataProcessor.lastCallWasRateLimit ||
                   _dataProcessor.lastCallWasNetworkError) break;
+              // Only advance past this item when it was handled without
+              // a hard stop — so a rate-limited item stays in "unprocessed".
+              firstUnprocessedIndex = i + 1;
               if (i < editedTranscriptions.length - 1) {
                 await Future.delayed(const Duration(seconds: 5));
               }
@@ -170,24 +289,41 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
             _dataProcessor.setContext(_contextApiarioId, _contextApiarioNome);
 
             if (entries.isEmpty) {
+              // Nothing succeeded — leave original items in queue as-is.
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(_dataProcessor.error != null
-                        ? 'Errore: ${_dataProcessor.error}'
+                        ? 'Gemini: ${_dataProcessor.error}'
                         : 'Nessuna entry valida estratta dalla coda'),
                     backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 6),
                   ),
                 );
               }
-              return;
+              return false; // screen stays visible
             }
 
-            // On success: remove the processed items from the queue.
+            // Some items succeeded: remove all originals (they have been
+            // consumed into the edited transcriptions flow).
             await _queueService.removeItemsFromQueue(allIds);
+            // Re-queue any edited transcriptions that were never reached due
+            // to rate-limit / network error — preserving the user's edits.
+            final unprocessed = editedTranscriptions
+                .sublist(firstUnprocessedIndex)
+                .where((t) => t.isNotEmpty)
+                .toList();
+            if (unprocessed.isNotEmpty) {
+              final ctx = queue.isNotEmpty ? queue[0] : null;
+              await _queueService.addBatchToQueue(
+                unprocessed,
+                ctx?['apiario_id'] as int?,
+                ctx?['apiario_nome'] as String?,
+              );
+            }
             await _refreshQueueCount();
 
-            if (!mounted) return;
+            if (!mounted) return false;
             Navigator.of(context).pop(); // close review screen
 
             final batch = VoiceEntryBatch();
@@ -199,18 +335,22 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                   batch: batch,
                   onSuccess: (results) {
                     Navigator.of(context).pop();
+                    final msg = unprocessed.isEmpty
+                        ? 'Dati dalla coda salvati (${results.length} record)'
+                        : 'Dati salvati (${results.length} record). '
+                            '${unprocessed.length} trascrizioni rimaste in coda.';
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                            'Dati dalla coda salvati (${results.length} record)'),
-                        backgroundColor: Colors.green,
-                      ),
+                          content: Text(msg),
+                          backgroundColor: Colors.green),
                     );
                   },
                   onCancel: () => Navigator.of(context).pop(),
                 ),
               ),
             );
+            return true; // screen was popped
+
           },
         ),
       ),
@@ -512,38 +652,65 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
             _voiceManager.setPendingTranscriptions(editedTranscriptions);
             final batch = await _voiceManager.processPendingBatch();
 
-            if (!mounted) return;
+            if (!mounted) return false;
+
+            final failed = _voiceManager.lastBatchFailedTranscriptions;
+
             if (batch.entries.isEmpty) {
+              // Full failure: screen stays open so the user can see the
+              // transcriptions and retry. When they press back, onLeave
+              // will save them to the offline queue.
+              final errDetail = _dataProcessor.error;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text(
-                      'Nessun dato valido estratto. Controlla le trascrizioni.'),
+                    errDetail != null
+                        ? 'Gemini: $errDetail'
+                        : 'Nessun dato valido estratto. '
+                            'Controlla le trascrizioni e riprova.',
+                  ),
                   backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 6),
                 ),
               );
-              return;
+              return false; // screen stays visible, _processingComplete = false
+            }
+
+            // Partial or full success: save any items Gemini couldn't process
+            // to the offline queue BEFORE popping (onLeave won't be called).
+            if (failed.isNotEmpty) {
+              await _queueService.addBatchToQueue(
+                  failed, _contextApiarioId, _contextApiarioNome);
+              await _refreshQueueCount();
             }
 
             Navigator.of(context).pop();
-            _voiceManager.clearBatch();
 
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => VoiceEntryVerificationScreen(
                   batch: batch,
                   onSuccess: (results) {
+                    _voiceManager.clearBatch();
                     Navigator.of(context).pop();
+                    final msg = failed.isEmpty
+                        ? 'Dati salvati (${results.length} record)'
+                        : 'Dati salvati (${results.length} record). '
+                            '${failed.length} trascrizioni in coda.';
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Dati salvati (${results.length} record)'),
-                        backgroundColor: Colors.green,
-                      ),
+                          content: Text(msg),
+                          backgroundColor: Colors.green),
                     );
                   },
-                  onCancel: () => Navigator.of(context).pop(),
+                  onCancel: () {
+                    _voiceManager.clearBatch();
+                    Navigator.of(context).pop();
+                  },
                 ),
               ),
             );
+            return true; // screen was popped, _processingComplete = true
           },
         ),
       ),

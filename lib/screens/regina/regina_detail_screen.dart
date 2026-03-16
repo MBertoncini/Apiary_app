@@ -3,8 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
 import '../../models/regina.dart';
-import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 import 'regina_form_screen.dart';
 
@@ -23,7 +23,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Regina? _regina;
   Map<String, dynamic>? _genealogia;
-  bool _isLoading = true;
+  bool _isRefreshing = true;
   bool _isLoadingGenealogia = true;
   String? _errorMessage;
   String? _genealogiaError;
@@ -44,27 +44,40 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Future<void> _loadData() async {
     setState(() {
-      _isLoading = true;
+      _isRefreshing = true;
       _errorMessage = null;
     });
 
+    // Fase 1: cache
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final cachedRaw = await storageService.getStoredData('regine');
+    final cachedMap = cachedRaw.cast<Map<String, dynamic>>().firstWhere(
+      (r) => r['id'] == widget.reginaId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (cachedMap.isNotEmpty && mounted) {
+      setState(() { _regina = Regina.fromJson(cachedMap); });
+    }
+
+    // Fase 2: server
     try {
       final response = await _apiService.get('${ApiConstants.regineUrl}${widget.reginaId}/');
-      debugPrint('Regina detail API response: $response');
-
-      setState(() {
-        _regina = Regina.fromJson(response);
-        _isLoading = false;
-      });
-
+      if (mounted) {
+        setState(() {
+          _regina = Regina.fromJson(response);
+          _isRefreshing = false;
+        });
+      }
       // Carica la genealogia in parallelo
       _loadGenealogia();
     } catch (e) {
       debugPrint('Errore caricamento regina: $e');
-      setState(() {
-        _errorMessage = 'Errore nel caricamento della regina: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          if (_regina == null) _errorMessage = 'Errore nel caricamento della regina: $e';
+          _isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -95,16 +108,16 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_isRefreshing && _regina == null && _errorMessage == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Dettaglio Regina')),
-        body: LoadingWidget(message: 'Caricamento regina...'),
+        appBar: AppBar(title: const Text('Dettaglio Regina')),
+        body: const Column(children: [LinearProgressIndicator(minHeight: 2)]),
       );
     }
 
-    if (_errorMessage != null) {
+    if (_errorMessage != null && _regina == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Dettaglio Regina')),
+        appBar: AppBar(title: const Text('Dettaglio Regina')),
         body: ErrorDisplayWidget(
           errorMessage: _errorMessage!,
           onRetry: _loadData,
@@ -114,8 +127,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
     if (_regina == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Dettaglio Regina')),
-        body: Center(child: Text('Nessun dato trovato per questa regina')),
+        appBar: AppBar(title: const Text('Dettaglio Regina')),
+        body: const Center(child: Text('Nessun dato trovato per questa regina')),
       );
     }
 
@@ -141,11 +154,18 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildDettagliTab(),
-          _buildGenealogiaTab(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildDettagliTab(),
+                _buildGenealogiaTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -237,7 +257,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   // ==================== TAB GENEALOGIA ====================
   Widget _buildGenealogiaTab() {
     if (_isLoadingGenealogia) {
-      return LoadingWidget(message: 'Caricamento genealogia...');
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_genealogiaError != null && _genealogia == null) {

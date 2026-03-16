@@ -3,7 +3,7 @@ description: Un'app per la gestione degli apiari.
 
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.1+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -49,6 +49,7 @@ dependencies:
   sensors_plus: ^4.0.0
   flutter_image_compress: ^2.1.0
   pdf: ^3.10.0
+  printing: ^5.13.0
   csv: ^5.1.1
   flutter_timezone: ^3.0.1
   flutter_background_service_android: ^6.2.2

@@ -5,9 +5,10 @@ import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import '../services/jokes_service.dart';
 import '../services/chat_service.dart';
-import '../services/mcp_service.dart';
+import '../widgets/offline_banner.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/bee_joke_bubble.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -31,6 +32,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _smielature = [];
   DateTime _lastSyncTime = DateTime.now();
 
+
+  // true mentre si aggiorna dal server con dati cache già visibili
+  bool _isRefreshing = false;
 
   // Variabili per la gestione del caricamento
   bool _isLoadingApiari = true;
@@ -126,19 +130,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // METODI DI CARICAMENTO DATI
   
   Future<void> _loadData() async {
-    setState(() {
-      _isLoadingApiari = true;
-      _isLoadingTrattamenti = true;
-      _isLoadingFioriture = true;
-      _isLoadingControlli = true;
-      _isLoadingRegine = true;
-      _isLoadingMelari = true;
-      _isLoadingSmielature = true;
-    });
-
+    final storageService = Provider.of<StorageService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
 
-    // Carica i vari dati in parallelo (nessun setState individuale)
+    // === Fase 1: cache locale (istantaneo) ===
+    final cached = await Future.wait([
+      storageService.getStoredData('apiari'),
+      storageService.getStoredData('trattamenti'),
+      storageService.getStoredData('fioriture'),
+      storageService.getStoredData('controlli'),
+      storageService.getStoredData('regine'),
+      storageService.getStoredData('melari'),
+      storageService.getStoredData('smielature'),
+    ]);
+
+    _apiari        = cached[0];
+    _trattamenti   = cached[1];
+    _fioriture     = cached[2];
+    _controlli     = cached[3];
+    _regine        = cached[4];
+    _melari        = cached[5];
+    _smielature    = cached[6];
+
+    final bool hasCache = _apiari.isNotEmpty || _trattamenti.isNotEmpty ||
+        _fioriture.isNotEmpty || _controlli.isNotEmpty;
+
+    if (hasCache) {
+      // Mostra subito i dati cached e avvia un indicatore discreto di refresh
+      _isLoadingApiari     = false;
+      _isLoadingTrattamenti = false;
+      _isLoadingFioriture  = false;
+      _isLoadingControlli  = false;
+      _isLoadingRegine     = false;
+      _isLoadingMelari     = false;
+      _isLoadingSmielature = false;
+      _prepareCalendarEvents();
+      _cachedAlerts = _generateAlerts();
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      // Nessuna cache: mostra spinner finché l'API risponde
+      if (mounted) setState(() {
+        _isLoadingApiari     = true;
+        _isLoadingTrattamenti = true;
+        _isLoadingFioriture  = true;
+        _isLoadingControlli  = true;
+        _isLoadingRegine     = true;
+        _isLoadingMelari     = true;
+        _isLoadingSmielature = true;
+      });
+    }
+
+    // === Fase 2: aggiornamento dal server ===
     await Future.wait([
       _loadApiariData(apiService),
       _loadTrattamentiData(apiService),
@@ -149,13 +191,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadSmielaturaData(apiService),
     ]);
 
-    // Prepara dati derivati
+    // Se l'API ha fallito ma c'è ancora cache, sopprimi l'errore
+    if (_apiari.isNotEmpty)      _apiariError     = null;
+    if (_trattamenti.isNotEmpty) _trattamentiError = null;
+    if (_fioriture.isNotEmpty)   _fioritureError  = null;
+    if (_controlli.isNotEmpty)   _controlliError  = null;
+    if (_regine.isNotEmpty)      _regineError     = null;
+    if (_melari.isNotEmpty)      _melariError     = null;
+    if (_smielature.isNotEmpty)  _smielatureError = null;
+
+    // Salva i dati freschi in cache per la prossima visita
+    final saves = <Future>[];
+    if (_apiari.isNotEmpty)      saves.add(storageService.saveData('apiari',      _apiari));
+    if (_trattamenti.isNotEmpty) saves.add(storageService.saveData('trattamenti', _trattamenti));
+    if (_fioriture.isNotEmpty)   saves.add(storageService.saveData('fioriture',   _fioriture));
+    if (_controlli.isNotEmpty)   saves.add(storageService.saveData('controlli',   _controlli));
+    if (_regine.isNotEmpty)      saves.add(storageService.saveData('regine',      _regine));
+    if (_melari.isNotEmpty)      saves.add(storageService.saveData('melari',      _melari));
+    if (_smielature.isNotEmpty)  saves.add(storageService.saveData('smielature',  _smielature));
+    await Future.wait(saves);
+
+    // Aggiorna dati derivati e ricostruisci UI
     _prepareCalendarEvents();
     _cachedAlerts = _generateAlerts();
     _lastSyncTime = DateTime.now();
-
-    // Singolo setState per tutti i dati caricati -> un solo rebuild
-    if (mounted) setState(() {});
+    if (mounted) setState(() { _isRefreshing = false; });
   }
 
   // --- Metodi di caricamento dati ---
@@ -1035,14 +1095,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'smielatura':
         Navigator.of(context).pushNamed(AppConstants.melariRoute);
         break;
-      // fioritura — no detail screen, skip
+      case 'fioritura':
+        if (event['id'] != null) {
+          Navigator.of(context).pushNamed(
+            AppConstants.fiorituraDetailRoute,
+            arguments: event['id'] as int,
+          );
+        }
+        break;
     }
   }
 
   Widget _buildCalendarEventItem(Map<String, dynamic> event) {
     IconData icon;
     Color color = event['color'] ?? ThemeConstants.primaryColor;
-    final bool hasTap = event['type'] != 'fioritura';
+    final bool hasTap = true;
 
     switch (event['type']) {
       case 'trattamento':
@@ -1754,7 +1821,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
 
       drawer: AppDrawer(currentRoute: AppConstants.dashboardRoute),
-      body: RefreshIndicator(
+      body: Column(
+        children: [
+          // Banner offline (scompare automaticamente quando torna la connessione)
+          const OfflineBanner(),
+          // Barra di progresso discreta durante refresh in background
+          if (_isRefreshing)
+            LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: RefreshIndicator(
         onRefresh: _refreshData,
         child: _isLoadingApiari && _isLoadingTrattamenti && _isLoadingFioriture
             ? Center(child: CircularProgressIndicator())
@@ -1777,16 +1852,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Benvenuto, ${user?.fullName ?? user?.username ?? "Utente"}',
+                                  'Benvenuto, ${(user?.firstName?.isNotEmpty == true) ? user!.firstName! : (user?.username ?? "Utente")}',
                                   style: ThemeConstants.headingStyle,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Ultima sincronizzazione: ${_formatLastSync()}',
-                                  style: TextStyle(
-                                    color: ThemeConstants.textSecondaryColor,
-                                    fontSize: 12,
-                                  ),
                                 ),
                               ],
                             ),
@@ -1909,9 +1976,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: ThemeConstants.subheadingStyle,
                               ),
                               TextButton(
-                                onPressed: () {
-                                  // Navigate to trattamenti list
-                                },
+                                onPressed: () => Navigator.of(context).pushNamed(AppConstants.trattamentiRoute),
                                 child: Text('Vedi tutti'),
                               ),
                             ],
@@ -1998,9 +2063,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: ThemeConstants.subheadingStyle,
                               ),
                               TextButton(
-                                onPressed: () {
-                                  // Navigate to fioriture list
-                                },
+                                onPressed: () => Navigator.of(context).pushNamed(AppConstants.fioritureListRoute),
                                 child: Text('Vedi tutti'),
                               ),
                             ],
@@ -2076,6 +2139,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
       ),
+          ),
+        ],
+      ),
               floatingActionButton: SpeedDial(
                 icon: Icons.add,
                 activeIcon: Icons.close,
@@ -2098,18 +2164,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     backgroundColor: Colors.purple,
                     foregroundColor: Colors.white,
                     onTap: () {
-                    // Ottieni i servizi necessari
                     final apiService = Provider.of<ApiService>(context, listen: false);
-                    final authService = Provider.of<AuthService>(context, listen: false);
-                    
-                    // Crea un MCPService
-                    final mcpService = MCPService(apiService);
-                    
-                    // Ottieni ID utente
-                    final userId = authService.currentUser?.id.toString() ?? '0';
-                    
-                    // Crea un ChatService
-                    final chatService = ChatService(apiService, mcpService, userId);
+                    final chatService = ChatService(apiService);
                     
                     // Naviga alla ChatScreen con un ChangeNotifierProvider specifico
                     Navigator.push(

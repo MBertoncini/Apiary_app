@@ -8,7 +8,8 @@ class ConnectivityService {
   StreamSubscription? _connectivitySubscription;
 
   Stream<bool> get connectionChange => _connectionChangeController.stream;
-  bool _hasConnection = false;
+  bool _hasConnection = true; // ottimistico: aggiornato subito da _checkConnection()
+  bool get hasConnection => _hasConnection;
 
   ConnectivityService() {
     // Inizializza lo stato

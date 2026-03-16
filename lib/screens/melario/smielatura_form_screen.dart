@@ -4,6 +4,7 @@ import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/notification_service.dart';
 
 class SmielaturaFormScreen extends StatefulWidget {
   final dynamic initialData; // null for new, Map for edit, int for apiarioId pre-selection
@@ -137,7 +138,21 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
       if (_isEditing) {
         await _apiService.put('${ApiConstants.produzioniUrl}$_editId/', data);
       } else {
-        await _apiService.post(ApiConstants.produzioniUrl, data);
+        final result = await _apiService.post(ApiConstants.produzioniUrl, data);
+        if (result != null && result['id'] != null) {
+          final apiarioData = _apiari.firstWhere(
+            (a) => a['id'] == _selectedApiarioId,
+            orElse: () => <String, dynamic>{},
+          );
+          NotificationService().scheduleMaturazioneMieleReminder(
+            smielaturaId: result['id'] as int,
+            tipoMiele: _tipoMieleController.text.isNotEmpty
+                ? _tipoMieleController.text
+                : 'millefiori',
+            apiarioNome: (apiarioData['nome'] as String?) ?? '',
+            dataSmielatura: _selectedDate,
+          );
+        }
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_isEditing ? 'Smielatura aggiornata' : 'Smielatura registrata')),

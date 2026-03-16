@@ -292,8 +292,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabled: !isLoading,
                     onFieldSubmitted: (_) => _login(),
                   ),
-                  const SizedBox(height: 24),
-                  
+                  const SizedBox(height: 4),
+
+                  // Link dimenticato password
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: isLoading || _serverUnavailable ? null : () {
+                        Navigator.of(context).pushNamed(AppConstants.forgotPasswordRoute);
+                      },
+                      child: Text(
+                        'Hai dimenticato la password?',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
                   // Login button
                   ElevatedButton(
                     onPressed: isLoading ? null : _login,

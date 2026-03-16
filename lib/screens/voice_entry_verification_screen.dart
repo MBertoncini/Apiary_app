@@ -4,9 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/voice_entry.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
+import '../services/voice_queue_service.dart';
 import '../constants/theme_constants.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
+import '../services/regina_service.dart';
 
 class VoiceEntryVerificationScreen extends StatefulWidget {
   final VoiceEntryBatch batch;
@@ -31,12 +34,15 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   List<VoiceEntry> _editedEntries = [];
   // Controllers keyed by field name, rebuilt only when the entry index changes.
   final Map<String, TextEditingController> _controllers = {};
+  final VoiceQueueService _queueService = VoiceQueueService();
 
   @override
   void initState() {
     super.initState();
     _editedEntries = List.from(widget.batch.entries);
     _rebuildControllers();
+    // Persist immediately – Gemini tokens are already spent; do not lose this data.
+    _queueService.saveVerificationDraft(_editedEntries);
   }
 
   void _rebuildControllers() {
@@ -49,9 +55,11 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     _controllers['apiarioNome'] = TextEditingController(text: e.apiarioNome ?? '');
     _controllers['arniaNumero'] = TextEditingController(text: e.arniaNumero?.toString() ?? '');
     _controllers['numeroCelleReali'] = TextEditingController(text: e.numeroCelleReali?.toString() ?? '');
-    _controllers['telainiTotali'] = TextEditingController(text: e.telainiTotali?.toString() ?? '');
     _controllers['telainiCovata'] = TextEditingController(text: e.telainiCovata?.toString() ?? '');
     _controllers['telainiScorte'] = TextEditingController(text: e.telainiScorte?.toString() ?? '');
+    _controllers['telainiDiaframma'] = TextEditingController(text: e.telainiDiaframma?.toString() ?? '');
+    _controllers['tealiniFoglioCereo'] = TextEditingController(text: e.tealiniFoglioCereo?.toString() ?? '');
+    _controllers['telainiNutritore'] = TextEditingController(text: e.telainiNutritore?.toString() ?? '');
     _controllers['tipoProblema'] = TextEditingController(text: e.tipoProblema ?? '');
     _controllers['note'] = TextEditingController(text: e.note ?? '');
   }
@@ -91,64 +99,148 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       if (_currentIndex < 0) _currentIndex = 0;
       _rebuildControllers();
     });
+    // Keep draft in sync so a removed entry is not restored on crash recovery.
+    _queueService.saveVerificationDraft(_editedEntries);
   }
   
   Future<void> _saveAll() async {
     if (_editedEntries.isEmpty) {
+      await _queueService.clearVerificationDraft();
       widget.onCancel();
       return;
     }
-    
+
     setState(() {
       _isSubmitting = true;
       _error = null;
     });
-    
-    try {
-      final apiService = Provider.of<ApiService>(context, listen: false);
-      List<Map<String, dynamic>> results = [];
-      
-      // Process each entry
-      for (var entry in _editedEntries) {
-        // Skip invalid entries
-        if (!entry.isValid()) continue;
-        
-        // Determine the type of data to submit
-        if (entry.tipoComando == 'controllo' || entry.tipoComando == 'ispezione') {
-          // Create inspection
-          final controlloData = entry.toControlloData();
-          final response = await apiService.post('controlli/', controlloData);
-          results.add(response);
-        } else if (entry.tipoComando == 'trattamento') {
-          // Create treatment
-          // TODO: Implement treatment submission
-        } else {
-          // Default to creating an inspection
-          final controlloData = entry.toControlloData();
-          final response = await apiService.post('controlli/', controlloData);
-          results.add(response);
-        }
+
+    final apiService = Provider.of<ApiService>(context, listen: false);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    // Build arniaNumero → DB pk lookup from local cache.
+    final cachedArnie = await storageService.getStoredData('arnie');
+    final Map<String, int> arnieLookup = {};
+    for (final raw in cachedArnie) {
+      final key = '${raw['apiario']}_${raw['numero']}';
+      if (raw['id'] != null) arnieLookup[key] = raw['id'] as int;
+    }
+
+    int? resolveArniaId(VoiceEntry entry) {
+      if (entry.arniaId != null) return entry.arniaId;
+      if (entry.arniaNumero == null) return null;
+      if (entry.apiarioId != null) {
+        final key = '${entry.apiarioId}_${entry.arniaNumero}';
+        if (arnieLookup.containsKey(key)) return arnieLookup[key];
       }
-      
-      // All entries processed successfully
-      setState(() {
-        _isSubmitting = false;
-      });
-      
-      // Show success message
+      // Fallback: match by numero alone (single-apiario case).
+      for (final raw in cachedArnie) {
+        if (raw['numero'] == entry.arniaNumero) return raw['id'] as int?;
+      }
+      return null;
+    }
+
+    // Per-entry save: never abort on a single failure.
+    final List<VoiceEntry> remaining = [];
+    final List<String> errors = [];
+    int savedCount = 0;
+
+    for (final entry in _editedEntries) {
+      if (!entry.isValid()) {
+        // Keep invalid entries in the list so the user can fix them.
+        remaining.add(entry);
+        errors.add('Arnia ${entry.arniaNumero ?? '?'}: dati non validi, saltata.');
+        continue;
+      }
+
+      final arniaId = resolveArniaId(entry);
+      if (arniaId == null) {
+        remaining.add(entry);
+        errors.add(
+            'Arnia ${entry.arniaNumero ?? '?'}: non trovata in cache. '
+            'Aggiorna la lista arnie e riprova.');
+        continue;
+      }
+
+      try {
+        final controlloData = entry.toControlloData();
+        controlloData.remove('arnia_id');
+        controlloData['arnia'] = arniaId;
+        await apiService.post('controlli/', controlloData);
+        savedCount++;
+
+        // Auto-crea scheda regina base se segnalata per la prima volta
+        if (entry.presenzaRegina == true) {
+          await ReginaService.maybeAutoCreate(
+            arniaId: arniaId,
+            presenzaRegina: true,
+            dataControllo: DateFormat('yyyy-MM-dd').format(
+              entry.data ?? DateTime.now(),
+            ),
+            apiService: apiService,
+            storageService: storageService,
+          );
+        }
+
+        // Se la regina è stata colorata, aggiorna il colore nel database
+        if (entry.reginaColorata == true && entry.coloreRegina != null) {
+          try {
+            final reginaData = await apiService.get('arnie/$arniaId/regina/');
+            if (reginaData != null && reginaData['id'] != null) {
+              await apiService.patch(
+                'regine/${reginaData['id']}/',
+                {'colore_marcatura': entry.coloreRegina, 'marcata': true},
+              );
+            }
+          } catch (e) {
+            debugPrint('Errore aggiornamento colore regina arnia $arniaId: $e');
+          }
+        }
+      } catch (e) {
+        remaining.add(entry);
+        errors.add('Arnia ${entry.arniaNumero ?? '?'}: ${e.toString()}');
+      }
+    }
+
+    // Update the list and draft to only the entries that still need saving.
+    _editedEntries = remaining;
+    if (remaining.isEmpty) {
+      await _queueService.clearVerificationDraft();
+    } else {
+      await _queueService.saveVerificationDraft(remaining);
+    }
+
+    // Clamp index after potential list shrink.
+    if (_currentIndex >= _editedEntries.length) {
+      _currentIndex = _editedEntries.isEmpty ? 0 : _editedEntries.length - 1;
+    }
+    _rebuildControllers();
+
+    setState(() => _isSubmitting = false);
+
+    if (!mounted) return;
+
+    if (remaining.isEmpty) {
+      // All saved.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Dati salvati con successo (${results.length} record)'),
+          content: Text('Dati salvati con successo ($savedCount record)'),
           backgroundColor: Colors.green,
         ),
       );
-      
-      // Call success callback
-      widget.onSuccess(results);
-    } catch (e) {
+      widget.onSuccess([]);
+    } else if (savedCount > 0) {
+      // Partial success – show which ones failed and stay on screen.
+      final summary = errors.join('\n');
       setState(() {
-        _isSubmitting = false;
-        _error = e.toString();
+        _error = 'Salvati $savedCount record. '
+            '${remaining.length} non salvati:\n$summary';
+      });
+    } else {
+      // All failed.
+      final summary = errors.join('\n');
+      setState(() {
+        _error = 'Nessun record salvato:\n$summary';
       });
     }
   }
@@ -286,28 +378,18 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           
           // Queen section
           _buildSectionTitle('Regina'),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSwitchField(
-                  label: 'Presente',
-                  value: entry.presenzaRegina ?? false,
-                  onChanged: (value) {
-                    _updateEntry(entry.copyWith(presenzaRegina: value));
-                  },
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: _buildSwitchField(
-                  label: 'Vista',
-                  value: entry.reginaVista ?? false,
-                  onChanged: (value) {
-                    _updateEntry(entry.copyWith(reginaVista: value));
-                  },
-                ),
-              ),
-            ],
+          // Stato regina a 3 stati
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Row(
+              children: [
+                _buildStatoReginaChip(entry, 'assente', 'Assente', Colors.red.shade300),
+                SizedBox(width: 6),
+                _buildStatoReginaChip(entry, 'presente', 'Presente', Colors.orange),
+                SizedBox(width: 6),
+                _buildStatoReginaChip(entry, 'vista', 'Vista', Colors.amber.shade700),
+              ],
+            ),
           ),
           Row(
             children: [
@@ -351,40 +433,81 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             children: [
               Expanded(
                 child: _buildTextField(
-                  label: 'Totali',
-                  controllerKey: 'telainiTotali',
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    _updateEntry(entry.copyWith(
-                      telainiTotali: int.tryParse(value),
-                    ));
-                  },
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: _buildTextField(
                   label: 'Covata',
                   controllerKey: 'telainiCovata',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
-                    _updateEntry(entry.copyWith(
-                      telainiCovata: int.tryParse(value),
-                    ));
+                    _updateEntry(entry.copyWith(telainiCovata: int.tryParse(value)));
                   },
                 ),
               ),
-              SizedBox(width: 16),
+              SizedBox(width: 8),
               Expanded(
                 child: _buildTextField(
                   label: 'Scorte',
                   controllerKey: 'telainiScorte',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
-                    _updateEntry(entry.copyWith(
-                      telainiScorte: int.tryParse(value),
-                    ));
+                    _updateEntry(entry.copyWith(telainiScorte: int.tryParse(value)));
                   },
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: _buildTextField(
+                  label: 'Diaframma',
+                  controllerKey: 'telainiDiaframma',
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    _updateEntry(entry.copyWith(telainiDiaframma: int.tryParse(value)));
+                  },
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  label: 'Foglio cereo',
+                  controllerKey: 'tealiniFoglioCereo',
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    _updateEntry(entry.copyWith(tealiniFoglioCereo: int.tryParse(value)));
+                  },
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: _buildTextField(
+                  label: 'Nutritore',
+                  controllerKey: 'telainiNutritore',
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    _updateEntry(entry.copyWith(telainiNutritore: int.tryParse(value)));
+                  },
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: ThemeConstants.primaryColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: ThemeConstants.primaryColor.withOpacity(0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Totale', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      SizedBox(height: 4),
+                      Text(
+                        '${entry.telainiTotali}',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ThemeConstants.primaryColor),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -433,7 +556,32 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               },
             ),
           const SizedBox(height: 16),
-          
+
+          // Queen coloring section
+          _buildSectionTitle('Colorazione regina'),
+          _buildSwitchField(
+            label: 'Regina colorata/marcata',
+            value: entry.reginaColorata ?? false,
+            onChanged: (value) {
+              _updateEntry(entry.copyWith(
+                reginaColorata: value,
+                coloreRegina: value ? entry.coloreRegina : null,
+              ));
+            },
+          ),
+          if (entry.reginaColorata == true) ...[
+            const SizedBox(height: 8),
+            _buildDropdownField<String>(
+              label: 'Colore marcatura',
+              value: entry.coloreRegina,
+              items: ['bianco', 'giallo', 'rosso', 'verde', 'blu'],
+              onChanged: (value) {
+                _updateEntry(entry.copyWith(coloreRegina: value));
+              },
+            ),
+          ],
+          const SizedBox(height: 16),
+
           // Notes section
           _buildSectionTitle('Note'),
           _buildTextField(
@@ -507,6 +655,44 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     );
   }
   
+  Widget _buildStatoReginaChip(VoiceEntry entry, String stato, String label, Color color) {
+    final presenzaRegina = entry.presenzaRegina ?? true;
+    final reginaVista = entry.reginaVista ?? false;
+    String currentStato = !presenzaRegina ? 'assente' : (reginaVista ? 'vista' : 'presente');
+    final isSelected = currentStato == stato;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _updateEntry(entry.copyWith(
+            presenzaRegina: stato != 'assente',
+            reginaVista: stato == 'vista',
+          ));
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.85) : color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? color : color.withOpacity(0.4),
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : Colors.black87,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTextField({
     required String label,
     required String controllerKey,

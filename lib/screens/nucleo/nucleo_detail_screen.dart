@@ -14,7 +14,7 @@ class NucleoDetailScreen extends StatefulWidget {
 
 class _NucleoDetailScreenState extends State<NucleoDetailScreen>
     with SingleTickerProviderStateMixin {
-  bool _isLoading = true;
+  bool _isRefreshing = true;
   Map<String, dynamic>? _nucleo;
   List<dynamic> _controlli = [];
   late TabController _tabController;
@@ -33,7 +33,7 @@ class _NucleoDetailScreenState extends State<NucleoDetailScreen>
   }
 
   Future<void> _load() async {
-    setState(() => _isLoading = true);
+    setState(() => _isRefreshing = true);
     try {
       final api = Provider.of<ApiService>(context, listen: false);
       final nucleo = await api.getNucleoDetail(widget.nucleoId);
@@ -51,7 +51,7 @@ class _NucleoDetailScreenState extends State<NucleoDetailScreen>
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isRefreshing = false);
     }
   }
 
@@ -96,20 +96,27 @@ class _NucleoDetailScreenState extends State<NucleoDetailScreen>
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _SchedaTab(nucleo: n, onConvert: _convertNucleo, hexColor: _hexColor, fmt: _fmt),
-                _ControlliTab(
-                  controlli: _controlli,
-                  nucleoId: widget.nucleoId,
-                  onAdd: _addControllo,
-                  fmt: _fmt,
-                ),
-              ],
-            ),
+      body: Column(
+        children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && n == null
+                ? const SizedBox.shrink()
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _SchedaTab(nucleo: n, onConvert: _convertNucleo, hexColor: _hexColor, fmt: _fmt),
+                      _ControlliTab(
+                        controlli: _controlli,
+                        nucleoId: widget.nucleoId,
+                        onAdd: _addControllo,
+                        fmt: _fmt,
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: conv
           ? null
           : FloatingActionButton.extended(

@@ -9,6 +9,9 @@ import '../../utils/validators.dart';
 import '../../services/controllo_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../database/database_helper.dart';
+import '../../services/notification_service.dart';
+import '../../services/storage_service.dart';
+import '../../services/regina_service.dart';
 
 class ControlloArniaScreen extends StatefulWidget {
   final int arniaId;
@@ -32,17 +35,21 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   
   // Valori del form
   DateTime _selectedDate = DateTime.now();
-  bool _presenzaRegina = true;
-  bool _reginaVista = false;
+  // stato regina: 'assente' | 'presente' | 'vista'
+  String _statoRegina = 'presente';
   bool _uovaFresche = false;
   bool _celleReali = false;
   bool _reginaSostituita = false;
+  bool _reginaColorata = false;
+  String? _coloreRegina;
   bool _sciamatura = false;
   bool _problemiSanitari = false;
   List<String> _telainiConfig = List.filled(10, 'vuoto');
   String _currentTool = 'covata';
   int _telainiScorte = 0;
   int _telainiCovata = 0;
+  int _telainiDiaframma = 0;
+  int _tealiniFoglioCereo = 0;
   
   // Stato
   bool _isLoading = false;
@@ -108,8 +115,9 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     
     _dataController.text = controllo['data'];
     _noteController.text = controllo['note'] ?? '';
-    _presenzaRegina = controllo['presenza_regina'];
-    _reginaVista = controllo['regina_vista'];
+    final presenzaRegina = controllo['presenza_regina'] ?? true;
+    final reginaVista = controllo['regina_vista'] ?? false;
+    _statoRegina = !presenzaRegina ? 'assente' : (reginaVista ? 'vista' : 'presente');
     _uovaFresche = controllo['uova_fresche'];
     _celleReali = controllo['celle_reali'];
     _numeroCelleRealiController.text = controllo['numero_celle_reali'].toString();
@@ -143,6 +151,33 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     _updateTelainiCounters(); // Aggiorna i contatori basati sulla configurazione
   }
   
+  void _scheduleControlloNotifications() {
+    final int arniaId = widget.arniaId;
+    final int arniaNumero = (_arnia?['numero'] as int?) ?? arniaId;
+    final String apiarioNome = (_apiario?['nome'] as String?) ?? '';
+    final notif = NotificationService();
+
+    // Verifica orfanità: celle reali visibili + assenza regina
+    if (_celleReali && _statoRegina == 'assente') {
+      notif.scheduleOrfanitaReminders(
+        arniaId: arniaId,
+        arniaNumero: arniaNumero,
+        apiarioNome: apiarioNome,
+        dataControllo: _selectedDate,
+      );
+    }
+
+    // Rischio sciamatura: celle reali o sciamatura già avvenuta
+    if (_celleReali || _sciamatura) {
+      notif.scheduleSciamaturaReminders(
+        arniaId: arniaId,
+        arniaNumero: arniaNumero,
+        apiarioNome: apiarioNome,
+        dataControllo: _selectedDate,
+      );
+    }
+  }
+
   void _distribuisciTelaini() {
     // Algoritmo semplice: mette la covata al centro e le scorte ai lati
     _telainiConfig = List.filled(10, 'vuoto');
@@ -293,15 +328,21 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   void _updateTelainiCounters() {
     int covata = 0;
     int scorte = 0;
-    
+    int diaframma = 0;
+    int foglioCereo = 0;
+
     for (String tipo in _telainiConfig) {
       if (tipo == 'covata') covata++;
       if (tipo == 'scorte') scorte++;
+      if (tipo == 'diaframma') diaframma++;
+      if (tipo == 'foglio_cereo') foglioCereo++;
     }
-    
+
     setState(() {
       _telainiCovata = covata;
       _telainiScorte = scorte;
+      _telainiDiaframma = diaframma;
+      _tealiniFoglioCereo = foglioCereo;
     });
   }
   
@@ -312,6 +353,21 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     });
   }
   
+  Future<void> _aggiornaColoreRegina() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
+      if (reginaData != null && reginaData['id'] != null) {
+        await apiService.patch(
+          '${ApiConstants.regineUrl}${reginaData['id']}/',
+          {'colore_marcatura': _coloreRegina, 'marcata': true},
+        );
+      }
+    } catch (e) {
+      debugPrint('Errore aggiornamento colore regina: $e');
+    }
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -329,8 +385,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         'data': _dataController.text,
         'telaini_scorte': _telainiScorte,
         'telaini_covata': _telainiCovata,
-        'presenza_regina': _presenzaRegina,
-        'regina_vista': _reginaVista,
+        'presenza_regina': _statoRegina != 'assente',
+        'regina_vista': _statoRegina == 'vista',
         'uova_fresche': _uovaFresche,
         'celle_reali': _celleReali,
         'numero_celle_reali': int.parse(_numeroCelleRealiController.text),
@@ -355,11 +411,42 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
       if (widget.controlloEsistente == null) {
         // Nuovo controllo
         result = await _controlloService.saveControllo(data);
-        
-        ScaffoldMessenger.of(context).showSnackBar(
+        _scheduleControlloNotifications();
+
+        // Aggiorna colore regina se richiesto
+        if (_reginaColorata && _coloreRegina != null && _isOnline) {
+          await _aggiornaColoreRegina();
+        }
+
+        // Auto-crea scheda regina base se segnalata per la prima volta
+        if (_statoRegina != 'assente' && _isOnline) {
+          final apiService = Provider.of<ApiService>(context, listen: false);
+          final storageService = Provider.of<StorageService>(context, listen: false);
+          final reginaCreata = await ReginaService.maybeAutoCreate(
+            arniaId: widget.arniaId,
+            presenzaRegina: true,
+            dataControllo: _dataController.text,
+            apiService: apiService,
+            storageService: storageService,
+          );
+          if (reginaCreata != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Regina rilevata: scheda base creata automaticamente. '
+                  'Aprila per completare i dettagli.',
+                ),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 5),
+              ),
+            );
+          }
+        }
+
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isOnline 
-                ? 'Controllo registrato con successo' 
+            content: Text(_isOnline
+                ? 'Controllo registrato con successo'
                 : 'Controllo salvato localmente. Sarà sincronizzato quando tornerai online'),
             backgroundColor: _isOnline ? Colors.green : Colors.orange,
           )
@@ -368,19 +455,24 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         // Aggiornamento controllo esistente
         int controlloId = widget.controlloEsistente!['id'];
         result = await _controlloService.updateControllo(controlloId, data);
-        
+
+        // Aggiorna colore regina se richiesto
+        if (_reginaColorata && _coloreRegina != null && _isOnline) {
+          await _aggiornaColoreRegina();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isOnline 
-                ? 'Controllo aggiornato con successo' 
+            content: Text(_isOnline
+                ? 'Controllo aggiornato con successo'
                 : 'Aggiornamento salvato localmente. Sarà sincronizzato quando tornerai online'),
             backgroundColor: _isOnline ? Colors.green : Colors.orange,
           )
         );
       }
-      
+
       Navigator.of(context).pop(result);
-      
+
     } catch (e) {
       debugPrint('Errore nel salvataggio del controllo: $e');
       setState(() {
@@ -596,6 +688,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         children: [
                           _buildToolButton('covata', 'Covata', Colors.red, Icons.grid_4x4),
                           _buildToolButton('scorte', 'Scorte', Colors.amber, Icons.grid_4x4),
+                          _buildToolButton('foglio_cereo', 'F. Cereo', Colors.yellow.shade200, Icons.description),
                           _buildToolButton('diaframma', 'Diaframma', Colors.black, Icons.vertical_split),
                           _buildToolButton('nutritore', 'Nutritore', Color(0xFFE8D4B9), Icons.coffee),
                           _buildToolButton('vuoto', 'Vuoto', Colors.grey.shade300, Icons.clear),
@@ -625,11 +718,15 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                       const SizedBox(height: 16),
                       
                       // Contatori
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      Wrap(
+                        alignment: WrapAlignment.spaceAround,
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           _buildCounter('Covata', _telainiCovata, Colors.red),
                           _buildCounter('Scorte', _telainiScorte, Colors.amber),
+                          if (_telainiDiaframma > 0) _buildCounter('Diaframma', _telainiDiaframma, Colors.blueGrey),
+                          if (_tealiniFoglioCereo > 0) _buildCounter('F. Cereo', _tealiniFoglioCereo, Colors.yellow.shade600),
                         ],
                       ),
                     ],
@@ -647,38 +744,31 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     children: [
                       Text(
                         'Regina',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 16),
-                      
-                      _buildSwitchTile(
-                        'Presenza regina',
-                        'La colonia ha una regina',
-                        Icons.star,
-                        _presenzaRegina,
-                        (value) {
-                          setState(() {
-                            _presenzaRegina = value;
-                            if (!value) {
-                              _reginaVista = false;
-                              _uovaFresche = false;
-                            }
-                          });
-                        },
+
+                      // Stato regina: selezione unica a 3 stati
+                      Row(
+                        children: [
+                          Icon(Icons.star, color: ThemeConstants.primaryColor),
+                          SizedBox(width: 12),
+                          Text('Stato regina', style: TextStyle(fontSize: 15)),
+                        ],
                       ),
-                      
-                      if (_presenzaRegina) ...[
-                        _buildSwitchTile(
-                          'Regina vista',
-                          'La regina è stata vista durante il controllo',
-                          Icons.visibility,
-                          _reginaVista,
-                          (value) => setState(() => _reginaVista = value),
-                        ),
-                        
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: _buildStatoReginaButton('assente', 'Assente', Icons.star_border, Colors.red.shade300)),
+                          SizedBox(width: 6),
+                          Expanded(child: _buildStatoReginaButton('presente', 'Presente', Icons.star_half, Colors.orange)),
+                          SizedBox(width: 6),
+                          Expanded(child: _buildStatoReginaButton('vista', 'Vista', Icons.star, Colors.amber)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      if (_statoRegina != 'assente') ...[
                         _buildSwitchTile(
                           'Uova fresche',
                           'Sono state viste uova fresche',
@@ -687,7 +777,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           (value) => setState(() => _uovaFresche = value),
                         ),
                       ],
-                      
+
                       _buildSwitchTile(
                         'Celle reali',
                         'Sono presenti celle reali',
@@ -696,13 +786,11 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         (value) {
                           setState(() {
                             _celleReali = value;
-                            if (!value) {
-                              _numeroCelleRealiController.text = '0';
-                            }
+                            if (!value) _numeroCelleRealiController.text = '0';
                           });
                         },
                       ),
-                      
+
                       if (_celleReali)
                         Padding(
                           padding: EdgeInsets.only(left: 48, right: 16, top: 8, bottom: 8),
@@ -717,7 +805,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                             validator: (value) => Validators.positiveInteger(value),
                           ),
                         ),
-                      
+
                       _buildSwitchTile(
                         'Regina sostituita',
                         'La regina è stata sostituita durante questo controllo',
@@ -725,6 +813,41 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         _reginaSostituita,
                         (value) => setState(() => _reginaSostituita = value),
                       ),
+
+                      // Colorazione regina
+                      _buildSwitchTile(
+                        'Regina colorata',
+                        'La regina è stata colorata/marcata in questo controllo',
+                        Icons.palette,
+                        _reginaColorata,
+                        (value) => setState(() {
+                          _reginaColorata = value;
+                          if (!value) _coloreRegina = null;
+                        }),
+                      ),
+
+                      if (_reginaColorata) ...[
+                        Padding(
+                          padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Colore marcatura', style: TextStyle(color: Colors.grey[700])),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  _buildColorButton('bianco', Colors.white),
+                                  _buildColorButton('giallo', Colors.yellow),
+                                  _buildColorButton('rosso', Colors.red),
+                                  _buildColorButton('verde', Colors.green),
+                                  _buildColorButton('blu', Colors.blue),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -966,6 +1089,11 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         width = 10;
         icon = Icons.vertical_split;
         break;
+      case 'foglio_cereo':
+        color = Colors.yellow.shade200;
+        width = 24;
+        icon = Icons.description;
+        break;
       case 'nutritore':
         color = Color(0xFFE8D4B9);
         width = 24;
@@ -1062,6 +1190,68 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     );
   }
   
+  Widget _buildStatoReginaButton(String stato, String label, IconData icon, Color color) {
+    final isSelected = _statoRegina == stato;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _statoRegina = stato;
+        if (stato == 'assente') _uovaFresche = false;
+      }),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.85) : color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? color : color.withOpacity(0.4),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 22, color: isSelected ? Colors.white : color),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorButton(String colore, Color color) {
+    final isSelected = _coloreRegina == colore;
+    return GestureDetector(
+      onTap: () => setState(() => _coloreRegina = colore),
+      child: Container(
+        width: 44,
+        height: 44,
+        margin: EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected ? Colors.black : Colors.grey.shade400,
+            width: isSelected ? 3 : 1,
+          ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1)]
+              : null,
+        ),
+        child: isSelected
+            ? Icon(Icons.check, color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white, size: 20)
+            : null,
+      ),
+    );
+  }
+
   Widget _buildSwitchTile(String title, String subtitle, IconData icon, bool value, Function(bool) onChanged) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),

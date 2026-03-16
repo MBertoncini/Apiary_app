@@ -8,6 +8,9 @@ import '../../models/arnia.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/offline_banner.dart';
+import '../../widgets/hive_frame_visualizer.dart';
+import '../../database/dao/controllo_arnia_dao.dart';
 
 class ArniaListScreen extends StatefulWidget {
   @override
@@ -15,10 +18,12 @@ class ArniaListScreen extends StatefulWidget {
 }
 
 class _ArniaListScreenState extends State<ArniaListScreen> {
-  late Future<Map<String, List<Arnia>>> _arnieByApiarioFuture;
   late ApiService _apiService;
   late StorageService _storageService;
-  
+  Map<String, List<Arnia>> _arnieByApiario = {};
+  bool _isLoading = true;
+  bool _isRefreshing = true;
+
   @override
   void initState() {
     super.initState();
@@ -27,204 +32,77 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
     _storageService = Provider.of<StorageService>(context, listen: false);
     _refreshArnie();
   }
-  
-  Future<void> _refreshArnie() async {
-    setState(() {
-      _arnieByApiarioFuture = _loadArnieGrouped();
-    });
-  }
-  
-  Future<Map<String, List<Arnia>>> _loadArnieGrouped() async {
-    try {
-      // Prima, proviamo a caricare da storage locale se c'è un problema di connessione
-      List<Arnia> arnie = [];
-      Map<int, dynamic> apiariMap = {};
-      
-      try {
-        // Tenta di caricare le arnie dall'API
-        debugPrint('Fetching arnie from API...');
-        final response = await _apiService.get(ApiConstants.arnieUrl);
-        debugPrint('API response for arnie: $response');
-        
-        // Gestione robusta per diversi formati di risposta
-        if (response is List) {
-          // Formato diretto: array di arnie
-          arnie = response.map((item) => Arnia.fromJson(item)).toList();
-          debugPrint('Parsed ${arnie.length} arnie from API (direct array)');
-        } else if (response is Map) {
-          // Django REST Framework tipicamente usa questo formato di paginazione
-          if (response.containsKey('results') && response['results'] is List) {
-            arnie = (response['results'] as List).map((item) => Arnia.fromJson(item)).toList();
-            debugPrint('Parsed ${arnie.length} arnie from API (DRF pagination format)');
-          } 
-          // Potrebbe essere un oggetto che contiene un array in una proprietà
-          else {
-            bool found = false;
-            for (var key in ['arnie', 'data', 'items']) {
-              if (response.containsKey(key) && response[key] is List) {
-                arnie = (response[key] as List).map((item) => Arnia.fromJson(item)).toList();
-                debugPrint('Parsed ${arnie.length} arnie from API (nested in "$key" property)');
-                found = true;
-                break;
-              }
-            }
-            
-            if (!found) {
-              debugPrint('Unexpected response format for arnie: could not find array in object properties');
-              // Prova a controllare se l'oggetto stesso può essere interpretato come un'arnia
-              try {
-                var singleArnia = Arnia.fromJson(response as Map<String, dynamic>);
-                arnie = [singleArnia];
-                debugPrint('Parsed a single arnia from response object');
-              } catch (e) {
-                debugPrint('Could not parse response as a single arnia: $e');
-              }
-            }
-          }
-        } else {
-          debugPrint('Unexpected response format for arnie: ${response.runtimeType}');
-        }
-        
-        // Carica i dati degli apiari
-        debugPrint('Fetching apiari from API...');
-        final apiariResponse = await _apiService.get(ApiConstants.apiariUrl);
-        debugPrint('API response for apiari: $apiariResponse');
-        
-        // Stessa gestione robusta per gli apiari
-        if (apiariResponse is List) {
-          for (var apiario in apiariResponse) {
-            apiariMap[apiario['id']] = apiario;
-          }
-          debugPrint('Parsed ${apiariMap.length} apiari from API (direct array)');
-        } else if (apiariResponse is Map) {
-          // Django REST Framework tipicamente usa questo formato di paginazione
-          if (apiariResponse.containsKey('results') && apiariResponse['results'] is List) {
-            for (var apiario in apiariResponse['results']) {
-              apiariMap[apiario['id']] = apiario;
-            }
-            debugPrint('Parsed ${apiariMap.length} apiari from API (DRF pagination format)');
-          }
-          // Cerca proprietà che potrebbero contenere un array di apiari
-          else {
-            bool found = false;
-            for (var key in ['apiari', 'data', 'items']) {
-              if (apiariResponse.containsKey(key) && apiariResponse[key] is List) {
-                for (var apiario in apiariResponse[key]) {
-                  apiariMap[apiario['id']] = apiario;
-                }
-                debugPrint('Parsed ${apiariMap.length} apiari from API (nested in "$key" property)');
-                found = true;
-                break;
-              }
-            }
-            
-            if (!found && apiariResponse.containsKey('id')) {
-              // Potrebbe essere un singolo apiario
-              apiariMap[apiariResponse['id']] = apiariResponse;
-              debugPrint('Parsed a single apiario from response object');
-            } else if (!found) {
-              debugPrint('Unexpected response format for apiari: could not find array in object properties');
-            }
-          }
-        } else {
-          debugPrint('Unexpected response format for apiari: ${apiariResponse.runtimeType}');
-        }
-      } catch (e) {
-        debugPrint('Error fetching from API, falling back to local storage: $e');
-        
-        // Fallback: carica da storage locale se l'API fallisce
-        final storedArnie = await _storageService.getStoredData('arnie');
-        if (storedArnie.isNotEmpty) {
-          arnie = storedArnie.map((item) => Arnia.fromJson(item)).toList();
-          debugPrint('Loaded ${arnie.length} arnie from local storage');
-        }
-        
-        final storedApiari = await _storageService.getStoredData('apiari');
-        if (storedApiari.isNotEmpty) {
-          for (var apiario in storedApiari) {
-            apiariMap[apiario['id']] = apiario;
-          }
-          debugPrint('Loaded ${apiariMap.length} apiari from local storage');
-        }
-      }
-      
-      // Se ancora non abbiamo arnie, restituisci una mappa vuota
-      if (arnie.isEmpty) {
-        debugPrint('No arnie found in API or local storage');
-        return {};
-      }
-      
-      // Aggiorna le informazioni delle arnie con i nomi corretti degli apiari
-      for (var i = 0; i < arnie.length; i++) {
-        if (apiariMap.containsKey(arnie[i].apiario)) {
-          arnie[i] = Arnia(
-            id: arnie[i].id,
-            apiario: arnie[i].apiario,
-            apiarioNome: apiariMap[arnie[i].apiario]['nome'],
-            numero: arnie[i].numero,
-            colore: arnie[i].colore,
-            coloreHex: arnie[i].coloreHex,
-            dataInstallazione: arnie[i].dataInstallazione,
-            note: arnie[i].note,
-            attiva: arnie[i].attiva,
-          );
-        }
-      }
-      
-      // Salva le arnie aggiornate nel storage locale
-      await _storageService.saveData('arnie', arnie.map((a) => a.toJson()).toList());
-      
-      // Raggruppa le arnie per apiario
-      Map<String, List<Arnia>> arniaByApiario = {};
-      
-      for (var arnia in arnie) {
-        String apiarioNome = arnia.apiarioNome ?? 'Apiario sconosciuto';
-        if (!arniaByApiario.containsKey(apiarioNome)) {
-          arniaByApiario[apiarioNome] = [];
-        }
-        arniaByApiario[apiarioNome]!.add(arnia);
-      }
-      
-      // Ordina le arnie all'interno di ogni apiario per numero
-      arniaByApiario.forEach((apiario, arnieList) {
-        arnieList.sort((a, b) => a.numero.compareTo(b.numero));
-      });
-      
-      debugPrint('Returning ${arniaByApiario.length} apiario groups with arnie');
-      return arniaByApiario;
-    } catch (e) {
-      debugPrint('Error loading arnie: $e');
-      // Invece di propagare l'errore, proviamo a recuperare i dati locali
-      try {
-        final storedArnie = await _storageService.getStoredData('arnie');
-        if (storedArnie.isNotEmpty) {
-          debugPrint('Fallback: loading ${storedArnie.length} arnie from local storage after error');
-          
-          List<Arnia> arnie = storedArnie.map((item) => Arnia.fromJson(item)).toList();
-          Map<String, List<Arnia>> arniaByApiario = {};
-          
-          for (var arnia in arnie) {
-            String apiarioNome = arnia.apiarioNome ?? 'Apiario sconosciuto';
-            if (!arniaByApiario.containsKey(apiarioNome)) {
-              arniaByApiario[apiarioNome] = [];
-            }
-            arniaByApiario[apiarioNome]!.add(arnia);
-          }
-          
-          // Ordina le arnie all'interno di ogni apiario per numero
-          arniaByApiario.forEach((apiario, arnieList) {
-            arnieList.sort((a, b) => a.numero.compareTo(b.numero));
-          });
-          
-          return arniaByApiario;
-        }
-      } catch (localError) {
-        debugPrint('Error loading from local storage: $localError');
-      }
-      
-      // Se tutto fallisce, restituisci una mappa vuota
-      return {};
+
+  /// Raggruppa le arnie per nome apiario e le ordina.
+  Map<String, List<Arnia>> _groupArnie(List<Arnia> arnie) {
+    final Map<String, List<Arnia>> byApiario = {};
+    for (var arnia in arnie) {
+      final nome = arnia.apiarioNome;
+      byApiario.putIfAbsent(nome, () => []).add(arnia);
     }
+    byApiario.forEach((_, list) => list.sort((a, b) => a.numero.compareTo(b.numero)));
+    return byApiario;
+  }
+
+  List<Arnia> _parseArnieResponse(dynamic response) {
+    if (response is List) return response.map((item) => Arnia.fromJson(item)).toList();
+    if (response is Map && response.containsKey('results') && response['results'] is List) {
+      return (response['results'] as List).map((item) => Arnia.fromJson(item)).toList();
+    }
+    return [];
+  }
+
+  Future<void> _refreshArnie() async {
+    // Fase 1: cache — mostra subito
+    final cachedArnie = await _storageService.getStoredData('arnie');
+    if (cachedArnie.isNotEmpty) {
+      final arnie = cachedArnie.map((item) => Arnia.fromJson(item)).toList();
+      _arnieByApiario = _groupArnie(arnie);
+      _isLoading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
+    }
+
+    // Fase 2: aggiornamento dal server
+    try {
+      final results = await Future.wait([
+        _apiService.get(ApiConstants.arnieUrl),
+        _apiService.get(ApiConstants.apiariUrl),
+      ]);
+      List<Arnia> arnie = _parseArnieResponse(results[0]);
+
+      // Aggiorna nomi apiario dalle risposte API
+      final apiariRaw = results[1];
+      final Map<int, dynamic> apiariMap = {};
+      if (apiariRaw is List) {
+        for (var a in apiariRaw) { apiariMap[a['id']] = a; }
+      } else if (apiariRaw is Map && apiariRaw.containsKey('results')) {
+        for (var a in apiariRaw['results']) { apiariMap[a['id']] = a; }
+      }
+      if (apiariMap.isNotEmpty) {
+        arnie = arnie.map((a) {
+          if (apiariMap.containsKey(a.apiario)) {
+            return Arnia(
+              id: a.id, apiario: a.apiario,
+              apiarioNome: apiariMap[a.apiario]['nome'],
+              numero: a.numero, colore: a.colore, coloreHex: a.coloreHex,
+              dataInstallazione: a.dataInstallazione, note: a.note, attiva: a.attiva,
+            );
+          }
+          return a;
+        }).toList();
+      }
+
+      if (arnie.isNotEmpty) {
+        await _storageService.saveData('arnie', arnie.map((a) => a.toJson()).toList());
+        _arnieByApiario = _groupArnie(arnie);
+      }
+    } catch (e) {
+      debugPrint('Error fetching arnie from API: $e');
+    }
+
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
   }
   
   @override
@@ -240,100 +118,54 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
         ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.arniaListRoute),
-      body: FutureBuilder<Map<String, List<Arnia>>>(
-        future: _arnieByApiarioFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            // Mostra errore con pulsante di retry
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red.withOpacity(0.7),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Errore nel caricamento delle arnie',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${snapshot.error}',
-                    style: TextStyle(fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.refresh),
-                    label: Text('Riprova'),
-                    onPressed: _refreshArnie,
-                  ),
-                ],
-              ),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            // Nessuna arnia trovata
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.hive_outlined,
-                    size: 80,
-                    color: Colors.grey.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Nessuna arnia trovata',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Non hai ancora creato arnie o non è stato possibile caricarle',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.add),
-                    label: Text('Crea arnia'),
-                    onPressed: () {
-                      Navigator.of(context).pushNamed(AppConstants.creaArniaRoute);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    icon: Icon(Icons.refresh),
-                    label: Text('Riprova a caricare'),
-                    onPressed: _refreshArnie,
-                  ),
-                ],
-              ),
-            );
-          } else {
-            // Mostra arnie raggruppate per apiario
-            return RefreshIndicator(
-              onRefresh: _refreshArnie,
-              child: ListView.builder(
-                itemCount: snapshot.data!.keys.length,
-                itemBuilder: (context, index) {
-                  String apiarioNome = snapshot.data!.keys.elementAt(index);
-                  List<Arnia> arnieInApiario = snapshot.data![apiarioNome] ?? [];
-                  
-                  return ApiarioGroupWidget(
-                    apiarioNome: apiarioNome,
-                    arnie: arnieInApiario,
-                  );
-                },
-              ),
-            );
-          }
-        },
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _arnieByApiario.isEmpty
+                ? const SizedBox.shrink()
+                : _arnieByApiario.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.hive_outlined, size: 80, color: Colors.grey.withOpacity(0.5)),
+                            const SizedBox(height: 16),
+                            Text('Nessuna arnia trovata', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            Text('Non hai ancora creato arnie o non è stato possibile caricarle',
+                                textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              icon: Icon(Icons.add),
+                              label: Text('Crea arnia'),
+                              onPressed: () => Navigator.of(context).pushNamed(AppConstants.creaArniaRoute),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton.icon(
+                              icon: Icon(Icons.refresh),
+                              label: Text('Riprova a caricare'),
+                              onPressed: _refreshArnie,
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _refreshArnie,
+                        child: ListView.builder(
+                          itemCount: _arnieByApiario.keys.length,
+                          itemBuilder: (context, index) {
+                            final apiarioNome = _arnieByApiario.keys.elementAt(index);
+                            return ApiarioGroupWidget(
+                              apiarioNome: apiarioNome,
+                              arnie: _arnieByApiario[apiarioNome] ?? [],
+                            );
+                          },
+                        ),
+                      ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
@@ -410,6 +242,13 @@ class _ApiarioGroupWidgetState extends State<ApiarioGroupWidget> {
             ),
           ),
           
+          // Legenda telaini (visibile solo se espanso)
+          if (_isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: HiveFrameVisualizer.legend(),
+            ),
+
           // Lista delle arnie dell'apiario (se espanso)
           if (_isExpanded)
             ListView.builder(
@@ -426,119 +265,122 @@ class _ApiarioGroupWidgetState extends State<ApiarioGroupWidget> {
   }
 }
 
-class ArniaListItem extends StatelessWidget {
+class ArniaListItem extends StatefulWidget {
   final Arnia arnia;
-  
+
   const ArniaListItem({required this.arnia});
-  
+
+  @override
+  _ArniaListItemState createState() => _ArniaListItemState();
+}
+
+class _ArniaListItemState extends State<ArniaListItem> {
+  final _dao = ControlloArniaDao();
+  Map<String, dynamic>? _ultimoControllo;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUltimoControllo();
+  }
+
+  Future<void> _loadUltimoControllo() async {
+    final c = await _dao.getLatestByArnia(widget.arnia.id);
+    if (mounted) setState(() => _ultimoControllo = c);
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll('#', '');
+    if (hexColor.length == 6) hexColor = 'FF$hexColor';
+    return Color(int.parse(hexColor, radix: 16));
+  }
+
+  Color _getContrastColor(Color bg) =>
+      bg.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+
   @override
   Widget build(BuildContext context) {
-    Color arniaColor = _getColorFromHex(arnia.coloreHex);
-    
+    final arniaColor = _getColorFromHex(widget.arnia.coloreHex);
+
     return InkWell(
-      onTap: () {
-        Navigator.of(context).pushNamed(
-          AppConstants.arniaDetailRoute,
-          arguments: arnia.id,
-        );
-      },
+      onTap: () => Navigator.of(context).pushNamed(
+        AppConstants.arniaDetailRoute,
+        arguments: widget.arnia.id,
+      ).then((_) => _loadUltimoControllo()),
       child: Container(
         decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: Colors.grey.shade300,
-              width: 0.5,
-            ),
-          ),
+          border: Border(top: BorderSide(color: Colors.grey.shade300, width: 0.5)),
         ),
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Numero e colore dell'arnia
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: arniaColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    arnia.numero.toString(),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: _getContrastColor(arniaColor),
+              // ── riga principale ──────────────────────────────────
+              Row(
+                children: [
+                  // Numero e colore
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: arniaColor,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 16),
-              
-              // Informazioni arnia
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Arnia ${arnia.numero}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
+                    child: Center(
+                      child: Text(
+                        widget.arnia.numero.toString(),
+                        style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold,
+                          color: _getContrastColor(arniaColor),
+                        ),
                       ),
                     ),
-                    Text(
-                      'Installata il ${arnia.dataInstallazione}',
+                  ),
+                  const SizedBox(width: 16),
+                  // Informazioni
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Arnia ${widget.arnia.numero}',
+                            style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Text(
+                          'Installata il ${widget.arnia.dataInstallazione}',
+                          style: TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Badge stato
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: widget.arnia.attiva
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.arnia.attiva ? 'Attiva' : 'Inattiva',
                       style: TextStyle(
                         fontSize: 12,
-                        color: ThemeConstants.textSecondaryColor,
+                        color: widget.arnia.attiva
+                            ? Colors.green.shade800
+                            : Colors.red.shade800,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              
-              // Indicatore stato attivo
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: arnia.attiva 
-                      ? Colors.green.withOpacity(0.1) 
-                      : Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  arnia.attiva ? 'Attiva' : 'Inattiva',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: arnia.attiva ? Colors.green.shade800 : Colors.red.shade800,
                   ),
-                ),
+                  Icon(Icons.navigate_next, color: ThemeConstants.textSecondaryColor),
+                ],
               ),
-              
-              // Icona per dettaglio
-              Icon(
-                Icons.navigate_next,
-                color: ThemeConstants.textSecondaryColor,
-              ),
+
+              // ── visualizzatore telaini ───────────────────────────
+              const SizedBox(height: 6),
+              HiveFrameVisualizer(controllo: _ultimoControllo),
             ],
           ),
         ),
       ),
     );
-  }
-  
-  Color _getColorFromHex(String hexColor) {
-    hexColor = hexColor.replaceAll("#", "");
-    if (hexColor.length == 6) {
-      hexColor = "FF" + hexColor;
-    }
-    return Color(int.parse(hexColor, radix: 16));
-  }
-  
-  Color _getContrastColor(Color backgroundColor) {
-    // Calcola se il testo dovrebbe essere chiaro o scuro
-    double luminance = backgroundColor.computeLuminance();
-    return luminance > 0.5 ? Colors.black : Colors.white;
   }
 }

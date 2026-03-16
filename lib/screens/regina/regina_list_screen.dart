@@ -3,11 +3,12 @@ import '../../widgets/drawer_widget.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
-import '../../services/api_cache_helper.dart';
+import '../../services/storage_service.dart';
 import '../../models/regina.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class ReginaListScreen extends StatefulWidget {
   @override
@@ -17,6 +18,7 @@ class ReginaListScreen extends StatefulWidget {
 class _ReginaListScreenState extends State<ReginaListScreen> {
   List<Regina> _regine = [];
   bool _isLoading = true;
+  bool _isRefreshing = true;
   bool _isOffline = false;
   String? _errorMessage;
 
@@ -27,93 +29,41 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final apiService = Provider.of<ApiService>(context, listen: false);
+    _errorMessage = null;
 
+    // Fase 1: cache — mostra subito
+    final cachedRaw = await storageService.getStoredData('regine');
+    if (cachedRaw.isNotEmpty) {
+      _regine = cachedRaw.map((item) => Regina.fromJson(item)).toList();
+      _isLoading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isLoading = true; });
+    }
+
+    // Fase 2: aggiornamento dal server
     try {
-      final apiService = Provider.of<ApiService>(context, listen: false);
-
-      final isConnected = await ApiCacheHelper.isConnected();
-
-      if (isConnected) {
-        try {
-          final response = await apiService.get(ApiConstants.regineUrl);
-          debugPrint('API response for regine: $response');
-
-          List<Regina> regine = [];
-
-          if (response is List) {
-            regine = response.map((item) => Regina.fromJson(item)).toList();
-            debugPrint('Parsed ${regine.length} regine from API (direct array)');
-          } else if (response is Map) {
-            if (response.containsKey('results') && response['results'] is List) {
-              regine = (response['results'] as List)
-                  .map((item) => Regina.fromJson(item))
-                  .toList();
-              debugPrint('Parsed ${regine.length} regine from API (DRF pagination format)');
-            } else {
-              for (var key in ['regine', 'data', 'items']) {
-                if (response.containsKey(key) && response[key] is List) {
-                  regine = (response[key] as List)
-                      .map((item) => Regina.fromJson(item))
-                      .toList();
-                  debugPrint('Parsed ${regine.length} regine from API (nested in "$key" property)');
-                  break;
-                }
-              }
-
-              if (regine.isEmpty && response.containsKey('id')) {
-                regine = [Regina.fromJson(response as Map<String, dynamic>)];
-                debugPrint('Parsed a single regina from response object');
-              }
-            }
-          }
-
-          setState(() {
-            _regine = regine;
-            _isLoading = false;
-            _isOffline = false;
-          });
-
-          // Save to cache
-          await ApiCacheHelper.saveToCache(
-              'regine', _regine.map((r) => r.toJson()).toList());
-        } catch (e) {
-          debugPrint('Errore API regine, utilizzo cache: $e');
-          await _loadFromCache();
-        }
-      } else {
-        await _loadFromCache();
+      final response = await apiService.get(ApiConstants.regineUrl);
+      List<Regina> regine = [];
+      if (response is List) {
+        regine = response.map((item) => Regina.fromJson(item)).toList();
+      } else if (response is Map && response.containsKey('results') && response['results'] is List) {
+        regine = (response['results'] as List).map((item) => Regina.fromJson(item)).toList();
       }
+      _regine = regine;
+      _isLoading = false;
+      _isOffline = false;
+      await storageService.saveData('regine', regine.map((r) => r.toJson()).toList());
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Errore durante il caricamento delle regine: $e';
-        _isLoading = false;
-      });
+      debugPrint('Errore API regine: $e');
+      _isLoading = false;
+      _isOffline = _regine.isNotEmpty; // offline solo se abbiamo mostrato dati cached
+      if (_regine.isEmpty) _errorMessage = 'Errore durante il caricamento delle regine: $e';
     }
-  }
 
-  Future<void> _loadFromCache() async {
-    try {
-      final cachedRegine = await ApiCacheHelper.loadFromCache<List<Regina>>(
-          'regine',
-          (data) =>
-              (data as List).map((json) => Regina.fromJson(json)).toList());
-
-      setState(() {
-        _regine = cachedRegine ?? [];
-        _isLoading = false;
-        _isOffline = true;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage =
-            'Errore durante il caricamento dei dati dalla cache: $e';
-        _isLoading = false;
-      });
-    }
+    if (mounted) setState(() { _isRefreshing = false; });
   }
 
   @override
@@ -143,7 +93,12 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
         ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.reginaListRoute),
-      body: _isLoading
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isLoading
           ? LoadingWidget(message: 'Caricamento regine...')
           : _errorMessage != null
               ? ErrorDisplayWidget(
@@ -194,6 +149,9 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
                         },
                       ),
                     ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../services/notification_service.dart';
 import '../../utils/date_formatters.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class GruppiListScreen extends StatefulWidget {
   @override
@@ -18,6 +19,7 @@ class GruppiListScreen extends StatefulWidget {
 
 class _GruppiListScreenState extends State<GruppiListScreen> {
   bool _isLoading = true;
+  bool _isRefreshing = true;
   List<Gruppo> _gruppi = [];
   List<InvitoGruppo> _inviti = [];
   String? _errorMessage;
@@ -37,19 +39,30 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() { _errorMessage = null; });
 
+    // Phase 1: cache — gruppi only
+    final cachedGruppi = await _storageService.getStoredData('gruppi');
+    if (cachedGruppi.isNotEmpty) {
+      _gruppi = cachedGruppi.map((e) => Gruppo.fromJson(e as Map<String, dynamic>)).toList();
+      _isLoading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; _errorMessage = null; });
+    }
+
+    // Phase 2: API — gruppi + inviti
     try {
-      // Carica gruppi e inviti in parallelo
       final results = await Future.wait([
         _gruppoService.getGruppi(),
         _gruppoService.getInvitiRicevuti(),
       ]);
 
+      final nuoviGruppi = results[0] as List<Gruppo>;
       final nuoviInviti = results[1] as List<InvitoGruppo>;
+
+      // Salva gruppi nella cache
+      await _storageService.saveData('gruppi', nuoviGruppi.map((g) => g.toJson()).toList());
 
       // Notifica per inviti nuovi mai visti prima
       try {
@@ -66,25 +79,23 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
             );
           }
         }
-        await _storageService.saveData(
-          'seen_inviti_ids',
-          nuoviInviti.map((i) => i.id).toList(),
-        );
+        await _storageService.saveData('seen_inviti_ids', nuoviInviti.map((i) => i.id).toList());
       } catch (e) {
         debugPrint('Errore notifiche inviti: $e');
       }
 
-      setState(() {
-        _gruppi = results[0] as List<Gruppo>;
+      if (mounted) {
+        _gruppi = nuoviGruppi;
         _inviti = nuoviInviti;
-        _isLoading = false;
-      });
+      }
     } catch (e) {
-      setState(() {
+      if (_gruppi.isEmpty) {
         _errorMessage = 'Errore nel caricamento dei dati: ${e.toString()}';
-        _isLoading = false;
-      });
+      }
+      debugPrint('Errore caricamento gruppi: $e');
     }
+
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
   }
 
   void _navigateToGruppoDetail(int gruppoId) {
@@ -425,35 +436,40 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
         ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.gruppiListRoute),
-      body: RefreshIndicator(
-        onRefresh: _loadData,
-        child: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? ErrorDisplayWidget(
-                    errorMessage: _errorMessage!,
-                    onRetry: _loadData,
-                  )
-                : SingleChildScrollView(
-                    physics: AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Sezione inviti
-                        _buildInvitiSection(),
-                        
-                        // Sezione gruppi
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            'I tuoi gruppi',
-                            style: ThemeConstants.subheadingStyle,
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadData,
+              child: _isRefreshing && _gruppi.isEmpty && _inviti.isEmpty
+                  ? const SizedBox.shrink()
+                  : _errorMessage != null
+                      ? ErrorDisplayWidget(
+                          errorMessage: _errorMessage!,
+                          onRetry: _loadData,
+                        )
+                      : SingleChildScrollView(
+                          physics: AlwaysScrollableScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInvitiSection(),
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text(
+                                  'I tuoi gruppi',
+                                  style: ThemeConstants.subheadingStyle,
+                                ),
+                              ),
+                              _buildGruppiList(),
+                            ],
                           ),
                         ),
-                        _buildGruppiList(),
-                      ],
-                    ),
-                  ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreateGruppo,

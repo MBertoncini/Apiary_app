@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
+import '../../widgets/offline_banner.dart';
 import '../../models/vendita.dart';
 import '../../models/cliente.dart';
 import '../../models/gruppo.dart';
@@ -26,6 +27,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   // null = tutti (personali + gruppo), -1 = solo personali, >0 = gruppo specifico
   int? _filtroGruppoId;
   bool _isLoading = true;
+  bool _isRefreshing = true;
   String? _errorMessage;
 
   static const String _cacheKeyVendite = 'vendite';
@@ -68,8 +70,11 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
             _clienti = cachedClienti.map((e) => Cliente.fromJson(e as Map<String, dynamic>)).toList();
           }
           _isLoading = false;
+          _isRefreshing = true;
         });
       }
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
     }
 
     try {
@@ -93,15 +98,16 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
           _clienti = clientiList.map((e) => Cliente.fromJson(e as Map<String, dynamic>)).toList();
           _gruppi  = gruppiList.map((e) => Gruppo.fromJson(e as Map<String, dynamic>)).toList();
           _isLoading = false;
+          _isRefreshing = false;
           _errorMessage = null;
         });
       }
     } catch (e) {
       if (!mounted) return;
       if (_vendite.isEmpty && _clienti.isEmpty) {
-        setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; });
+        setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; _isRefreshing = false; });
       } else {
-        setState(() { _isLoading = false; });
+        setState(() { _isLoading = false; _isRefreshing = false; });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
         );
@@ -192,17 +198,25 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
         actions: [IconButton(icon: Icon(Icons.refresh), onPressed: _loadData)],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.venditeRoute),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(_errorMessage!), SizedBox(height: 8),
-                  ElevatedButton(onPressed: _loadData, child: Text('Riprova')),
-                ]))
-              : TabBarView(
-                  controller: _tabController,
-                  children: [_buildVenditeTab(), _buildClientiTab()],
-                ),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _vendite.isEmpty && _clienti.isEmpty
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text(_errorMessage!), SizedBox(height: 8),
+                        ElevatedButton(onPressed: _loadData, child: Text('Riprova')),
+                      ]))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [_buildVenditeTab(), _buildClientiTab()],
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () {

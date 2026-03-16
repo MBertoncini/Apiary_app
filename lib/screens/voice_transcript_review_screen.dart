@@ -15,7 +15,12 @@ import '../constants/theme_constants.dart';
 /// The parent is responsible for updating the offline queue accordingly.
 class VoiceTranscriptReviewScreen extends StatefulWidget {
   final List<String> initialTranscriptions;
-  final Future<void> Function(List<String> transcriptions) onSendToAI;
+  /// Called when the user confirms sending to AI.
+  /// Must return [true] if the screen was navigated away from (success),
+  /// or [false] if the screen should stay visible (failure / partial retry).
+  /// This drives [_processingComplete] so that the back-gesture correctly
+  /// invokes [onLeave] only when processing was not already handled.
+  final Future<bool> Function(List<String> transcriptions) onSendToAI;
   final void Function(List<String> remaining) onLeave;
 
   const VoiceTranscriptReviewScreen({
@@ -153,8 +158,10 @@ class _VoiceTranscriptReviewScreenState
     final toProcess = _currentItems();
     setState(() => _isProcessing = true);
     try {
-      await widget.onSendToAI(toProcess);
-      _processingComplete = true;
+      // _processingComplete is set to the return value:
+      //   true  → onSendToAI popped this screen (success) → onLeave must NOT fire
+      //   false → onSendToAI returned early (error) → screen stays open, onLeave WILL fire on back
+      _processingComplete = await widget.onSendToAI(toProcess);
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }

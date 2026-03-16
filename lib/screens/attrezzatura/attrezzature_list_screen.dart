@@ -7,8 +7,9 @@ import '../../constants/theme_constants.dart';
 import '../../models/attrezzatura.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
-import '../../services/api_cache_helper.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
+import '../../widgets/offline_banner.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
 
@@ -20,7 +21,7 @@ class AttrezzatureListScreen extends StatefulWidget {
 class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
   List<Attrezzatura> _attrezzature = [];
   bool _isLoading = true;
-  bool _isOffline = false;
+  bool _isRefreshing = true;
   String? _errorMessage;
   String _filtroStato = 'tutti';
   String _filtroCondizione = 'tutti';
@@ -32,63 +33,34 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() { _errorMessage = null; });
 
+    // Phase 1: cache
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final cached = await storageService.getStoredData('attrezzature');
+    if (cached.isNotEmpty) {
+      _attrezzature = cached.map((e) => Attrezzatura.fromJson(e as Map<String, dynamic>)).toList();
+      _isLoading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
+    }
+
+    // Phase 2: API
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final attrezzaturaService = AttrezzaturaService(apiService);
-
-      // Verifica la connettività
-      final isConnected = await ApiCacheHelper.isConnected();
-
-      if (isConnected) {
-        try {
-          final attrezzature = await attrezzaturaService.getAttrezzature();
-
-          setState(() {
-            _attrezzature = attrezzature;
-            _isLoading = false;
-            _isOffline = false;
-          });
-
-          // Salva nella cache
-          await ApiCacheHelper.saveToCache('attrezzature', _attrezzature);
-        } catch (e) {
-          debugPrint('Errore API, utilizzo cache: $e');
-          _loadFromCache();
-        }
-      } else {
-        _loadFromCache();
-      }
+      final attrezzature = await attrezzaturaService.getAttrezzature();
+      await storageService.saveData('attrezzature', attrezzature.map((a) => a.toJson()).toList());
+      _attrezzature = attrezzature;
     } catch (e) {
-      setState(() {
+      debugPrint('Errore API attrezzature: $e');
+      if (_attrezzature.isEmpty) {
         _errorMessage = 'Errore durante il caricamento dei dati: $e';
-        _isLoading = false;
-      });
+      }
     }
-  }
 
-  Future<void> _loadFromCache() async {
-    try {
-      final cachedAttrezzature = await ApiCacheHelper.loadFromCache<List<Attrezzatura>>(
-        'attrezzature',
-        (data) => (data as List).map((json) => Attrezzatura.fromJson(json)).toList(),
-      );
-
-      setState(() {
-        _attrezzature = cachedAttrezzature ?? [];
-        _isLoading = false;
-        _isOffline = true;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Errore durante il caricamento dei dati dalla cache: $e';
-        _isLoading = false;
-      });
-    }
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
   }
 
   List<Attrezzatura> get _filteredAttrezzature {
@@ -109,19 +81,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Text('Attrezzature'),
-            if (_isOffline)
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Tooltip(
-                  message: 'Modalità offline - Dati caricati dalla cache',
-                  child: Icon(Icons.offline_bolt, size: 18, color: Colors.amber),
-                ),
-              ),
-          ],
-        ),
+        title: Text('Attrezzature'),
         actions: [
           IconButton(
             icon: Icon(Icons.filter_list),
@@ -136,14 +96,22 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
         ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.attrezzatureRoute),
-      body: _isLoading
-          ? LoadingWidget(message: 'Caricamento attrezzature...')
-          : _errorMessage != null
-              ? ErrorDisplayWidget(
-                  errorMessage: _errorMessage!,
-                  onRetry: _loadData,
-                )
-              : _buildBody(),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _attrezzature.isEmpty
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(
+                        errorMessage: _errorMessage!,
+                        onRetry: _loadData,
+                      )
+                    : _buildBody(),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.pushNamed(context, AppConstants.attrezzaturaCreateRoute)

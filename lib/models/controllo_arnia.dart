@@ -24,7 +24,8 @@ class ControlloArnia {
   final bool celleReali;
   final int numeroCelleReali;
   final bool reginaSostituita;
-  
+  final String? telainiConfig;
+
   ControlloArnia({
     required this.id,
     required this.arnia,
@@ -49,6 +50,7 @@ class ControlloArnia {
     required this.celleReali,
     required this.numeroCelleReali,
     required this.reginaSostituita,
+    this.telainiConfig,
   });
   
   factory ControlloArnia.fromJson(Map<String, dynamic> json) {
@@ -76,6 +78,7 @@ class ControlloArnia {
       celleReali: json['celle_reali'] ?? false,
       numeroCelleReali: json['numero_celle_reali'] ?? 0,
       reginaSostituita: json['regina_sostituita'] ?? false,
+      telainiConfig: json['telaini_config'] as String?,
     );
   }
   
@@ -104,6 +107,7 @@ class ControlloArnia {
       'celle_reali': celleReali,
       'numero_celle_reali': numeroCelleReali,
       'regina_sostituita': reginaSostituita,
+      'telaini_config': telainiConfig,
     };
   }
 }

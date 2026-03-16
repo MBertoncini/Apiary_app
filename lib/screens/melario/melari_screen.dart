@@ -4,11 +4,13 @@ import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
 import '../../models/melario.dart';
 import '../../models/invasettamento.dart';
 import '../../models/arnia.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/offline_banner.dart';
 
 class MelariScreen extends StatefulWidget {
   @override
@@ -24,6 +26,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   List<Invasettamento> _invasettamenti = [];
   List<Arnia> _arnie = [];
   bool _isLoading = true;
+  bool _isRefreshing = true;
   String? _errorMessage;
   // null = tutti; '' = personali; non-empty = nome gruppo
   String? _filtroGruppo;
@@ -45,7 +48,29 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   }
 
   Future<void> _refreshAll() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    _errorMessage = null;
+
+    // Fase 1: cache — mostra subito
+    final cached = await Future.wait([
+      storageService.getStoredData('melari'),
+      storageService.getStoredData('smielature'),
+      storageService.getStoredData('invasettamenti'),
+      storageService.getStoredData('arnie'),
+    ]);
+    final hasCache = cached[0].isNotEmpty || cached[3].isNotEmpty;
+    if (hasCache) {
+      _melari        = cached[0].map((item) => Melario.fromJson(item)).toList();
+      _smielature    = cached[1].map((item) => item as Map<String, dynamic>).toList();
+      _invasettamenti = cached[2].map((item) => Invasettamento.fromJson(item)).toList();
+      _arnie         = cached[3].map((item) => Arnia.fromJson(item)).toList();
+      _isLoading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
+    }
+
+    // Fase 2: aggiornamento dal server
     try {
       final results = await Future.wait([
         _apiService.get(ApiConstants.melariUrl),
@@ -53,29 +78,27 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         _apiService.get(ApiConstants.invasettamentiUrl),
         _apiService.get(ApiConstants.arnieUrl),
       ]);
-      final melariRes = results[0];
-      final smielatureRes = results[1];
-      final invasettamentiRes = results[2];
-      final arnieRes = results[3];
+      final List melariList        = results[0] is List ? results[0] : (results[0]['results'] as List? ?? []);
+      final List smielatureList    = results[1] is List ? results[1] : (results[1]['results'] as List? ?? []);
+      final List invasettamentiList = results[2] is List ? results[2] : (results[2]['results'] as List? ?? []);
+      final List arnieList         = results[3] is List ? results[3] : (results[3]['results'] as List? ?? []);
 
-      final melariList = melariRes is List ? melariRes : (melariRes['results'] as List? ?? []);
-      final smielatureList = smielatureRes is List ? smielatureRes : (smielatureRes['results'] as List? ?? []);
-      final invasettamentiList = invasettamentiRes is List ? invasettamentiRes : (invasettamentiRes['results'] as List? ?? []);
-      final arnieList = arnieRes is List ? arnieRes : (arnieRes['results'] as List? ?? []);
+      _melari        = melariList.map((item) => Melario.fromJson(item)).toList();
+      _smielature    = smielatureList.map((item) => item as Map<String, dynamic>).toList();
+      _invasettamenti = invasettamentiList.map((item) => Invasettamento.fromJson(item)).toList();
+      _arnie         = arnieList.map((item) => Arnia.fromJson(item)).toList();
 
-      setState(() {
-        _melari = melariList.map((item) => Melario.fromJson(item)).toList();
-        _smielature = smielatureList.map((item) => item as Map<String, dynamic>).toList();
-        _invasettamenti = invasettamentiList.map((item) => Invasettamento.fromJson(item)).toList();
-        _arnie = arnieList.map((item) => Arnia.fromJson(item)).toList();
-        _isLoading = false;
-      });
+      final saves = <Future>[];
+      if (melariList.isNotEmpty)        saves.add(storageService.saveData('melari', melariList));
+      if (smielatureList.isNotEmpty)    saves.add(storageService.saveData('smielature', smielatureList));
+      if (invasettamentiList.isNotEmpty) saves.add(storageService.saveData('invasettamenti', invasettamentiList));
+      if (arnieList.isNotEmpty)         saves.add(storageService.saveData('arnie', arnieList));
+      await Future.wait(saves);
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Errore nel caricamento: $e';
-        _isLoading = false;
-      });
+      if (!hasCache) _errorMessage = 'Errore nel caricamento: $e';
     }
+
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
   }
 
   @override
@@ -99,27 +122,35 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.melariRoute),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_errorMessage!, textAlign: TextAlign.center),
-                      SizedBox(height: 8),
-                      ElevatedButton(onPressed: _refreshAll, child: Text('Riprova')),
-                    ],
-                  ),
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildVistaAlveariTab(),
-                    _buildSmielatureTab(),
-                    _buildInvasettamentoTab(),
-                  ],
-                ),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _melari.isEmpty && _arnie.isEmpty
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_errorMessage!, textAlign: TextAlign.center),
+                            SizedBox(height: 8),
+                            ElevatedButton(onPressed: _refreshAll, child: Text('Riprova')),
+                          ],
+                        ),
+                      )
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildVistaAlveariTab(),
+                          _buildSmielatureTab(),
+                          _buildInvasettamentoTab(),
+                        ],
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: _buildFloatingActionButton(),
     );
   }

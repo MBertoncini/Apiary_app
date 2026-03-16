@@ -182,6 +182,13 @@ class ControlloService {
     return localControlli;
   }
   
+  /// Elimina un controllo dal server e dal SQLite locale.
+  /// Lancia eccezione se la chiamata API fallisce (il record rimane in SQLite).
+  Future<void> deleteControllo(int id) async {
+    await _apiService.delete('${ApiConstants.controlliUrl}$id/');
+    await _controlloDao.delete(id);
+  }
+
   // Sincronizza manualmente i controlli in sospeso
   Future<bool> syncPendingControlli() async {
     // Verifica connettività

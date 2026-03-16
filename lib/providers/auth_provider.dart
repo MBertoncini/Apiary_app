@@ -86,7 +86,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> implements AuthTokenPro
         {'username': username, 'password': password},
       );
       
-      final data = json.decode(response.body);
+      final data = json.decode(utf8.decode(response.bodyBytes));
       
       if (response.statusCode == 200) {
         final token = data['access'];
@@ -154,7 +154,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> implements AuthTokenPro
       );
       
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(utf8.decode(response.bodyBytes));
         final newToken = data['access'];
         
         // Aggiorna token in SharedPreferences

@@ -27,7 +27,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   Attrezzatura? _attrezzatura;
   List<SpesaAttrezzatura> _spese = [];
   List<Manutenzione> _manutenzioni = [];
-  bool _isLoading = true;
+  bool _isRefreshing = true;
   String? _errorMessage;
 
   @override
@@ -45,7 +45,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
 
   Future<void> _loadData() async {
     setState(() {
-      _isLoading = true;
+      _isRefreshing = true;
       _errorMessage = null;
     });
 
@@ -75,12 +75,12 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
         _attrezzatura = attrezzatura;
         _spese = spese;
         _manutenzioni = manutenzioni;
-        _isLoading = false;
+        _isRefreshing = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = 'Errore durante il caricamento: $e';
-        _isLoading = false;
+        _isRefreshing = false;
       });
     }
   }
@@ -121,21 +121,28 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
           ],
         ],
       ),
-      body: _isLoading
-          ? LoadingWidget()
-          : _errorMessage != null
-              ? ErrorDisplayWidget(
-                  errorMessage: _errorMessage!,
-                  onRetry: _loadData,
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildInfoTab(),
-                    _buildSpeseTab(),
-                    _buildManutenzioniTab(),
-                  ],
-                ),
+      body: Column(
+        children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _attrezzatura == null && _errorMessage == null
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(
+                        errorMessage: _errorMessage!,
+                        onRetry: _loadData,
+                      )
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildInfoTab(),
+                          _buildSpeseTab(),
+                          _buildManutenzioniTab(),
+                        ],
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: _attrezzatura != null
           ? FloatingActionButton(
               onPressed: _showAddOptions,

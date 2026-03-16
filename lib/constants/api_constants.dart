@@ -11,6 +11,8 @@ class ApiConstants {
   static const String tokenUrl = baseUrl + apiPrefix + "/token/";
   static const String tokenRefreshUrl = baseUrl + apiPrefix + "/token/refresh/";
   static const String userProfileUrl = baseUrl + apiPrefix + "/users/me/";
+  static const String passwordResetUrl = baseUrl + apiPrefix + "/password-reset/";
+  static const String passwordResetConfirmUrl = baseUrl + apiPrefix + "/password-reset/confirm/";
   
   // Endpoint apiari
   static const String apiariUrl = baseUrl + apiPrefix + '/apiari/';
@@ -95,6 +97,10 @@ class ApiConstants {
   // Endpoint nuclei
   static const String nucleiUrl = baseUrl + apiPrefix + '/nuclei/';
   static const String nucleoConvertUrl = baseUrl + apiPrefix + '/nuclei/{nucleo_id}/converti_in_arnia/';
+
+  // Endpoint AI
+  static const String aiChatUrl = baseUrl + apiPrefix + '/ai/chat/';
+  static const String aiQuotaUrl = baseUrl + apiPrefix + '/ai/quota/';
 
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';

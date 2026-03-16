@@ -21,6 +21,11 @@ class PlatformSpeechService with ChangeNotifier {
   List<String> _recognitionHistory = []; // Stores final results
   String? _error;
 
+  // Session tracking — incremented on every startListening() call so that
+  // late results delivered by Android after the session ended are silently
+  // discarded rather than being mistaken for results from the NEW session.
+  int _sessionGeneration = 0;
+
   // Getters
   bool get isInitialized => _isInitialized;
   bool get isListening => _isListening;
@@ -209,14 +214,19 @@ class PlatformSpeechService with ChangeNotifier {
     _confidence = 0.0;
     _error = null;
     _isProcessing = true;
+    _sessionGeneration++; // invalidate any in-flight results from the previous session
+    final int mySession = _sessionGeneration;
     notifyListeners();
 
     try {
-      debugPrint('[PlatformSpeech] Starting listening with locale: $_languageCode');
+      debugPrint('[PlatformSpeech] Starting listening with locale: $_languageCode (session $mySession)');
 
       // speech_to_text v7+ returns Future<void> — do not assign to bool
       await _speech.listen(
-        onResult: _onSpeechResult,
+        onResult: (result) {
+          // Ignore results that arrive after a newer session has started.
+          if (_sessionGeneration == mySession) _onSpeechResult(result);
+        },
         localeId: _languageCode,
         pauseFor: const Duration(seconds: 8),
         listenFor: const Duration(seconds: 30),
@@ -253,12 +263,16 @@ class PlatformSpeechService with ChangeNotifier {
 
     _transcription = '';
     _error = null;
+    _sessionGeneration++;
+    final int mySession = _sessionGeneration;
     notifyListeners();
 
     try {
-      debugPrint('[PlatformSpeech] Starting trigger listen');
+      debugPrint('[PlatformSpeech] Starting trigger listen (session $mySession)');
       await _speech.listen(
-        onResult: _onSpeechResult,
+        onResult: (result) {
+          if (_sessionGeneration == mySession) _onSpeechResult(result);
+        },
         localeId: _languageCode,
         pauseFor: const Duration(milliseconds: 1500),
         listenFor: const Duration(seconds: 10),

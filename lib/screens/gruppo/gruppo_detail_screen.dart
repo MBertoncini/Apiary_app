@@ -9,6 +9,7 @@ import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/date_formatters.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class GruppoDetailScreen extends StatefulWidget {
   final int gruppoId;
@@ -22,6 +23,7 @@ class GruppoDetailScreen extends StatefulWidget {
 class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     with TickerProviderStateMixin {
   bool _isLoading = true;
+  bool _isRefreshing = true;
   Gruppo? _gruppo;
   List<dynamic> _apiariCondivisi = [];
   List<InvitoGruppo> _inviti = [];
@@ -59,10 +61,22 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() { _isRefreshing = true; _errorMessage = null; });
+
+    // Fase 1: cache — mostra subito i dati base del gruppo
+    if (_gruppo == null) {
+      try {
+        final storageService = Provider.of<StorageService>(context, listen: false);
+        final cachedGruppi = await storageService.getStoredData('gruppi');
+        final cached = cachedGruppi.cast<Map<String, dynamic>>().firstWhere(
+          (g) => g['id'] == widget.gruppoId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (cached.isNotEmpty && mounted) {
+          setState(() { _gruppo = Gruppo.fromJson(cached); });
+        }
+      } catch (_) {}
+    }
 
     try {
       final results = await Future.wait([
@@ -103,11 +117,13 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
         _isCreator = newIsCreator;
         _currentIndex = 0;
         _isLoading = false;
+        _isRefreshing = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = 'Errore nel caricamento dei dati: ${e.toString()}';
         _isLoading = false;
+        _isRefreshing = false;
       });
     }
   }
@@ -502,7 +518,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
               tooltip: 'Modifica gruppo',
             ),
         ],
-        bottom: _isLoading || _errorMessage != null || _gruppo == null
+        bottom: _gruppo == null || _errorMessage != null
             ? null
             : TabBar(
                 controller: _tabController,
@@ -512,20 +528,28 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                 },
               ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? ErrorDisplayWidget(
-                  errorMessage: _errorMessage!,
-                  onRetry: _loadData,
-                )
-              : _gruppo == null
-                  ? Center(child: Text('Gruppo non trovato'))
-                  : IndexedStack(
-                      index: _currentIndex,
-                      children: tabViews,
-                    ),
-      bottomNavigationBar: _isLoading || _gruppo == null
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _gruppo == null
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(
+                        errorMessage: _errorMessage!,
+                        onRetry: _loadData,
+                      )
+                    : _gruppo == null
+                        ? Center(child: Text('Gruppo non trovato'))
+                        : IndexedStack(
+                            index: _currentIndex,
+                            children: tabViews,
+                          ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _gruppo == null
           ? null
           : BottomAppBar(
               child: Padding(

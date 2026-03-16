@@ -33,9 +33,24 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
   int _numero = 1;
   String _colore = 'bianco';
   String _coloreHex = '#FFFFFF';
+  String _tipoArnia = 'dadant';
   DateTime _dataInstallazione = DateTime.now();
   String _note = '';
   bool _attiva = true;
+
+  static const List<Map<String, String>> _tipiArnia = [
+    {'id': 'dadant',             'nome': 'Dadant-Blatt',                     'icona': '🏠'},
+    {'id': 'langstroth',         'nome': 'Langstroth',                       'icona': '📦'},
+    {'id': 'top_bar',            'nome': 'Top Bar (Kenyana)',                 'icona': '🛖'},
+    {'id': 'warre',              'nome': 'Warré',                            'icona': '🗼'},
+    {'id': 'osservazione',       'nome': 'Arnia da Osservazione',            'icona': '🔭'},
+    {'id': 'pappa_reale',        'nome': 'Pappa Reale / Allevamento Regine', 'icona': '👑'},
+    {'id': 'nucleo_legno',       'nome': 'Nucleo in Legno',                  'icona': '📫'},
+    {'id': 'nucleo_polistirolo', 'nome': 'Nucleo in Polistirolo',            'icona': '📮'},
+    {'id': 'portasciami',        'nome': 'Portasciami / Prendisciame',       'icona': '📦'},
+    {'id': 'apidea',             'nome': 'Apidea / Kieler',                  'icona': '🔹'},
+    {'id': 'mini_plus',          'nome': 'Mini-Plus',                        'icona': '🔸'},
+  ];
   
   // Opzioni per il colore
   final List<Map<String, dynamic>> _coloriDisponibili = [
@@ -71,6 +86,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
       _coloreHex = widget.arnia!.coloreHex;
       _dataInstallazione = DateTime.tryParse(widget.arnia!.dataInstallazione) ?? DateTime.now();
       _note = widget.arnia!.note ?? '';
+      _tipoArnia = widget.arnia!.tipoArnia;
       _attiva = widget.arnia!.attiva;
     } else if (widget.apiarioId != null) {
       // Se viene specificato un apiario, utilizza quello
@@ -188,6 +204,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
           'numero': _numero,
           'colore': _colore,
           'colore_hex': _coloreHex,
+          'tipo_arnia': _tipoArnia,
           'data_installazione': dateFormat.format(_dataInstallazione),
           'note': _note,
           'attiva': _attiva,
@@ -317,7 +334,24 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                       onChanged: _onColoreChanged,
                     ),
                     const SizedBox(height: 16),
-                    
+
+                    // Tipo arnia
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Tipo arnia',
+                        border: OutlineInputBorder(),
+                      ),
+                      value: _tipoArnia,
+                      items: _tipiArnia.map((t) {
+                        return DropdownMenuItem<String>(
+                          value: t['id'],
+                          child: Text('${t['icona']}  ${t['nome']}'),
+                        );
+                      }).toList(),
+                      onChanged: (v) { if (v != null) setState(() => _tipoArnia = v); },
+                    ),
+                    const SizedBox(height: 16),
+
                     // Data installazione
                     InkWell(
                       onTap: () async {

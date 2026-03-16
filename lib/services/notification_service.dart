@@ -125,6 +125,30 @@ class NotificationService {
       await _flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(syncChannel);
+
+      // Canale per smielatura e maturazione
+      const AndroidNotificationChannel smielaturaChannel = AndroidNotificationChannel(
+        'smielatura_channel',
+        'Smielatura e Maturazione',
+        description: 'Notifiche relative a smielatura e maturazione del miele',
+        importance: Importance.high,
+      );
+
+      // Canale per attrezzatura e manutenzioni
+      const AndroidNotificationChannel attrezzaturaChannel = AndroidNotificationChannel(
+        'attrezzatura_channel',
+        'Attrezzatura e Manutenzioni',
+        description: 'Notifiche relative a manutenzioni programmate',
+        importance: Importance.defaultImportance,
+      );
+
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(smielaturaChannel);
+
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(attrezzaturaChannel);
     }
   }
 
@@ -311,6 +335,145 @@ class NotificationService {
     );
   }
   
+  // Pianifica notifica per rimozione trattamento (fine sospensione)
+  Future<void> scheduleRimozioneTrattamentoReminder({
+    required int trattamentoId,
+    required String tipoTrattamento,
+    required String apiarioNome,
+    required DateTime scheduledDate,
+  }) async {
+    if (scheduledDate.isBefore(DateTime.now())) return;
+    final id = 'rimozione_$trattamentoId'.hashCode;
+    await scheduleNotification(
+      id: id,
+      title: 'Rimuovi trattamento – $apiarioNome',
+      body: 'È ora di rimuovere "$tipoTrattamento". Fine periodo di sospensione.',
+      scheduledDate: scheduledDate,
+      payload: 'trattamento:$trattamentoId',
+      channelId: 'trattamenti_channel',
+    );
+  }
+
+  // Pianifica notifica per sgabbiamento regina (fine blocco covata)
+  Future<void> scheduleBloccoCovataReminder({
+    required int trattamentoId,
+    required String apiarioNome,
+    required DateTime dataFineBlocco,
+  }) async {
+    if (dataFineBlocco.isBefore(DateTime.now())) return;
+    final id = 'blocco_covata_$trattamentoId'.hashCode;
+    await scheduleNotification(
+      id: id,
+      title: 'Sgabbia la regina – $apiarioNome',
+      body: 'Fine del blocco di covata: è il momento di sgabbiare la regina e applicare il trattamento sgocciolato.',
+      scheduledDate: dataFineBlocco,
+      payload: 'trattamento:$trattamentoId',
+      channelId: 'trattamenti_channel',
+    );
+  }
+
+  // Pianifica verifica orfanità a 7 e 25 giorni (celle reali / fecondazione)
+  Future<void> scheduleOrfanitaReminders({
+    required int arniaId,
+    required int arniaNumero,
+    required String apiarioNome,
+    required DateTime dataControllo,
+  }) async {
+    final now = DateTime.now();
+
+    final data7 = dataControllo.add(const Duration(days: 7));
+    if (data7.isAfter(now)) {
+      await scheduleNotification(
+        id: 'orfanita_celle_$arniaId'.hashCode,
+        title: 'Verifica celle reali – Arnia $arniaNumero',
+        body: 'Controlla se le api hanno tirato celle reali in $apiarioNome (7 giorni fa hai rilevato orfanità).',
+        scheduledDate: data7,
+        payload: 'controllo:$arniaId',
+        channelId: 'controlli_channel',
+      );
+    }
+
+    final data25 = dataControllo.add(const Duration(days: 25));
+    if (data25.isAfter(now)) {
+      await scheduleNotification(
+        id: 'orfanita_fecond_$arniaId'.hashCode,
+        title: 'Verifica fecondazione – Arnia $arniaNumero',
+        body: 'Controlla la presenza di uova fresche in $apiarioNome (25 giorni fa hai rilevato orfanità). Conferma l\'avvenuto volo nuziale.',
+        scheduledDate: data25,
+        payload: 'controllo:$arniaId',
+        channelId: 'controlli_channel',
+      );
+    }
+  }
+
+  // Pianifica 4 avvisi settimanali per rischio sciamatura
+  Future<void> scheduleSciamaturaReminders({
+    required int arniaId,
+    required int arniaNumero,
+    required String apiarioNome,
+    required DateTime dataControllo,
+  }) async {
+    final now = DateTime.now();
+    for (int i = 1; i <= 4; i++) {
+      final data = dataControllo.add(Duration(days: 7 * i));
+      if (data.isAfter(now)) {
+        await scheduleNotification(
+          id: 'sciamatura_${arniaId}_$i'.hashCode,
+          title: 'Rischio sciamatura – Arnia $arniaNumero',
+          body: 'Arnia $arniaNumero in $apiarioNome: verifica presenza celle reali / a coppa. Settimana $i di monitoraggio.',
+          scheduledDate: data,
+          payload: 'controllo:$arniaId',
+          channelId: 'controlli_channel',
+        );
+      }
+    }
+  }
+
+  // Cancella avvisi sciamatura per un'arnia
+  Future<void> cancelSciamaturaReminders(int arniaId) async {
+    for (int i = 1; i <= 4; i++) {
+      await cancelNotification('sciamatura_${arniaId}_$i'.hashCode);
+    }
+  }
+
+  // Pianifica avviso maturazione miele (18 giorni dopo smielatura)
+  Future<void> scheduleMaturazioneMieleReminder({
+    required int smielaturaId,
+    required String tipoMiele,
+    required String apiarioNome,
+    required DateTime dataSmielatura,
+  }) async {
+    final scheduledDate = dataSmielatura.add(const Duration(days: 18));
+    if (scheduledDate.isBefore(DateTime.now())) return;
+    await scheduleNotification(
+      id: 'maturazione_$smielaturaId'.hashCode,
+      title: 'Miele pronto per invasettamento',
+      body: 'Il miele "$tipoMiele" di $apiarioNome ha riposato 18 giorni. Misura l\'umidità e schiumalo prima di invasettare.',
+      scheduledDate: scheduledDate,
+      payload: 'smielatura:$smielaturaId',
+      channelId: 'smielatura_channel',
+    );
+  }
+
+  // Pianifica avviso manutenzione (1 giorno prima della data programmata)
+  Future<void> scheduleManutenzioneReminder({
+    required int notificationId,
+    required String attrezzaturaNome,
+    required String tipoManutenzione,
+    required DateTime dataProgrammata,
+  }) async {
+    final scheduledDate = dataProgrammata.subtract(const Duration(days: 1));
+    if (scheduledDate.isBefore(DateTime.now())) return;
+    await scheduleNotification(
+      id: notificationId,
+      title: 'Manutenzione domani – $attrezzaturaNome',
+      body: 'Domani è programmata una manutenzione "$tipoManutenzione" per $attrezzaturaNome.',
+      scheduledDate: scheduledDate,
+      payload: 'attrezzatura',
+      channelId: 'attrezzatura_channel',
+    );
+  }
+
   // Cancella una notifica specifica
   Future<void> cancelNotification(int id) async {
     await _flutterLocalNotificationsPlugin.cancel(id);

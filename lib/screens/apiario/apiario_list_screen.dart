@@ -6,6 +6,7 @@ import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class ApiarioListScreen extends StatefulWidget {
   @override
@@ -14,6 +15,7 @@ class ApiarioListScreen extends StatefulWidget {
 
 class _ApiarioListScreenState extends State<ApiarioListScreen> {
   bool _isLoading = false;
+  bool _isRefreshing = true;
   List<dynamic> _allApiari = [];  // Dati completi (non filtrati)
   String _searchQuery = '';
 
@@ -34,65 +36,50 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
   }
 
   Future<void> _loadApiari() async {
-    setState(() {
-      _isLoading = true;
-    });
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final apiService = Provider.of<ApiService>(context, listen: false);
 
+    // Fase 1: cache — mostra subito senza spinner
+    final cached = await storageService.getStoredData('apiari');
+    if (cached.isNotEmpty) {
+      _allApiari = List<dynamic>.from(cached)
+        ..sort((a, b) => a['nome'].compareTo(b['nome']));
+      if (mounted) setState(() { _isLoading = false; _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
+    }
+
+    // Fase 2: aggiornamento dal server
     try {
-      final storageService = Provider.of<StorageService>(context, listen: false);
-      final apiService = Provider.of<ApiService>(context, listen: false);
-
-      // Prima tenta di caricare i dati dall'API
-      try {
-        final response = await apiService.get(ApiConstants.apiariUrl);
-
-        List<dynamic> apiariFromApi = [];
-
-        // Gestione robusta per diversi formati di risposta
-        if (response is List) {
-          apiariFromApi = response;
-        } else if (response is Map) {
-          if (response.containsKey('results') && response['results'] is List) {
-            apiariFromApi = response['results'];
-          } else {
-            for (var key in ['apiari', 'data', 'items']) {
-              if (response.containsKey(key) && response[key] is List) {
-                apiariFromApi = response[key];
-                break;
-              }
-            }
-            if (apiariFromApi.isEmpty && response.containsKey('id')) {
-              apiariFromApi = [response];
+      final response = await apiService.get(ApiConstants.apiariUrl);
+      List<dynamic> apiariFromApi = [];
+      if (response is List) {
+        apiariFromApi = response;
+      } else if (response is Map) {
+        if (response.containsKey('results') && response['results'] is List) {
+          apiariFromApi = response['results'];
+        } else {
+          for (var key in ['apiari', 'data', 'items']) {
+            if (response.containsKey(key) && response[key] is List) {
+              apiariFromApi = response[key];
+              break;
             }
           }
+          if (apiariFromApi.isEmpty && response.containsKey('id')) {
+            apiariFromApi = [response];
+          }
         }
-
-        // Salva i dati aggiornati nello storage locale
+      }
+      if (apiariFromApi.isNotEmpty) {
         await storageService.saveData('apiari', apiariFromApi);
-
-        // Ordina una sola volta
         apiariFromApi.sort((a, b) => a['nome'].compareTo(b['nome']));
         _allApiari = apiariFromApi;
-
-      } catch (e) {
-        debugPrint('Error fetching from API, falling back to local storage: $e');
-        _allApiari = await storageService.getStoredData('apiari');
-        _allApiari.sort((a, b) => a['nome'].compareTo(b['nome']));
       }
     } catch (e) {
-      debugPrint('Error loading apiari: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Errore durante il caricamento degli apiari')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      debugPrint('Error fetching apiari from API, using cache: $e');
     }
+
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
   }
 
   void _navigateToApiarioDetail(int apiarioId) {
@@ -265,6 +252,8 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
       drawer: AppDrawer(currentRoute: AppConstants.apiarioListRoute),
       body: Column(
         children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           // Search bar
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -291,8 +280,8 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
           
           // Lista apiari
           Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
+            child: _isRefreshing && _allApiari.isEmpty
+                ? const SizedBox.shrink()
                 : _apiari.isEmpty
                     ? Center(
                         child: Column(

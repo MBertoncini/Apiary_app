@@ -4,6 +4,7 @@ import '../constants/app_constants.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/apiario/apiario_list_screen.dart';
 import '../screens/apiario/apiario_detail_screen.dart';
@@ -53,6 +54,7 @@ import '../screens/fioritura/fioritura_form_screen.dart';
 import '../screens/fioritura/fioritura_detail_screen.dart';
 import '../models/fioritura.dart' show Fioritura;
 import '../screens/donazione/donazione_screen.dart';
+import '../screens/statistiche/statistiche_screen.dart';
 
 class RouteGenerator {
  
@@ -70,6 +72,9 @@ class RouteGenerator {
       
       case AppConstants.registerRoute:
         return MaterialPageRoute(builder: (_) => RegisterScreen());
+
+      case AppConstants.forgotPasswordRoute:
+        return MaterialPageRoute(builder: (_) => ForgotPasswordScreen());
       
       case AppConstants.dashboardRoute:
         return MaterialPageRoute(builder: (_) => DashboardScreen());
@@ -158,6 +163,19 @@ class RouteGenerator {
         if (args is int) {
           return MaterialPageRoute(
             builder: (_) => ControlloArniaScreen(arniaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.controlloEditRoute:
+        if (args is Map<String, dynamic> &&
+            args['arniaId'] is int &&
+            args['controllo'] is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => ControlloArniaScreen(
+              arniaId: args['arniaId'] as int,
+              controlloEsistente: args['controllo'] as Map<String, dynamic>,
+            ),
           );
         }
         return _errorRoute();
@@ -320,6 +338,9 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
+
+      case AppConstants.statisticheRoute:
+        return MaterialPageRoute(builder: (_) => const StatisticheScreen());
 
       case AppConstants.chatRoute:
         return MaterialPageRoute(builder: (_) => ChatScreen());

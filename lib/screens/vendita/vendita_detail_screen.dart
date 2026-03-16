@@ -20,7 +20,7 @@ class VenditaDetailScreen extends StatefulWidget {
 
 class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
   Vendita? _vendita;
-  bool _isLoading = true;
+  bool _isRefreshing = true;
   String? _errorMessage;
   late ApiService _apiService;
   late StorageService _storageService;
@@ -35,29 +35,32 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
   }
 
   Future<void> _loadVendita() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() { _isRefreshing = true; _errorMessage = null; });
 
+    // Fase 1: cache
     final cached = await _storageService.getStoredData('vendite');
     final cachedMap = cached.cast<Map<String, dynamic>>().firstWhere(
       (v) => v['id'] == widget.venditaId,
       orElse: () => <String, dynamic>{},
     );
     if (cachedMap.isNotEmpty && mounted) {
-      setState(() { _vendita = Vendita.fromJson(cachedMap); _isLoading = false; });
+      setState(() { _vendita = Vendita.fromJson(cachedMap); });
     }
 
+    // Fase 2: server
     try {
       final data = await _apiService.get('${ApiConstants.venditeUrl}${widget.venditaId}/');
       if (mounted) {
-        setState(() { _vendita = Vendita.fromJson(data); _isLoading = false; });
+        setState(() { _vendita = Vendita.fromJson(data); _isRefreshing = false; });
       }
     } catch (e) {
       if (!mounted) return;
+      setState(() => _isRefreshing = false);
       if (_vendita != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')));
       } else {
-        setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; });
+        setState(() { _errorMessage = 'Errore: $e'; });
       }
     }
   }
@@ -148,13 +151,17 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? LoadingWidget()
-          : _errorMessage != null
-              ? ErrorDisplayWidget(errorMessage: _errorMessage!, onRetry: _loadVendita)
-              : _vendita == null
-                  ? Center(child: Text('Vendita non trovata'))
-                  : SingleChildScrollView(
+      body: Column(
+        children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _vendita == null && _errorMessage == null
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(errorMessage: _errorMessage!, onRetry: _loadVendita)
+                    : _vendita == null
+                        ? const Center(child: Text('Vendita non trovata'))
+                        : SingleChildScrollView(
                       padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,6 +212,9 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
                         ],
                       ),
                     ),
+          ),
+        ],
+      ),
     );
   }
 

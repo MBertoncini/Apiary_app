@@ -42,24 +42,51 @@ class AppDrawer extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           // Header con info utente
-          UserAccountsDrawerHeader(
-            accountName: Text(user?.fullName ?? 'Utente'),
-            accountEmail: Text(user?.email ?? ''),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(
-                (user?.username.isNotEmpty == true)
-                    ? user!.username[0].toUpperCase()
-                    : 'A',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: ThemeConstants.primaryColor,
+          DrawerHeader(
+            decoration: BoxDecoration(color: ThemeConstants.primaryColor),
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  radius: 30,
+                  child: Text(
+                    (user?.username.isNotEmpty == true)
+                        ? user!.username[0].toUpperCase()
+                        : 'A',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeConstants.primaryColor,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            decoration: BoxDecoration(
-              color: ThemeConstants.primaryColor,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    (user?.firstName?.isNotEmpty == true)
+                        ? user!.firstName!
+                        : (user?.username ?? 'Utente'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Impostazioni',
+                  icon: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.18),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: const Icon(Icons.settings, color: Colors.white, size: 20),
+                  ),
+                  onPressed: () => _navigateTo(context, AppConstants.settingsRoute),
+                ),
+              ],
             ),
           ),
 
@@ -153,6 +180,15 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, AppConstants.venditeRoute),
           ),
 
+          // Statistiche & AI Analytics
+          ListTile(
+            leading: Icon(Icons.bar_chart),
+            title: Text('Statistiche & AI'),
+            selected: currentRoute == AppConstants.statisticheRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () => _navigateTo(context, AppConstants.statisticheRoute),
+          ),
+
           // Divisore
           Divider(),
 
@@ -172,15 +208,6 @@ class AppDrawer extends StatelessWidget {
             selected: currentRoute == AppConstants.pagamentiRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.pagamentiRoute),
-          ),
-
-          // Impostazioni
-          ListTile(
-            leading: Icon(Icons.settings),
-            title: Text('Impostazioni'),
-            selected: currentRoute == AppConstants.settingsRoute,
-            selectedColor: ThemeConstants.primaryColor,
-            onTap: () => _navigateTo(context, AppConstants.settingsRoute),
           ),
 
           // Inserimento vocale

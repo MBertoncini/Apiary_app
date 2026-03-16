@@ -4,10 +4,12 @@ import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
 import '../../models/trattamento.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/offline_banner.dart';
 
 class TrattamentiScreen extends StatefulWidget {
   @override
@@ -16,8 +18,10 @@ class TrattamentiScreen extends StatefulWidget {
 
 class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late Future<List<TrattamentoSanitario>> _trattamentiFuture;
   late ApiService _apiService;
+  List<TrattamentoSanitario> _trattamenti = [];
+  bool _isLoading = true;
+  bool _isRefreshing = true;
   // null = tutti; '' = personali; non-empty = nome gruppo
   String? _filtroGruppo;
 
@@ -37,12 +41,19 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
   }
 
   Future<void> _refreshTrattamenti() async {
-    setState(() {
-      _trattamentiFuture = _loadTrattamenti();
-    });
-  }
+    final storageService = Provider.of<StorageService>(context, listen: false);
 
-  Future<List<TrattamentoSanitario>> _loadTrattamenti() async {
+    // Fase 1: cache — mostra subito
+    final cached = await storageService.getStoredData('trattamenti');
+    if (cached.isNotEmpty) {
+      _trattamenti = cached.map((item) => TrattamentoSanitario.fromJson(item)).toList();
+      _isLoading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
+    }
+
+    // Fase 2: aggiornamento dal server
     try {
       final response = await _apiService.get(ApiConstants.trattamentiUrl);
       List<dynamic> items;
@@ -51,13 +62,15 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
       } else if (response is Map && response.containsKey('results')) {
         items = response['results'] as List;
       } else {
-        return [];
+        items = [];
       }
-      return items.map((item) => TrattamentoSanitario.fromJson(item)).toList();
+      _trattamenti = items.map((item) => TrattamentoSanitario.fromJson(item)).toList();
+      if (items.isNotEmpty) await storageService.saveData('trattamenti', items);
     } catch (e) {
       debugPrint('Error loading trattamenti: $e');
-      throw e;
     }
+
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
   }
 
   @override
@@ -81,75 +94,12 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
         ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.trattamentiRoute),
-      body: FutureBuilder<List<TrattamentoSanitario>>(
-        future: _trattamentiFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(
-              child: Text('Errore nel caricamento dei trattamenti: ${snapshot.error}'),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Nessun trattamento sanitario trovato',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.add),
-                    label: Text('Nuovo trattamento'),
-                    onPressed: () {
-                      Navigator.of(context).pushNamed(AppConstants.trattamentoCreateRoute);
-                    },
-                  ),
-                ],
-              ),
-            );
-          } else {
-            final all = snapshot.data!;
-            final trattamenti = _filtroGruppo == null
-                ? all
-                : _filtroGruppo == ''
-                    ? all.where((t) => t.apiarioGruppoNome == null).toList()
-                    : all.where((t) => t.apiarioGruppoNome == _filtroGruppo).toList();
-
-            final trattamentiAttivi = trattamenti
-                .where((t) => t.stato == 'programmato' || t.stato == 'in_corso')
-                .toList();
-            final trattamentiCompletati = trattamenti
-                .where((t) => t.stato == 'completato')
-                .toList();
-
-            // Collect unique group names from ALL data for the chip bar
-            final gruppiNomi = all
-                .map((t) => t.apiarioGruppoNome)
-                .whereType<String>()
-                .toSet()
-                .toList()..sort();
-
-            return Column(
-              children: [
-                if (gruppiNomi.isNotEmpty)
-                  _buildGruppoFilterBar(gruppiNomi),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildTrattamentiList(trattamentiAttivi, 'Nessun trattamento attivo'),
-                      _buildTrattamentiList(trattamentiCompletati, 'Nessun trattamento completato'),
-                      _buildTrattamentiList(trattamenti, 'Nessun trattamento trovato'),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }
-        },
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) LinearProgressIndicator(minHeight: 2),
+          Expanded(child: _buildBody()),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
@@ -157,6 +107,49 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
           Navigator.of(context).pushNamed(AppConstants.trattamentoCreateRoute);
         },
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isRefreshing && _trattamenti.isEmpty) return const SizedBox.shrink();
+    if (_trattamenti.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Nessun trattamento sanitario trovato', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              icon: Icon(Icons.add),
+              label: Text('Nuovo trattamento'),
+              onPressed: () => Navigator.of(context).pushNamed(AppConstants.trattamentoCreateRoute),
+            ),
+          ],
+        ),
+      );
+    }
+    final trattamenti = _filtroGruppo == null
+        ? _trattamenti
+        : _filtroGruppo == ''
+            ? _trattamenti.where((t) => t.apiarioGruppoNome == null).toList()
+            : _trattamenti.where((t) => t.apiarioGruppoNome == _filtroGruppo).toList();
+    final attivi = trattamenti.where((t) => t.stato == 'programmato' || t.stato == 'in_corso').toList();
+    final completati = trattamenti.where((t) => t.stato == 'completato').toList();
+    final gruppiNomi = _trattamenti.map((t) => t.apiarioGruppoNome).whereType<String>().toSet().toList()..sort();
+    return Column(
+      children: [
+        if (gruppiNomi.isNotEmpty) _buildGruppoFilterBar(gruppiNomi),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildTrattamentiList(attivi, 'Nessun trattamento attivo'),
+              _buildTrattamentiList(completati, 'Nessun trattamento completato'),
+              _buildTrattamentiList(trattamenti, 'Nessun trattamento trovato'),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

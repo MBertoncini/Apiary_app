@@ -5,7 +5,9 @@ import '../../constants/theme_constants.dart';
 import '../../models/fioritura.dart';
 import '../../services/api_service.dart';
 import '../../services/fioritura_service.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class FiorituraListScreen extends StatefulWidget {
   @override
@@ -16,10 +18,12 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late FiorituraService _service;
+  late StorageService _storageService;
 
   List<Fioritura> _mie = [];
   List<Fioritura> _community = [];
   bool _loading = true;
+  bool _isRefreshing = true;
   String _searchQuery = '';
 
   @override
@@ -32,6 +36,7 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _service = FiorituraService(Provider.of<ApiService>(context, listen: false));
+    _storageService = Provider.of<StorageService>(context, listen: false);
     _load();
   }
 
@@ -42,25 +47,38 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    // Phase 1: cache
+    final cachedMie = await _storageService.getStoredData('fioriture_mie');
+    final cachedCommunity = await _storageService.getStoredData('fioriture_community');
+    if (cachedMie.isNotEmpty || cachedCommunity.isNotEmpty) {
+      if (cachedMie.isNotEmpty) _mie = cachedMie.map((e) => Fioritura.fromJson(e as Map<String, dynamic>)).toList();
+      if (cachedCommunity.isNotEmpty) _community = cachedCommunity.map((e) => Fioritura.fromJson(e as Map<String, dynamic>)).toList();
+      _loading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
+    }
+
+    // Phase 2: API
     try {
       final mie = await _service.getFioriture();
       final community = await _service.getFioritueCommunity();
+      await _storageService.saveData('fioriture_mie', mie.map((f) => f.toJson()).toList());
+      await _storageService.saveData('fioriture_community', community.map((f) => f.toJson()).toList());
       if (mounted) {
-        setState(() {
-          _mie = mie;
-          _community = community;
-          _loading = false;
-        });
+        _mie = mie;
+        _community = community;
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _loading = false);
+      debugPrint('Errore caricamento fioriture: $e');
+      if (mounted && _mie.isEmpty && _community.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Errore nel caricamento: $e')),
         );
       }
     }
+
+    if (mounted) setState(() { _loading = false; _isRefreshing = false; });
   }
 
   List<Fioritura> _filtered(List<Fioritura> list) {
@@ -105,6 +123,8 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
       ),
       body: Column(
         children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: TextField(
@@ -119,8 +139,8 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
             ),
           ),
           Expanded(
-            child: _loading
-                ? Center(child: CircularProgressIndicator())
+            child: _isRefreshing && _mie.isEmpty && _community.isEmpty
+                ? const SizedBox.shrink()
                 : TabBarView(
                     controller: _tabController,
                     children: [

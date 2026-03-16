@@ -8,6 +8,7 @@ import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class QuoteScreen extends StatefulWidget {
   @override
@@ -349,48 +350,54 @@ class _QuoteScreenState extends State<QuoteScreen> {
       appBar: AppBar(
         title: Text('Gestione Quote'),
       ),
-      body: _isLoading
-          ? LoadingWidget()
-          : _errorMessage != null
-              ? ErrorDisplayWidget(
-                  errorMessage: _errorMessage!,
-                  onRetry: _loadDati,
-                )
-              : Column(
-                  children: [
-                    if (_gruppi.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.all(16),
-                        child: DropdownButtonFormField<Gruppo>(
-                          value: _selectedGruppo,
-                          decoration: InputDecoration(
-                            labelText: 'Filtra per gruppo',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.filter_list),
-                          ),
-                          items: [
-                            DropdownMenuItem<Gruppo>(
-                              value: null,
-                              child: Text('Tutti i gruppi'),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: _isLoading
+                ? LoadingWidget()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(
+                        errorMessage: _errorMessage!,
+                        onRetry: _loadDati,
+                      )
+                    : Column(
+                        children: [
+                          if (_gruppi.isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.all(16),
+                              child: DropdownButtonFormField<Gruppo>(
+                                value: _selectedGruppo,
+                                decoration: InputDecoration(
+                                  labelText: 'Filtra per gruppo',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.filter_list),
+                                ),
+                                items: [
+                                  DropdownMenuItem<Gruppo>(
+                                    value: null,
+                                    child: Text('Tutti i gruppi'),
+                                  ),
+                                  ..._gruppi.map((gruppo) => DropdownMenuItem<Gruppo>(
+                                    value: gruppo,
+                                    child: Text(gruppo.nome),
+                                  )).toList(),
+                                ],
+                                onChanged: (Gruppo? value) {
+                                  setState(() {
+                                    _selectedGruppo = value;
+                                  });
+                                },
+                              ),
                             ),
-                            ..._gruppi.map((gruppo) => DropdownMenuItem<Gruppo>(
-                              value: gruppo,
-                              child: Text(gruppo.nome),
-                            )).toList(),
-                          ],
-                          onChanged: (Gruppo? value) {
-                            setState(() {
-                              _selectedGruppo = value;
-                            });
-                          },
-                        ),
+                          Expanded(
+                            child: _buildQuoteList(),
+                          ),
+                        ],
                       ),
-
-                    Expanded(
-                      child: _buildQuoteList(),
-                    ),
-                  ],
-                ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addQuota,
         child: Icon(Icons.add),

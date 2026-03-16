@@ -8,10 +8,11 @@ import '../../models/pagamento.dart';
 import '../../models/quota_utente.dart';
 import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
-import '../../services/api_cache_helper.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
+import '../../widgets/offline_banner.dart';
 
 class PagamentiScreen extends StatefulWidget {
   @override
@@ -23,7 +24,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   List<Pagamento> _pagamenti = [];
   List<QuotaUtente> _quote = [];
   bool _isLoading = true;
-  bool _isOffline = false;
+  bool _isRefreshing = true;
   String? _errorMessage;
 
   @override
@@ -43,95 +44,47 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() { _errorMessage = null; });
 
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final apiService = Provider.of<ApiService>(context, listen: false);
+    final pagamentoService = PagamentoService(apiService);
+
+    // Phase 1: cache
+    final cachedPagamenti = await storageService.getStoredData('pagamenti');
+    final cachedQuote = await storageService.getStoredData('quote');
+    if (cachedPagamenti.isNotEmpty || cachedQuote.isNotEmpty) {
+      if (cachedPagamenti.isNotEmpty) _pagamenti = cachedPagamenti.map((e) => Pagamento.fromJson(e as Map<String, dynamic>)).toList();
+      if (cachedQuote.isNotEmpty) _quote = cachedQuote.map((e) => QuotaUtente.fromJson(e as Map<String, dynamic>)).toList();
+      _isLoading = false;
+      if (mounted) setState(() { _isRefreshing = true; });
+    } else {
+      if (mounted) setState(() { _isRefreshing = true; });
+    }
+
+    // Phase 2: API
     try {
-      final apiService = Provider.of<ApiService>(context, listen: false);
-      final pagamentoService = PagamentoService(apiService);
-
-      // Verifica la connettività
-      final isConnected = await ApiCacheHelper.isConnected();
-
-      if (isConnected) {
-        // Carica da API
-        try {
-          final pagamenti = await pagamentoService.getPagamenti();
-          final quote = await pagamentoService.getQuote();
-
-          setState(() {
-            _pagamenti = pagamenti;
-            _quote = quote;
-            _isLoading = false;
-            _isOffline = false;
-          });
-
-          // Salva nella cache
-          await ApiCacheHelper.saveToCache('pagamenti', _pagamenti.map((p) => p.toJson()).toList());
-          await ApiCacheHelper.saveToCache('quote', _quote.map((q) => q.toJson()).toList());
-        } catch (e) {
-          debugPrint('Errore API, utilizzo cache: $e');
-          _loadFromCache();
-        }
-      } else {
-        // Se offline, carica dalla cache
-        _loadFromCache();
-      }
+      final pagamenti = await pagamentoService.getPagamenti();
+      final quote = await pagamentoService.getQuote();
+      await storageService.saveData('pagamenti', pagamenti.map((p) => p.toJson()).toList());
+      await storageService.saveData('quote', quote.map((q) => q.toJson()).toList());
+      _pagamenti = pagamenti;
+      _quote = quote;
     } catch (e) {
-      setState(() {
+      debugPrint('Errore API pagamenti: $e');
+      if (_pagamenti.isEmpty && _quote.isEmpty) {
         _errorMessage = 'Errore durante il caricamento dei dati: $e';
-        _isLoading = false;
-      });
+      }
     }
-  }
 
-  Future<void> _loadFromCache() async {
-    try {
-      // Carica pagamenti dalla cache
-      final cachedPagamenti = await ApiCacheHelper.loadFromCache<List<Pagamento>>(
-        'pagamenti',
-        (data) => (data as List).map((json) => Pagamento.fromJson(json)).toList()
-      );
-
-      // Carica quote dalla cache
-      final cachedQuote = await ApiCacheHelper.loadFromCache<List<QuotaUtente>>(
-        'quote',
-        (data) => (data as List).map((json) => QuotaUtente.fromJson(json)).toList()
-      );
-
-      setState(() {
-        _pagamenti = cachedPagamenti ?? [];
-        _quote = cachedQuote ?? [];
-        _isLoading = false;
-        _isOffline = true;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Errore durante il caricamento dei dati dalla cache: $e';
-        _isLoading = false;
-      });
-    }
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Text('Gestione Pagamenti'),
-            if (_isOffline)
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Tooltip(
-                  message: 'Modalità offline - Dati caricati dalla cache',
-                  child: Icon(Icons.offline_bolt, size: 18, color: Colors.amber),
-                ),
-              ),
-          ],
-        ),
+        title: Text('Gestione Pagamenti'),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -149,21 +102,29 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
         ],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.pagamentiRoute),
-      body: _isLoading
-          ? LoadingWidget(message: 'Caricamento dati...')
-          : _errorMessage != null
-              ? ErrorDisplayWidget(
-                  errorMessage: _errorMessage!,
-                  onRetry: _loadData,
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildPagamentiTab(),
-                    _buildQuoteTab(),
-                    _buildBilancioTab(),
-                  ],
-                ),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _pagamenti.isEmpty && _quote.isEmpty
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(
+                        errorMessage: _errorMessage!,
+                        onRetry: _loadData,
+                      )
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildPagamentiTab(),
+                          _buildQuoteTab(),
+                          _buildBilancioTab(),
+                        ],
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: _tabController.index < 2
           ? FloatingActionButton(
               onPressed: () {

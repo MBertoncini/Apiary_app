@@ -151,7 +151,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       if (response.statusCode == 200) {
         // Tenta di analizzare la risposta come JSON
         try {
-          final responseData = json.decode(response.body);
+          final responseData = json.decode(utf8.decode(response.bodyBytes));
 
           _token = responseData['access'];
           _refreshToken = responseData['refresh'];
@@ -193,7 +193,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         
         // Tenta di estrarre il messaggio di errore dal JSON
         try {
-          final responseData = json.decode(response.body);
+          final responseData = json.decode(utf8.decode(response.bodyBytes));
           _lastError = responseData['detail'] ?? 'Errore di autenticazione';
         } catch (e) {
           _lastError = 'Errore di autenticazione. Codice: ${response.statusCode}';
@@ -218,6 +218,34 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Reset password: invia email con link di ripristino
+  Future<void> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConstants.passwordResetUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return;
+      }
+
+      String message;
+      try {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        message = data['detail'] ?? data['email']?.first ?? 'Errore durante il reset della password.';
+      } catch (_) {
+        message = 'Errore durante il reset della password (${response.statusCode}).';
+      }
+      throw Exception(message);
+    } on SocketException {
+      throw Exception('Impossibile connettersi al server. Verifica la tua connessione internet.');
+    } on TimeoutException {
+      throw Exception('La richiesta è scaduta. Riprova più tardi.');
     }
   }
 
@@ -301,7 +329,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       );
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
+        final responseData = json.decode(utf8.decode(response.bodyBytes));
 
         // Aggiorna il token di accesso
         _token = responseData['access'];
@@ -401,7 +429,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       
       if (response.statusCode == 200) {
         try {
-          final userJson = json.decode(response.body);
+          final userJson = json.decode(utf8.decode(response.bodyBytes));
           final user = User.fromJson(userJson);
           
           // Salva le info utente per uso offline
@@ -449,6 +477,33 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(AppConstants.refreshTokenKey);
+  }
+
+  // Aggiorna i dati del profilo utente sul server (first_name, last_name, email, gemini_api_key)
+  Future<bool> updateProfile(Map<String, String> fields) async {
+    if (_token == null) return false;
+    try {
+      final response = await http.patch(
+        Uri.parse(ApiConstants.userProfileUrl),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(fields),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final userJson = json.decode(utf8.decode(response.bodyBytes));
+        _currentUser = User.fromJson(userJson);
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error updating profile: $e');
+    }
+    return false;
   }
 
   // Aggiorna il profilo utente

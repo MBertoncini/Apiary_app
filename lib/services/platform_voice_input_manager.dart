@@ -17,6 +17,10 @@ class PlatformVoiceInputManager with ChangeNotifier {
   /// Raw transcriptions collected during a batch session.
   /// Gemini is called only when the user explicitly presses "Verifica".
   final List<String> _pendingTranscriptions = [];
+  /// Transcriptions that could not be processed in the last batch run
+  /// (rate limit, network error, or invalid Gemini response).
+  /// The caller should save these to the offline queue.
+  final List<String> _lastBatchFailedTranscriptions = [];
   bool _isListening = false;
   bool _isProcessing = false;
   bool _isBatchMode = false;
@@ -56,6 +60,12 @@ class PlatformVoiceInputManager with ChangeNotifier {
   VoiceEntryBatch get currentBatch => _currentBatch;
   List<String> get pendingTranscriptions =>
       List.unmodifiable(_pendingTranscriptions);
+  /// Transcriptions that failed in the last [processPendingBatch] call.
+  /// Non-empty when Gemini returned null for some items (rate limit, network
+  /// error, or unparseable response). The caller must save these to the
+  /// offline queue to prevent data loss.
+  List<String> get lastBatchFailedTranscriptions =>
+      List.unmodifiable(_lastBatchFailedTranscriptions);
   String? get error => _error;
   
   // Constructor
@@ -103,15 +113,23 @@ class PlatformVoiceInputManager with ChangeNotifier {
   // ── Continuous listening ──────────────────────────────────────────────────
 
   Future<void> _onEngineStoppedWhileListening() async {
-    _handlingEngineStop = false;
-    if (!_isListening || _isProcessing) return; // state changed while pending
+    // Do NOT reset _handlingEngineStop here — keep it true until this
+    // function is done (including restart) so that late results arriving
+    // from the old session cannot trigger a second concurrent invocation.
+    if (!_isListening || _isProcessing) {
+      _handlingEngineStop = false;
+      return; // state changed while pending
+    }
 
     // Android often delivers the last partial/final result a few milliseconds
     // AFTER the engine fires its stop/timeout event.  Waiting here gives the
     // platform channel time to flush that pending result into _transcription
     // before we read it, preventing the last word from being silently dropped.
     await Future.delayed(const Duration(milliseconds: 250));
-    if (!_isListening || _isProcessing) return; // re-check after the wait
+    if (!_isListening || _isProcessing) {
+      _handlingEngineStop = false;
+      return; // re-check after the wait
+    }
 
     final chunk = _speechService.transcription.trim();
 
@@ -126,6 +144,7 @@ class PlatformVoiceInputManager with ChangeNotifier {
       // Small delay so Android engine fully shuts down before re-opening
       // (avoids error_client on rapid restart)
       await Future.delayed(const Duration(milliseconds: 400));
+      _handlingEngineStop = false; // allow next stop event to be handled
       if (_isListening) await _speechService.startListening();
     } else {
       // Silence — check if user is done
@@ -134,8 +153,10 @@ class PlatformVoiceInputManager with ChangeNotifier {
       if (_silentRestartCount <= _maxSilentRestarts) {
         notifyListeners();
         await Future.delayed(const Duration(milliseconds: 400));
+        _handlingEngineStop = false;
         if (_isListening) await _speechService.startListening();
       } else {
+        _handlingEngineStop = false;
         await _finalizeListeningSession();
       }
     }
@@ -439,25 +460,49 @@ class PlatformVoiceInputManager with ChangeNotifier {
   /// Process all queued batch transcriptions through Gemini.
   /// Returns the populated [VoiceEntryBatch] for navigation to the
   /// verification screen.
+  ///
+  /// After this call, check [lastBatchFailedTranscriptions]: if non-empty,
+  /// those items could not be processed (rate limit / network / bad response)
+  /// and MUST be saved to the offline queue by the caller to avoid data loss.
   Future<VoiceEntryBatch> processPendingBatch() async {
     if (_pendingTranscriptions.isEmpty) return _currentBatch;
 
     final toProcess = List<String>.from(_pendingTranscriptions);
     _pendingTranscriptions.clear();
+    _lastBatchFailedTranscriptions.clear();
     _isProcessing = true;
     notifyListeners();
 
     try {
-      for (final text in toProcess) {
+      for (int i = 0; i < toProcess.length; i++) {
+        final text = toProcess[i];
         if (text.isEmpty) continue;
         try {
           final entry = await _dataProcessor.processVoiceInput(text);
           if (entry != null && entry.isValid()) {
             _currentBatch.add(entry);
+          } else {
+            // Gemini returned null: preserve for offline queue
+            _lastBatchFailedTranscriptions.add(text);
+            debugPrint('[VoiceManager] Gemini returned null for "$text"');
+          }
+          // On rate-limit or network error stop immediately and save all
+          // remaining items — do not silently discard them.
+          if (_dataProcessor.lastCallWasRateLimit ||
+              _dataProcessor.lastCallWasNetworkError) {
+            for (int j = i + 1; j < toProcess.length; j++) {
+              if (toProcess[j].isNotEmpty) {
+                _lastBatchFailedTranscriptions.add(toProcess[j]);
+              }
+            }
+            debugPrint(
+                '[VoiceManager] Batch stopped early at $i/${toProcess.length - 1}. '
+                '${_lastBatchFailedTranscriptions.length} items saved as failed.');
+            break;
           }
         } catch (e) {
           debugPrint('[VoiceManager] Gemini error for "$text": $e');
-          // Continue with remaining transcriptions even if one fails
+          _lastBatchFailedTranscriptions.add(text);
         }
       }
     } finally {
@@ -465,7 +510,13 @@ class PlatformVoiceInputManager with ChangeNotifier {
       notifyListeners();
     }
 
-    return _currentBatch;
+    // Return a snapshot so that clearBatch() called by the caller cannot
+    // retroactively empty the batch that was just handed over.
+    final snapshot = VoiceEntryBatch();
+    for (final e in _currentBatch.entries) {
+      snapshot.add(e);
+    }
+    return snapshot;
   }
   
   /// Begin a new batch of voice entries

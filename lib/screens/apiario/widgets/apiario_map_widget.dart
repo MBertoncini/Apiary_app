@@ -26,7 +26,51 @@ class PathSegment {
       );
 }
 
-enum MapElementType { nucleo, albero, vialetto }
+// ── Tipo arnia (corrisponde a TIPO_ARNIA_CHOICES del backend) ──
+enum HiveTipo {
+  dadant,
+  langstroth,
+  top_bar,
+  warre,
+  osservazione,
+  pappa_reale,
+  nucleo_legno,
+  nucleo_polistirolo,
+  portasciami,
+  apidea,
+  mini_plus;
+
+  static HiveTipo parse(String? s) {
+    if (s == null) return HiveTipo.dadant;
+    try { return HiveTipo.values.firstWhere((t) => t.name == s); }
+    catch (_) { return HiveTipo.dadant; }
+  }
+
+  String get label {
+    const m = {
+      'dadant':             'Dadant-Blatt',
+      'langstroth':         'Langstroth',
+      'top_bar':            'Top Bar',
+      'warre':              'Warré',
+      'osservazione':       'Osservazione',
+      'pappa_reale':        'Pappa Reale',
+      'nucleo_legno':       'Nucleo (legno)',
+      'nucleo_polistirolo': 'Nucleo (poli.)',
+      'portasciami':        'Portasciami',
+      'apidea':             'Apidea',
+      'mini_plus':          'Mini-Plus',
+    };
+    return m[name] ?? name;
+  }
+
+  /// true per arnie da produzione vere e proprie
+  bool get isFullHive => const {
+    HiveTipo.dadant, HiveTipo.langstroth, HiveTipo.top_bar,
+    HiveTipo.warre, HiveTipo.osservazione, HiveTipo.pappa_reale,
+  }.contains(this);
+}
+
+enum MapElementType { nucleo, apidea, mini_plus, portasciami, albero, vialetto }
 
 class MapElement {
   final String id;
@@ -76,6 +120,7 @@ class MapElement {
     try {
       type = MapElementType.values.firstWhere((t) => t.name == j['type']);
     } catch (_) {
+      // Legacy: 'nucleo' maps to nucleo, anything else to albero
       type = MapElementType.albero;
     }
     List<PathSegment> segs = [];
@@ -118,6 +163,12 @@ class ApiarioMapWidget extends StatefulWidget {
   final bool selectionMode;
   final Set<int> selectedArnieIds;
 
+  /// Ultimo controllo per ciascuna arnia: arniaId → raw DAO map.
+  final Map<int, Map<String, dynamic>?>? ultimiControlli;
+
+  /// Melari attivi per tutte le arnie dell'apiario (raw storage data).
+  final List<dynamic>? melariData;
+
   const ApiarioMapWidget({
     Key? key,
     required this.arnie,
@@ -128,6 +179,8 @@ class ApiarioMapWidget extends StatefulWidget {
     this.onNucleoConverted,
     this.selectionMode = false,
     this.selectedArnieIds = const {},
+    this.ultimiControlli,
+    this.melariData,
   }) : super(key: key);
 
   @override
@@ -205,9 +258,22 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
   Future<void> _loadNucleiDb() async {
     if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+
+    // Fase 1: cache locale — mostra subito
+    final cached = prefs.getString('nuclei_${widget.apiarioId}');
+    if (cached != null) {
+      try {
+        final list = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
+        if (mounted) setState(() => _nucleiDb = list);
+      } catch (_) {}
+    }
+
+    // Fase 2: aggiornamento dal server in background
     try {
       final api = Provider.of<ApiService>(context, listen: false);
       final list = await api.getNucleiByApiario(widget.apiarioId);
+      await prefs.setString('nuclei_${widget.apiarioId}', jsonEncode(list));
       if (mounted) setState(() => _nucleiDb = list);
     } catch (e) {
       debugPrint('Nuclei fetch failed: $e');
@@ -256,23 +322,9 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
   Future<void> _loadLayout() async {
     if (!mounted) return;
-    try {
-      final api = Provider.of<ApiService>(context, listen: false);
-      final resp = await api.getMapLayout(widget.apiarioId);
-      if (resp != null) {
-        final lj = resp['layout_json'] as String? ?? '';
-        if (lj.isNotEmpty && lj != '{}') {
-          _parseLayout(lj);
-          _assignMissing();
-          if (mounted) setState(() {});
-          WidgetsBinding.instance.addPostFrameCallback((_) => _centerOnArnie());
-          return;
-        }
-      }
-    } catch (e) {
-      debugPrint('Map layout fetch: $e');
-    }
     final prefs = await SharedPreferences.getInstance();
+
+    // Fase 1: cache locale — mostra subito
     final v2 = prefs.getString(_cacheKey);
     if (v2 != null) {
       try { _parseLayout(v2); } catch (_) {}
@@ -283,6 +335,23 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     _assignMissing();
     if (mounted) setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) => _centerOnArnie());
+
+    // Fase 2: aggiornamento dal server in background
+    try {
+      final api = Provider.of<ApiService>(context, listen: false);
+      final resp = await api.getMapLayout(widget.apiarioId);
+      if (resp != null) {
+        final lj = resp['layout_json'] as String? ?? '';
+        if (lj.isNotEmpty && lj != '{}') {
+          await prefs.setString(_cacheKey, lj);
+          _parseLayout(lj);
+          _assignMissing();
+          if (mounted) setState(() {});
+        }
+      }
+    } catch (e) {
+      debugPrint('Map layout fetch: $e');
+    }
   }
 
   void _assignMissing() {
@@ -403,8 +472,11 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       setState(() => _editMode = true);
       widget.onEditModeChanged?.call(true);
     }
-    if (type == MapElementType.nucleo) {
-      _showAddNucleoDialog();
+    if (type == MapElementType.nucleo ||
+        type == MapElementType.apidea ||
+        type == MapElementType.mini_plus ||
+        type == MapElementType.portasciami) {
+      _showAddSmallHiveDialog(type);
       return;
     }
     HapticFeedback.mediumImpact();
@@ -496,28 +568,37 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     _dirPickerOverlay = null;
   }
 
-  // ── nucleo: dialog aggiunta ────────────────────────────────────
+  // ── cassette piccole: dialog aggiunta ─────────────────────────
 
-  void _showAddNucleoDialog() {
+  void _showAddSmallHiveDialog(MapElementType type) {
+    final labels = {
+      MapElementType.nucleo:      'nucleo',
+      MapElementType.apidea:      'Apidea/Kieler',
+      MapElementType.mini_plus:   'Mini-Plus',
+      MapElementType.portasciami: 'portasciami',
+    };
+    final label = labels[type] ?? 'elemento';
+
     final numCtrl = TextEditingController();
     String selectedColor = '#FFC107';
     final colors = ['#FFC107', '#8B6914', '#0d6efd', '#198754',
-                    '#dc3545', '#fd7e14', '#6f42c1', '#212529'];
+                    '#dc3545', '#fd7e14', '#6f42c1', '#212529',
+                    '#FFFFFF', '#F5E6C8'];
 
     showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          title: const Text('Aggiungi nucleo'),
+          title: Text('Aggiungi $label'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: numCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Numero nucleo',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Numero $label',
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -559,7 +640,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 final num = int.tryParse(numCtrl.text.trim());
                 if (num == null) return;
                 Navigator.pop(ctx);
-                await _createNucleoDb(num, selectedColor);
+                await _createNucleoDb(num, selectedColor, type);
               },
               child: const Text('Aggiungi'),
             ),
@@ -569,38 +650,67 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     );
   }
 
-  Future<void> _createNucleoDb(int numero, String coloreHex) async {
+  Future<void> _createNucleoDb(int numero, String coloreHex,
+      [MapElementType type = MapElementType.nucleo]) async {
     try {
       final api = Provider.of<ApiService>(context, listen: false);
       final today = DateTime.now().toIso8601String().substring(0, 10);
-      final resp = await api.createNucleo({
-        'apiario': widget.apiarioId,
-        'numero': numero,
-        'colore_hex': coloreHex,
-        'data_installazione': today,
-      });
-      if (resp == null) return;
-      final nucleoId = resp['id'] as int;
       final c = _viewportCenter();
-      final id = 'nucleo_${DateTime.now().millisecondsSinceEpoch}';
+
+      // Apidea, Mini-Plus e Portasciami diventano vere Arnie nel DB
+      if (type == MapElementType.apidea ||
+          type == MapElementType.mini_plus ||
+          type == MapElementType.portasciami) {
+        final resp = await api.createArnia({
+          'apiario': widget.apiarioId,
+          'numero': numero,
+          'colore_hex': coloreHex,
+          'tipo_arnia': type.name,
+          'data_installazione': today,
+        });
+        if (resp == null) return;
+        final arniaId = resp['id'] as int;
+        HapticFeedback.mediumImpact();
+        setState(() {
+          _arniaPositions[arniaId] = _snap(Offset(c.dx - 35, c.dy - 35));
+          _hasChanges = true;
+        });
+        await _saveLayout();
+        widget.onNucleoConverted?.call();
+        return;
+      }
+
+      // Nucleo: crea record Nucleo nel DB
+      int? nucleoId;
+      if (type == MapElementType.nucleo) {
+        final resp = await api.createNucleo({
+          'apiario': widget.apiarioId,
+          'numero': numero,
+          'colore_hex': coloreHex,
+          'data_installazione': today,
+        });
+        if (resp == null) return;
+        nucleoId = resp['id'] as int;
+        _nucleiDb.add(resp);
+      }
+      final id = '${type.name}_${DateTime.now().millisecondsSinceEpoch}';
       HapticFeedback.mediumImpact();
       setState(() {
         _elements.add(MapElement(
           id: id,
-          type: MapElementType.nucleo,
+          type: type,
           position: _snap(Offset(c.dx - 35, c.dy - 35)),
           numero: numero,
           coloreHex: coloreHex,
           attiva: true,
           nucleoDbId: nucleoId,
         ));
-        _nucleiDb.add(resp);
         _hasChanges = true;
       });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore creazione nucleo: $e')));
+          SnackBar(content: Text('Errore: $e')));
       }
     }
   }
@@ -915,6 +1025,164 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     });
   }
 
+  // ── helper: frame config per il mini-strip sulla mappa ─────────
+
+  static const Map<String, Color> _frameColors = {
+    'covata':    Color(0xFFFF8C42),
+    'scorte':    Color(0xFFFFD166),
+    'diaframma': Color(0xFF9E9E9E),
+    'nutritore': Color(0xFF74B3CE),
+    'vuoto':     Color(0xFFDDDDDD),
+  };
+
+  List<String> _parseFrameConfig(Map<String, dynamic>? controllo) {
+    if (controllo == null) return List.filled(10, 'vuoto');
+    final raw = controllo['telaini_config'];
+    if (raw != null && raw.toString().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw.toString()) as List;
+        if (decoded.length == 10) return List<String>.from(decoded);
+      } catch (_) {}
+    }
+    final scorte = (controllo['telaini_scorte'] as num?)?.toInt() ?? 0;
+    final covata = (controllo['telaini_covata'] as num?)?.toInt() ?? 0;
+    final config = List.filled(10, 'vuoto');
+    int start = ((10 - covata) / 2).floor().clamp(0, 9);
+    for (int i = 0; i < covata && start + i < 10; i++) config[start + i] = 'covata';
+    int left = scorte;
+    for (int i = 0; i < 10 && left > 0; i++) {
+      if (config[i] == 'vuoto') { config[i] = 'scorte'; left--; }
+    }
+    for (int i = 9; i >= 0 && left > 0; i--) {
+      if (config[i] == 'vuoto') { config[i] = 'scorte'; left--; }
+    }
+    return config;
+  }
+
+  List<Widget> _buildMelariBoxes(int arniaId) {
+    if (widget.melariData == null) return [];
+    final active = widget.melariData!
+        .where((m) => m['arnia'] == arniaId && m['stato'] == 'posizionato')
+        .toList()
+      ..sort((a, b) => ((b['posizione'] as num?)?.toInt() ?? 0)
+          .compareTo((a['posizione'] as num?)?.toInt() ?? 0));
+    // Sort descending: highest position first → renders at top of column (visually highest)
+    return active.map((m) {
+      final pos = (m['posizione'] as num?)?.toInt() ?? 1;
+      return Container(
+        width: _cellSize,
+        height: 13.0,
+        margin: const EdgeInsets.only(bottom: 1),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFCF78),
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: const Color(0xFFB8942A), width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            'M$pos',
+            style: const TextStyle(
+              fontSize: 7.5,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF6B4C10),
+              height: 1,
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  Widget _buildMiniHiveInfo(int arniaId) {
+    final controllo = widget.ultimiControlli?[arniaId];
+    final frames = _parseFrameConfig(controllo);
+    final presenzaRegina = controllo?['presenza_regina'] == true;
+    final celleReali    = controllo?['celle_reali']    == true;
+    final dataCont      = controllo?['data'] as String?;
+
+    int daysSince = 0;
+    if (celleReali && dataCont != null) {
+      try { daysSince = DateTime.now().difference(DateTime.parse(dataCont)).inDays; } catch (_) {}
+    }
+
+    Color celleColor;
+    String celleMark;
+    if (daysSince < 5) {
+      celleColor = Colors.amber.shade700;  celleMark = '!';
+    } else if (daysSince < 10) {
+      celleColor = Colors.orange.shade800; celleMark = '!!';
+    } else if (daysSince < 14) {
+      celleColor = Colors.deepOrange;      celleMark = '!!!';
+    } else {
+      celleColor = Colors.red.shade800;    celleMark = '!!!';
+    }
+
+    return SizedBox(
+      width: _cellSize,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 2),
+          // ── 10 mini slot telaini ──────────────────────────────
+          Row(
+            children: List.generate(10, (i) => Expanded(
+              child: Container(
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 0.3),
+                decoration: BoxDecoration(
+                  color: _frameColors[frames[i]] ?? const Color(0xFFDDDDDD),
+                  borderRadius: BorderRadius.circular(1),
+                  border: Border.all(color: Colors.black12, width: 0.3),
+                ),
+              ),
+            )),
+          ),
+          const SizedBox(height: 2),
+          // ── regina + celle reali ──────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '♛',
+                style: TextStyle(
+                  fontSize: 9,
+                  color: presenzaRegina ? Colors.green.shade700 : Colors.red.shade700,
+                  height: 1,
+                ),
+              ),
+              if (celleReali) ...[
+                const SizedBox(width: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: celleColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                    border: Border.all(color: celleColor, width: 0.5),
+                  ),
+                  child: Text(
+                    celleMark,
+                    style: TextStyle(
+                      color: celleColor, fontSize: 8,
+                      fontWeight: FontWeight.bold, height: 1.2,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── arnie ──────────────────────────────────────────────────────
 
   List<Widget> _buildArnieWidgets() {
@@ -924,6 +1192,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       final color = _parseHex(arnia['colore_hex'] ?? '#FFC107');
       final isActive = _isActive(arnia);
       final numero = arnia['numero'] as int;
+      final tipo = HiveTipo.parse(arnia['tipo_arnia'] as String?);
       final isDragging = _draggingArniaId == id;
       final isSelected = widget.selectionMode && widget.selectedArnieIds.contains(id);
 
@@ -932,7 +1201,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       if (_editMode && !widget.selectionMode) {
         child = _DraggableHive(
           numero: numero, color: color, isActive: isActive,
-          isDragging: isDragging, cellSize: _cellSize,
+          isDragging: isDragging, cellSize: _cellSize, tipo: tipo,
           onDragStart: () {
             HapticFeedback.selectionClick();
             setState(() => _draggingArniaId = id);
@@ -952,10 +1221,20 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       } else {
         child = _StaticHive(
           numero: numero, color: color, isActive: isActive,
-          isSelected: isSelected, cellSize: _cellSize,
+          isSelected: isSelected, cellSize: _cellSize, tipo: tipo,
           onTap: () => widget.onArniaTap(id),
         );
       }
+
+      // ── melari sopra + mini info sotto ogni arnia ─────────────
+      child = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ..._buildMelariBoxes(id),
+          child,
+          _buildMiniHiveInfo(id),
+        ],
+      );
 
       // Pulse ring when selected
       if (isSelected) {
@@ -1002,7 +1281,13 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
       Widget inner;
 
-      if (el.type == MapElementType.nucleo) {
+      // ── nuclei e cassette piccole ───────────────────────────────
+      final isSmallHive = el.type == MapElementType.nucleo ||
+          el.type == MapElementType.apidea ||
+          el.type == MapElementType.mini_plus ||
+          el.type == MapElementType.portasciami;
+
+      if (isSmallHive) {
         final dbData = el.nucleoDbId != null
             ? _nucleiDb.firstWhere(
                 (n) => n['id'] == el.nucleoDbId,
@@ -1013,8 +1298,17 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         final hex = (dbData['colore_hex'] ?? el.coloreHex ?? '#8B6914') as String;
         final active = (dbData['attiva'] ?? el.attiva ?? true) as bool;
         final converted = dbData['convertito'] == true;
-
         if (converted) return const SizedBox.shrink();
+
+        // Mappa tipo elemento → HiveTipo painter
+        final HiveTipo smallTipo;
+        switch (el.type) {
+          case MapElementType.apidea:     smallTipo = HiveTipo.apidea; break;
+          case MapElementType.mini_plus:  smallTipo = HiveTipo.mini_plus; break;
+          case MapElementType.portasciami: smallTipo = HiveTipo.portasciami; break;
+          default:                        smallTipo = HiveTipo.nucleo_legno;
+        }
+        final smallCell = _cellSize * (el.type == MapElementType.apidea ? 0.60 : 0.78);
 
         inner = _editMode
             ? _DraggableHive(
@@ -1022,8 +1316,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 color: _parseHex(hex),
                 isActive: active,
                 isDragging: isDragging,
-                cellSize: _cellSize * 0.78,
-                isNucleo: true,
+                cellSize: smallCell,
+                tipo: smallTipo,
                 onDragStart: () {
                   HapticFeedback.selectionClick();
                   setState(() => _draggingElementId = el.id);
@@ -1039,7 +1333,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                   });
                 },
                 onDragEnd: () => setState(() => _draggingElementId = null),
-                onLongPress: () => _confirmDelete(el.id, 'Rimuovere questo nucleo dalla mappa?'),
+                onLongPress: () => _confirmDelete(
+                    el.id, 'Rimuovere questo elemento dalla mappa?'),
               )
             : GestureDetector(
                 onTap: () => _showNucleoSheet(el),
@@ -1048,8 +1343,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                   color: _parseHex(hex),
                   isActive: active,
                   isSelected: false,
-                  cellSize: _cellSize * 0.78,
-                  isNucleo: true,
+                  cellSize: smallCell,
+                  tipo: smallTipo,
                   onTap: () => _showNucleoSheet(el),
                 ),
               );
@@ -1243,34 +1538,60 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                         ),
                       ],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _AddBtn(
-                          icon: Icons.hive_rounded,
-                          label: 'Arnia',
-                          color: const Color(0xFFF59E0B),
-                          onTap: widget.onAddArnia,
-                        ),
-                        _AddBtn(
-                          icon: Icons.hive_outlined,
-                          label: 'Nucleo',
-                          color: const Color(0xFF8B6914),
-                          onTap: () => _addElement(MapElementType.nucleo),
-                        ),
-                        _AddBtn(
-                          icon: Icons.park_rounded,
-                          label: 'Albero',
-                          color: const Color(0xFF2E7D32),
-                          onTap: () => _addElement(MapElementType.albero),
-                        ),
-                        _AddBtn(
-                          icon: Icons.remove_road_rounded,
-                          label: 'Vialetto',
-                          color: const Color(0xFF8D6E63),
-                          onTap: () => _addElement(MapElementType.vialetto),
-                        ),
-                      ],
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _AddBtn(
+                            icon: Icons.hive_rounded,
+                            label: 'Arnia',
+                            color: const Color(0xFFF59E0B),
+                            onTap: widget.onAddArnia,
+                          ),
+                          const SizedBox(width: 4),
+                          _AddBtn(
+                            icon: Icons.hive_outlined,
+                            label: 'Nucleo',
+                            color: const Color(0xFF8B6914),
+                            onTap: () => _addElement(MapElementType.nucleo),
+                          ),
+                          const SizedBox(width: 4),
+                          _AddBtn(
+                            icon: Icons.square_outlined,
+                            label: 'Apidea',
+                            color: const Color(0xFF5B8DEF),
+                            onTap: () => _addElement(MapElementType.apidea),
+                          ),
+                          const SizedBox(width: 4),
+                          _AddBtn(
+                            icon: Icons.layers_outlined,
+                            label: 'Mini-Plus',
+                            color: const Color(0xFF9B59B6),
+                            onTap: () => _addElement(MapElementType.mini_plus),
+                          ),
+                          const SizedBox(width: 4),
+                          _AddBtn(
+                            icon: Icons.inventory_2_outlined,
+                            label: 'Portasc.',
+                            color: const Color(0xFFA0856C),
+                            onTap: () => _addElement(MapElementType.portasciami),
+                          ),
+                          const SizedBox(width: 4),
+                          _AddBtn(
+                            icon: Icons.park_rounded,
+                            label: 'Albero',
+                            color: const Color(0xFF2E7D32),
+                            onTap: () => _addElement(MapElementType.albero),
+                          ),
+                          const SizedBox(width: 4),
+                          _AddBtn(
+                            icon: Icons.remove_road_rounded,
+                            label: 'Vialetto',
+                            color: const Color(0xFF8D6E63),
+                            onTap: () => _addElement(MapElementType.vialetto),
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -1320,14 +1641,15 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 class _StaticHive extends StatelessWidget {
   final int numero;
   final Color color;
-  final bool isActive, isSelected, isNucleo;
+  final bool isActive, isSelected;
+  final HiveTipo tipo;
   final double cellSize;
   final VoidCallback onTap;
 
   const _StaticHive({
     required this.numero, required this.color, required this.isActive,
     required this.isSelected, required this.cellSize, required this.onTap,
-    this.isNucleo = false,
+    this.tipo = HiveTipo.dadant,
   });
 
   @override
@@ -1336,7 +1658,7 @@ class _StaticHive extends StatelessWidget {
     child: Stack(clipBehavior: Clip.none, children: [
       _HiveCell(numero: numero, color: color, isActive: isActive,
           isSelected: isSelected, cellSize: cellSize,
-          isDragging: false, showDragIcon: false, isNucleo: isNucleo),
+          isDragging: false, showDragIcon: false, tipo: tipo),
       if (isSelected)
         Positioned(
           top: -7, right: -7,
@@ -1361,7 +1683,8 @@ class _StaticHive extends StatelessWidget {
 class _DraggableHive extends StatelessWidget {
   final int numero;
   final Color color;
-  final bool isActive, isDragging, isNucleo;
+  final bool isActive, isDragging;
+  final HiveTipo tipo;
   final double cellSize;
   final VoidCallback onDragStart;
   final Function(Offset) onDragUpdate;
@@ -1372,7 +1695,7 @@ class _DraggableHive extends StatelessWidget {
     required this.numero, required this.color, required this.isActive,
     required this.isDragging, required this.cellSize,
     required this.onDragStart, required this.onDragUpdate, required this.onDragEnd,
-    this.isNucleo = false, this.onLongPress,
+    this.tipo = HiveTipo.dadant, this.onLongPress,
   });
 
   @override
@@ -1384,7 +1707,7 @@ class _DraggableHive extends StatelessWidget {
     onLongPress: onLongPress,
     child: _HiveCell(numero: numero, color: color, isActive: isActive,
         cellSize: cellSize, isDragging: isDragging,
-        showDragIcon: true, isNucleo: isNucleo),
+        showDragIcon: true, tipo: tipo),
   );
 }
 
@@ -1395,13 +1718,14 @@ class _DraggableHive extends StatelessWidget {
 class _HiveCell extends StatelessWidget {
   final int numero;
   final Color color;
-  final bool isActive, isSelected, isDragging, showDragIcon, isNucleo;
+  final bool isActive, isSelected, isDragging, showDragIcon;
+  final HiveTipo tipo;
   final double cellSize;
 
   const _HiveCell({
     required this.numero, required this.color, required this.isActive,
     required this.cellSize, required this.isDragging, required this.showDragIcon,
-    this.isSelected = false, this.isNucleo = false,
+    this.isSelected = false, this.tipo = HiveTipo.dadant,
   });
 
   @override
@@ -1409,7 +1733,16 @@ class _HiveCell extends StatelessWidget {
     final disp = isActive ? color : Colors.grey.shade400;
     final lum = disp.computeLuminance();
     final tc = lum > 0.4 ? Colors.black87 : Colors.white;
-    final label = isNucleo ? 'N$numero' : '$numero';
+    final isSmall = !tipo.isFullHive;
+    final prefix = switch (tipo) {
+      HiveTipo.apidea             => 'A',
+      HiveTipo.mini_plus          => 'M',
+      HiveTipo.portasciami        => 'P',
+      HiveTipo.nucleo_polistirolo => 'N',
+      _ when isSmall              => 'N',
+      _                           => '',
+    };
+    final label = '$prefix$numero';
 
     return AnimatedContainer(
       duration: isDragging ? Duration.zero : const Duration(milliseconds: 150),
@@ -1419,7 +1752,7 @@ class _HiveCell extends StatelessWidget {
           : Matrix4.identity(),
       transformAlignment: Alignment.center,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(isNucleo ? 6 : 5),
+        borderRadius: BorderRadius.circular(isSmall ? 6 : 5),
         boxShadow: [
           BoxShadow(
             color: isSelected
@@ -1435,14 +1768,14 @@ class _HiveCell extends StatelessWidget {
         Positioned.fill(
           child: CustomPaint(
             painter: _HivePainter(
-              color: disp, isNucleo: isNucleo,
+              color: disp, tipo: tipo,
               isSelected: isSelected, isDragging: isDragging,
             ),
           ),
         ),
         // Number label
         Positioned(
-          top: cellSize * (isNucleo ? .36 : .38), left: 0, right: 0,
+          top: cellSize * (isSmall ? .36 : .38), left: 0, right: 0,
           child: Center(
             child: Container(
               padding: EdgeInsets.symmetric(
@@ -1454,7 +1787,7 @@ class _HiveCell extends StatelessWidget {
               child: Text(label,
                 style: TextStyle(
                   color: tc, fontWeight: FontWeight.w900, height: 1,
-                  fontSize: isNucleo ? cellSize * .26 : cellSize * .30,
+                  fontSize: isSmall ? cellSize * .26 : cellSize * .28,
                   shadows: [Shadow(color: Colors.black.withOpacity(.25), blurRadius: 3)],
                 )),
             ),
@@ -1464,7 +1797,7 @@ class _HiveCell extends StatelessWidget {
           Positioned(
             bottom: cellSize * .12, left: 0, right: 0,
             child: Center(
-              child: Text(isNucleo ? 'inattivo' : 'inattiva',
+              child: Text(isSmall ? 'inattivo' : 'inattiva',
                 style: TextStyle(color: tc.withOpacity(.7),
                     fontSize: cellSize * .10, fontWeight: FontWeight.w600)),
             ),
@@ -1487,11 +1820,12 @@ class _HiveCell extends StatelessWidget {
 
 class _HivePainter extends CustomPainter {
   final Color color;
-  final bool isNucleo, isSelected, isDragging;
+  final HiveTipo tipo;
+  final bool isSelected, isDragging;
 
   const _HivePainter({
     required this.color,
-    this.isNucleo = false, this.isSelected = false, this.isDragging = false,
+    this.tipo = HiveTipo.dadant, this.isSelected = false, this.isDragging = false,
   });
 
   @override
@@ -1510,9 +1844,30 @@ class _HivePainter extends CustomPainter {
         ..strokeWidth = 1.4..strokeJoin = StrokeJoin.round;
     final darkFill = Paint()..color = darker..style = PaintingStyle.fill;
 
-    isNucleo
-        ? _drawNucleo(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter)
-        : _drawArnia(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+    switch (tipo) {
+      case HiveTipo.dadant:
+        _drawArnia(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.langstroth:
+        _drawLangstroth(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.top_bar:
+        _drawTopBar(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.warre:
+        _drawWarre(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.osservazione:
+        _drawOsservazione(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.pappa_reale:
+        _drawPappaReale(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.nucleo_legno:
+      case HiveTipo.nucleo_polistirolo:
+        _drawNucleo(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter,
+            polistirolo: tipo == HiveTipo.nucleo_polistirolo);
+      case HiveTipo.portasciami:
+        _drawPortasciami(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.apidea:
+        _drawApidea(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+      case HiveTipo.mini_plus:
+        _drawMiniPlus(canvas, w, h, fill, stroke, darkFill, darker, darkest, lighter);
+    }
 
     // Selection / drag ring
     if (isSelected || isDragging) {
@@ -1528,72 +1883,402 @@ class _HivePainter extends CustomPainter {
   void _drawArnia(Canvas c, double w, double h,
       Paint fill, Paint stroke, Paint dFill,
       Color darker, Color darkest, Color lighter) {
-    // Tetto
-    final roof = Path()
-      ..moveTo(w * .06, h * .27)
-      ..lineTo(w / 2, h * .04)
-      ..lineTo(w * .94, h * .27)
-      ..close();
-    c.drawPath(roof, dFill);
-    // Highlight tetto
-    c.drawPath(
-      Path()..moveTo(w * .06, h * .27)..lineTo(w / 2, h * .04)..lineTo(w * .50, h * .04),
-      Paint()..color = lighter.withOpacity(.3)..strokeWidth = 2
-          ..style = PaintingStyle.stroke..strokeCap = StrokeCap.round,
+    // ── Tetto piatto in acciaio ───────────────────────────────────
+    // Colore acciaio: grigio-azzurro metallico mischiato con il tono scuro dell'arnia
+    final roofBase = HSLColor.fromColor(darker)
+        .withSaturation(0.06)
+        .withLightness(0.48)
+        .toColor();
+    final roofColor = Color.lerp(roofBase, const Color(0xFFB8C4CC), 0.55)!;
+    final roofHighlight = Color.lerp(roofColor, Colors.white, 0.38)!;
+    final roofShadow = Color.lerp(roofColor, Colors.black, 0.28)!;
+
+    // Tetto leggermente più largo del corpo (2% overhang per lato)
+    final roofRRect = RRect.fromLTRBR(
+        -w * .02, h * .02, w * 1.02, h * .16, const Radius.circular(2));
+    c.drawRRect(roofRRect, Paint()..color = roofColor..style = PaintingStyle.fill);
+
+    // Riflesso metallico (banda chiara nella metà superiore)
+    c.save();
+    c.clipRRect(roofRRect);
+    c.drawRect(
+      Rect.fromLTWH(0, h * .02, w, h * .07),
+      Paint()..color = roofHighlight.withValues(alpha: 0.28),
     );
-    c.drawPath(roof, Paint()..color = darkest.withOpacity(.4)
-        ..style = PaintingStyle.stroke..strokeWidth = 1.0);
+    // Linea di shininess
+    c.drawLine(
+      Offset(w * .05, h * .065),
+      Offset(w * .95, h * .065),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.22)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke,
+    );
+    c.restore();
 
-    // Corpo superiore
-    final upper = RRect.fromLTRBR(w*.07, h*.26, w*.93, h*.51, const Radius.circular(2));
-    c.drawRRect(upper, fill); c.drawRRect(upper, stroke);
+    // Bordo tetto
+    c.drawRRect(roofRRect,
+        Paint()..color = roofShadow..style = PaintingStyle.stroke..strokeWidth = 0.9);
 
-    // Corpo inferiore
-    final lower = RRect.fromLTRBR(w*.07, h*.51, w*.93, h*.82, const Radius.circular(2));
-    c.drawRRect(lower, fill); c.drawRRect(lower, stroke);
+    // ── Corpo superiore ───────────────────────────────────────────
+    final upper = RRect.fromLTRBR(w * .07, h * .15, w * .93, h * .50, const Radius.circular(2));
+    c.drawRRect(upper, fill);
+    c.drawRRect(upper, stroke);
 
-    // Honeycomb texture on body
-    _drawHoneycomb(c, Rect.fromLTRB(w*.08, h*.27, w*.92, h*.82), w * .085, darker);
+    // ── Corpo inferiore ───────────────────────────────────────────
+    final lower = RRect.fromLTRBR(w * .07, h * .50, w * .93, h * .80, const Radius.circular(2));
+    c.drawRRect(lower, fill);
+    c.drawRRect(lower, stroke);
 
-    // Predellino
-    c.drawRect(Rect.fromLTWH(w*.04, h*.82, w*.92, h*.055),
-        Paint()..color = darkest..style = PaintingStyle.fill);
-    // Entrata
-    final entW = w*.30, entH = h*.055;
-    c.drawRRect(RRect.fromLTRBR((w-entW)/2, h*.82, (w+entW)/2, h*.82+entH,
-        const Radius.circular(2)),
-        Paint()..color = const Color(0xBB000000)..style = PaintingStyle.fill);
-    // Luce entrata
-    c.drawOval(
-      Rect.fromCenter(center: Offset(w/2, h*.822+entH/2), width: entW*.5, height: entH*.4),
-      Paint()..color = Colors.white.withOpacity(.08),
+    // ── Honeycomb texture ─────────────────────────────────────────
+    _drawHoneycomb(c, Rect.fromLTRB(w * .08, h * .16, w * .92, h * .80), w * .085, darker);
+
+    // ── Predellino d'atterraggio ──────────────────────────────────
+    final boardRect = Rect.fromLTWH(w * .04, h * .80, w * .92, h * .05);
+    c.drawRect(boardRect, Paint()..color = darkest..style = PaintingStyle.fill);
+
+    // ── Porticina rettangolare larga e bassa ──────────────────────
+    // 80% della larghezza, altezza bassa (6% dell'altezza)
+    final portW = w * 0.80;
+    final portH = h * 0.062;
+    final portX = (w - portW) / 2;
+    final portY = h * .80;
+
+    // Fondo scuro (profondità)
+    c.drawRect(
+      Rect.fromLTWH(portX, portY, portW, portH),
+      Paint()..color = const Color(0xEE000000)..style = PaintingStyle.fill,
+    );
+    // Sottile bordo superiore chiaro (luce in cima alla porticina)
+    c.drawLine(
+      Offset(portX + portW * .04, portY + portH * .18),
+      Offset(portX + portW * .96, portY + portH * .18),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.09)
+        ..strokeWidth = 0.8
+        ..style = PaintingStyle.stroke,
     );
   }
 
   void _drawNucleo(Canvas c, double w, double h,
       Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter,
+      {bool polistirolo = false}) {
+    if (polistirolo) {
+      // Polistirolo: forme arrotondate, colore chiaro quasi bianco
+      final bodyColor = Color.lerp(fill.color, Colors.white, 0.55)!;
+      final pFill = Paint()..color = bodyColor..style = PaintingStyle.fill;
+      final pStroke = Paint()..color = darker.withOpacity(.5)..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
+      final roof = RRect.fromLTRBR(w*.04, h*.08, w*.96, h*.24, const Radius.circular(6));
+      c.drawRRect(roof, pFill); c.drawRRect(roof, pStroke);
+      final body = RRect.fromLTRBR(w*.06, h*.23, w*.94, h*.82, const Radius.circular(8));
+      c.drawRRect(body, pFill); c.drawRRect(body, pStroke);
+      final board = RRect.fromLTRBR(w*.04, h*.82, w*.96, h*.88, const Radius.circular(4));
+      c.drawRRect(board, Paint()..color = darker.withOpacity(.3)..style = PaintingStyle.fill);
+      final entW = w*.22, entH = h*.048;
+      c.drawRRect(RRect.fromLTRBR((w-entW)/2, h*.82, (w+entW)/2, h*.82+entH,
+          const Radius.circular(2)),
+          Paint()..color = const Color(0xBB000000)..style = PaintingStyle.fill);
+    } else {
+      // Legno: forma classica
+      final roof = RRect.fromLTRBR(w*.04, h*.10, w*.96, h*.24, const Radius.circular(3));
+      c.drawRRect(roof, dFill);
+      final body = RRect.fromLTRBR(w*.08, h*.23, w*.92, h*.80, const Radius.circular(2));
+      c.drawRRect(body, fill); c.drawRRect(body, stroke);
+      _drawHoneycomb(c, Rect.fromLTRB(w*.09, h*.24, w*.91, h*.80), w * .075, darker);
+      c.drawLine(Offset(w*.08, h*.515), Offset(w*.92, h*.515),
+          Paint()..color = darker.withOpacity(.4)..strokeWidth = .9);
+      c.drawRect(Rect.fromLTWH(w*.04, h*.80, w*.92, h*.055),
+          Paint()..color = darkest..style = PaintingStyle.fill);
+      final entW = w*.24, entH = h*.055;
+      c.drawRRect(RRect.fromLTRBR((w-entW)/2, h*.80, (w+entW)/2, h*.80+entH,
+          const Radius.circular(1.5)),
+          Paint()..color = const Color(0xBB000000)..style = PaintingStyle.fill);
+    }
+  }
+
+  // ── Langstroth: casse modulari tutte uguali ────────────────────
+  void _drawLangstroth(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
       Color darker, Color darkest, Color lighter) {
-    // Cappello
-    final roof = RRect.fromLTRBR(w*.04, h*.10, w*.96, h*.24, const Radius.circular(3));
-    c.drawRRect(roof, dFill);
-    // Corpo
-    final body = RRect.fromLTRBR(w*.08, h*.23, w*.92, h*.80, const Radius.circular(2));
+    // Tetto piatto metallico (stesso del Dadant)
+    final roofColor = Color.lerp(darker.withOpacity(1), const Color(0xFFB8C4CC), 0.55)!;
+    final roofRRect = RRect.fromLTRBR(-w*.02, h*.02, w*1.02, h*.14, const Radius.circular(2));
+    c.drawRRect(roofRRect, Paint()..color = roofColor..style = PaintingStyle.fill);
+    c.drawRRect(roofRRect, Paint()..color = roofColor.withOpacity(.5)..style = PaintingStyle.stroke..strokeWidth = .9);
+
+    // 3 casse modulari identiche (Langstroth è modulare)
+    const boxes = 3;
+    final boxH = (h * .70) / boxes;
+    for (int i = 0; i < boxes; i++) {
+      final top = h * .14 + i * boxH;
+      final box = RRect.fromLTRBR(w*.06, top, w*.94, top + boxH - 1, const Radius.circular(2));
+      c.drawRRect(box, fill);
+      c.drawRRect(box, stroke);
+      _drawHoneycomb(c, Rect.fromLTRB(w*.07, top + 1, w*.93, top + boxH - 2), w * .080, darker);
+    }
+    // Predellino e porta
+    final boardTop = h * .14 + boxes * boxH;
+    c.drawRect(Rect.fromLTWH(w*.04, boardTop, w*.92, h*.04),
+        Paint()..color = darkest..style = PaintingStyle.fill);
+    final portW = w * .78, portH = h * .055;
+    c.drawRect(Rect.fromLTWH((w - portW) / 2, boardTop, portW, portH),
+        Paint()..color = const Color(0xEE000000)..style = PaintingStyle.fill);
+  }
+
+  // ── Top Bar (Kenyana): forma trapezoidale orizzontale ──────────
+  void _drawTopBar(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter) {
+    // Corpo trapezoidale (più largo in alto, più stretto in basso)
+    final path = Path()
+      ..moveTo(w * .00, h * .18)   // sinistra alto
+      ..lineTo(w * 1.00, h * .18)  // destra alto
+      ..lineTo(w * .88, h * .82)   // destra basso
+      ..lineTo(w * .12, h * .82)   // sinistra basso
+      ..close();
+    c.drawPath(path, fill);
+    c.drawPath(path, stroke);
+
+    // Barre superiori (top bars) — 5 linee verticali
+    final barPaint = Paint()..color = darker.withOpacity(.55)..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+    for (int i = 1; i <= 5; i++) {
+      final x = w * .08 + (w * .84) * i / 6;
+      c.drawLine(Offset(x, h * .19), Offset(x, h * .80), barPaint);
+    }
+
+    // Tetto a capanna triangolare
+    final roofPath = Path()
+      ..moveTo(w * .50, h * .02)   // vertice tetto
+      ..lineTo(w * 1.04, h * .18)  // destra base tetto
+      ..lineTo(w * -.04, h * .18)  // sinistra base tetto
+      ..close();
+    final roofColor = Color.lerp(darker, const Color(0xFFB8C4CC), 0.45)!;
+    c.drawPath(roofPath, Paint()..color = roofColor..style = PaintingStyle.fill);
+    c.drawPath(roofPath, Paint()..color = roofColor.withOpacity(.7)..style = PaintingStyle.stroke..strokeWidth = 1.0);
+
+    // Entrata frontale (sul lato stretto basso)
+    final entW = w * .20;
+    c.drawRect(Rect.fromLTWH((w - entW) / 2, h * .78, entW, h * .04),
+        Paint()..color = const Color(0xCC000000)..style = PaintingStyle.fill);
+  }
+
+  // ── Warré: alta e stretta, casse aggiunte dal basso ───────────
+  void _drawWarre(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter) {
+    // Tetto a capanna
+    final roofPath = Path()
+      ..moveTo(w * .50, h * .00)
+      ..lineTo(w * 1.02, h * .16)
+      ..lineTo(w * -.02, h * .16)
+      ..close();
+    final roofColor = Color.lerp(darker.withOpacity(1), const Color(0xFF9E8060), 0.4)!;
+    c.drawPath(roofPath, Paint()..color = roofColor..style = PaintingStyle.fill);
+    c.drawPath(roofPath, Paint()..color = roofColor.withOpacity(.7)..style = PaintingStyle.stroke..strokeWidth = 1.0);
+
+    // 4 casse piccole identiche (Warré è più alta e stretta)
+    const boxes = 4;
+    final boxH = (h * .68) / boxes;
+    for (int i = 0; i < boxes; i++) {
+      final top = h * .16 + i * boxH;
+      final box = RRect.fromLTRBR(w*.10, top, w*.90, top + boxH - 1, const Radius.circular(1));
+      c.drawRRect(box, fill);
+      c.drawRRect(box, stroke);
+      if (i < boxes - 1) {
+        _drawHoneycomb(c, Rect.fromLTRB(w*.11, top + 1, w*.89, top + boxH - 2), w * .065, darker);
+      }
+    }
+    // Piedini (Warré ha spesso dei piedini)
+    final legW = w * .12, legH = h * .06;
+    c.drawRect(Rect.fromLTWH(w * .14, h * .84, legW, legH),
+        Paint()..color = darkest..style = PaintingStyle.fill);
+    c.drawRect(Rect.fromLTWH(w * .74, h * .84, legW, legH),
+        Paint()..color = darkest..style = PaintingStyle.fill);
+    // Entrata
+    final entW = w * .32;
+    c.drawRect(Rect.fromLTWH((w - entW) / 2, h * .82, entW, h * .028),
+        Paint()..color = const Color(0xCC000000)..style = PaintingStyle.fill);
+  }
+
+  // ── Osservazione: corpo con pannelli di vetro ─────────────────
+  void _drawOsservazione(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter) {
+    // Tetto piatto metallico
+    final roofColor = Color.lerp(darker.withOpacity(1), const Color(0xFFB8C4CC), 0.55)!;
+    final roofRRect = RRect.fromLTRBR(-w*.02, h*.02, w*1.02, h*.14, const Radius.circular(2));
+    c.drawRRect(roofRRect, Paint()..color = roofColor..style = PaintingStyle.fill);
+
+    // Telaio corpo
+    final frame = RRect.fromLTRBR(w*.06, h*.14, w*.94, h*.82, const Radius.circular(2));
+    c.drawRRect(frame, dFill);
+    c.drawRRect(frame, stroke);
+
+    // Pannello di vetro (zona centrale più chiara e trasparente)
+    final glassPaint = Paint()
+      ..color = Colors.lightBlue.withOpacity(.18)
+      ..style = PaintingStyle.fill;
+    final glassBorder = Paint()
+      ..color = Colors.lightBlue.shade200.withOpacity(.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    final glass = RRect.fromLTRBR(w*.16, h*.18, w*.84, h*.78, const Radius.circular(1));
+    c.drawRRect(glass, glassPaint);
+    c.drawRRect(glass, glassBorder);
+
+    // Ape stilizzata nel vetro (cerchio + ali)
+    final cx = w * .50, cy = h * .48;
+    c.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w*.12, height: h*.08),
+        Paint()..color = darker.withOpacity(.35)..style = PaintingStyle.fill);
+
+    // Predellino e porta
+    c.drawRect(Rect.fromLTWH(w*.04, h*.82, w*.92, h*.04),
+        Paint()..color = darkest..style = PaintingStyle.fill);
+    c.drawRect(Rect.fromLTWH(w*.10, h*.82, w*.80, h*.05),
+        Paint()..color = const Color(0xEE000000)..style = PaintingStyle.fill);
+  }
+
+  // ── Pappa Reale: arnia orizzontale con divisore ───────────────
+  void _drawPappaReale(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter) {
+    // Corpo molto largo e basso
+    final roofColor = Color.lerp(darker.withOpacity(1), const Color(0xFFB8C4CC), 0.55)!;
+    c.drawRRect(RRect.fromLTRBR(-w*.01, h*.06, w*1.01, h*.18, const Radius.circular(2)),
+        Paint()..color = roofColor..style = PaintingStyle.fill);
+
+    final body = RRect.fromLTRBR(w*.04, h*.18, w*.96, h*.80, const Radius.circular(2));
     c.drawRRect(body, fill); c.drawRRect(body, stroke);
 
-    // Honeycomb sul corpo nucleo
-    _drawHoneycomb(c, Rect.fromLTRB(w*.09, h*.24, w*.91, h*.80), w * .075, darker);
+    // Linea divisoria verticale con tratteggio (griglia escludiregina)
+    final divX = w * .52;
+    final divPaint = Paint()
+      ..color = darker.withOpacity(.7)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    // Tratteggio manuale
+    double y = h * .19;
+    while (y < h * .79) {
+      c.drawLine(Offset(divX, y), Offset(divX, y + h * .03), divPaint);
+      y += h * .05;
+    }
 
-    // Separatore
-    c.drawLine(Offset(w*.08, h*.515), Offset(w*.92, h*.515),
-        Paint()..color = darker.withOpacity(.4)..strokeWidth = .9);
-    // Predellino
-    c.drawRect(Rect.fromLTWH(w*.04, h*.80, w*.92, h*.055),
+    // Honeycomb su entrambi i lati
+    _drawHoneycomb(c, Rect.fromLTRB(w*.05, h*.19, divX - 2, h*.79), w * .07, darker);
+    _drawHoneycomb(c, Rect.fromLTRB(divX + 2, h*.19, w*.95, h*.79), w * .07, darker);
+
+    // Etichetta "R" sul lato regina
+    c.drawCircle(Offset(w * .28, h * .50),
+        w * .08, Paint()..color = const Color(0xFFFFD700).withOpacity(.25)..style = PaintingStyle.fill);
+
+    // Predellino e porta
+    c.drawRect(Rect.fromLTWH(w*.04, h*.80, w*.92, h*.04),
         Paint()..color = darkest..style = PaintingStyle.fill);
-    // Entrata nucleo
-    final entW = w*.24, entH = h*.055;
-    c.drawRRect(RRect.fromLTRBR((w-entW)/2, h*.80, (w+entW)/2, h*.80+entH,
-        const Radius.circular(1.5)),
-        Paint()..color = const Color(0xBB000000)..style = PaintingStyle.fill);
+    c.drawRect(Rect.fromLTWH(w*.08, h*.80, w*.40, h*.05),
+        Paint()..color = const Color(0xEE000000)..style = PaintingStyle.fill);
+  }
+
+  // ── Portasciami: cassetta semplice cartone ─────────────────────
+  void _drawPortasciami(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter) {
+    // Corpo rettangolare semplice con angoli vivi (cartone)
+    final cardColor = Color.lerp(fill.color, const Color(0xFFD2B48C), 0.65)!;
+    final cFill = Paint()..color = cardColor..style = PaintingStyle.fill;
+    final cStroke = Paint()..color = darker.withOpacity(.6)..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+
+    // Corpo
+    c.drawRect(Rect.fromLTWH(w*.06, h*.12, w*.88, h*.70), cFill);
+    c.drawRect(Rect.fromLTWH(w*.06, h*.12, w*.88, h*.70), cStroke);
+
+    // Coperchio a sormonto
+    c.drawRect(Rect.fromLTWH(w*.02, h*.06, w*.96, h*.10), cFill);
+    c.drawRect(Rect.fromLTWH(w*.02, h*.06, w*.96, h*.10), cStroke);
+
+    // Linee cartone (texture)
+    final linePaint = Paint()..color = darker.withOpacity(.18)..strokeWidth = .7;
+    for (int i = 1; i < 4; i++) {
+      c.drawLine(Offset(w*.06, h*.12 + i * h*.175),
+                 Offset(w*.94, h*.12 + i * h*.175), linePaint);
+    }
+
+    // Foro d'ingresso a cerchio (classico per portasciami)
+    c.drawCircle(Offset(w*.50, h*.82),
+        w * .07, Paint()..color = const Color(0xCC000000)..style = PaintingStyle.fill);
+    c.drawCircle(Offset(w*.50, h*.82),
+        w * .07, Paint()..color = darker.withOpacity(.4)..style = PaintingStyle.stroke..strokeWidth = .8);
+  }
+
+  // ── Apidea / Kieler: micro-cassetta squadrata ──────────────────
+  void _drawApidea(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter) {
+    // Colore chiaro (polistirolo o plastica)
+    final apoColor = Color.lerp(fill.color, Colors.white, 0.60)!;
+    final aFill = Paint()..color = apoColor..style = PaintingStyle.fill;
+    final aStroke = Paint()..color = darker.withOpacity(.45)..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9;
+
+    // Corpo quasi quadrato con angoli arrotondati
+    final body = RRect.fromLTRBR(w*.06, h*.20, w*.94, h*.82, const Radius.circular(5));
+    c.drawRRect(body, aFill); c.drawRRect(body, aStroke);
+
+    // Coperchio
+    final lid = RRect.fromLTRBR(w*.04, h*.10, w*.96, h*.22, const Radius.circular(4));
+    final lidColor = Color.lerp(apoColor, Colors.grey.shade300, 0.3)!;
+    c.drawRRect(lid, Paint()..color = lidColor..style = PaintingStyle.fill);
+    c.drawRRect(lid, aStroke);
+
+    // Finestrella vano candito (piccolo rettangolo in alto)
+    c.drawRRect(RRect.fromLTRBR(w*.25, h*.24, w*.75, h*.40, const Radius.circular(2)),
+        Paint()..color = const Color(0xFFF5E6C8).withOpacity(.6)..style = PaintingStyle.fill);
+    c.drawRRect(RRect.fromLTRBR(w*.25, h*.24, w*.75, h*.40, const Radius.circular(2)),
+        aStroke);
+
+    // Piccola entrata
+    final entW = w * .16;
+    c.drawRect(Rect.fromLTWH((w - entW) / 2, h * .79, entW, h * .035),
+        Paint()..color = const Color(0xCC000000)..style = PaintingStyle.fill);
+  }
+
+  // ── Mini-Plus: modulare piccolo ────────────────────────────────
+  void _drawMiniPlus(Canvas c, double w, double h,
+      Paint fill, Paint stroke, Paint dFill,
+      Color darker, Color darkest, Color lighter) {
+    // Colore polistirolo/legno chiaro
+    final mpColor = Color.lerp(fill.color, Colors.white, 0.42)!;
+    final mpFill = Paint()..color = mpColor..style = PaintingStyle.fill;
+    final mpStroke = Paint()..color = darker.withOpacity(.5)..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+
+    // Coperchio
+    final lid = RRect.fromLTRBR(w*.04, h*.08, w*.96, h*.20, const Radius.circular(3));
+    c.drawRRect(lid, Paint()..color = Color.lerp(mpColor, Colors.grey.shade400, .25)!
+        ..style = PaintingStyle.fill);
+    c.drawRRect(lid, mpStroke);
+
+    // 2 cassette modulari
+    const boxes = 2;
+    final boxH = (h * .62) / boxes;
+    for (int i = 0; i < boxes; i++) {
+      final top = h * .20 + i * boxH;
+      final box = RRect.fromLTRBR(w*.06, top, w*.94, top + boxH - 1, const Radius.circular(3));
+      c.drawRRect(box, mpFill);
+      c.drawRRect(box, mpStroke);
+    }
+
+    // Fondo
+    c.drawRRect(RRect.fromLTRBR(w*.04, h*.82, w*.96, h*.90, const Radius.circular(3)),
+        Paint()..color = darkest.withOpacity(.55)..style = PaintingStyle.fill);
+
+    // Entrata mini
+    final entW = w * .20;
+    c.drawRect(Rect.fromLTWH((w - entW) / 2, h * .82, entW, h * .04),
+        Paint()..color = const Color(0xCC000000)..style = PaintingStyle.fill);
   }
 
   void _drawHoneycomb(Canvas canvas, Rect rect, double hexR, Color baseColor) {
@@ -1632,7 +2317,7 @@ class _HivePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_HivePainter o) =>
-      color != o.color || isNucleo != o.isNucleo ||
+      color != o.color || tipo != o.tipo ||
       isSelected != o.isSelected || isDragging != o.isDragging;
 }
 

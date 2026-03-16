@@ -1,15 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../constants/api_constants.dart';  // Aggiunto per risolvere l'errore di ApiConstants
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../widgets/qr_generator_widget.dart';
 import '../../services/mobile_scanner_service.dart';
+import '../../services/qr_pdf_service.dart';
 import 'widgets/apiario_map_widget.dart';
-import 'apiario_form_screen.dart'; 
+import 'apiario_form_screen.dart';
+import '../../widgets/offline_banner.dart';
+import '../../database/dao/controllo_arnia_dao.dart';
 
 class ApiarioDetailScreen extends StatefulWidget {
   final int apiarioId;
@@ -22,11 +24,16 @@ class ApiarioDetailScreen extends StatefulWidget {
 
 class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  bool _isRefreshing = false;
   Map<String, dynamic>? _apiario;
   List<dynamic> _arnie = [];
   List<dynamic> _trattamenti = [];
   List<dynamic> _fioriture = [];
   List<dynamic> _datiMeteo = [];
+  // Melari attivi per tutte le arnie dell'apiario
+  List<dynamic> _melari = [];
+  // Ultimo controllo per ciascuna arnia (arniaId → dati grezzi DAO)
+  Map<int, Map<String, dynamic>?> _ultimiControlli = {};
   // true quando ApiarioMapWidget è in edit mode → blocca swipe del TabBarView
   bool _mapEditMode = false;
 
@@ -35,7 +42,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     // Rebuild quando si cambia tab, così il FAB si aggiorna
     _tabController.addListener(() => setState(() {}));
     _loadApiario();
@@ -48,9 +55,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   }
   
   Future<void> _loadApiario() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() { _isRefreshing = true; });
     
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
@@ -75,6 +80,9 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
 
         final allFioriture = await storageService.getStoredData('fioriture');
         _fioriture = allFioriture.where((f) => f['apiario'] == widget.apiarioId).toList();
+
+        // Mostra subito i dati dalla cache, poi aggiorna dal server
+        if (mounted) setState(() {});
 
         // Aggiorna sempre da server: arnie
         try {
@@ -134,7 +142,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         final arnieData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/arnie/');
         _arnie = arnieData;
         
-        final controlliData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
+        await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
         
         final meteoData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/meteo/');
         _datiMeteo = meteoData;
@@ -142,10 +150,20 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       
       // Ordina arnie per numero
       _arnie.sort((a, b) => a['numero'].compareTo(b['numero']));
-      
+
+      // Carica melari dal cache locale (filtrati per questo apiario)
+      try {
+        final allMelari = await storageService.getStoredData('melari');
+        _melari = allMelari
+            .where((m) => m['apiario_id'] == widget.apiarioId && m['stato'] == 'posizionato')
+            .toList();
+      } catch (e) {
+        debugPrint('Error loading melari: $e');
+      }
+
       // Ordina trattamenti per data (più recenti prima)
       _trattamenti.sort((a, b) => b['data_inizio'].compareTo(a['data_inizio']));
-      
+
       // Ordina fioriture per data (attive prima)
       _fioriture.sort((a, b) {
         if (a['is_active'] == b['is_active']) {
@@ -153,19 +171,30 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         }
         return a['is_active'] ? -1 : 1;
       });
-      
+
+      // Carica l'ultimo controllo per ciascuna arnia
+      await _loadUltimiControlli();
+
     } catch (e) {
       debugPrint('Error loading apiario: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Errore durante il caricamento dei dati')),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() { _isRefreshing = false; });
     }
   }
-  
+
+  Future<void> _loadUltimiControlli() async {
+    final dao = ControlloArniaDao();
+    final Map<int, Map<String, dynamic>?> map = {};
+    for (final arnia in _arnie) {
+      final id = arnia['id'] as int?;
+      if (id != null) map[id] = await dao.getLatestByArnia(id);
+    }
+    if (mounted) setState(() => _ultimiControlli = map);
+  }
+
   void _navigateToArniaDetail(int arniaId) {
     Navigator.of(context).pushNamed(
       AppConstants.arniaDetailRoute,
@@ -178,13 +207,6 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       AppConstants.creaArniaRoute,
       arguments: widget.apiarioId,
     ).then((_) => _loadApiario());
-  }
-  
-  void _navigateToControlloCreate(int arniaId) {
-    Navigator.of(context).pushNamed(
-      AppConstants.controlloCreateRoute,
-      arguments: arniaId,
-    );
   }
   
   void _editApiario() {
@@ -239,26 +261,36 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       );
     }
   }
+
+  Future<void> _printArnieQrSheet() async {
+    if (_apiario == null || _arnie.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nessuna arnia disponibile per la stampa')),
+      );
+      return;
+    }
+    try {
+      await QrPdfService().printQrSheet(apiario: _apiario!, arnie: _arnie);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Errore durante la generazione del PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Dettaglio Apiario'),
-        ),
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    
     if (_apiario == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text('Dettaglio Apiario'),
-        ),
-        body: Center(
-          child: Text('Apiario non trovato'),
-        ),
+        appBar: AppBar(title: Text('Dettaglio Apiario')),
+        body: Column(children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+        ]),
       );
     }
     
@@ -276,348 +308,88 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             onPressed: _confirmDeleteApiario,
             tooltip: 'Elimina apiario',
           ),
-          // Nuovo pulsante QR
+          // Pulsante QR: mostra QR apiario + opzione stampa PDF arnie
           IconButton(
-            icon: Icon(Icons.qr_code),
+            icon: const Icon(Icons.qr_code),
+            tooltip: 'QR Code',
             onPressed: () {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
-                shape: RoundedRectangleBorder(
+                shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                builder: (context) => Padding(
-                  padding: EdgeInsets.all(16),
-                  child: QrGeneratorWidget(
-                    entity: _apiario!,
-                    service: MobileScannerService(),
+                builder: (ctx) => SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    16, 16, 16,
+                    16 + MediaQuery.of(ctx).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // QR del singolo apiario
+                      QrGeneratorWidget(
+                        entity: _apiario!,
+                        service: MobileScannerService(),
+                      ),
+                      if (_arnie.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        const Divider(),
+                        const SizedBox(height: 4),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.picture_as_pdf),
+                            label: Text(
+                              'Stampa foglio QR arnie (${_arnie.length})',
+                            ),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _printArnieQrSheet();
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               );
             },
-            tooltip: 'Genera QR Code',
           ),
+
         ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Info'),
             Tab(text: 'Arnie'),
             Tab(text: 'Trattamenti'),
             Tab(text: 'Meteo'),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        physics: _mapEditMode ? const NeverScrollableScrollPhysics() : null,
+      body: Stack(
         children: [
-          // Tab Info
-          SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Informazioni generali',
-                          style: ThemeConstants.subheadingStyle,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Posizione
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              color: ThemeConstants.textSecondaryColor,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Posizione',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    _apiario!['posizione'] ?? 'Non specificata',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Coordinate
-                        if (_apiario!['latitudine'] != null && _apiario!['longitudine'] != null)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.map,
-                                color: ThemeConstants.textSecondaryColor,
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Coordinate',
-                                      style: TextStyle(
-                                        color: ThemeConstants.textSecondaryColor,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Lat: ${_apiario!['latitudine']}, Long: ${_apiario!['longitudine']}',
-                                      style: TextStyle(fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        
-                        if (_apiario!['latitudine'] != null && _apiario!['longitudine'] != null)
-                          const SizedBox(height: 16),
-                        
-                        // Monitoraggio meteo
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.wb_sunny,
-                              color: ThemeConstants.textSecondaryColor,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Monitoraggio meteo',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    _apiario!['monitoraggio_meteo'] ? 'Attivo' : 'Disattivato',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Visibilità
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.visibility,
-                              color: ThemeConstants.textSecondaryColor,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Visibilità sulla mappa',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    _apiario!['visibilita_mappa'] == 'privato'
-                                        ? 'Solo proprietario'
-                                        : _apiario!['visibilita_mappa'] == 'gruppo'
-                                            ? 'Membri del gruppo'
-                                            : 'Tutti gli utenti',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Condivisione
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.group,
-                              color: ThemeConstants.textSecondaryColor,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Condivisione con gruppi',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    _apiario!['condiviso_con_gruppo']
-                                        ? 'Condiviso con il gruppo'
-                                        : 'Non condiviso',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Note
-                if (_apiario!['note'] != null && _apiario!['note'].isNotEmpty)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Note',
-                            style: ThemeConstants.subheadingStyle,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(_apiario!['note']),
-                        ],
-                      ),
-                    ),
-                  ),
-                
-                const SizedBox(height: 16),
-                
-                // Statistiche
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Statistiche',
-                          style: ThemeConstants.subheadingStyle,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    _arnie.length.toString(),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: ThemeConstants.primaryColor,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Arnie',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    _arnie.where((a) => a['attiva'] == true).length.toString(),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: ThemeConstants.secondaryColor,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Arnie attive',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    _trattamenti.where((t) => 
-                                      t['stato'] == 'in_corso' || t['stato'] == 'programmato').length.toString(),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Trattamenti',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          Column(
+            children: [
+              const OfflineBanner(),
+              if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+              Expanded(
+                child: TabBarView(
+          controller: _tabController,
+          physics: _mapEditMode ? const NeverScrollableScrollPhysics() : null,
+          children: [
+          // Tab Arnie – mappa interattiva a schermo intero con frame strip integrato
+          ApiarioMapWidget(
+            arnie: _arnie,
+            apiarioId: widget.apiarioId,
+            onArniaTap: _navigateToArniaDetail,
+            onAddArnia: _navigateToArniaCreate,
+            onEditModeChanged: (active) => setState(() => _mapEditMode = active),
+            onNucleoConverted: _loadApiario,
+            ultimiControlli: _ultimiControlli,
+            melariData: _melari,
           ),
-          
-        // Tab Arnie – mappa simulata
-        ApiarioMapWidget(
-          arnie: _arnie,
-          apiarioId: widget.apiarioId,
-          onArniaTap: _navigateToArniaDetail,
-          onAddArnia: _navigateToArniaCreate,
-          onEditModeChanged: (active) => setState(() => _mapEditMode = active),
-          onNucleoConverted: _loadApiario,
-        ),
+
 
           // Tab Trattamenti
           _trattamenti.isEmpty
@@ -818,17 +590,19 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 TextButton(
-                                  onPressed: () {
-                                    // TODO: navigazione al dettaglio trattamento
-                                  },
+                                  onPressed: () => Navigator.of(context).pushNamed(
+                                    AppConstants.trattamentoCreateRoute,
+                                    arguments: {'trattamentoId': trattamento['id'] as int},
+                                  ),
                                   child: Text('Dettagli'),
                                 ),
                                 SizedBox(width: 8),
                                 if (stato == 'in_corso' || stato == 'programmato')
                                   TextButton(
-                                    onPressed: () {
-                                      // TODO: navigazione alla modifica trattamento
-                                    },
+                                    onPressed: () => Navigator.of(context).pushNamed(
+                                      AppConstants.trattamentoCreateRoute,
+                                      arguments: {'trattamentoId': trattamento['id'] as int},
+                                    ),
                                     child: Text('Modifica'),
                                   ),
                               ],
@@ -1127,14 +901,144 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                     ),
         ],
       ),
-      // Sul tab mappa (index 1) lo SpeedDial interno al widget gestisce tutto
-      floatingActionButton: _tabController.index == 1
+              ),
+            ],
+          ),
+          // ── pulsante (i) info in basso a sinistra ──────────────
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: FloatingActionButton.small(
+              heroTag: 'apiario_info',
+              onPressed: _showApiarioInfoSheet,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+              tooltip: 'Informazioni apiario',
+              child: const Icon(Icons.info_outline),
+            ),
+          ),
+        ],
+      ),
+      // Sul tab mappa (index 0) lo SpeedDial interno al widget gestisce tutto
+      floatingActionButton: _tabController.index == 0
           ? null
           : FloatingActionButton(
               onPressed: _navigateToArniaCreate,
-              child: Icon(Icons.add),
+              child: const Icon(Icons.add),
               tooltip: 'Aggiungi arnia',
             ),
+    );
+  }
+
+  void _showApiarioInfoSheet() {
+    if (_apiario == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (_, scrollCtrl) => SingleChildScrollView(
+          controller: scrollCtrl,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(_apiario!['nome'] ?? 'Apiario',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              _infoRow(Icons.location_on, 'Posizione', _apiario!['posizione'] ?? 'Non specificata'),
+              if (_apiario!['latitudine'] != null)
+                _infoRow(Icons.map, 'Coordinate',
+                    'Lat: ${_apiario!['latitudine']}, Long: ${_apiario!['longitudine']}'),
+              _infoRow(Icons.wb_sunny, 'Monitoraggio meteo',
+                  (_apiario!['monitoraggio_meteo'] == true) ? 'Attivo' : 'Disattivato'),
+              _infoRow(Icons.visibility, 'Visibilità mappa',
+                  _apiario!['visibilita_mappa'] == 'privato'
+                      ? 'Solo proprietario'
+                      : _apiario!['visibilita_mappa'] == 'gruppo'
+                          ? 'Membri del gruppo'
+                          : 'Tutti gli utenti'),
+              _infoRow(Icons.group, 'Condivisione gruppi',
+                  (_apiario!['condiviso_con_gruppo'] == true)
+                      ? 'Condiviso con il gruppo'
+                      : 'Non condiviso'),
+              if (_apiario!['note'] != null && (_apiario!['note'] as String).isNotEmpty) ...[
+                const Divider(height: 24),
+                Text('Note', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                const SizedBox(height: 4),
+                Text(_apiario!['note']),
+              ],
+              const Divider(height: 24),
+              Text('Statistiche',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _statChip('${_arnie.length}', 'Arnie', ThemeConstants.primaryColor),
+                  _statChip(
+                    '${_arnie.where((a) => a['attiva'] == true).length}',
+                    'Attive', ThemeConstants.secondaryColor),
+                  _statChip(
+                    '${_trattamenti.where((t) => t['stato'] == 'in_corso' || t['stato'] == 'programmato').length}',
+                    'Trattamenti', Colors.orange),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: ThemeConstants.textSecondaryColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 15)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statChip(String value, String label, Color color) {
+    return Column(
+      children: [
+        Text(value,
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+        Text(label,
+            style: TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor)),
+      ],
     );
   }
 }

@@ -22,7 +22,7 @@ class PagamentoDetailScreen extends StatefulWidget {
 
 class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
   Pagamento? _pagamento;
-  bool _isLoading = true;
+  bool _isRefreshing = true;
   String? _errorMessage;
   
   @override
@@ -33,24 +33,24 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
   
   Future<void> _loadPagamento() async {
     setState(() {
-      _isLoading = true;
+      _isRefreshing = true;
       _errorMessage = null;
     });
-    
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final pagamentoService = PagamentoService(apiService);
-      
+
       final pagamento = await pagamentoService.getPagamento(widget.pagamentoId);
-      
+
       setState(() {
         _pagamento = pagamento;
-        _isLoading = false;
+        _isRefreshing = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = 'Errore durante il caricamento del pagamento: $e';
-        _isLoading = false;
+        _isRefreshing = false;
       });
     }
   }
@@ -76,7 +76,7 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
     
     if (confirmed == true) {
       setState(() {
-        _isLoading = true;
+        _isRefreshing = true;
       });
       
       try {
@@ -93,13 +93,13 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
         } else {
           setState(() {
             _errorMessage = 'Errore durante l\'eliminazione del pagamento';
-            _isLoading = false;
+            _isRefreshing = false;
           });
         }
       } catch (e) {
         setState(() {
           _errorMessage = 'Errore durante l\'eliminazione del pagamento: $e';
-          _isLoading = false;
+          _isRefreshing = false;
         });
       }
     }
@@ -130,16 +130,20 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
           ),
         ],
       ),
-      body: _isLoading 
-          ? LoadingWidget()
-          : _errorMessage != null
-              ? ErrorDisplayWidget(
-                  errorMessage: _errorMessage!,
-                  onRetry: _loadPagamento,
-                )
-              : _pagamento == null
-                  ? Center(child: Text('Pagamento non trovato'))
-                  : SingleChildScrollView(
+      body: Column(
+        children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _pagamento == null && _errorMessage == null
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(
+                        errorMessage: _errorMessage!,
+                        onRetry: _loadPagamento,
+                      )
+                    : _pagamento == null
+                        ? const Center(child: Text('Pagamento non trovato'))
+                        : SingleChildScrollView(
                       padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,9 +177,12 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
                         ],
                       ),
                     ),
+          ),
+        ],
+      ),
     );
   }
-  
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8),

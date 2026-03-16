@@ -27,7 +27,7 @@ class _StaticTokenProvider implements AuthTokenProvider {
         body: {'refresh': _refreshToken},
       );
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(utf8.decode(response.bodyBytes));
         _token = data['access'];
         return true;
       }
@@ -138,7 +138,7 @@ class ApiService {
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return {};
-      return json.decode(response.body);
+      return json.decode(utf8.decode(response.bodyBytes));
     } else {
       throw Exception('Errore API: ${response.statusCode} ${response.body}');
     }

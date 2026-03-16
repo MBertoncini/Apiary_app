@@ -14,15 +14,27 @@ class VoiceEntry {
   final bool? uovaFresche;
   final bool? celleReali;
   final int? numeroCelleReali;
-  final int? telainiTotali;
   final int? telainiCovata;
   final int? telainiScorte;
+  final int? telainiDiaframma;
+  final int? tealiniFoglioCereo;
+  final int? telainiNutritore;
+
+  /// Totale calcolato automaticamente come somma delle parti.
+  int get telainiTotali =>
+      (telainiCovata ?? 0) +
+      (telainiScorte ?? 0) +
+      (telainiDiaframma ?? 0) +
+      (tealiniFoglioCereo ?? 0) +
+      (telainiNutritore ?? 0);
   final String? forzaFamiglia;
   final bool? sciamatura;
   final bool? problemiSanitari;
   final String? tipoProblema;
   final String? note;
-  
+  final bool? reginaColorata;
+  final String? coloreRegina;
+
   // Constructor
   VoiceEntry({
     this.apiarioId,
@@ -36,14 +48,18 @@ class VoiceEntry {
     this.uovaFresche,
     this.celleReali,
     this.numeroCelleReali,
-    this.telainiTotali,
     this.telainiCovata,
     this.telainiScorte,
+    this.telainiDiaframma,
+    this.tealiniFoglioCereo,
+    this.telainiNutritore,
     this.forzaFamiglia,
     this.sciamatura,
     this.problemiSanitari,
     this.tipoProblema,
     this.note,
+    this.reginaColorata,
+    this.coloreRegina,
   });
   
   // Create a copy with modified fields
@@ -59,14 +75,18 @@ class VoiceEntry {
     bool? uovaFresche,
     bool? celleReali,
     int? numeroCelleReali,
-    int? telainiTotali,
     int? telainiCovata,
     int? telainiScorte,
+    int? telainiDiaframma,
+    int? tealiniFoglioCereo,
+    int? telainiNutritore,
     String? forzaFamiglia,
     bool? sciamatura,
     bool? problemiSanitari,
     String? tipoProblema,
     String? note,
+    bool? reginaColorata,
+    String? coloreRegina,
   }) {
     return VoiceEntry(
       apiarioId: apiarioId ?? this.apiarioId,
@@ -80,14 +100,18 @@ class VoiceEntry {
       uovaFresche: uovaFresche ?? this.uovaFresche,
       celleReali: celleReali ?? this.celleReali,
       numeroCelleReali: numeroCelleReali ?? this.numeroCelleReali,
-      telainiTotali: telainiTotali ?? this.telainiTotali,
       telainiCovata: telainiCovata ?? this.telainiCovata,
       telainiScorte: telainiScorte ?? this.telainiScorte,
+      telainiDiaframma: telainiDiaframma ?? this.telainiDiaframma,
+      tealiniFoglioCereo: tealiniFoglioCereo ?? this.tealiniFoglioCereo,
+      telainiNutritore: telainiNutritore ?? this.telainiNutritore,
       forzaFamiglia: forzaFamiglia ?? this.forzaFamiglia,
       sciamatura: sciamatura ?? this.sciamatura,
       problemiSanitari: problemiSanitari ?? this.problemiSanitari,
       tipoProblema: tipoProblema ?? this.tipoProblema,
       note: note ?? this.note,
+      reginaColorata: reginaColorata ?? this.reginaColorata,
+      coloreRegina: coloreRegina ?? this.coloreRegina,
     );
   }
   
@@ -128,14 +152,18 @@ class VoiceEntry {
       uovaFresche: json['uova_fresche'],
       celleReali: json['celle_reali'],
       numeroCelleReali: json['numero_celle_reali'],
-      telainiTotali: json['telaini_totali'],
       telainiCovata: json['telaini_covata'],
       telainiScorte: json['telaini_scorte'],
+      telainiDiaframma: json['telaini_diaframma'],
+      tealiniFoglioCereo: json['telaini_foglio_cereo'],
+      telainiNutritore: json['telaini_nutritore'],
       forzaFamiglia: json['forza_famiglia'],
       sciamatura: json['sciamatura'],
       problemiSanitari: json['problemi_sanitari'],
       tipoProblema: json['tipo_problema'],
       note: json['note'],
+      reginaColorata: json['regina_colorata'],
+      coloreRegina: json['colore_regina'],
     );
   }
   
@@ -155,14 +183,18 @@ class VoiceEntry {
     if (uovaFresche != null) jsonMap['uova_fresche'] = uovaFresche;
     if (celleReali != null) jsonMap['celle_reali'] = celleReali;
     if (numeroCelleReali != null) jsonMap['numero_celle_reali'] = numeroCelleReali;
-    if (telainiTotali != null) jsonMap['telaini_totali'] = telainiTotali;
     if (telainiCovata != null) jsonMap['telaini_covata'] = telainiCovata;
     if (telainiScorte != null) jsonMap['telaini_scorte'] = telainiScorte;
+    if (telainiDiaframma != null) jsonMap['telaini_diaframma'] = telainiDiaframma;
+    if (tealiniFoglioCereo != null) jsonMap['telaini_foglio_cereo'] = tealiniFoglioCereo;
+    if (telainiNutritore != null) jsonMap['telaini_nutritore'] = telainiNutritore;
     if (forzaFamiglia != null) jsonMap['forza_famiglia'] = forzaFamiglia;
     if (sciamatura != null) jsonMap['sciamatura'] = sciamatura;
     if (problemiSanitari != null) jsonMap['problemi_sanitari'] = problemiSanitari;
     if (tipoProblema != null) jsonMap['tipo_problema'] = tipoProblema;
     if (note != null) jsonMap['note'] = note;
+    if (reginaColorata != null) jsonMap['regina_colorata'] = reginaColorata;
+    if (coloreRegina != null) jsonMap['colore_regina'] = coloreRegina;
 
     return jsonMap;
   }
@@ -178,9 +210,12 @@ class VoiceEntry {
       'uova_fresche': uovaFresche ?? false,
       'celle_reali': celleReali ?? false,
       'numero_celle_reali': numeroCelleReali ?? 0,
-      'telaini_totali': telainiTotali ?? 0,
+      'telaini_totali': telainiTotali,
       'telaini_covata': telainiCovata ?? 0,
       'telaini_scorte': telainiScorte ?? 0,
+      if (telainiDiaframma != null) 'telaini_diaframma': telainiDiaframma,
+      if (tealiniFoglioCereo != null) 'telaini_foglio_cereo': tealiniFoglioCereo,
+      if (telainiNutritore != null) 'telaini_nutritore': telainiNutritore,
       'sciamatura': sciamatura ?? false,
       'problemi_sanitari': problemiSanitari ?? false,
       'note': note ?? '',
@@ -227,9 +262,13 @@ class VoiceEntry {
     
     // Frames info
     List<String> telainiInfo = [];
-    if (telainiTotali != null) telainiInfo.add('$telainiTotali totali');
     if (telainiCovata != null) telainiInfo.add('$telainiCovata covata');
     if (telainiScorte != null) telainiInfo.add('$telainiScorte scorte');
+    if (telainiDiaframma != null) telainiInfo.add('$telainiDiaframma diaframma');
+    if (tealiniFoglioCereo != null) telainiInfo.add('$tealiniFoglioCereo foglio cereo');
+    if (telainiNutritore != null) telainiInfo.add('$telainiNutritore nutritore');
+    final totale = telainiTotali;
+    if (totale > 0) telainiInfo.add('totale: $totale');
     
     if (telainiInfo.isNotEmpty) {
       parts.add('Telaini: ${telainiInfo.join(', ')}');
@@ -252,6 +291,11 @@ class VoiceEntry {
       parts.add('Problemi: ${problemiInfo.join(', ')}');
     }
     
+    // Queen coloring
+    if (reginaColorata == true) {
+      parts.add('Regina colorata${coloreRegina != null ? ': $coloreRegina' : ''}');
+    }
+
     // Notes
     if (note != null && note!.isNotEmpty) {
       parts.add('Note: $note');

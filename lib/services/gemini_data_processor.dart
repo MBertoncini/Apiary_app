@@ -73,24 +73,35 @@ Rispondi SOLO con un oggetto JSON valido (nessun testo aggiuntivo, nessun markdo
   "uova_fresche": <true/false o null>,
   "celle_reali": <true/false o null>,
   "numero_celle_reali": <intero o null>,
-  "telaini_totali": <intero o null>,
   "telaini_covata": <intero o null>,
   "telaini_scorte": <intero o null>,
+  "telaini_diaframma": <intero o null>,
+  "telaini_foglio_cereo": <intero o null>,
+  "telaini_nutritore": <intero o null>,
   "forza_famiglia": <"debole"/"normale"/"forte" o null>,
   "sciamatura": <true/false o null>,
   "problemi_sanitari": <true/false o null>,
   "tipo_problema": <stringa o null>,
-  "note": <stringa con osservazioni libere o null>
+  "note": <stringa con osservazioni libere o null>,
+  "regina_colorata": <true/false o null>,
+  "colore_regina": <"bianco"/"giallo"/"rosso"/"verde"/"blu" o null>
 }
 
 Regole:
 - Se viene menzionato "arnia N", arnia_numero = N
 - "famiglia forte/normale/debole" → forza_famiglia
-- "presenza regina" o "regina presente" → presenza_regina = true
-- "regina assente" → presenza_regina = false
+- "presenza regina" o "regina presente" → presenza_regina = true, regina_vista = false
+- "regina vista" o "ho visto la regina" → presenza_regina = true, regina_vista = true
+- "regina assente" → presenza_regina = false, regina_vista = false
 - "celle reali" → celle_reali = true; se viene dato un numero, numero_celle_reali
 - "sciamatura" o "rischio sciamatura" → sciamatura = true
 - "problemi sanitari", "varroa", "nosema", "covata calcificata" → problemi_sanitari = true + tipo_problema
+- "diaframma" → telaini_diaframma (numero intero)
+- "foglio cereo" o "fogli cerei" → telaini_foglio_cereo (numero intero)
+- "nutritore" → telaini_nutritore (numero intero)
+- NON calcolare telaini_totali: viene calcolato automaticamente come somma delle parti
+- "ho colorato la regina" o "regina colorata" o "marcato la regina" → regina_colorata = true
+- Se viene menzionato un colore (bianco/giallo/rosso/verde/blu) insieme alla regina → colore_regina
 - Le osservazioni non strutturate vanno in note
 ''';
 
@@ -212,14 +223,18 @@ Regole:
         uovaFresche: json['uova_fresche'] as bool?,
         celleReali: json['celle_reali'] as bool?,
         numeroCelleReali: _parseInt(json['numero_celle_reali']),
-        telainiTotali: _parseInt(json['telaini_totali']),
         telainiCovata: _parseInt(json['telaini_covata']),
         telainiScorte: _parseInt(json['telaini_scorte']),
+        telainiDiaframma: _parseInt(json['telaini_diaframma']),
+        tealiniFoglioCereo: _parseInt(json['telaini_foglio_cereo']),
+        telainiNutritore: _parseInt(json['telaini_nutritore']),
         forzaFamiglia: json['forza_famiglia'] as String?,
         sciamatura: json['sciamatura'] as bool?,
         problemiSanitari: json['problemi_sanitari'] as bool?,
         tipoProblema: json['tipo_problema'] as String?,
         note: json['note'] as String?,
+        reginaColorata: json['regina_colorata'] as bool?,
+        coloreRegina: json['colore_regina'] as String?,
       );
     } catch (e) {
       _error = 'Errore nel parsing JSON di Gemini: $e';

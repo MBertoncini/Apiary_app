@@ -59,7 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }),
       );
       
-      final data = json.decode(response.body);
+      final data = json.decode(utf8.decode(response.bodyBytes));
       
       if (response.statusCode == 201) {
         // Registrazione avvenuta con successo, reindirizza al login

@@ -13,6 +13,7 @@ class AppConstants {
   static const String splashRoute = "/splash";
   static const String loginRoute = "/login";
   static const String registerRoute = "/register";
+  static const String forgotPasswordRoute = "/forgot-password";
   static const String dashboardRoute = "/dashboard";
   static const String settingsRoute = "/settings";
   
@@ -31,6 +32,7 @@ class AppConstants {
   @Deprecated('Usa arniaCreateRoute')
   static const String creaArniaRoute = arniaCreateRoute;
   static const String controlloCreateRoute = "/controllo/create";
+  static const String controlloEditRoute = "/controllo/edit";
   
   // Route per regine
   static const String reginaListRoute = "/regine";
@@ -92,6 +94,9 @@ class AppConstants {
   static const String attrezzaturaCreateRoute = "/attrezzatura/create";
   static const String spesaAttrezzaturaCreateRoute = "/spesa-attrezzatura/create";
   static const String manutenzioneCreateRoute = "/manutenzione/create";
+
+  // Route per statistiche & AI analytics
+  static const String statisticheRoute = "/statistiche";
 
   // Route per chat
   static const String chatRoute = "/chat";

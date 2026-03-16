@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -9,13 +9,15 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/analisi_telaino_service.dart';
 import '../../services/controllo_service.dart';
+import '../../database/dao/controllo_arnia_dao.dart';
 import '../../models/analisi_telaino.dart';
-import '../mobile_scanner_wrapper_screen.dart';
 import '../regina/regina_form_screen.dart';
 import '../../widgets/qr_generator_widget.dart';
 import '../../services/mobile_scanner_service.dart';
 import '../../models/arnia.dart';
 import 'arnia_form_screen.dart';
+import '../../widgets/offline_banner.dart';
+import '../../services/regina_service.dart';
 
 class ArniaDetailScreen extends StatefulWidget {
   final int arniaId;
@@ -28,10 +30,12 @@ class ArniaDetailScreen extends StatefulWidget {
 
 class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  bool _isRefreshing = false;
   Map<String, dynamic>? _arnia;
   Map<String, dynamic>? _apiario;
   Map<String, dynamic>? _regina;
   Map<String, dynamic>? _reginaGenealogia;
+  bool _reginaAutoCreata = false;
   List<dynamic> _controlli = [];
   List<dynamic> _melari = [];
   List<AnalisiTelaino> _analisiTelaini = [];
@@ -41,7 +45,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadArnia();
   }
   
@@ -52,10 +56,8 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   }
   
   Future<void> _loadArnia() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
+    setState(() { _isRefreshing = true; });
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
@@ -84,6 +86,16 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           orElse: () => null,
         );
 
+        // Carica controlli dalla cache SQLite locale
+        try {
+          final dao = ControlloArniaDao();
+          _controlli = await dao.getByArnia(widget.arniaId);
+          _controlli.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+        } catch (_) { _controlli = []; }
+
+        // Mostra subito i dati dalla cache, poi aggiorna dal server
+        if (mounted) setState(() {});
+
         // Prova sempre a caricare la regina dal server (aggiornata dopo ogni creazione/sostituzione)
         try {
           final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
@@ -92,6 +104,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             // Aggiorna lo StorageService locale per i prossimi accessi offline
             final regineAggiornate = [...regine.where((r) => r['arnia'] != widget.arniaId), reginaData];
             await storageService.saveData('regine', regineAggiornate);
+
+            // Controlla se la regina è stata auto-creata e richiede attenzione
+            final autoCreatedIds = await ReginaService.getAutoCreatedIds();
+            _reginaAutoCreata = autoCreatedIds.contains(reginaData['id'] as int);
 
             // Carica genealogia della regina
             try {
@@ -112,14 +128,15 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           }
         }
         
-        // Carica controlli dal ControlloService (SQLite DAO – stessa sorgente usata dal form)
+        // Sincronizza controlli dal server in background (aggiorna SQLite e UI)
         try {
           final controlloService = ControlloService(apiService);
-          _controlli = await controlloService.getControlliByArnia(widget.arniaId);
-          _controlli.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+          final updated = await controlloService.getControlliByArnia(widget.arniaId);
+          updated.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+          _controlli = updated;
+          if (mounted) setState(() {});
         } catch (e) {
-          debugPrint('Error loading controlli: $e');
-          _controlli = [];
+          debugPrint('Error syncing controlli: $e');
         }
         
         // Carica melari
@@ -170,16 +187,25 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         SnackBar(content: Text('Errore durante il caricamento dei dati')),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() { _isRefreshing = false; });
     }
   }
-  
+
   void _navigateToControlloCreate() async {
     await Navigator.of(context).pushNamed(
       AppConstants.controlloCreateRoute,
       arguments: widget.arniaId,
+    );
+    _loadArnia();
+  }
+
+  void _navigateToControlloEdit(Map<String, dynamic> controllo) async {
+    await Navigator.of(context).pushNamed(
+      AppConstants.controlloEditRoute,
+      arguments: {
+        'arniaId': widget.arniaId,
+        'controllo': controllo,
+      },
     );
     _loadArnia();
   }
@@ -203,6 +229,11 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
 
   Future<void> _navigateToReginaEdit() async {
     if (_regina == null) return;
+    // Rimuovi il badge "auto-creata" quando l'utente apre la scheda per completarla
+    if (_reginaAutoCreata && _regina!['id'] != null) {
+      await ReginaService.clearAutoCreated(_regina!['id'] as int);
+      if (mounted) setState(() => _reginaAutoCreata = false);
+    }
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ReginaFormScreen(
@@ -349,17 +380,6 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     );
   }
   
-  void _navigateToMelarioCreate() {
-    if (_arnia == null) return;
-    Navigator.of(context).pushNamed(
-      AppConstants.melarioCreateRoute,
-      arguments: {
-        'arniaId': _arnia!['id'] as int,
-        'apiarioId': _arnia!['apiario'] as int?,
-      },
-    ).then((result) { if (result == true) _loadArnia(); });
-  }
-  
   void _editArnia() {
     if (_arnia == null) return;
     Navigator.of(context).push(
@@ -367,6 +387,135 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         builder: (_) => ArniaFormScreen(arnia: Arnia.fromJson(_arnia!)),
       ),
     ).then((_) => _loadArnia());
+  }
+
+  // ── Cambio tipo scatola (stessa famiglia, nuova cassetta) ───────
+  static const List<Map<String, String>> _tipiArnia = [
+    {'id': 'dadant',             'nome': 'Dadant-Blatt'},
+    {'id': 'langstroth',         'nome': 'Langstroth'},
+    {'id': 'top_bar',            'nome': 'Top Bar (Kenyana)'},
+    {'id': 'warre',              'nome': 'Warré'},
+    {'id': 'osservazione',       'nome': 'Arnia da Osservazione'},
+    {'id': 'pappa_reale',        'nome': 'Pappa Reale / Allevamento Regine'},
+    {'id': 'nucleo_legno',       'nome': 'Nucleo in Legno'},
+    {'id': 'nucleo_polistirolo', 'nome': 'Nucleo in Polistirolo'},
+    {'id': 'portasciami',        'nome': 'Portasciami / Prendisciame'},
+    {'id': 'apidea',             'nome': 'Apidea / Kieler'},
+    {'id': 'mini_plus',          'nome': 'Mini-Plus'},
+  ];
+
+  void _showCambioTipoSheet() {
+    if (_arnia == null) return;
+    final currentTipo = _arnia!['tipo_arnia'] as String? ?? 'dadant';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Cambia tipo scatola',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(
+                'La famiglia rimane invariata — cambia solo il modello della cassetta.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 16),
+              ..._tipiArnia.map((t) {
+                final isSelected = t['id'] == currentTipo;
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  leading: Icon(
+                    Icons.hive_outlined,
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey.shade500,
+                  ),
+                  title: Text(t['nome']!,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                      )),
+                  trailing: isSelected
+                      ? Icon(Icons.check_circle_rounded,
+                          color: Theme.of(context).colorScheme.primary)
+                      : null,
+                  onTap: isSelected
+                      ? null
+                      : () {
+                          Navigator.pop(ctx);
+                          _applyTipoChange(t['id']!);
+                        },
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _applyTipoChange(String nuovoTipo) async {
+    final arniaId = _arnia?['id'];
+    if (arniaId == null) return;
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final storageService = Provider.of<StorageService>(context, listen: false);
+
+      // PATCH solo il campo tipo_arnia
+      await apiService.patch(
+        '${ApiConstants.arnieUrl}$arniaId/',
+        {'tipo_arnia': nuovoTipo},
+      );
+
+      // Aggiorna la cache locale
+      setState(() => _arnia = {..._arnia!, 'tipo_arnia': nuovoTipo});
+
+      final cached = await storageService.getStoredData('arnie');
+      if (cached.isNotEmpty) {
+        final updated = cached.map((a) {
+          if (a['id'] == arniaId) return {...a, 'tipo_arnia': nuovoTipo};
+          return a;
+        }).toList();
+        await storageService.saveData('arnie', updated);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tipo aggiornato: ${_tipoArniaLabel(nuovoTipo)}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore aggiornamento tipo: $e')),
+        );
+      }
+    }
   }
 
   void _confirmDeleteArnia() {
@@ -442,7 +591,8 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   Future<void> _deleteControllo(int controlloId) async {
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
-      await apiService.delete('${ApiConstants.controlliUrl}$controlloId/');
+      final controlloService = ControlloService(apiService);
+      await controlloService.deleteControllo(controlloId);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Controllo eliminato con successo')),
@@ -458,23 +608,12 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Dettaglio Arnia'),
-        ),
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    
     if (_arnia == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text('Dettaglio Arnia'),
-        ),
-        body: Center(
-          child: Text('Arnia non trovata'),
-        ),
+        appBar: AppBar(title: Text('Dettaglio Arnia')),
+        body: Column(children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+        ]),
       );
     }
     
@@ -486,6 +625,12 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         title: Text('Arnia ${_arnia!['numero']}'),
         backgroundColor: color,
         actions: [
+          // Cambio tipo cassetta (stessa famiglia)
+          IconButton(
+            icon: const Icon(Icons.swap_horiz_rounded),
+            onPressed: _showCambioTipoSheet,
+            tooltip: 'Cambia tipo scatola',
+          ),
           // Pulsante di modifica esistente
           IconButton(
             icon: Icon(Icons.edit),
@@ -522,315 +667,23 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Info'),
             Tab(text: 'Controlli'),
             Tab(text: 'Regina'),
             Tab(text: 'Analisi'),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Stack(
         children: [
-          // Tab Info
-          SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Anteprima arnia
-                Card(
-                  color: color.withOpacity(0.1),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: color,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _arnia!['numero'].toString(),
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Arnia ${_arnia!['numero']}',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _apiario?['nome'] ?? 'Apiario sconosciuto',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: ThemeConstants.textSecondaryColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: _arnia!['attiva'] ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  _arnia!['attiva'] ? 'Attiva' : 'Inattiva',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: _arnia!['attiva'] ? Colors.green.shade800 : Colors.red.shade800,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Informazioni generali
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Informazioni generali',
-                          style: ThemeConstants.subheadingStyle,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Data installazione
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: ThemeConstants.textSecondaryColor,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Data installazione',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    _arnia!['data_installazione'] ?? 'Non specificata',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Colore
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.color_lens,
-                              color: ThemeConstants.textSecondaryColor,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Colore',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 16,
-                                        height: 16,
-                                        decoration: BoxDecoration(
-                                          color: color,
-                                          border: Border.all(color: Colors.grey.shade300),
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        _arnia!['colore'].toString().toUpperCase(),
-                                        style: TextStyle(fontSize: 16),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        // Note
-                        if (_arnia!['note'] != null && _arnia!['note'].isNotEmpty) 
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 16),
-                              Text(
-                                'Note',
-                                style: TextStyle(
-                                  color: ThemeConstants.textSecondaryColor,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(_arnia!['note']),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Ultimo controllo
-                if (_controlli.isNotEmpty)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Ultimo controllo',
-                            style: ThemeConstants.subheadingStyle,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today,
-                                color: ThemeConstants.textSecondaryColor,
-                                size: 16,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Data: ${_controlli[0]['data']}',
-                                style: TextStyle(
-                                  color: ThemeConstants.textSecondaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildControlloStatusItem(
-                                  'Telaini con scorte',
-                                  _controlli[0]['telaini_scorte'].toString(),
-                                ),
-                              ),
-                              Expanded(
-                                child: _buildControlloStatusItem(
-                                  'Telaini con covata',
-                                  _controlli[0]['telaini_covata'].toString(),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildControlloStatusItem(
-                                  'Regina',
-                                  _controlli[0]['presenza_regina'] ? 'Presente' : 'Assente',
-                                  color: _controlli[0]['presenza_regina'] 
-                                      ? Colors.green 
-                                      : Colors.red,
-                                ),
-                              ),
-                              Expanded(
-                                child: _buildControlloStatusItem(
-                                  'Problemi sanitari',
-                                  _controlli[0]['problemi_sanitari'] ? 'Rilevati' : 'Nessuno',
-                                  color: _controlli[0]['problemi_sanitari'] 
-                                      ? Colors.red 
-                                      : Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          if (_controlli[0]['note'] != null && _controlli[0]['note'].isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Note:',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(_controlli[0]['note']),
-                                ],
-                              ),
-                            ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          OutlinedButton(
-                            onPressed: () {
-                              _tabController.animateTo(1); // Vai alla tab controlli
-                            },
-                            child: Text('Vedi tutti i controlli'),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: Size(double.infinity, 40),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          
-          // Tab Controlli
+          Column(
+            children: [
+              const OfflineBanner(),
+              if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+              Expanded(
+                child: TabBarView(
+          controller: _tabController,
+          children: [
+            // Tab Controlli
           _controlli.isEmpty
               ? Center(
                   child: Column(
@@ -905,6 +758,11 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                       ),
                                     ],
                                   ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.edit, color: ThemeConstants.primaryColor),
+                                  tooltip: 'Modifica controllo',
+                                  onPressed: () => _navigateToControlloEdit(Map<String, dynamic>.from(controllo)),
                                 ),
                                 IconButton(
                                   icon: Icon(Icons.delete, color: Colors.red),
@@ -1025,6 +883,82 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Banner scheda incompleta (auto-creazione)
+                      if (_reginaAutoCreata) ...[
+                        Card(
+                          color: Colors.red.shade50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.red.shade300, width: 1.5),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: _navigateToReginaEdit,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Icon(Icons.star, color: Colors.amber, size: 32),
+                                      Positioned(
+                                        top: -4,
+                                        right: -4,
+                                        child: Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Center(
+                                            child: Text(
+                                              '!',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Scheda regina incompleta',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red.shade800,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Regina rilevata automaticamente. Tocca per completare razza, origine e altri dettagli.',
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(Icons.arrow_forward_ios,
+                                      color: Colors.red.shade400, size: 16),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       // Anteprima regina
                       Card(
                         color: Colors.amber.withOpacity(0.1),
@@ -1420,6 +1354,24 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                 ),
         ],
       ),
+              ),
+            ],
+          ),
+          // ── pulsante (i) info in basso a sinistra ──────────────
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: FloatingActionButton.small(
+              heroTag: 'arnia_info',
+              onPressed: _showArniaInfoSheet,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+              tooltip: 'Informazioni arnia',
+              child: const Icon(Icons.info_outline),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: SpeedDial(
         icon: Icons.add,
         activeIcon: Icons.close,
@@ -1439,30 +1391,145 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     );
   }
   
-  Widget _buildControlloStatusItem(String label, String value, {Color? color}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: ThemeConstants.textSecondaryColor,
+  void _showArniaInfoSheet() {
+    if (_arnia == null) return;
+    final colorHex = _arnia!['colore_hex'] ?? '#FFFFFF';
+    final color = Color(int.parse(colorHex.replaceAll('#', '0xFF')));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollCtrl) => SingleChildScrollView(
+          controller: scrollCtrl,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header arnia
+              Row(
+                children: [
+                  Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+                    child: Center(
+                      child: Text(
+                        _arnia!['numero'].toString(),
+                        style: TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold,
+                          color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Arnia ${_arnia!['numero']}',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        if (_apiario != null)
+                          Text(_apiario!['nome'] ?? '',
+                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: (_arnia!['attiva'] == true)
+                                ? Colors.green.withValues(alpha: 0.15)
+                                : Colors.red.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            (_arnia!['attiva'] == true) ? 'Attiva' : 'Inattiva',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: (_arnia!['attiva'] == true)
+                                  ? Colors.green.shade800
+                                  : Colors.red.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              _arniaInfoRow(Icons.calendar_today, 'Installata il',
+                  _arnia!['data_installazione'] ?? 'Non specificata'),
+              _arniaInfoRow(Icons.category_outlined, 'Tipo',
+                  _tipoArniaLabel(_arnia!['tipo_arnia'] as String? ?? 'dadant')),
+              _arniaInfoRow(Icons.color_lens, 'Colore',
+                  (_arnia!['colore'] ?? '').toString().toUpperCase()),
+              if (_arnia!['note'] != null && (_arnia!['note'] as String).isNotEmpty)
+                _arniaInfoRow(Icons.notes, 'Note', _arnia!['note']),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
+      ),
     );
   }
-  
+
+  static String _tipoArniaLabel(String tipo) {
+    const m = {
+      'dadant':             'Dadant-Blatt',
+      'langstroth':         'Langstroth',
+      'top_bar':            'Top Bar (Kenyana)',
+      'warre':              'Warré',
+      'osservazione':       'Arnia da Osservazione',
+      'pappa_reale':        'Pappa Reale / Allevamento Regine',
+      'nucleo_legno':       'Nucleo in Legno',
+      'nucleo_polistirolo': 'Nucleo in Polistirolo',
+      'portasciami':        'Portasciami',
+      'apidea':             'Apidea / Kieler',
+      'mini_plus':          'Mini-Plus',
+    };
+    return m[tipo] ?? tipo;
+  }
+
+  Widget _arniaInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: ThemeConstants.textSecondaryColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 15)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildControlloTag(String label, IconData icon, Color color) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),

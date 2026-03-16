@@ -18,7 +18,7 @@ class SmielaturaDetailScreen extends StatefulWidget {
 
 class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
   Map<String, dynamic>? _smielatura;
-  bool _isLoading = true;
+  bool _isRefreshing = true;
   String? _errorMessage;
   late ApiService _apiService;
 
@@ -31,12 +31,12 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
   }
 
   Future<void> _loadSmielatura() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() { _isRefreshing = true; _errorMessage = null; });
     try {
       final data = await _apiService.get('${ApiConstants.produzioniUrl}${widget.smielaturaId}/');
-      setState(() { _smielatura = data; _isLoading = false; });
+      setState(() { _smielatura = data; _isRefreshing = false; });
     } catch (e) {
-      setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; });
+      setState(() { _errorMessage = 'Errore: $e'; _isRefreshing = false; });
     }
   }
 
@@ -53,13 +53,13 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
       ),
     );
     if (confirmed == true) {
-      setState(() { _isLoading = true; });
+      setState(() { _isRefreshing = true; });
       try {
         await _apiService.delete('${ApiConstants.produzioniUrl}${widget.smielaturaId}/');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Smielatura eliminata')));
         Navigator.pop(context, true);
       } catch (e) {
-        setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; });
+        setState(() { _errorMessage = 'Errore: $e'; _isRefreshing = false; });
       }
     }
   }
@@ -79,13 +79,20 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
           IconButton(icon: Icon(Icons.delete), onPressed: _smielatura == null ? null : _deleteSmielatura),
         ],
       ),
-      body: _isLoading
-          ? LoadingWidget()
-          : _errorMessage != null
-              ? ErrorDisplayWidget(errorMessage: _errorMessage!, onRetry: _loadSmielatura)
-              : _smielatura == null
-                  ? Center(child: Text('Smielatura non trovata'))
-                  : _buildContent(),
+      body: Column(
+        children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _isRefreshing && _smielatura == null && _errorMessage == null
+                ? const SizedBox.shrink()
+                : _errorMessage != null
+                    ? ErrorDisplayWidget(errorMessage: _errorMessage!, onRetry: _loadSmielatura)
+                    : _smielatura == null
+                        ? const Center(child: Text('Smielatura non trovata'))
+                        : _buildContent(),
+          ),
+        ],
+      ),
     );
   }
 

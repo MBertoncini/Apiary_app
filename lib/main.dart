@@ -39,7 +39,7 @@ void main() {
           navigatorKey: navigatorKey,
           title: AppConstants.appName,
           theme: ThemeConstants.getTheme(),
-          initialRoute: AppConstants.splashRoute,
+          initialRoute: '/',
           onGenerateRoute: RouteGenerator.generateRoute,
         ),
       ),

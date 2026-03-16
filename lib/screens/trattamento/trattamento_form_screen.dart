@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/loading_widget.dart';
 import '../apiario/widgets/apiario_map_widget.dart';
+import '../../services/notification_service.dart';
 
 class TrattamentoFormScreen extends StatefulWidget {
   final int? apiarioId;
@@ -447,10 +448,11 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Trattamento aggiornato')));
       } else {
-        await _apiService.post(ApiConstants.trattamentiUrl, data);
+        final result = await _apiService.post(ApiConstants.trattamentiUrl, data);
         if (mounted)
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Trattamento creato')));
+        _scheduleTrattamentoNotifications(result);
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -459,6 +461,53 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
             .showSnackBar(SnackBar(content: Text('Errore: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  void _scheduleTrattamentoNotifications(dynamic result) {
+    if (result == null || result['id'] == null) return;
+    final int id = result['id'];
+    final notif = NotificationService();
+
+    // 1. Notifica rimozione trattamento: usa dataFine se impostata, altrimenti
+    //    dataInizio + tempo_sospensione dal tipo trattamento.
+    DateTime? dataRimozione = _dataFine;
+    if (dataRimozione == null && _tipoTrattamentoId != null) {
+      final tipoData = _tipiTrattamento.firstWhere(
+        (t) => t['id'] == _tipoTrattamentoId,
+        orElse: () => <String, dynamic>{},
+      );
+      final int giorni = (tipoData['tempo_sospensione'] as int?) ?? 0;
+      if (giorni > 0) {
+        dataRimozione = _dataInizio.add(Duration(days: giorni));
+      }
+    }
+    if (dataRimozione != null) {
+      final tipoNome = _tipiTrattamento
+          .firstWhere((t) => t['id'] == _tipoTrattamentoId,
+              orElse: () => <String, dynamic>{})['nome'] as String? ??
+          'trattamento';
+      notif.scheduleRimozioneTrattamentoReminder(
+        trattamentoId: id,
+        tipoTrattamento: tipoNome,
+        apiarioNome: _apiarioNome ?? '',
+        scheduledDate: dataRimozione,
+      );
+    }
+
+    // 2. Notifica sgabbiamento regina (fine blocco covata)
+    if (_bloccoCovataAttivo) {
+      final dataFine = _dataFineBlocco ??
+          (_dataInizioBlocco != null
+              ? _dataInizioBlocco!.add(const Duration(days: 21))
+              : null);
+      if (dataFine != null) {
+        notif.scheduleBloccoCovataReminder(
+          trattamentoId: id,
+          apiarioNome: _apiarioNome ?? '',
+          dataFineBlocco: dataFine,
+        );
+      }
     }
   }
 

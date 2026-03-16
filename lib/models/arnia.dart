@@ -7,10 +7,11 @@ class Arnia {
   final int numero;
   final String colore;
   final String coloreHex;
+  final String tipoArnia;
   final String dataInstallazione;
   final String? note;
   final bool attiva;
-  
+
   Arnia({
     required this.id,
     required this.apiario,
@@ -18,11 +19,12 @@ class Arnia {
     required this.numero,
     required this.colore,
     required this.coloreHex,
+    this.tipoArnia = 'dadant',
     required this.dataInstallazione,
     this.note,
     required this.attiva,
   });
-  
+
   factory Arnia.fromJson(Map<String, dynamic> json) {
     return Arnia(
       id: json['id'],
@@ -31,12 +33,13 @@ class Arnia {
       numero: json['numero'],
       colore: json['colore'],
       coloreHex: json['colore_hex'],
+      tipoArnia: json['tipo_arnia'] as String? ?? 'dadant',
       dataInstallazione: json['data_installazione'],
       note: json['note'],
       attiva: json['attiva'] ?? true,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -45,6 +48,7 @@ class Arnia {
       'numero': numero,
       'colore': colore,
       'colore_hex': coloreHex,
+      'tipo_arnia': tipoArnia,
       'data_installazione': dataInstallazione,
       'note': note,
       'attiva': attiva,

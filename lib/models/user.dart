@@ -8,6 +8,7 @@ class User {
   final String? profileImage;
   final DateTime? dateJoined;
   final bool isActive;
+  final String geminiApiKey;
 
   User({
     required this.id,
@@ -18,6 +19,7 @@ class User {
     this.profileImage,
     this.dateJoined,
     required this.isActive,
+    this.geminiApiKey = '',
   });
 
   // Proprietà calcolata per il nome completo
@@ -45,6 +47,7 @@ class User {
           ? DateTime.tryParse(json['date_joined'].toString())
           : null,
       isActive: json['is_active'] ?? true,
+      geminiApiKey: json['gemini_api_key'] ?? '',
     );
   }
 
@@ -58,6 +61,7 @@ class User {
       'profile_image': profileImage,
       'date_joined': dateJoined?.toIso8601String(),
       'is_active': isActive,
+      'gemini_api_key': geminiApiKey,
     };
   }
 }

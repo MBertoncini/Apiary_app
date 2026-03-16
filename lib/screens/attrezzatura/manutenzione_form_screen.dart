@@ -6,6 +6,7 @@ import '../../models/manutenzione.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/notification_service.dart';
 
 class ManutenzioneFormScreen extends StatefulWidget {
   final int attrezzaturaId;
@@ -146,6 +147,19 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
         attrezzaturaNome: widget.attrezzaturaNome ?? 'Attrezzatura',
         condivisoConGruppo: widget.condivisoConGruppo,
       );
+
+      // Notifica 1 giorno prima della manutenzione programmata
+      if (_selectedStato == 'programmata' && _dataProgrammata != null) {
+        final notifId =
+            'manut_${widget.attrezzaturaId}_${_dataProgrammata!.millisecondsSinceEpoch}'
+                .hashCode;
+        NotificationService().scheduleManutenzioneReminder(
+          notificationId: notifId,
+          attrezzaturaNome: widget.attrezzaturaNome ?? 'Attrezzatura',
+          tipoManutenzione: _selectedTipo,
+          dataProgrammata: _dataProgrammata!,
+        );
+      }
 
       String message = 'Manutenzione registrata con successo';
       if (costo != null && costo > 0) {

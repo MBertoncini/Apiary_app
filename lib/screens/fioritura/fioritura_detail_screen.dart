@@ -22,7 +22,7 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
   late FiorituraService _service;
   Fioritura? _fioritura;
   List<FiorituraConferma> _conferme = [];
-  bool _loading = true;
+  bool _isRefreshing = true;
 
   // per il form conferma
   int? _myIntensita;
@@ -43,7 +43,7 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() => _isRefreshing = true);
     try {
       final fioriture = await _service.getFioriture();
       final f = fioriture.firstWhere((f) => f.id == widget.fiorituraId,
@@ -53,7 +53,7 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
         setState(() {
           _fioritura = f;
           _conferme = conferme;
-          _loading = false;
+          _isRefreshing = false;
           // Precompila il mio voto se già confermato
           if (f.confermaDaMe) {
             final mia = conferme
@@ -68,7 +68,7 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() => _isRefreshing = false);
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Errore: $e')));
       }
@@ -115,16 +115,16 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (_isRefreshing && _fioritura == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Fioritura')),
-        body: Center(child: CircularProgressIndicator()),
+        appBar: AppBar(title: const Text('Fioritura')),
+        body: const Column(children: [LinearProgressIndicator(minHeight: 2)]),
       );
     }
     if (_fioritura == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Fioritura')),
-        body: Center(child: Text('Fioritura non trovata')),
+        appBar: AppBar(title: const Text('Fioritura')),
+        body: const Center(child: Text('Fioritura non trovata')),
       );
     }
 
@@ -148,9 +148,12 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
+      body: Column(
+        children: [
+          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+          Expanded(child: RefreshIndicator(
+            onRefresh: _load,
+            child: ListView(
           padding: EdgeInsets.all(16),
           children: [
             // Header badge stato
@@ -412,6 +415,8 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
             SizedBox(height: 32),
           ],
         ),
+      )),
+        ],
       ),
     );
   }
