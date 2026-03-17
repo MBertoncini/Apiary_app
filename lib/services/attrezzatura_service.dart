@@ -180,11 +180,13 @@ class AttrezzaturaService {
 
   /// Crea una nuova spesa per un'attrezzatura.
   /// Crea automaticamente un Pagamento collegato.
+  /// [pagatoDaId] indica chi ha effettivamente pagato; se null usa [userId].
   Future<SpesaAttrezzatura> createSpesaAttrezzatura(
     Map<String, dynamic> data, {
     required int userId,
     required String attrezzaturaNome,
     required bool condivisoConGruppo,
+    int? pagatoDaId,
   }) async {
     // 1. Crea la SpesaAttrezzatura
     final spesa = await _createSpesaAttrezzaturaInternal(data);
@@ -192,10 +194,11 @@ class AttrezzaturaService {
     // 2. Crea il Pagamento collegato
     final gruppoId = condivisoConGruppo ? data['gruppo'] : null;
     final tipoDisplay = spesa.getTipoDisplay();
+    final pagante = pagatoDaId ?? userId;
 
     try {
       await _pagamentoService.createPagamento({
-        'utente': userId,
+        'utente': pagante,
         'importo': spesa.importo,
         'data': data['data'],
         'descrizione': 'Spesa attrezzatura ($tipoDisplay): $attrezzaturaNome - ${spesa.descrizione}',
@@ -256,11 +259,13 @@ class AttrezzaturaService {
   /// Se costo > 0, crea automaticamente:
   /// - SpesaAttrezzatura (tipo='manutenzione')
   /// - Pagamento
+  /// [pagatoDaId] indica chi ha effettivamente pagato; se null usa [userId].
   Future<Manutenzione> createManutenzione(
     Map<String, dynamic> data, {
     required int userId,
     required String attrezzaturaNome,
     required bool condivisoConGruppo,
+    int? pagatoDaId,
   }) async {
     // 1. Crea la manutenzione
     final manutenzione = await _handleApiResponse(
@@ -292,9 +297,10 @@ class AttrezzaturaService {
       }
 
       // Crea Pagamento
+      final pagante = pagatoDaId ?? userId;
       try {
         await _pagamentoService.createPagamento({
-          'utente': userId,
+          'utente': pagante,
           'importo': costo,
           'data': dataSpesa,
           'descrizione': 'Manutenzione attrezzatura: $attrezzaturaNome - $tipoDisplay',
@@ -336,6 +342,7 @@ class AttrezzaturaService {
     required String attrezzaturaNome,
     required bool condivisoConGruppo,
     int? gruppoId,
+    int? pagatoDaId,
   }) async {
     final dataEsecuzione = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
@@ -371,9 +378,10 @@ class AttrezzaturaService {
       }
 
       // Crea Pagamento
+      final pagante = pagatoDaId ?? userId;
       try {
         await _pagamentoService.createPagamento({
-          'utente': userId,
+          'utente': pagante,
           'importo': costo,
           'data': dataEsecuzione,
           'descrizione': 'Manutenzione attrezzatura: $attrezzaturaNome - $tipoDisplay',

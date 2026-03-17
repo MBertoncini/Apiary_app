@@ -10,6 +10,13 @@ class StatisticheService {
 
   StatisticheService(this._api);
 
+  // Cache statica in-memory: dati validi finché non esplicitamente invalidati.
+  // Chiave: 'path|param1=val1&...' (params ordinati per stabilità).
+  static final Map<String, Map<String, dynamic>> _cache = {};
+
+  /// Invalida tutta la cache (usato dal pull-to-refresh globale).
+  static void clearAllCache() => _cache.clear();
+
   /// Costruisce URL per l'endpoint stats (prefisso /api/stats/)
   String _statsUrl(String path, [Map<String, String>? params]) {
     String base = ApiConstants.baseUrl;
@@ -22,10 +29,20 @@ class StatisticheService {
     return url;
   }
 
-  Future<Map<String, dynamic>> _getStats(String path, [Map<String, String>? params]) async {
+  Future<Map<String, dynamic>> _getStats(String path, [Map<String, String>? params, bool forceRefresh = false]) async {
+    final sortedParams = params == null
+        ? ''
+        : (params.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
+            .map((e) => '${e.key}=${e.value}')
+            .join('&');
+    final cacheKey = params == null ? path : '$path|$sortedParams';
+    if (!forceRefresh && _cache.containsKey(cacheKey)) {
+      return _cache[cacheKey]!;
+    }
     final result = await _api.get(_statsUrl(path, params));
-    if (result is Map<String, dynamic>) return result;
-    return {};
+    final data = result is Map<String, dynamic> ? result : <String, dynamic>{};
+    _cache[cacheKey] = data;
+    return data;
   }
 
   Future<Map<String, dynamic>> _postStats(String path, Map<String, dynamic> body) async {
@@ -38,76 +55,76 @@ class StatisticheService {
   // Widget data
   // -------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> getSaluteArnie({int periodoDays = 90, int? apiarioId}) {
+  Future<Map<String, dynamic>> getSaluteArnie({int periodoDays = 90, int? apiarioId, bool forceRefresh = false}) {
     final p = {'periodo_giorni': periodoDays.toString()};
     if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
-    return _getStats('widgets/salute_arnie', p);
+    return _getStats('widgets/salute_arnie', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getProduzioneAnnuale({int anni = 3, int? apiarioId}) {
+  Future<Map<String, dynamic>> getProduzioneAnnuale({int anni = 3, int? apiarioId, bool forceRefresh = false}) {
     final p = {'anni': anni.toString()};
     if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
-    return _getStats('widgets/produzione_annuale', p);
+    return _getStats('widgets/produzione_annuale', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getFrequenzaControlli({int? anno, int? apiarioId}) {
+  Future<Map<String, dynamic>> getFrequenzaControlli({int? anno, int? apiarioId, bool forceRefresh = false}) {
     final p = <String, String>{};
     if (anno != null) p['anno'] = anno.toString();
     if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
-    return _getStats('widgets/frequenza_controlli', p);
+    return _getStats('widgets/frequenza_controlli', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getRegineStatistiche({int? anno}) {
+  Future<Map<String, dynamic>> getRegineStatistiche({int? anno, bool forceRefresh = false}) {
     final p = <String, String>{};
     if (anno != null) p['anno'] = anno.toString();
-    return _getStats('widgets/regine_statistiche', p);
+    return _getStats('widgets/regine_statistiche', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getPerformanceRegine({int? apiarioId, int topN = 5}) {
+  Future<Map<String, dynamic>> getPerformanceRegine({int? apiarioId, int topN = 5, bool forceRefresh = false}) {
     final p = {'mostra_top_n': topN.toString()};
     if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
-    return _getStats('widgets/performance_regine', p);
+    return _getStats('widgets/performance_regine', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getVarroaTrend({int mesi = 12, int? apiarioId}) {
+  Future<Map<String, dynamic>> getVarroaTrend({int mesi = 12, int? apiarioId, bool forceRefresh = false}) {
     final p = {'periodo_mesi': mesi.toString()};
     if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
-    return _getStats('widgets/varroa_trend', p);
+    return _getStats('widgets/varroa_trend', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getBilancioEconomico({int? anno}) {
+  Future<Map<String, dynamic>> getBilancioEconomico({int? anno, bool forceRefresh = false}) {
     final p = <String, String>{};
     if (anno != null) p['anno'] = anno.toString();
-    return _getStats('widgets/bilancio_economico', p);
+    return _getStats('widgets/bilancio_economico', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getQuoteGruppo({int? gruppoId, int? anno}) {
+  Future<Map<String, dynamic>> getQuoteGruppo({int? gruppoId, int? anno, bool forceRefresh = false}) {
     final p = <String, String>{};
     if (gruppoId != null) p['gruppo_id'] = gruppoId.toString();
     if (anno != null) p['anno'] = anno.toString();
-    return _getStats('widgets/quote_gruppo', p);
+    return _getStats('widgets/quote_gruppo', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getFioritureVicine({double raggioKm = 5.0}) {
-    return _getStats('widgets/fioriture_vicine', {'raggio_km': raggioKm.toString()});
+  Future<Map<String, dynamic>> getFioritureVicine({double raggioKm = 5.0, bool forceRefresh = false}) {
+    return _getStats('widgets/fioriture_vicine', {'raggio_km': raggioKm.toString()}, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getAndamentoScorte({int mesi = 6, int? apiarioId}) {
+  Future<Map<String, dynamic>> getAndamentoScorte({int mesi = 6, int? apiarioId, bool forceRefresh = false}) {
     final p = {'periodo_mesi': mesi.toString()};
     if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
-    return _getStats('widgets/andamento_scorte', p);
+    return _getStats('widgets/andamento_scorte', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getProduzionePerTipo({int? anno}) {
+  Future<Map<String, dynamic>> getProduzionePerTipo({int? anno, bool forceRefresh = false}) {
     final p = <String, String>{};
     if (anno != null) p['anno'] = anno.toString();
-    return _getStats('widgets/produzione_per_tipo', p);
+    return _getStats('widgets/produzione_per_tipo', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getRiepilogoAttrezzature({String? categoria}) {
+  Future<Map<String, dynamic>> getRiepilogoAttrezzature({String? categoria, bool forceRefresh = false}) {
     final p = <String, String>{};
     if (categoria != null) p['categoria'] = categoria;
-    return _getStats('widgets/riepilogo_attrezzature', p);
+    return _getStats('widgets/riepilogo_attrezzature', p, forceRefresh);
   }
 
   // -------------------------------------------------------------------------

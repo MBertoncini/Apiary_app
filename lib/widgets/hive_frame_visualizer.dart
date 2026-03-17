@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../utils/telaini_utils.dart';
 
 /// Visualizzazione grafica dei telaini dell'arnia + indicatore regina + allarme celle reali.
 class HiveFrameVisualizer extends StatelessWidget {
@@ -10,26 +11,29 @@ class HiveFrameVisualizer extends StatelessWidget {
 
   // ─── colori per tipo telaino ───────────────────────────────────
   static const Map<String, Color> _colors = {
-    'covata':    Color(0xFFFF8C42), // arancione caldo
-    'scorte':    Color(0xFFFFD166), // giallo miele
-    'diaframma': Color(0xFF9E9E9E), // grigio
-    'nutritore': Color(0xFF74B3CE), // azzurro
-    'vuoto':     Color(0xFFEEEEEE), // grigio chiaro
+    'covata':       Color(0xFFFF8C42), // arancione caldo
+    'scorte':       Color(0xFFFFD166), // giallo miele
+    'misto':        Color(0xFFFF8C42), // come covata
+    'foglio_cereo': Color(0xFFC5E0A0), // verde chiaro (cera)
+    'diaframma':    Color(0xFF9E9E9E), // grigio
+    'nutritore':    Color(0xFF74B3CE), // azzurro
+    'vuoto':        Color(0xFFEEEEEE), // grigio chiaro
   };
 
   static const Map<String, String> _labels = {
-    'covata':    'Covata',
-    'scorte':    'Scorte',
-    'diaframma': 'Diaframma',
-    'nutritore': 'Nutritore',
-    'vuoto':     'Vuoto',
+    'covata':       'Covata',
+    'scorte':       'Scorte',
+    'foglio_cereo': 'F. Cereo',
+    'diaframma':    'Diaframma',
+    'nutritore':    'Nutritore',
+    'vuoto':        'Vuoto',
   };
 
   static Color _colorFor(String type) => _colors[type] ?? const Color(0xFFEEEEEE);
 
   // ─── legenda statica (chiamata una volta sola per gruppo) ──────
   static Widget legend() {
-    const types = ['covata', 'scorte', 'diaframma', 'nutritore', 'vuoto'];
+    const types = ['covata', 'scorte', 'foglio_cereo', 'diaframma', 'nutritore', 'vuoto'];
     return Wrap(
       spacing: 10,
       runSpacing: 2,
@@ -51,7 +55,7 @@ class HiveFrameVisualizer extends StatelessWidget {
     );
   }
 
-  // ─── costruisce la lista di 10 slot telaini ────────────────────
+  // ─── costruisce la lista di 10 slot telaini (ordinati canonicamente) ──────
   List<String> _buildFrameConfig() {
     if (controllo == null) return List.filled(10, 'vuoto');
 
@@ -60,28 +64,21 @@ class HiveFrameVisualizer extends StatelessWidget {
     if (raw != null && raw.toString().isNotEmpty) {
       try {
         final decoded = json.decode(raw.toString()) as List;
-        if (decoded.length == 10) return List<String>.from(decoded);
+        if (decoded.isNotEmpty) {
+          return sortTelaini(List<String>.from(decoded));
+        }
       } catch (_) {}
     }
 
-    // Fallback: genera dalla coppia scorte+covata
-    final scorte = (controllo!['telaini_scorte'] as num?)?.toInt() ?? 0;
-    final covata = (controllo!['telaini_covata'] as num?)?.toInt() ?? 0;
-    final config = List.filled(10, 'vuoto');
-    // covata al centro
-    int start = ((10 - covata) / 2).floor().clamp(0, 9);
-    for (int i = 0; i < covata && start + i < 10; i++) {
-      config[start + i] = 'covata';
-    }
-    // scorte ai lati
-    int left = scorte;
-    for (int i = 0; i < 10 && left > 0; i++) {
-      if (config[i] == 'vuoto') { config[i] = 'scorte'; left--; }
-    }
-    for (int i = 9; i >= 0 && left > 0; i--) {
-      if (config[i] == 'vuoto') { config[i] = 'scorte'; left--; }
-    }
-    return config;
+    // Fallback: genera dalla coppia scorte+covata e ordina canonicamente
+    final nScorte = (controllo!['telaini_scorte'] as num?)?.toInt() ?? 0;
+    final nCovata = (controllo!['telaini_covata'] as num?)?.toInt() ?? 0;
+    final flat = <String>[
+      for (int i = 0; i < nScorte; i++) 'scorte',
+      for (int i = 0; i < nCovata; i++) 'covata',
+    ];
+    while (flat.length < 10) flat.add('vuoto');
+    return sortTelaini(flat.sublist(0, 10));
   }
 
   @override

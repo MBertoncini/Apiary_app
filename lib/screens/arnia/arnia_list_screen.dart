@@ -11,6 +11,7 @@ import '../../services/storage_service.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/hive_frame_visualizer.dart';
 import '../../database/dao/controllo_arnia_dao.dart';
+import '../../widgets/skeleton_widgets.dart';
 
 class ArniaListScreen extends StatefulWidget {
   @override
@@ -123,8 +124,8 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
           const OfflineBanner(),
           if (_isRefreshing) LinearProgressIndicator(minHeight: 2),
           Expanded(
-            child: _isRefreshing && _arnieByApiario.isEmpty
-                ? const SizedBox.shrink()
+            child: _isLoading
+                ? const SkeletonListView(itemCount: 5)
                 : _arnieByApiario.isEmpty
                     ? Center(
                         child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../services/statistiche_service.dart';
+import 'dashboard_card_base.dart';
 
 class ProduzioneAnnualeWidget extends StatefulWidget {
   final StatisticheService service;
@@ -21,10 +22,10 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await widget.service.getProduzioneAnnuale();
+      final data = await widget.service.getProduzioneAnnuale(forceRefresh: forceRefresh);
       setState(() { _data = data; _loading = false; });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
@@ -33,40 +34,15 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.water_drop, color: Color(0xFFD4A017)),
-                const SizedBox(width: 8),
-                const Text('Produzione Miele per Anno', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                IconButton(icon: const Icon(Icons.refresh, size: 18), onPressed: _load),
-              ],
-            ),
-            const Divider(),
-            if (_loading)
-              const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-            else if (_error != null)
-              _buildError()
-            else if (_data != null)
-              _buildChart(),
-          ],
-        ),
-      ),
+    return DashboardCardBase(
+      icon: const Icon(Icons.water_drop, color: Color(0xFFD4A017)),
+      title: 'Produzione Miele per Anno',
+      loading: _loading,
+      error: _error,
+      onRetry: () => _load(forceRefresh: true),
+      child: _data != null ? _buildChart() : const SizedBox.shrink(),
     );
   }
-
-  Widget _buildError() => Center(
-    child: Column(children: [
-      const Icon(Icons.error_outline, color: Colors.red),
-      TextButton(onPressed: _load, child: const Text('Riprova')),
-    ]),
-  );
 
   Widget _buildChart() {
     final anni = List<String>.from(_data!['anni'] ?? []);

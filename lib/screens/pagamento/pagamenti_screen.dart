@@ -11,7 +11,6 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
-import '../../widgets/loading_widget.dart';
 import '../../widgets/offline_banner.dart';
 
 class PagamentiScreen extends StatefulWidget {
@@ -23,14 +22,13 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   late TabController _tabController;
   List<Pagamento> _pagamenti = [];
   List<QuotaUtente> _quote = [];
-  bool _isLoading = true;
   bool _isRefreshing = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -56,7 +54,6 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     if (cachedPagamenti.isNotEmpty || cachedQuote.isNotEmpty) {
       if (cachedPagamenti.isNotEmpty) _pagamenti = cachedPagamenti.map((e) => Pagamento.fromJson(e as Map<String, dynamic>)).toList();
       if (cachedQuote.isNotEmpty) _quote = cachedQuote.map((e) => QuotaUtente.fromJson(e as Map<String, dynamic>)).toList();
-      _isLoading = false;
       if (mounted) setState(() { _isRefreshing = true; });
     } else {
       if (mounted) setState(() { _isRefreshing = true; });
@@ -77,7 +74,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       }
     }
 
-    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
+    if (mounted) setState(() { _isRefreshing = false; });
   }
 
   @override
@@ -89,7 +86,6 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
           controller: _tabController,
           tabs: [
             Tab(text: 'Pagamenti'),
-            Tab(text: 'Quote'),
             Tab(text: 'Bilancio'),
           ],
         ),
@@ -118,32 +114,25 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                         controller: _tabController,
                         children: [
                           _buildPagamentiTab(),
-                          _buildQuoteTab(),
                           _buildBilancioTab(),
                         ],
                       ),
           ),
         ],
       ),
-      floatingActionButton: _tabController.index < 2
+      floatingActionButton: _tabController.index == 0
           ? FloatingActionButton(
               onPressed: () {
-                if (_tabController.index == 0) {
-                  Navigator.pushNamed(context, AppConstants.pagamentoCreateRoute)
-                      .then((_) => _loadData());
-                } else if (_tabController.index == 1) {
-                  Navigator.pushNamed(context, AppConstants.quoteRoute)
-                      .then((_) => _loadData());
-                }
+                Navigator.pushNamed(context, AppConstants.pagamentoCreateRoute)
+                    .then((_) => _loadData());
               },
               child: Icon(Icons.add),
-              tooltip: _tabController.index == 0 ? 'Nuovo Pagamento' : 'Nuova Quota',
+              tooltip: 'Nuovo Pagamento',
             )
           : null,
     );
   }
 
-  // Verifica se un pagamento è legato ad attrezzatura/manutenzione
   bool _isAttrezzaturaPagamento(Pagamento pagamento) {
     final desc = pagamento.descrizione.toLowerCase();
     return desc.contains('attrezzatura') || desc.contains('manutenzione');
@@ -229,13 +218,28 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
           ...List.generate(_pagamenti.length, (index) {
             final pagamento = _pagamenti[index];
             final isAttrezzatura = _isAttrezzaturaPagamento(pagamento);
+            final isSaldo = pagamento.isSaldo;
+
+            Color leadingColor = isSaldo
+                ? Colors.blue
+                : isAttrezzatura
+                    ? Colors.cyan
+                    : ThemeConstants.primaryColor;
 
             return Card(
               margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: ListTile(
                 title: Row(
                   children: [
-                    if (isAttrezzatura)
+                    if (isSaldo)
+                      Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Tooltip(
+                          message: 'Saldo bilancio',
+                          child: Icon(Icons.swap_horiz, size: 16, color: Colors.blue),
+                        ),
+                      )
+                    else if (isAttrezzatura)
                       Padding(
                         padding: EdgeInsets.only(right: 6),
                         child: Tooltip(
@@ -253,7 +257,9 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   ],
                 ),
                 subtitle: Text(
-                  '${pagamento.utenteUsername} - ${formatDate.format(DateTime.parse(pagamento.data))}',
+                  isSaldo
+                      ? '${pagamento.utenteUsername} → ${pagamento.destinatarioUsername} · ${formatDate.format(DateTime.parse(pagamento.data))}'
+                      : '${pagamento.utenteUsername} · ${formatDate.format(DateTime.parse(pagamento.data))}',
                   maxLines: 1,
                 ),
                 trailing: Text(
@@ -261,16 +267,18 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: ThemeConstants.primaryColor,
+                    color: leadingColor,
                   ),
                 ),
                 leading: CircleAvatar(
-                  backgroundColor: isAttrezzatura
-                      ? Colors.cyan.withOpacity(0.1)
-                      : ThemeConstants.primaryColor.withOpacity(0.1),
+                  backgroundColor: leadingColor.withOpacity(0.1),
                   child: Icon(
-                    isAttrezzatura ? Icons.build : Icons.euro,
-                    color: isAttrezzatura ? Colors.cyan : ThemeConstants.primaryColor,
+                    isSaldo
+                        ? Icons.swap_horiz
+                        : isAttrezzatura
+                            ? Icons.build
+                            : Icons.euro,
+                    color: leadingColor,
                   ),
                 ),
                 onTap: () {
@@ -284,75 +292,6 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             );
           }),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuoteTab() {
-    if (_quote.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.pie_chart,
-              size: 80,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Nessuna quota trovata',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: Icon(Icons.add),
-              label: Text('Gestisci Quote'),
-              onPressed: () {
-                Navigator.pushNamed(context, AppConstants.quoteRoute)
-                    .then((_) => _loadData());
-              },
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        itemCount: _quote.length,
-        itemBuilder: (context, index) {
-          final quota = _quote[index];
-          return Card(
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: ListTile(
-              title: Text(quota.utenteUsername),
-              subtitle: Text(quota.gruppoNome ?? 'Gruppo ${quota.gruppo}'),
-              trailing: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: ThemeConstants.primaryColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${quota.percentuale}%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              onTap: () {
-                Navigator.pushNamed(context, AppConstants.quoteRoute)
-                    .then((_) => _loadData());
-              },
-            ),
-          );
-        },
       ),
     );
   }
@@ -425,28 +364,37 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
 
   Widget _buildGruppoBilancio(int gruppoId, List<QuotaUtente> quoteGruppo, NumberFormat formatCurrency) {
-    // Trova il nome del gruppo dalla prima quota
     final gruppoNome = quoteGruppo.first.gruppoNome ?? 'Gruppo $gruppoId';
 
-    // Filtra i pagamenti di questo gruppo
+    // Tutti i pagamenti del gruppo
     final pagamentiGruppo = _pagamenti.where((p) => p.gruppo == gruppoId).toList();
 
-    // Calcola il totale dei pagamenti del gruppo
-    final double totalePagamentiGruppo = pagamentiGruppo.fold(0.0, (sum, p) => sum + p.importo);
+    // Pagamenti di saldo (trasferimento diretto tra membri): esclusi dal totale spese
+    final pagamentiSaldo = pagamentiGruppo.where((p) => p.isSaldo).toList();
+    // Pagamenti ordinari: costituiscono le spese reali del gruppo
+    final pagamentiRegolari = pagamentiGruppo.where((p) => !p.isSaldo).toList();
 
-    // Calcola i dati per ogni membro
+    final double totalePagamentiGruppo = pagamentiRegolari.fold(0.0, (sum, p) => sum + p.importo);
+
     final List<Map<String, dynamic>> bilancioMembri = [];
 
     for (var quota in quoteGruppo) {
-      // Pagamenti di questo utente nel gruppo
-      final pagamentiUtente = pagamentiGruppo.where((p) => p.utente == quota.utente).toList();
-      final double totalePagato = pagamentiUtente.fold(0.0, (sum, p) => sum + p.importo);
+      final double totalePagato = pagamentiRegolari
+          .where((p) => p.utente == quota.utente)
+          .fold(0.0, (sum, p) => sum + p.importo);
 
-      // Quanto dovrebbe pagare in base alla quota
       final double dovuto = totalePagamentiGruppo * (quota.percentuale / 100.0);
+      double saldo = totalePagato - dovuto;
 
-      // Saldo: positivo = ha pagato di più (credito), negativo = deve ancora pagare (debito)
-      final double saldo = totalePagato - dovuto;
+      // Aggiusta il saldo con i pagamenti di saldo: chi paga migliora il suo saldo,
+      // chi riceve riduce il suo credito
+      for (var sp in pagamentiSaldo) {
+        if (sp.utente == quota.utente) {
+          saldo += sp.importo; // il pagante ha saldato il debito
+        } else if (sp.destinatario == quota.utente) {
+          saldo -= sp.importo; // il destinatario ha ricevuto, il suo credito scende
+        }
+      }
 
       bilancioMembri.add({
         'utenteId': quota.utente,
@@ -458,7 +406,6 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       });
     }
 
-    // Calcola i trasferimenti necessari (chi deve dare a chi)
     final trasferimenti = _calcolaTrasferimenti(bilancioMembri);
 
     return Card(
@@ -468,7 +415,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header del gruppo
+            // Header del gruppo con tooltip quote
             Row(
               children: [
                 Icon(Icons.group, color: ThemeConstants.primaryColor, size: 24),
@@ -476,9 +423,27 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                 Expanded(
                   child: Text(
                     gruppoNome,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Tooltip(
+                  message: 'Gestisci quote',
+                  child: InkWell(
+                    onTap: () => _showQuotePopup(context, quoteGruppo, gruppoId),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.pie_chart, size: 14, color: ThemeConstants.textSecondaryColor),
+                          const SizedBox(width: 2),
+                          Text(
+                            'Quote',
+                            style: TextStyle(fontSize: 11, color: ThemeConstants.textSecondaryColor),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -487,33 +452,88 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             const SizedBox(height: 4),
             Text(
               'Totale spese gruppo: ${formatCurrency.format(totalePagamentiGruppo)}',
-              style: TextStyle(
-                color: ThemeConstants.textSecondaryColor,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: ThemeConstants.textSecondaryColor, fontSize: 14),
             ),
             const Divider(height: 24),
 
-            // Situazione di ogni membro
             for (var membro in bilancioMembri) ...[
               _buildMembroBilancioRow(membro, formatCurrency),
               const SizedBox(height: 8),
             ],
 
-            // Trasferimenti necessari
             if (trasferimenti.isNotEmpty) ...[
               const Divider(height: 24),
               Text(
                 'Trasferimenti necessari',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               for (var trasf in trasferimenti)
-                _buildTrasferimentoRow(trasf, formatCurrency),
+                _buildTrasferimentoRow(trasf, gruppoId, formatCurrency),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showQuotePopup(BuildContext context, List<QuotaUtente> quote, int gruppoId) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.pie_chart, color: ThemeConstants.primaryColor, size: 18),
+                const SizedBox(width: 8),
+                Text('Quote gruppo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                TextButton.icon(
+                  icon: Icon(Icons.edit, size: 14),
+                  label: Text('Gestisci', style: TextStyle(fontSize: 12)),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppConstants.quoteRoute)
+                        .then((_) => _loadData());
+                  },
+                ),
+              ],
+            ),
+            const Divider(),
+            ...quote.map((q) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: ThemeConstants.primaryColor,
+                    child: Text(
+                      q.utenteUsername.isNotEmpty ? q.utenteUsername[0].toUpperCase() : '?',
+                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(q.utenteUsername)),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: ThemeConstants.primaryColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${q.percentuale}%',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: ThemeConstants.secondaryColor),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -638,10 +658,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     );
   }
 
-  /// Calcola i trasferimenti minimi necessari per bilanciare i debiti.
-  /// Chi ha saldo negativo deve pagare chi ha saldo positivo.
   List<Map<String, dynamic>> _calcolaTrasferimenti(List<Map<String, dynamic>> bilancioMembri) {
-    // Separa creditori e debitori
     final List<Map<String, dynamic>> creditori = [];
     final List<Map<String, dynamic>> debitori = [];
 
@@ -650,7 +667,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       if (saldo > 0.01) {
         creditori.add({...membro, 'residuo': saldo});
       } else if (saldo < -0.01) {
-        debitori.add({...membro, 'residuo': -saldo}); // residuo positivo per comodità
+        debitori.add({...membro, 'residuo': -saldo});
       }
     }
 
@@ -665,7 +682,9 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       if (importo > 0.01) {
         trasferimenti.add({
           'da': debitori[i]['username'],
+          'daId': debitori[i]['utenteId'],
           'a': creditori[j]['username'],
+          'aId': creditori[j]['utenteId'],
           'importo': importo,
         });
       }
@@ -680,10 +699,10 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     return trasferimenti;
   }
 
-  Widget _buildTrasferimentoRow(Map<String, dynamic> trasf, NumberFormat formatCurrency) {
+  Widget _buildTrasferimentoRow(Map<String, dynamic> trasf, int gruppoId, NumberFormat formatCurrency) {
     return Container(
       margin: EdgeInsets.only(bottom: 6),
-      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.blue.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
@@ -700,8 +719,8 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Icon(Icons.arrow_forward, size: 18, color: Colors.blue),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(Icons.arrow_forward, size: 16, color: Colors.blue),
           ),
           Flexible(
             flex: 3,
@@ -711,17 +730,44 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Text(
             formatCurrency.format(trasf['importo']),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.blue.shade700,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blue.shade700),
+          ),
+          const SizedBox(width: 6),
+          Tooltip(
+            message: 'Registra pagamento di saldo',
+            child: InkWell(
+              onTap: () => _registraSaldoPagamento(trasf, gruppoId),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.add_circle_outline, size: 16, color: Colors.blue.shade700),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _registraSaldoPagamento(Map<String, dynamic> trasf, int gruppoId) {
+    Navigator.pushNamed(
+      context,
+      AppConstants.pagamentoCreateRoute,
+      arguments: {
+        'isSaldo': true,
+        'gruppoId': gruppoId,
+        'utenteId': trasf['daId'],
+        'destinatarioId': trasf['aId'],
+        'importo': trasf['importo'],
+        'descrizione': 'Saldo bilancio: ${trasf['da']} → ${trasf['a']}',
+      },
+    ).then((_) => _loadData());
   }
 }

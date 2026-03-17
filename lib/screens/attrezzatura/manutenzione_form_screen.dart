@@ -39,13 +39,39 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  List<Map<String, dynamic>> _membriGruppo = [];
+  int? _selectedPagatoDaId;
+
   @override
   void initState() {
     super.initState();
     _dataProgrammata = DateTime.now().add(Duration(days: 7)); // Default: tra una settimana
+    if (widget.condivisoConGruppo && widget.gruppoId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadMembriGruppo(widget.gruppoId!));
+    }
   }
 
   DateTime? _prossimaManutenzione;
+
+  Future<void> _loadMembriGruppo(int gruppoId) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final response = await apiService.get('/gruppi/$gruppoId/membri/');
+      final List<dynamic> list = response is List
+          ? response
+          : (response['results'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _membriGruppo = list.map((m) => {
+            'id': m['utente'],
+            'username': m['utente_username'] ?? '—',
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Errore caricamento membri gruppo: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -146,6 +172,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
         userId: auth.currentUser!.id,
         attrezzaturaNome: widget.attrezzaturaNome ?? 'Attrezzatura',
         condivisoConGruppo: widget.condivisoConGruppo,
+        pagatoDaId: _selectedPagatoDaId,
       );
 
       // Notifica 1 giorno prima della manutenzione programmata
@@ -418,6 +445,29 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                 maxLines: 2,
               ),
               const SizedBox(height: 24),
+
+              // Chi ha pagato (solo se condiviso con gruppo e ci sono membri)
+              if (widget.condivisoConGruppo && _membriGruppo.isNotEmpty) ...[
+                DropdownButtonFormField<int?>(
+                  value: _selectedPagatoDaId,
+                  decoration: InputDecoration(
+                    labelText: 'Chi ha pagato?',
+                    hintText: '— io stesso —',
+                    prefixIcon: Icon(Icons.payments),
+                    border: OutlineInputBorder(),
+                    helperText: 'Indica il membro del gruppo che ha effettivamente sostenuto la spesa',
+                  ),
+                  items: [
+                    DropdownMenuItem<int?>(value: null, child: Text('— io stesso —')),
+                    ..._membriGruppo.map((m) => DropdownMenuItem<int?>(
+                      value: m['id'] as int,
+                      child: Text(m['username'] as String),
+                    )),
+                  ],
+                  onChanged: (val) => setState(() { _selectedPagatoDaId = val; }),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Info pagamento automatico
               if (_costoController.text.isNotEmpty)

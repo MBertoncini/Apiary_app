@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/loading_widget.dart';
+import '../../widgets/error_widget.dart';
 import '../apiario/widgets/apiario_map_widget.dart';
 import '../../services/notification_service.dart';
 
@@ -526,7 +527,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
       body: _isLoading
           ? const LoadingWidget(message: 'Caricamento dati...')
           : _errorMessage != null
-              ? CustomErrorWidget(
+              ? ErrorDisplayWidget(
                   errorMessage: _errorMessage!, onRetry: _loadInitialData)
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(16),

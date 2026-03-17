@@ -27,7 +27,9 @@
       "Bash(pip show:*)",
       "Bash(pip install:*)",
       "Bash(head -1073 \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\melario\\\\melari_screen.dart\" > \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\melario\\\\melari_screen_tmp.dart\" && move /Y \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\melario\\\\melari_screen_tmp.dart\" \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\melario\\\\melari_screen.dart\")",
-      "Bash(cd \"I:\\\\Progetti Git\\\\Apiary_app\" && flutter analyze lib/screens/splash_screen.dart 2>&1 | grep -v \"^Analyzing\" | grep -v \"^$\")"
+      "Bash(cd \"I:\\\\Progetti Git\\\\Apiary_app\" && flutter analyze lib/screens/splash_screen.dart 2>&1 | grep -v \"^Analyzing\" | grep -v \"^$\")",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ]
   }
 }

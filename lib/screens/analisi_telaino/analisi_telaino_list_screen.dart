@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../database/dao/analisi_telaino_dao.dart';
+import '../../widgets/skeleton_widgets.dart';
 import '../../models/analisi_telaino.dart';
 import '../../services/analisi_telaino_service.dart';
 
@@ -57,7 +58,7 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
           if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _isRefreshing && _analisi.isEmpty
-                ? const SizedBox.shrink()
+                ? const SkeletonListView(itemCount: 4)
                 : _analisi.isEmpty
                     ? _buildEmptyState()
                     : RefreshIndicator(

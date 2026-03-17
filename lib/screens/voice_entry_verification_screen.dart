@@ -267,7 +267,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       body: _isSubmitting
           ? LoadingWidget(message: 'Salvataggio in corso...')
           : _error != null
-              ? CustomErrorWidget(
+              ? ErrorDisplayWidget(
                   errorMessage: _error!,
                   onRetry: _saveAll,
                 )

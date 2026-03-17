@@ -8,6 +8,7 @@ import '../../services/fioritura_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/offline_banner.dart';
+import '../../widgets/skeleton_widgets.dart';
 
 class FiorituraListScreen extends StatefulWidget {
   @override
@@ -140,7 +141,7 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
           ),
           Expanded(
             child: _isRefreshing && _mie.isEmpty && _community.isEmpty
-                ? const SizedBox.shrink()
+                ? const SkeletonListView()
                 : TabBarView(
                     controller: _tabController,
                     children: [

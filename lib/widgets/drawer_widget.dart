@@ -183,7 +183,28 @@ class AppDrawer extends StatelessWidget {
           // Statistiche & AI Analytics
           ListTile(
             leading: Icon(Icons.bar_chart),
-            title: Text('Statistiche & AI'),
+            title: Row(
+              children: [
+                const Text('Statistiche & AI'),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'BETA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             selected: currentRoute == AppConstants.statisticheRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.statisticheRoute),

@@ -18,6 +18,7 @@ import '../../models/arnia.dart';
 import 'arnia_form_screen.dart';
 import '../../widgets/offline_banner.dart';
 import '../../services/regina_service.dart';
+import '../../widgets/skeleton_widgets.dart';
 
 class ArniaDetailScreen extends StatefulWidget {
   final int arniaId;
@@ -610,10 +611,16 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   Widget build(BuildContext context) {
     if (_arnia == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Dettaglio Arnia')),
-        body: Column(children: [
-          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
-        ]),
+        appBar: AppBar(title: const Text('Caricamento...')),
+        body: const SingleChildScrollView(
+          child: Column(
+            children: [
+              SkeletonDetailHeader(),
+              SizedBox(height: 8),
+              SkeletonDetailHeader(),
+            ],
+          ),
+        ),
       );
     }
     

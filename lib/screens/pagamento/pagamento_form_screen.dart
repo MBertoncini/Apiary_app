@@ -2,8 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../constants/theme_constants.dart';
-import '../../models/pagamento.dart';
 import '../../models/gruppo.dart';
 import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
@@ -13,8 +11,10 @@ import '../../widgets/loading_widget.dart';
 
 class PagamentoFormScreen extends StatefulWidget {
   final int? pagamentoId;
+  /// Dati pre-compilati quando si registra un saldo bilancio
+  final Map<String, dynamic>? prefill;
 
-  PagamentoFormScreen({this.pagamentoId});
+  PagamentoFormScreen({this.pagamentoId, this.prefill});
 
   @override
   _PagamentoFormScreenState createState() => _PagamentoFormScreenState();
@@ -31,6 +31,10 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
   String? _errorMessage;
   List<Gruppo> _gruppi = [];
   Gruppo? _selectedGruppo;
+  List<Map<String, dynamic>> _membriGruppo = [];
+  int? _selectedPagatoDaId;
+  bool _isSaldoPagamento = false;
+  int? _selectedDestinatarioId;
 
   @override
   void initState() {
@@ -38,7 +42,32 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
     if (widget.pagamentoId != null) {
       _loadPagamento();
     } else {
-      _loadGruppi();
+      _loadGruppi().then((_) => _applyPrefill());
+    }
+  }
+
+  void _applyPrefill() {
+    final p = widget.prefill;
+    if (p == null) return;
+    setState(() {
+      if (p['importo'] != null) {
+        _importoController.text = (p['importo'] as double).toStringAsFixed(2);
+      }
+      if (p['descrizione'] != null) {
+        _descrizioneController.text = p['descrizione'] as String;
+      }
+      if (p['isSaldo'] == true) _isSaldoPagamento = true;
+      if (p['utenteId'] != null) _selectedPagatoDaId = p['utenteId'] as int;
+      if (p['destinatarioId'] != null) _selectedDestinatarioId = p['destinatarioId'] as int;
+      if (p['gruppoId'] != null && _gruppi.isNotEmpty) {
+        _selectedGruppo = _gruppi.firstWhere(
+          (g) => g.id == p['gruppoId'],
+          orElse: () => _gruppi.first,
+        );
+      }
+    });
+    if (_selectedGruppo != null) {
+      _loadMembriGruppo(_selectedGruppo!.id);
     }
   }
 
@@ -72,9 +101,13 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
           (g) => g.id == pagamento.gruppo,
           orElse: () => _gruppi.first,
         );
+        await _loadMembriGruppo(_selectedGruppo!.id);
       }
 
       setState(() {
+        _selectedPagatoDaId = pagamento.utente;
+        _isSaldoPagamento = pagamento.isSaldo;
+        _selectedDestinatarioId = pagamento.destinatario;
         _isInitLoading = false;
       });
     } catch (e) {
@@ -107,9 +140,33 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
           _selectedGruppo = _gruppi.first;
         }
       });
+
+      if (_selectedGruppo != null) {
+        await _loadMembriGruppo(_selectedGruppo!.id);
+      }
     } catch (e) {
       debugPrint('Errore caricamento gruppi: $e');
       // Non blocchiamo il form se i gruppi non sono disponibili
+    }
+  }
+
+  Future<void> _loadMembriGruppo(int gruppoId) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final response = await apiService.get('/gruppi/$gruppoId/membri/');
+      final List<dynamic> list = response is List
+          ? response
+          : (response['results'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _membriGruppo = list.map((m) => {
+            'id': m['utente'],
+            'username': m['utente_username'] ?? '—',
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Errore caricamento membri gruppo: $e');
     }
   }
 
@@ -147,8 +204,10 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
         'importo': importo,
         'descrizione': _descrizioneController.text,
         'data': DateFormat('yyyy-MM-dd').format(_selectedDate),
-        'utente': auth.currentUser!.id,
+        'utente': _selectedPagatoDaId ?? auth.currentUser!.id,
         'gruppo': _selectedGruppo?.id,
+        if (_isSaldoPagamento && _selectedDestinatarioId != null)
+          'destinatario': _selectedDestinatarioId,
       };
 
       if (widget.pagamentoId != null) {
@@ -282,9 +341,84 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                             onChanged: (Gruppo? value) {
                               setState(() {
                                 _selectedGruppo = value;
+                                _selectedPagatoDaId = null;
+                                _membriGruppo = [];
                               });
+                              if (value != null) {
+                                _loadMembriGruppo(value.id);
+                              }
                             },
                           ),
+                        const SizedBox(height: 16),
+
+                        // Chi ha pagato (solo se gruppo selezionato e ci sono membri)
+                        if (_selectedGruppo != null && _membriGruppo.isNotEmpty) ...[
+                          DropdownButtonFormField<int?>(
+                            value: _selectedPagatoDaId,
+                            decoration: InputDecoration(
+                              labelText: 'Chi ha pagato?',
+                              hintText: '— io stesso —',
+                              prefixIcon: Icon(Icons.payments),
+                              border: OutlineInputBorder(),
+                              helperText: 'Indica il membro che ha effettivamente sostenuto la spesa',
+                            ),
+                            items: [
+                              DropdownMenuItem<int?>(value: null, child: Text('— io stesso —')),
+                              ..._membriGruppo.map((m) => DropdownMenuItem<int?>(
+                                value: m['id'] as int,
+                                child: Text(m['username'] as String),
+                              )),
+                            ],
+                            onChanged: (val) => setState(() { _selectedPagatoDaId = val; }),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Toggle pagamento di saldo
+                          SwitchListTile(
+                            value: _isSaldoPagamento,
+                            onChanged: (val) => setState(() {
+                              _isSaldoPagamento = val;
+                              if (!val) _selectedDestinatarioId = null;
+                            }),
+                            title: Text('Pagamento di saldo'),
+                            subtitle: Text(
+                              'Denaro trasferito direttamente tra due membri per saldare il bilancio',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            secondary: Icon(Icons.swap_horiz, color: Colors.blue),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+
+                          // A chi? (destinatario, solo saldo)
+                          if (_isSaldoPagamento) ...[
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<int?>(
+                              value: _selectedDestinatarioId,
+                              decoration: InputDecoration(
+                                labelText: 'A chi? (destinatario)',
+                                prefixIcon: Icon(Icons.person_pin, color: Colors.blue),
+                                border: OutlineInputBorder(),
+                                helperText: 'Membro che riceve il denaro',
+                              ),
+                              items: _membriGruppo
+                                  .where((m) => m['id'] != _selectedPagatoDaId)
+                                  .map((m) => DropdownMenuItem<int?>(
+                                        value: m['id'] as int,
+                                        child: Text(m['username'] as String),
+                                      ))
+                                  .toList(),
+                              validator: (val) {
+                                if (_isSaldoPagamento && val == null) {
+                                  return 'Seleziona il destinatario';
+                                }
+                                return null;
+                              },
+                              onChanged: (val) => setState(() { _selectedDestinatarioId = val; }),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ],
+
                         const SizedBox(height: 32),
 
                         // Pulsante salva

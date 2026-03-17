@@ -287,7 +287,12 @@ class RouteGenerator {
         return _errorRoute();
         
       case AppConstants.pagamentoCreateRoute:
-        // If args is null, it's a creation, otherwise it's a modification
+        // args can be: null (new), int (edit), or Map (prefill for saldo)
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => PagamentoFormScreen(prefill: args),
+          );
+        }
         return MaterialPageRoute(
           builder: (_) => PagamentoFormScreen(pagamentoId: args as int?),
         );

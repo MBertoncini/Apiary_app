@@ -6,8 +6,8 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/regina.dart';
 import 'package:provider/provider.dart';
-import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/skeleton_widgets.dart';
 import '../../widgets/offline_banner.dart';
 
 class ReginaListScreen extends StatefulWidget {
@@ -99,7 +99,7 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
           if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _isLoading
-          ? LoadingWidget(message: 'Caricamento regine...')
+          ? const SkeletonListView()
           : _errorMessage != null
               ? ErrorDisplayWidget(
                   errorMessage: _errorMessage!,

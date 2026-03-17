@@ -10,6 +10,7 @@ import '../../services/api_service.dart';
 import '../../utils/date_formatters.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
+import '../../widgets/skeleton_widgets.dart';
 
 class GruppoDetailScreen extends StatefulWidget {
   final int gruppoId;
@@ -534,7 +535,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
           if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _isRefreshing && _gruppo == null
-                ? const SizedBox.shrink()
+                ? const SkeletonDetailHeader()
                 : _errorMessage != null
                     ? ErrorDisplayWidget(
                         errorMessage: _errorMessage!,

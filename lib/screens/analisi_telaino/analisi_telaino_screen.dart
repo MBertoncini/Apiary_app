@@ -8,6 +8,7 @@ import '../../services/bee_detection_service.dart';
 import '../../services/analisi_telaino_service.dart';
 import '../../services/controllo_service.dart';
 import '../../services/api_service.dart';
+import '../../utils/telaini_utils.dart';
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -23,31 +24,34 @@ class _TelainoSlot {
 
   String get label {
     switch (tipo) {
-      case 'covata':    return 'Covata';
-      case 'scorte':    return 'Scorte';
-      case 'diaframma': return 'Diaframma';
-      case 'nutritore': return 'Nutritore';
-      default:          return tipo;
+      case 'covata':       return 'Covata';
+      case 'scorte':       return 'Scorte';
+      case 'foglio_cereo': return 'F. Cereo';
+      case 'diaframma':    return 'Diaframma';
+      case 'nutritore':    return 'Nutritore';
+      default:             return tipo;
     }
   }
 
   Color get color {
     switch (tipo) {
-      case 'covata':    return Colors.red.shade700;
-      case 'scorte':    return Colors.amber.shade700;
-      case 'diaframma': return Colors.grey.shade800;
-      case 'nutritore': return const Color(0xFFA0785A);
-      default:          return Colors.blueGrey;
+      case 'covata':       return Colors.red.shade700;
+      case 'scorte':       return Colors.amber.shade700;
+      case 'foglio_cereo': return const Color(0xFF8FBC5A);
+      case 'diaframma':    return Colors.grey.shade800;
+      case 'nutritore':    return const Color(0xFFA0785A);
+      default:             return Colors.blueGrey;
     }
   }
 
   IconData get icon {
     switch (tipo) {
-      case 'covata':    return Icons.grid_4x4;
-      case 'scorte':    return Icons.hexagon_outlined;
-      case 'diaframma': return Icons.vertical_split;
-      case 'nutritore': return Icons.coffee;
-      default:          return Icons.help_outline;
+      case 'covata':       return Icons.grid_4x4;
+      case 'scorte':       return Icons.hexagon_outlined;
+      case 'foglio_cereo': return Icons.description_outlined;
+      case 'diaframma':    return Icons.vertical_split;
+      case 'nutritore':    return Icons.coffee;
+      default:             return Icons.help_outline;
     }
   }
 }
@@ -136,7 +140,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
       final raw = latest['telaini_config'];
       if (raw != null && raw.toString().isNotEmpty) {
         try {
-          config = List<String>.from(json.decode(raw.toString()) as List);
+          config = sortTelaini(List<String>.from(json.decode(raw.toString()) as List));
         } catch (_) {}
       }
 

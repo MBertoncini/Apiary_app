@@ -11,7 +11,98 @@ import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/error_widget.dart';
-import '../../widgets/loading_widget.dart';
+import '../../widgets/skeleton_widgets.dart';
+
+// ---------------------------------------------------------------------------
+// Smart local categorisation (no server category needed)
+// ---------------------------------------------------------------------------
+
+enum SmartCategoria {
+  apiario,
+  consumabile,
+  protezione,
+  strumento,
+  altro,
+}
+
+extension SmartCategoriaExt on SmartCategoria {
+  String get label {
+    switch (this) {
+      case SmartCategoria.apiario:    return 'Apiario';
+      case SmartCategoria.consumabile: return 'Consumabili';
+      case SmartCategoria.protezione: return 'Protezione';
+      case SmartCategoria.strumento:  return 'Strumenti';
+      case SmartCategoria.altro:      return 'Altro';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case SmartCategoria.apiario:    return Icons.hive;
+      case SmartCategoria.consumabile: return Icons.science_outlined;
+      case SmartCategoria.protezione: return Icons.health_and_safety_outlined;
+      case SmartCategoria.strumento:  return Icons.straighten;
+      case SmartCategoria.altro:      return Icons.build_outlined;
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case SmartCategoria.apiario:    return const Color(0xFFF59E0B); // amber
+      case SmartCategoria.consumabile: return const Color(0xFF10B981); // emerald
+      case SmartCategoria.protezione: return const Color(0xFF3B82F6); // blue
+      case SmartCategoria.strumento:  return const Color(0xFF8B5CF6); // violet
+      case SmartCategoria.altro:      return const Color(0xFF6B7280); // gray
+    }
+  }
+}
+
+// Keyword lists (lowercase, partial match)
+const _apiarioKw = [
+  'arnia', 'alveare', 'melario', 'telaino', 'telai', 'apiscampo',
+  'escludi', 'escludiregina', 'escludi-regina', 'leva', 'affumicatore',
+  'fumigatore', 'portasciame', 'sciame', 'gabbietta', 'gabbia',
+  'nutritore', 'posa', 'opercolo', 'disopercolo', 'uncino',
+  'coltello', 'apiario', 'ape', 'queen', 'regina', 'spazzola',
+  'smielatore', 'centrifuga', 'maturatore', 'filtro miele',
+  'vasetto', 'barattolo',
+];
+
+const _consumabileKw = [
+  'antivarroa', 'apibioxal', 'apivar', 'calistrip', 'oxalic',
+  'ossalico', 'timolo', 'apiguard', 'maqs', 'acido', 'fogli cerei',
+  'foglio cereo', 'cera', 'candito', 'sciroppo', 'zucchero',
+  'alimentazione', 'colla', 'trappola', 'veleno', 'formico',
+  'amitraz', 'coumafos', 'apistan', 'bayvarol',
+];
+
+const _protezioneKw = [
+  'tuta', 'guant', 'maschera', 'velo', 'cappello', 'stival',
+  'dpi', 'protezione', 'visiera', 'gilett',
+];
+
+const _strumentoKw = [
+  'refractometr', 'bilancia', 'termometro', 'igrometro', 'microscopio',
+  'contatore', 'timer', 'misuratore', 'igrometro', 'strumento',
+  'rilevatore', 'sensore',
+];
+
+SmartCategoria detectCategoria(Attrezzatura a) {
+  final text =
+      '${a.nome} ${a.categoriaNome ?? ''} ${a.descrizione ?? ''}'.toLowerCase();
+
+  bool has(List<String> kws) => kws.any((k) => text.contains(k));
+
+  if (has(_protezioneKw)) return SmartCategoria.protezione;
+  if (has(_consumabileKw)) return SmartCategoria.consumabile;
+  if (has(_strumentoKw))   return SmartCategoria.strumento;
+  if (has(_apiarioKw))     return SmartCategoria.apiario;
+  return SmartCategoria.altro;
+}
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 
 class AttrezzatureListScreen extends StatefulWidget {
   @override
@@ -20,77 +111,165 @@ class AttrezzatureListScreen extends StatefulWidget {
 
 class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
   List<Attrezzatura> _attrezzature = [];
-  bool _isLoading = true;
   bool _isRefreshing = true;
   String? _errorMessage;
-  String _filtroStato = 'tutti';
-  String _filtroCondizione = 'tutti';
+
+  // --- filters ---
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  SmartCategoria? _filtroCategoria; // null = all
+
+  // advanced filters (bottom sheet)
+  String?   _filtroStato;
+  String?   _filtroCondizione;
+  DateTime? _dataAcquistoDa;
+  DateTime? _dataAcquistoA;
+  double?   _prezzoDa;
+  double?   _prezzoA;
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text.trim().toLowerCase());
+    });
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() { _errorMessage = null; });
-
-    // Phase 1: cache
-    final storageService = Provider.of<StorageService>(context, listen: false);
-    final cached = await storageService.getStoredData('attrezzature');
-    if (cached.isNotEmpty) {
-      _attrezzature = cached.map((e) => Attrezzatura.fromJson(e as Map<String, dynamic>)).toList();
-      _isLoading = false;
-      if (mounted) setState(() { _isRefreshing = true; });
-    } else {
-      if (mounted) setState(() { _isRefreshing = true; });
-    }
-
-    // Phase 2: API
-    try {
-      final apiService = Provider.of<ApiService>(context, listen: false);
-      final attrezzaturaService = AttrezzaturaService(apiService);
-      final attrezzature = await attrezzaturaService.getAttrezzature();
-      await storageService.saveData('attrezzature', attrezzature.map((a) => a.toJson()).toList());
-      _attrezzature = attrezzature;
-    } catch (e) {
-      debugPrint('Errore API attrezzature: $e');
-      if (_attrezzature.isEmpty) {
-        _errorMessage = 'Errore durante il caricamento dei dati: $e';
-      }
-    }
-
-    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  List<Attrezzatura> get _filteredAttrezzature {
+  // -----------------------------------------------------------------------
+  // Data loading
+  // -----------------------------------------------------------------------
+
+  Future<void> _loadData() async {
+    if (!mounted) return;
+    setState(() { _errorMessage = null; _isRefreshing = true; });
+
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final apiService     = Provider.of<ApiService>(context, listen: false);
+
+    try {
+      // Phase 1: cache
+      try {
+        final cached = await storageService.getStoredData('attrezzature');
+        if (cached.isNotEmpty) {
+          _attrezzature = cached.map((e) => Attrezzatura.fromJson(e as Map<String, dynamic>)).toList();
+          if (mounted) setState(() {});
+        }
+      } catch (e) {
+        debugPrint('Cache attrezzature: $e');
+      }
+
+      // Phase 2: API
+      final svc = AttrezzaturaService(apiService);
+      final fresh = await svc.getAttrezzature();
+      await storageService.saveData('attrezzature', fresh.map((a) => a.toJson()).toList());
+      _attrezzature = fresh;
+    } catch (e) {
+      debugPrint('API attrezzature: $e');
+      if (_attrezzature.isEmpty) {
+        _errorMessage = 'Errore durante il caricamento: $e';
+      }
+    } finally {
+      if (mounted) setState(() { _isRefreshing = false; });
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Filtering
+  // -----------------------------------------------------------------------
+
+  List<Attrezzatura> get _filtered {
     return _attrezzature.where((a) {
-      // Filtro per stato
-      if (_filtroStato != 'tutti' && a.stato != _filtroStato) {
+      // search
+      if (_searchQuery.isNotEmpty) {
+        final hay =
+            '${a.nome} ${a.marca ?? ''} ${a.modello ?? ''} '
+            '${a.descrizione ?? ''} ${a.categoriaNome ?? ''} '
+            '${a.fornitore ?? ''}'.toLowerCase();
+        if (!hay.contains(_searchQuery)) return false;
+      }
+      // smart category
+      if (_filtroCategoria != null && detectCategoria(a) != _filtroCategoria) {
         return false;
       }
-      // Filtro per condizione
-      if (_filtroCondizione != 'tutti' && a.condizione != _filtroCondizione) {
-        return false;
-      }
+      // stato
+      if (_filtroStato != null && a.stato != _filtroStato) return false;
+      // condizione
+      if (_filtroCondizione != null && a.condizione != _filtroCondizione) return false;
+      // date range
+      if (_dataAcquistoDa != null && (a.dataAcquisto == null ||
+          a.dataAcquisto!.isBefore(_dataAcquistoDa!))) { return false; }
+      if (_dataAcquistoA != null && (a.dataAcquisto == null ||
+          a.dataAcquisto!.isAfter(_dataAcquistoA!))) { return false; }
+      // price range
+      if (_prezzoDa != null && (a.prezzoAcquisto == null ||
+          a.prezzoAcquisto! < _prezzoDa!)) { return false; }
+      if (_prezzoA != null && (a.prezzoAcquisto == null ||
+          a.prezzoAcquisto! > _prezzoA!)) { return false; }
       return true;
     }).toList();
   }
 
+  int get _activeAdvancedFilters {
+    int n = 0;
+    if (_filtroStato != null)     n++;
+    if (_filtroCondizione != null) n++;
+    if (_dataAcquistoDa != null || _dataAcquistoA != null) n++;
+    if (_prezzoDa != null || _prezzoA != null) n++;
+    return n;
+  }
+
+  // -----------------------------------------------------------------------
+  // Build
+  // -----------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
+    final filtered = _filtered;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Attrezzature'),
+        title: const Text('Attrezzature'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.filter_list),
-            tooltip: 'Filtri',
-            onPressed: _showFilterDialog,
+          // Advanced filters button with badge
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.tune),
+                tooltip: 'Filtri avanzati',
+                onPressed: _showAdvancedFilters,
+              ),
+              if (_activeAdvancedFilters > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: ThemeConstants.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$_activeAdvancedFilters',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
-            icon: Icon(Icons.sync),
-            tooltip: 'Sincronizza dati',
+            icon: const Icon(Icons.sync),
+            tooltip: 'Sincronizza',
             onPressed: _loadData,
           ),
         ],
@@ -100,102 +279,174 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
         children: [
           const OfflineBanner(),
           if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Cerca per nome, marca, modello…',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => _searchController.clear(),
+                      )
+                    : null,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
+
+          // Category chip row
+          _buildCategoryChips(),
+
+          // List
           Expanded(
             child: _isRefreshing && _attrezzature.isEmpty
-                ? const SizedBox.shrink()
+                ? const SkeletonListView(itemCount: 5)
                 : _errorMessage != null
                     ? ErrorDisplayWidget(
                         errorMessage: _errorMessage!,
                         onRetry: _loadData,
                       )
-                    : _buildBody(),
+                    : _buildList(filtered),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, AppConstants.attrezzaturaCreateRoute)
-              .then((_) => _loadData());
-        },
-        child: Icon(Icons.add),
+        onPressed: () => Navigator.pushNamed(
+          context, AppConstants.attrezzaturaCreateRoute,
+        ).then((_) => _loadData()),
         tooltip: 'Nuova Attrezzatura',
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildBody() {
-    final filtered = _filteredAttrezzature;
+  Widget _buildCategoryChips() {
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        children: [
+          _categoryChip(null, Icons.apps, 'Tutti', Colors.grey),
+          ...SmartCategoria.values.map(
+            (c) => _categoryChip(c, c.icon, c.label, c.color),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _categoryChip(SmartCategoria? cat, IconData icon, String label, Color color) {
+    final selected = _filtroCategoria == cat;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: FilterChip(
+        selected: selected,
+        avatar: Icon(icon, size: 16, color: selected ? Colors.white : color),
+        label: Text(label, style: TextStyle(fontSize: 12, color: selected ? Colors.white : null)),
+        selectedColor: color,
+        checkmarkColor: Colors.white,
+        showCheckmark: false,
+        onSelected: (_) => setState(() => _filtroCategoria = selected ? null : cat),
+      ),
+    );
+  }
+
+  Widget _buildList(List<Attrezzatura> filtered) {
     if (filtered.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.build_outlined,
-              size: 80,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.build_outlined, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               _attrezzature.isEmpty
                   ? 'Nessuna attrezzatura registrata'
                   : 'Nessuna attrezzatura corrisponde ai filtri',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             if (_attrezzature.isEmpty)
               ElevatedButton.icon(
-                icon: Icon(Icons.add),
-                label: Text('Aggiungi Attrezzatura'),
-                onPressed: () {
-                  Navigator.pushNamed(context, AppConstants.attrezzaturaCreateRoute)
-                      .then((_) => _loadData());
-                },
+                icon: const Icon(Icons.add),
+                label: const Text('Aggiungi Attrezzatura'),
+                onPressed: () => Navigator.pushNamed(
+                  context, AppConstants.attrezzaturaCreateRoute,
+                ).then((_) => _loadData()),
+              )
+            else
+              TextButton.icon(
+                icon: const Icon(Icons.filter_list_off),
+                label: const Text('Rimuovi filtri'),
+                onPressed: _resetAllFilters,
               ),
           ],
         ),
       );
     }
 
-    final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '€');
-    final formatDate = DateFormat('dd/MM/yyyy');
+    final fmtCur  = NumberFormat.currency(locale: 'it_IT', symbol: '€');
+    final fmtDate = DateFormat('dd/MM/yyyy');
 
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView.builder(
         itemCount: filtered.length,
         itemBuilder: (context, index) {
-          final attrezzatura = filtered[index];
+          final a = filtered[index];
+          final cat = detectCategoria(a);
           return Card(
-            margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: _getStatoColor(attrezzatura.stato).withOpacity(0.2),
-                child: Icon(
-                  Icons.build,
-                  color: _getStatoColor(attrezzatura.stato),
-                ),
+                backgroundColor: cat.color.withValues(alpha: 0.15),
+                child: Icon(cat.icon, color: cat.color),
               ),
               title: Text(
-                attrezzatura.nome,
+                a.nome,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${attrezzatura.categoriaNome ?? 'Non categorizzato'} - Qtà: ${attrezzatura.quantita}',
-                    maxLines: 1,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: cat.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          cat.label,
+                          style: TextStyle(fontSize: 11, color: cat.color, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text('Qtà: ${a.quantita}', style: const TextStyle(fontSize: 12)),
+                    ],
                   ),
-                  if (attrezzatura.dataAcquisto != null)
+                  if (a.marca != null || a.modello != null)
                     Text(
-                      'Acquistato: ${formatDate.format(attrezzatura.dataAcquisto!)}',
-                      style: TextStyle(fontSize: 12),
+                      [a.marca, a.modello].whereType<String>().join(' – '),
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  if (a.dataAcquisto != null)
+                    Text(
+                      'Acquistato: ${fmtDate.format(a.dataAcquisto!)}',
+                      style: const TextStyle(fontSize: 11),
                     ),
                 ],
               ),
@@ -203,39 +454,43 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (attrezzatura.prezzoAcquisto != null && attrezzatura.prezzoAcquisto! > 0)
+                  if (a.prezzoAcquisto != null && a.prezzoAcquisto! > 0)
                     Text(
-                      formatCurrency.format(attrezzatura.prezzoAcquisto),
+                      fmtCur.format(a.prezzoAcquisto),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: ThemeConstants.primaryColor,
+                        fontSize: 13,
                       ),
                     ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: _getStatoColor(attrezzatura.stato).withOpacity(0.2),
+                      color: _statoColor(a.stato).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      attrezzatura.getStatoDisplay(),
+                      a.getStatoDisplay(),
                       style: TextStyle(
                         fontSize: 10,
-                        color: _getStatoColor(attrezzatura.stato),
+                        color: _statoColor(a.stato),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
+                  if (a.condizione != null)
+                    Text(
+                      a.getCondizioneDisplay(),
+                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                    ),
                 ],
               ),
               isThreeLine: true,
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  AppConstants.attrezzaturaDetailRoute,
-                  arguments: attrezzatura.id,
-                ).then((_) => _loadData());
-              },
+              onTap: () => Navigator.pushNamed(
+                context,
+                AppConstants.attrezzaturaDetailRoute,
+                arguments: a.id,
+              ).then((_) => _loadData()),
             ),
           );
         },
@@ -243,116 +498,244 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
     );
   }
 
-  Color _getStatoColor(String? stato) {
-    switch (stato) {
-      case 'disponibile':
-        return Colors.green;
-      case 'in_uso':
-        return Colors.blue;
-      case 'manutenzione':
-        return Colors.orange;
-      case 'dismesso':
-        return Colors.grey;
-      case 'prestato':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
-  }
+  // -----------------------------------------------------------------------
+  // Advanced filter bottom sheet
+  // -----------------------------------------------------------------------
 
-  void _showFilterDialog() {
-    showDialog(
+  Future<void> _showAdvancedFilters() async {
+    String? tempStato      = _filtroStato;
+    String? tempCondizione = _filtroCondizione;
+    DateTime? tempDa       = _dataAcquistoDa;
+    DateTime? tempA        = _dataAcquistoA;
+    final prezzoDaCtrl = TextEditingController(text: _prezzoDa?.toStringAsFixed(0) ?? '');
+    final prezzoACtrl  = TextEditingController(text: _prezzoA?.toStringAsFixed(0) ?? '');
+
+    final fmtDate = DateFormat('dd/MM/yyyy');
+
+    await showModalBottomSheet(
       context: context,
-      builder: (context) {
-        String tempStato = _filtroStato;
-        String tempCondizione = _filtroCondizione;
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setSheet) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20, right: 20, top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Filtri avanzati',
+                        style: Theme.of(ctx).textTheme.titleLarge),
+                    TextButton(
+                      onPressed: () {
+                        setSheet(() {
+                          tempStato = null;
+                          tempCondizione = null;
+                          tempDa = null;
+                          tempA = null;
+                          prezzoDaCtrl.clear();
+                          prezzoACtrl.clear();
+                        });
+                      },
+                      child: const Text('Reset'),
+                    ),
+                  ],
+                ),
+                const Divider(),
 
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Filtra Attrezzature'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: tempStato,
-                    decoration: InputDecoration(
-                      labelText: 'Stato',
-                      border: OutlineInputBorder(),
+                // Stato
+                DropdownButtonFormField<String>(
+                  value: tempStato,
+                  decoration: const InputDecoration(
+                    labelText: 'Stato',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  hint: const Text('Tutti'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Tutti')),
+                    ...Attrezzatura.statiDisponibili.map(
+                      (s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(s.replaceAll('_', ' ').capitalize()),
+                      ),
                     ),
-                    items: [
-                      DropdownMenuItem(value: 'tutti', child: Text('Tutti')),
-                      ...Attrezzatura.statiDisponibili.map(
-                        (s) => DropdownMenuItem(
-                          value: s,
-                          child: Text(s.replaceAll('_', ' ').capitalize()),
+                  ],
+                  onChanged: (v) => setSheet(() => tempStato = v),
+                ),
+                const SizedBox(height: 12),
+
+                // Condizione
+                DropdownButtonFormField<String>(
+                  value: tempCondizione,
+                  decoration: const InputDecoration(
+                    labelText: 'Condizione',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  hint: const Text('Tutte'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Tutte')),
+                    ...Attrezzatura.condizioniDisponibili.map(
+                      (c) => DropdownMenuItem(
+                        value: c,
+                        child: Text(c.replaceAll('_', ' ').capitalize()),
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) => setSheet(() => tempCondizione = v),
+                ),
+                const SizedBox(height: 12),
+
+                // Date range
+                Text('Data acquisto', style: Theme.of(ctx).textTheme.labelLarge),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.calendar_today, size: 16),
+                        label: Text(
+                          tempDa != null ? fmtDate.format(tempDa!) : 'Dal',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: ctx,
+                            initialDate: tempDa ?? DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) setSheet(() => tempDa = picked);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.calendar_today, size: 16),
+                        label: Text(
+                          tempA != null ? fmtDate.format(tempA!) : 'Al',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: ctx,
+                            initialDate: tempA ?? DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) setSheet(() => tempA = picked);
+                        },
+                      ),
+                    ),
+                    if (tempDa != null || tempA != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () => setSheet(() { tempDa = null; tempA = null; }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Price range
+                Text('Prezzo acquisto (€)', style: Theme.of(ctx).textTheme.labelLarge),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: prezzoDaCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Min',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                          prefixText: '€ ',
                         ),
                       ),
-                    ],
-                    onChanged: (value) {
-                      setDialogState(() => tempStato = value!);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: tempCondizione,
-                    decoration: InputDecoration(
-                      labelText: 'Condizione',
-                      border: OutlineInputBorder(),
                     ),
-                    items: [
-                      DropdownMenuItem(value: 'tutti', child: Text('Tutti')),
-                      ...Attrezzatura.condizioniDisponibili.map(
-                        (c) => DropdownMenuItem(
-                          value: c,
-                          child: Text(c.replaceAll('_', ' ').capitalize()),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: prezzoACtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Max',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                          prefixText: '€ ',
                         ),
                       ),
-                    ],
-                    onChanged: (value) {
-                      setDialogState(() => tempCondizione = value!);
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _filtroStato      = tempStato;
+                        _filtroCondizione = tempCondizione;
+                        _dataAcquistoDa   = tempDa;
+                        _dataAcquistoA    = tempA;
+                        _prezzoDa = double.tryParse(prezzoDaCtrl.text);
+                        _prezzoA  = double.tryParse(prezzoACtrl.text);
+                      });
+                      Navigator.pop(ctx);
                     },
+                    child: const Text('Applica filtri'),
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _filtroStato = 'tutti';
-                      _filtroCondizione = 'tutti';
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: Text('Reset'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Annulla'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _filtroStato = tempStato;
-                      _filtroCondizione = tempCondizione;
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: Text('Applica'),
                 ),
               ],
-            );
-          },
-        );
+            ),
+          );
+        });
       },
     );
+    prezzoDaCtrl.dispose();
+    prezzoACtrl.dispose();
+  }
+
+  void _resetAllFilters() {
+    setState(() {
+      _searchController.clear();
+      _filtroCategoria  = null;
+      _filtroStato      = null;
+      _filtroCondizione = null;
+      _dataAcquistoDa   = null;
+      _dataAcquistoA    = null;
+      _prezzoDa         = null;
+      _prezzoA          = null;
+    });
+  }
+
+  // -----------------------------------------------------------------------
+  // Helpers
+  // -----------------------------------------------------------------------
+
+  Color _statoColor(String? stato) {
+    switch (stato) {
+      case 'disponibile': return Colors.green;
+      case 'in_uso':      return Colors.blue;
+      case 'manutenzione': return Colors.orange;
+      case 'dismesso':    return Colors.grey;
+      case 'prestato':    return Colors.purple;
+      default:            return Colors.grey;
+    }
   }
 }
 
-// Extension per capitalizzare le stringhe
-extension StringExtension on String {
-  String capitalize() {
-    if (isEmpty) return this;
-    return '${this[0].toUpperCase()}${substring(1)}';
-  }
+extension on String {
+  String capitalize() => isEmpty ? this : '${this[0].toUpperCase()}${substring(1)}';
 }

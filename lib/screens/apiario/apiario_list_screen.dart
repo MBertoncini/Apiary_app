@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/offline_banner.dart';
+import '../../widgets/skeleton_widgets.dart';
 
 class ApiarioListScreen extends StatefulWidget {
   @override
@@ -281,7 +282,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
           // Lista apiari
           Expanded(
             child: _isRefreshing && _allApiari.isEmpty
-                ? const SizedBox.shrink()
+                ? const SkeletonListView(itemCount: 4)
                 : _apiari.isEmpty
                     ? Center(
                         child: Column(

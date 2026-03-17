@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../services/statistiche_service.dart';
+import 'dashboard_card_base.dart';
 
 class QuoteGruppoWidget extends StatefulWidget {
   final StatisticheService service;
@@ -21,10 +22,10 @@ class _QuoteGruppoWidgetState extends State<QuoteGruppoWidget> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     setState(() { _loading = true; _error = null; _notCoordinator = false; });
     try {
-      final data = await widget.service.getQuoteGruppo();
+      final data = await widget.service.getQuoteGruppo(forceRefresh: forceRefresh);
       setState(() { _data = data; _loading = false; });
     } catch (e) {
       final msg = e.toString();
@@ -38,33 +39,15 @@ class _QuoteGruppoWidgetState extends State<QuoteGruppoWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.group, color: Color(0xFFD4A017)),
-                const SizedBox(width: 8),
-                const Text('Quote Gruppo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                IconButton(icon: const Icon(Icons.refresh, size: 18), onPressed: _load),
-              ],
-            ),
-            const Divider(),
-            if (_loading)
-              const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-            else if (_notCoordinator)
-              const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Visibile solo ai coordinatori di gruppo', style: TextStyle(color: Colors.grey))))
-            else if (_error != null)
-              Center(child: Column(children: [const Icon(Icons.error_outline, color: Colors.red), TextButton(onPressed: _load, child: const Text('Riprova'))]))
-            else if (_data != null)
-              _buildContent(),
-          ],
-        ),
-      ),
+    return DashboardCardBase(
+      icon: const Icon(Icons.group, color: Color(0xFFD4A017)),
+      title: 'Quote Gruppo',
+      loading: _loading,
+      error: _error,
+      onRetry: () => _load(forceRefresh: true),
+      child: _notCoordinator
+          ? const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Visibile solo ai coordinatori di gruppo', style: TextStyle(color: Colors.grey))))
+          : _data != null ? _buildContent() : const SizedBox.shrink(),
     );
   }
 

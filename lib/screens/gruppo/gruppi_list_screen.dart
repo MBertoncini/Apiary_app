@@ -11,6 +11,7 @@ import '../../utils/date_formatters.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
+import '../../widgets/skeleton_widgets.dart';
 
 class GruppiListScreen extends StatefulWidget {
   @override
@@ -444,7 +445,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
             child: RefreshIndicator(
               onRefresh: _loadData,
               child: _isRefreshing && _gruppi.isEmpty && _inviti.isEmpty
-                  ? const SizedBox.shrink()
+                  ? const SkeletonListView(itemCount: 4)
                   : _errorMessage != null
                       ? ErrorDisplayWidget(
                           errorMessage: _errorMessage!,

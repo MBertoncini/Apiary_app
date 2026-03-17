@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../constants/api_constants.dart';
 import '../../utils/validators.dart';
+import '../../utils/telaini_utils.dart';
 import '../../services/controllo_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../database/database_helper.dart';
@@ -137,7 +138,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     if (controllo['telaini_config'] != null && controllo['telaini_config'].isNotEmpty) {
       try {
         final List<dynamic> config = json.decode(controllo['telaini_config']);
-        _telainiConfig = List<String>.from(config);
+        _telainiConfig = sortTelaini(List<String>.from(config));
       } catch (e) {
         debugPrint('Errore nel parsing della configurazione telaini: $e');
       }
@@ -179,40 +180,14 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   }
 
   void _distribuisciTelaini() {
-    // Algoritmo semplice: mette la covata al centro e le scorte ai lati
-    _telainiConfig = List.filled(10, 'vuoto');
-    
-    // Calcola la posizione centrale
-    final middle = 10 ~/ 2;
-    final halfCovata = _telainiCovata ~/ 2;
-    
-    // Posiziona la covata al centro
-    for (int i = 0; i < _telainiCovata; i++) {
-      final pos = middle - halfCovata + i;
-      if (pos >= 0 && pos < 10) {
-        _telainiConfig[pos] = 'covata';
-      }
-    }
-    
-    // Posiziona le scorte ai lati
-    int scorteLeft = _telainiScorte ~/ 2;
-    int scorteRight = _telainiScorte - scorteLeft;
-    
-    // Lato sinistro
-    for (int i = 0; i < scorteLeft; i++) {
-      final pos = middle - halfCovata - 1 - i;
-      if (pos >= 0) {
-        _telainiConfig[pos] = 'scorte';
-      }
-    }
-    
-    // Lato destro
-    for (int i = 0; i < scorteRight; i++) {
-      final pos = middle + halfCovata + i;
-      if (pos < 10) {
-        _telainiConfig[pos] = 'scorte';
-      }
-    }
+    // Costruisce la lista flat e applica l'ordinamento canonico:
+    // scorte(sx) | covata(sx) | foglio_cereo | covata(dx) | scorte(dx) | nutritore | diaframma | vuoto
+    final raw = <String>[
+      for (int i = 0; i < _telainiScorte; i++) 'scorte',
+      for (int i = 0; i < _telainiCovata; i++) 'covata',
+    ];
+    while (raw.length < 10) raw.add('vuoto');
+    _telainiConfig = sortTelaini(raw.sublist(0, 10));
   }
   
   Future<void> _loadArnia() async {
@@ -695,7 +670,22 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         ],
                       ),
                       
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.sort, size: 16),
+                          label: const Text('Auto-ordina', style: TextStyle(fontSize: 13)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.green.shade700,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          ),
+                          onPressed: () => setState(() {
+                            _telainiConfig = sortTelaini(_telainiConfig);
+                            _updateTelainiCounters();
+                          }),
+                        ),
+                      ),
                       Text('Tocca un telaino per cambiare il tipo', style: TextStyle(color: Colors.grey)),
                       const SizedBox(height: 8),
                       

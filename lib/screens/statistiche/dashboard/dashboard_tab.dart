@@ -28,6 +28,7 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
 
   late final StatisticheService _service;
   bool _initialized = false;
+  int _refreshKey = 0;
 
   final List<String> _visibleWidgets = [
     'salute_arnie',
@@ -54,31 +55,32 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
   }
 
   Widget _buildWidgetCard(String widgetId) {
+    final k = ValueKey('$widgetId-$_refreshKey');
     switch (widgetId) {
       case 'salute_arnie':
-        return SaluteArnieWidget(service: _service);
+        return SaluteArnieWidget(key: k, service: _service);
       case 'produzione_annuale':
-        return ProduzioneAnnualeWidget(service: _service);
+        return ProduzioneAnnualeWidget(key: k, service: _service);
       case 'frequenza_controlli':
-        return FrequenzaControlliWidget(service: _service);
+        return FrequenzaControlliWidget(key: k, service: _service);
       case 'regine_statistiche':
-        return RegineStatisticheWidget(service: _service);
+        return RegineStatisticheWidget(key: k, service: _service);
       case 'performance_regine':
-        return PerformanceRegineWidget(service: _service);
+        return PerformanceRegineWidget(key: k, service: _service);
       case 'varroa_trend':
-        return VarroaTrendWidget(service: _service);
+        return VarroaTrendWidget(key: k, service: _service);
       case 'bilancio_economico':
-        return BilancioWidget(service: _service);
+        return BilancioWidget(key: k, service: _service);
       case 'quote_gruppo':
-        return QuoteGruppoWidget(service: _service);
+        return QuoteGruppoWidget(key: k, service: _service);
       case 'fioriture_vicine':
-        return FioritureVicineWidget(service: _service);
+        return FioritureVicineWidget(key: k, service: _service);
       case 'andamento_scorte':
-        return AndamentoScorteWidget(service: _service);
+        return AndamentoScorteWidget(key: k, service: _service);
       case 'produzione_per_tipo':
-        return ProduzionePerTipoWidget(service: _service);
+        return ProduzionePerTipoWidget(key: k, service: _service);
       case 'riepilogo_attrezzature':
-        return AttrezzatureWidget(service: _service);
+        return AttrezzatureWidget(key: k, service: _service);
       default:
         return const SizedBox.shrink();
     }
@@ -88,7 +90,10 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
   Widget build(BuildContext context) {
     super.build(context);
     return RefreshIndicator(
-      onRefresh: () async => setState(() {}),
+      onRefresh: () async {
+        StatisticheService.clearAllCache();
+        setState(() => _refreshKey++);
+      },
       child: ListView.separated(
         padding: const EdgeInsets.all(12),
         itemCount: _visibleWidgets.length,

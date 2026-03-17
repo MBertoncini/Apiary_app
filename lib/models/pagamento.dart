@@ -3,6 +3,8 @@ class Pagamento {
   final int id;
   final int utente;
   final String utenteUsername;
+  final int? destinatario;
+  final String? destinatarioUsername;
   final double importo;
   final String data;
   final String descrizione;
@@ -13,6 +15,8 @@ class Pagamento {
     required this.id,
     required this.utente,
     required this.utenteUsername,
+    this.destinatario,
+    this.destinatarioUsername,
     required this.importo,
     required this.data,
     required this.descrizione,
@@ -20,11 +24,15 @@ class Pagamento {
     this.gruppoNome,
   });
 
+  bool get isSaldo => destinatario != null;
+
   factory Pagamento.fromJson(Map<String, dynamic> json) {
     return Pagamento(
       id: json['id'],
       utente: json['utente'],
       utenteUsername: json['utente_username'] ?? 'Sconosciuto',
+      destinatario: json['destinatario'],
+      destinatarioUsername: json['destinatario_username'],
       importo: double.tryParse(json['importo'].toString()) ?? 0.0,
       data: json['data'],
       descrizione: json['descrizione'],
@@ -37,6 +45,7 @@ class Pagamento {
     return {
       'id': id,
       'utente': utente,
+      'destinatario': destinatario,
       'importo': importo,
       'data': data,
       'descrizione': descrizione,

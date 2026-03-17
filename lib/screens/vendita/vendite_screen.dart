@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/offline_banner.dart';
+import '../../widgets/skeleton_widgets.dart';
 import '../../models/vendita.dart';
 import '../../models/cliente.dart';
 import '../../models/gruppo.dart';
@@ -204,7 +205,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
           if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _isRefreshing && _vendite.isEmpty && _clienti.isEmpty
-                ? const SizedBox.shrink()
+                ? const SkeletonListView()
                 : _errorMessage != null
                     ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                         Text(_errorMessage!), SizedBox(height: 8),

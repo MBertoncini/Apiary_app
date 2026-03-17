@@ -939,8 +939,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                       ),
                     ),
                     ..._buildVialettiWidgets(),
-                    ..._buildDecorWidgets(),
-                    ..._buildArnieWidgets(),
+                    ..._buildYSortedWidgets(),
                     // Snap grid indicator
                     if (_editMode && _snapEnabled)
                       RepaintBoundary(
@@ -1126,59 +1125,67 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
     return SizedBox(
       width: _cellSize,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 2),
-          // ── 10 mini slot telaini ──────────────────────────────
-          Row(
-            children: List.generate(10, (i) => Expanded(
-              child: Container(
-                height: 6,
-                margin: const EdgeInsets.symmetric(horizontal: 0.3),
-                decoration: BoxDecoration(
-                  color: _frameColors[frames[i]] ?? const Color(0xFFDDDDDD),
-                  borderRadius: BorderRadius.circular(1),
-                  border: Border.all(color: Colors.black12, width: 0.3),
-                ),
-              ),
-            )),
-          ),
-          const SizedBox(height: 2),
-          // ── regina + celle reali ──────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '♛',
-                style: TextStyle(
-                  fontSize: 9,
-                  color: presenzaRegina ? Colors.green.shade700 : Colors.red.shade700,
-                  height: 1,
-                ),
-              ),
-              if (celleReali) ...[
-                const SizedBox(width: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Container(
+        margin: const EdgeInsets.only(top: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── 10 mini slot telaini ──────────────────────────────
+            Row(
+              children: List.generate(10, (i) => Expanded(
+                child: Container(
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 0.3),
                   decoration: BoxDecoration(
-                    color: celleColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                    border: Border.all(color: celleColor, width: 0.5),
+                    color: _frameColors[frames[i]] ?? const Color(0xFFDDDDDD),
+                    borderRadius: BorderRadius.circular(1),
                   ),
-                  child: Text(
-                    celleMark,
-                    style: TextStyle(
-                      color: celleColor, fontSize: 8,
-                      fontWeight: FontWeight.bold, height: 1.2,
+                ),
+              )),
+            ),
+            const SizedBox(height: 2),
+            // ── regina + celle reali ──────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '♛',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: presenzaRegina
+                        ? const Color(0xFF69F0AE)
+                        : const Color(0xFFFF6E6E),
+                    height: 1,
+                  ),
+                ),
+                if (celleReali) ...[
+                  const SizedBox(width: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: celleColor.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: celleColor, width: 0.5),
+                    ),
+                    child: Text(
+                      celleMark,
+                      style: TextStyle(
+                        color: celleColor, fontSize: 8,
+                        fontWeight: FontWeight.bold, height: 1.2,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1372,10 +1379,45 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 child: _AlberoWidget(isDragging: isDragging),
               )
             : _AlberoWidget(isDragging: false);
+
+        // Albero semi-trasparente se un'arnia con Y maggiore (in primo piano) si sovrappone.
+        // La pos dell'arnia è il top-left della Column (melari + hive + info).
+        // L'arnia vera occupa _cellSize px in altezza a partire da pos.dy;
+        // usiamo un rect generoso (1.4× _cellSize) per coprire anche il corpo completo.
+        const treeW = 72.0, treeH = 82.0;
+        final treeRect = Rect.fromLTWH(pos.dx, pos.dy, treeW, treeH);
+        final isOverlapped = _arniaPositions.entries.any((e) {
+          if (e.value.dy <= el.position.dy) return false;
+          return treeRect.overlaps(
+            Rect.fromLTWH(e.value.dx, e.value.dy, _cellSize, _cellSize * 1.4),
+          );
+        });
+        if (isOverlapped) {
+          inner = AnimatedOpacity(
+            opacity: 0.42,
+            duration: const Duration(milliseconds: 200),
+            child: inner,
+          );
+        }
       }
 
       return Positioned(left: pos.dx, top: pos.dy, child: inner);
     }).toList();
+  }
+
+  // ── Y-sorting: alberi + arnie ordinati per profondità ──────────
+
+  /// Unisce decor e arnie in un'unica lista ordinata per Y (y-sorting rigoroso).
+  /// Gli elementi con Y minore (più in alto sullo schermo) vengono renderizzati
+  /// prima, dando una prospettiva naturale.
+  List<Widget> _buildYSortedWidgets() {
+    final all = [..._buildDecorWidgets(), ..._buildArnieWidgets()];
+    all.sort((a, b) {
+      final ay = (a is Positioned ? a.top : null) ?? 0.0;
+      final by = (b is Positioned ? b.top : null) ?? 0.0;
+      return ay.compareTo(by);
+    });
+    return all;
   }
 
   // ── vialetti modulari ──────────────────────────────────────────

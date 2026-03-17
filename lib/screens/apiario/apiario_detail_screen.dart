@@ -11,6 +11,7 @@ import '../../services/qr_pdf_service.dart';
 import 'widgets/apiario_map_widget.dart';
 import 'apiario_form_screen.dart';
 import '../../widgets/offline_banner.dart';
+import '../../widgets/skeleton_widgets.dart';
 import '../../database/dao/controllo_arnia_dao.dart';
 
 class ApiarioDetailScreen extends StatefulWidget {
@@ -287,10 +288,16 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   Widget build(BuildContext context) {
     if (_apiario == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Dettaglio Apiario')),
-        body: Column(children: [
-          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
-        ]),
+        appBar: AppBar(title: const Text('Caricamento...')),
+        body: const SingleChildScrollView(
+          child: Column(
+            children: [
+              SkeletonDetailHeader(),
+              SizedBox(height: 8),
+              SkeletonDetailHeader(),
+            ],
+          ),
+        ),
       );
     }
     
