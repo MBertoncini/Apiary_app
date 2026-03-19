@@ -6,9 +6,9 @@ import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
-import '../screens/disclaimer_screen.dart';
 import '../widgets/beehive_illustrations.dart'; // Widget personalizzati per le illustrazioni
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 
 
@@ -71,21 +71,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Mostra splash per almeno 3 secondi (più lungo per apprezzare l'animazione)
     await Future.delayed(Duration(seconds: 3));
 
-    // Verifica se l'utente ha già accettato il disclaimer
-    final hasAcceptedDisclaimer = await storageService.hasAcceptedDisclaimer();
-
-    if (!hasAcceptedDisclaimer) {
-      // Mostra il disclaimer
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => DisclaimerScreen(
-            isFirstLogin: !authService.isAuthenticated,
-          ),
-        ),
-      );
-      return;
-    }
-
     // Procedi con il flusso normale
     if (authService.isAuthenticated) {
       // Utente autenticato, carica dati iniziali
@@ -105,6 +90,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       }
 
       if (!mounted) return;
+
+      // Check onboarding: mostra il tutorial solo al primo accesso
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingCompletato = prefs.getBool('onboarding_completato') ?? false;
+      if (!mounted) return;
+      if (!onboardingCompletato) {
+        Navigator.of(context).pushReplacementNamed(AppConstants.onboardingRoute);
+        return;
+      }
+
       Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
     } else {
       if (!mounted) return;

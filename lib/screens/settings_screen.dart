@@ -8,8 +8,10 @@ import '../services/chat_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/paper_widgets.dart';
+import '../widgets/skeleton_widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'privacy_policy_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -36,10 +38,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadAppInfo();
+    // Populate immediately from cached user, then refresh in background.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Provider.of<AuthService>(context, listen: false).refreshUserProfile();
       _populateFields();
       _loadQuota();
+      await Provider.of<AuthService>(context, listen: false).refreshUserProfile();
+      _populateFields();
     });
   }
 
@@ -354,6 +358,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildQuotaCard(),
             const SizedBox(height: 16),
 
+            // ── GUIDA & TUTORIAL ──────────────────────────────────────────
+            PaperCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Guida & Tutorial', style: ThemeConstants.subheadingStyle),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.play_circle_outline, color: Color(0xFFD3A121)),
+                    title: Text('Tutorial', style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF3A2E21))),
+                    subtitle: Text('Rivedi il tour introduttivo', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                    trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                    onTap: () => Navigator.pushNamed(context, '/onboarding'),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.book_outlined, color: Color(0xFFD3A121)),
+                    title: Text('Guida Completa', style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF3A2E21))),
+                    subtitle: Text('Istruzioni dettagliate per tutte le funzioni', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                    trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                    onTap: () => Navigator.pushNamed(context, '/guida'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // ── INFORMAZIONI ──────────────────────────────────────────────
             PaperCard(
               child: Column(
@@ -364,6 +396,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _infoRow(Icons.info_outline, 'Versione app', _appVersion),
                   _infoRow(Icons.cloud_outlined, 'Server API', ApiConstants.baseUrl),
                   _infoRow(Icons.code, 'Sviluppato da', 'Cible99'),
+                  const Divider(height: 24),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.privacy_tip_outlined,
+                              color: ThemeConstants.secondaryColor.withOpacity(0.8), size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text('Informativa sulla Privacy',
+                                style: ThemeConstants.bodyStyle),
+                          ),
+                          Icon(Icons.chevron_right,
+                              color: ThemeConstants.textSecondaryColor, size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -383,8 +439,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(Icons.analytics_outlined, color: ThemeConstants.secondaryColor, size: 20),
               const SizedBox(width: 8),
-              Text('ApiarioAI — Quota giornaliera', style: ThemeConstants.subheadingStyle),
-              const Spacer(),
+              Flexible(
+                child: Text('ApiarioAI — Quota giornaliera',
+                    style: ThemeConstants.subheadingStyle, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 4),
               if (_isLoadingQuota)
                 const SizedBox(width: 16, height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2))
@@ -400,11 +459,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_quotaData == null && !_isLoadingQuota)
+          if (_isLoadingQuota && _quotaData == null)
+            const SkeletonDashboardContent(height: 130)
+          else if (_quotaData == null)
             Text('Dati non disponibili (offline o errore di rete)',
                 style: ThemeConstants.bodyStyle.copyWith(
                     fontSize: 13, color: ThemeConstants.textSecondaryColor))
-          else if (_quotaData != null) ...[
+          else ...[
             _buildQuotaSection(_quotaData!),
           ],
         ],

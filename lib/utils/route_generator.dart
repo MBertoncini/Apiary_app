@@ -30,6 +30,7 @@ import '../screens/melario/melario_form_screen.dart';
 import '../screens/melario/smielatura_detail_screen.dart';
 import '../screens/melario/smielatura_form_screen.dart';
 import '../screens/melario/invasettamento_form_screen.dart';
+import '../screens/cantina/cantina_screen.dart';
 import '../screens/vendita/vendite_screen.dart';
 import '../screens/vendita/vendita_detail_screen.dart';
 import '../screens/vendita/vendita_form_screen.dart';
@@ -55,6 +56,8 @@ import '../screens/fioritura/fioritura_detail_screen.dart';
 import '../models/fioritura.dart' show Fioritura;
 import '../screens/donazione/donazione_screen.dart';
 import '../screens/statistiche/statistiche_screen.dart';
+import '../screens/onboarding/onboarding_screen.dart';
+import '../screens/help/guida_screen.dart';
 
 class RouteGenerator {
  
@@ -247,6 +250,9 @@ class RouteGenerator {
           builder: (_) => InvasettamentoFormScreen(initialData: args as Map<String, dynamic>?),
         );
 
+      case AppConstants.cantinaRoute:
+        return MaterialPageRoute(builder: (_) => const CantinaScreen());
+
       // Routes for vendite
       case AppConstants.venditeRoute:
         return MaterialPageRoute(builder: (_) => VenditeScreen());
@@ -260,6 +266,13 @@ class RouteGenerator {
         return _errorRoute();
 
       case AppConstants.venditaCreateRoute:
+        if (args is Map<String, dynamic> && args.containsKey('prefill_miele')) {
+          return MaterialPageRoute(
+            builder: (_) => VenditaFormScreen(
+              prefillMiele: (args['prefill_miele'] as List).cast<Map<String, dynamic>>(),
+            ),
+          );
+        }
         return MaterialPageRoute(
           builder: (_) => VenditaFormScreen(venditaId: args as int?),
         );
@@ -405,6 +418,13 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
+
+      // Routes for onboarding and help guide
+      case AppConstants.onboardingRoute:
+        return MaterialPageRoute(builder: (_) => const OnboardingScreen());
+
+      case AppConstants.guidaRoute:
+        return MaterialPageRoute(builder: (_) => const GuidaScreen());
 
       default:
         return _errorRoute();

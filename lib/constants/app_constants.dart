@@ -1,7 +1,7 @@
 class AppConstants {
   // Info applicazione
-  static const String appName = "Apiario Manager";
-  static const String appVersion = "1.0.0";
+  static const String appName = "Apiary";
+  static const String appVersion = "1.0.1+4";
   
   // Chiavi Storage
   static const String tokenKey = "auth_token";
@@ -57,6 +57,11 @@ class AppConstants {
 
   // Route per invasettamento
   static const String invasettamentoCreateRoute = "/invasettamento/create";
+
+  // Route per cantina (maturatori, stoccaggio, invasettamento integrato)
+  static const String cantinaRoute = "/cantina";
+  static const String matutatoreCreateRoute = "/maturatore/create";
+  static const String contenitoreCreateRoute = "/contenitore/create";
 
   // Route per vendite e clienti
   static const String venditeRoute = "/vendite";
@@ -114,6 +119,10 @@ class AppConstants {
   // Route per input vocale
   static const String voiceCommandRoute = "/voice_command";
   static const String voiceVerificationRoute = "/voice/verification";
+
+  // Route per onboarding e guida
+  static const String onboardingRoute = "/onboarding";
+  static const String guidaRoute = "/guida";
 
   // Altri parametri
   static const int defaultSyncInterval = 30; // Minuti
