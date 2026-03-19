@@ -13,6 +13,8 @@ import '../../database/database_helper.dart';
 import '../../services/notification_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/regina_service.dart';
+import '../../widgets/contextual_hint.dart';
+import '../../widgets/field_help_icon.dart';
 
 class ControlloArniaScreen extends StatefulWidget {
   final int arniaId;
@@ -497,6 +499,10 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              ContextualHint(
+                prefKey: 'controllo_form_v1',
+                message: '📋 Registra lo stato dell\'arnia: telaini di covata (rossi), scorte (gialli) e presenza della regina. Più dettagli inserisci, meglio puoi monitorare la salute della colonia.',
+              ),
               // Banner modalità offline
               if (!_isOnline)
                 Container(
@@ -744,6 +750,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           Icon(Icons.star, color: ThemeConstants.primaryColor),
                           SizedBox(width: 12),
                           Text('Stato regina', style: TextStyle(fontSize: 15)),
+                          FieldHelpIcon('Seleziona "Sì" se hai visto la regina, "Indiretto" se vedi uova fresche (< 3 giorni), "No" se non ci sono segni di covata fresca.'),
                         ],
                       ),
                       const SizedBox(height: 8),

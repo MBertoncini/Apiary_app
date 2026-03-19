@@ -9,6 +9,7 @@ import '../../services/analisi_telaino_service.dart';
 import '../../services/controllo_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/telaini_utils.dart';
+import '../../widgets/contextual_hint.dart';
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -454,6 +455,10 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          ContextualHint(
+            prefKey: 'analisi_telaino_v1',
+            message: '📷 Per risultati ottimali: usa luce naturale diffusa, tieni il telaio parallelo alla fotocamera a 30–50 cm di distanza. Evita ombre sul telaio.',
+          ),
           _buildTelainoCard(),
           const SizedBox(height: 24),
           ElevatedButton.icon(

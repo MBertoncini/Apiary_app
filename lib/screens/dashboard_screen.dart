@@ -11,6 +11,7 @@ import '../services/chat_service.dart';
 import '../widgets/offline_banner.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/bee_joke_bubble.dart';
+import '../widgets/contextual_hint.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../screens/mobile_scanner_wrapper_screen.dart';
 import '../screens/chat_screen.dart';
@@ -1841,6 +1842,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    ContextualHint(
+                      prefKey: 'dashboard_v1',
+                      message: '👋 Qui trovi il riepilogo di tutte le attività — arnie, controlli recenti e raccolti. Tocca una sezione per entrare.',
+                    ),
                     // Header con benvenuto e fumetto per freddure
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),

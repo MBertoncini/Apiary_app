@@ -6,6 +6,7 @@ import '../../models/arnia.dart';
 import '../../models/apiario.dart';  // Import the Apiario model
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';  // Import StorageService
+import '../../widgets/field_help_icon.dart';
 
 class ArniaFormScreen extends StatefulWidget {
   final int? apiarioId;
@@ -336,19 +337,36 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                     const SizedBox(height: 16),
 
                     // Tipo arnia
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Tipo arnia',
-                        border: OutlineInputBorder(),
-                      ),
-                      value: _tipoArnia,
-                      items: _tipiArnia.map((t) {
-                        return DropdownMenuItem<String>(
-                          value: t['id'],
-                          child: Text('${t['icona']}  ${t['nome']}'),
-                        );
-                      }).toList(),
-                      onChanged: (v) { if (v != null) setState(() => _tipoArnia = v); },
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Tipo arnia',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            ),
+                            FieldHelpIcon(
+                              'Bugnola: tradizionale orizzontale.\nLangstroth: verticale standard, la più diffusa.\nWarré: verticale naturale.\nInfluenza le dimensioni dei telai e i melari compatibili.',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          ),
+                          value: _tipoArnia,
+                          items: _tipiArnia.map((t) {
+                            return DropdownMenuItem<String>(
+                              value: t['id'],
+                              child: Text('${t['icona']}  ${t['nome']}'),
+                            );
+                          }).toList(),
+                          onChanged: (v) { if (v != null) setState(() => _tipoArnia = v); },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
 
