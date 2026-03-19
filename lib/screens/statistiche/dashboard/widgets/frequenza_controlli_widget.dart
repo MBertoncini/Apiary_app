@@ -39,6 +39,7 @@ class _FrequenzaControlliWidgetState extends State<FrequenzaControlliWidget> {
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
+      loadingHeight: 280,
       child: _data != null ? _buildContent() : const SizedBox.shrink(),
     );
   }

@@ -15,7 +15,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
   @override
   bool get wantKeepAlive => true;
 
-  late final StatisticheService _service;
+  StatisticheService? _service;
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = false;
@@ -35,7 +35,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _service = StatisticheService(Provider.of<ApiService>(context, listen: false));
+    _service ??= StatisticheService(Provider.of<ApiService>(context, listen: false));
   }
 
   @override
@@ -62,7 +62,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
     }
 
     try {
-      final result = await _service.chiediAI(domanda);
+      final result = await _service!.chiediAI(domanda);
       setState(() {
         _result = result;
         _loading = false;

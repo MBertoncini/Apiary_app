@@ -40,6 +40,7 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
+      loadingHeight: 210,
       child: _data != null ? _buildChart() : const SizedBox.shrink(),
     );
   }
@@ -67,10 +68,12 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
 
     return Column(
       children: [
-        SizedBox(
+        IgnorePointer(
+          child: SizedBox(
           height: 180,
           child: LineChart(
             LineChartData(
+              lineTouchData: const LineTouchData(enabled: false, handleBuiltInTouches: false),
               lineBarsData: linee,
               titlesData: FlTitlesData(
                 bottomTitles: AxisTitles(sideTitles: SideTitles(
@@ -79,7 +82,8 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
                   getTitlesWidget: (v, _) {
                     final idx = v.toInt();
                     if (idx < 0 || idx >= mesi.length) return const SizedBox();
-                    return Text(mesi[idx].substring(5), style: const TextStyle(fontSize: 10));
+                    final label = mesi[idx];
+                    return Text(label.length > 5 ? label.substring(5) : label, style: const TextStyle(fontSize: 10));
                   },
                 )),
                 leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 24, getTitlesWidget: (v, _) => Text('${v.toInt()}', style: const TextStyle(fontSize: 10)))),
@@ -90,6 +94,7 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
               borderData: FlBorderData(show: false),
             ),
           ),
+        ),
         ),
         // Legenda
         Wrap(

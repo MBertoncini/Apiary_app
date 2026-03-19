@@ -59,11 +59,13 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
 
     return Row(
       children: [
-        SizedBox(
+        IgnorePointer(
+          child: SizedBox(
           height: 150,
           width: 150,
           child: PieChart(
             PieChartData(
+              pieTouchData: PieTouchData(enabled: false),
               sections: tipi.asMap().entries.map((entry) {
                 final t = entry.value;
                 return PieChartSectionData(
@@ -78,6 +80,7 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
               sectionsSpace: 2,
             ),
           ),
+        ),
         ),
         const SizedBox(width: 16),
         Expanded(

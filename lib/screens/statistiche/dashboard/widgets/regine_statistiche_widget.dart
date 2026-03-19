@@ -39,6 +39,7 @@ class _RegineStatisticheWidgetState extends State<RegineStatisticheWidget> {
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
+      loadingHeight: 200,
       child: _data != null ? _buildContent() : const SizedBox.shrink(),
     );
   }

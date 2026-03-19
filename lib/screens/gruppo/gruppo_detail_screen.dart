@@ -24,7 +24,8 @@ class GruppoDetailScreen extends StatefulWidget {
 class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     with TickerProviderStateMixin {
   bool _isLoading = true;
-  bool _isRefreshing = true;
+  bool _isRefreshing = false;
+  bool _cacheChecked = false;
   Gruppo? _gruppo;
   List<dynamic> _apiariCondivisi = [];
   List<InvitoGruppo> _inviti = [];
@@ -62,9 +63,9 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() { _isRefreshing = true; _errorMessage = null; });
+    _errorMessage = null;
 
-    // Fase 1: cache — mostra subito i dati base del gruppo
+    // Fase 1: cache — read before any setState so skeleton doesn't flash
     if (_gruppo == null) {
       try {
         final storageService = Provider.of<StorageService>(context, listen: false);
@@ -73,11 +74,12 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
           (g) => g['id'] == widget.gruppoId,
           orElse: () => <String, dynamic>{},
         );
-        if (cached.isNotEmpty && mounted) {
-          setState(() { _gruppo = Gruppo.fromJson(cached); });
+        if (cached.isNotEmpty) {
+          _gruppo = Gruppo.fromJson(cached);
         }
       } catch (_) {}
     }
+    if (mounted) setState(() { _isRefreshing = true; _cacheChecked = true; });
 
     try {
       final results = await Future.wait([
@@ -501,11 +503,6 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
       appBar: AppBar(
         title: Text(_gruppo?.nome ?? 'Dettaglio Gruppo'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Aggiorna',
-          ),
           if (_isAdmin)
             IconButton(
               icon: Icon(Icons.person_add),
@@ -534,7 +531,9 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
           const OfflineBanner(),
           if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           Expanded(
-            child: _isRefreshing && _gruppo == null
+            child: !_cacheChecked
+                ? const SizedBox.shrink()
+                : _isRefreshing && _gruppo == null
                 ? const SkeletonDetailHeader()
                 : _errorMessage != null
                     ? ErrorDisplayWidget(

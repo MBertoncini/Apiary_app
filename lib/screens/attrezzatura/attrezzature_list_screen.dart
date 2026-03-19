@@ -111,7 +111,8 @@ class AttrezzatureListScreen extends StatefulWidget {
 
 class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
   List<Attrezzatura> _attrezzature = [];
-  bool _isRefreshing = true;
+  bool _isRefreshing = false;
+  bool _cacheChecked = false;
   String? _errorMessage;
 
   // --- filters ---
@@ -149,24 +150,24 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
 
   Future<void> _loadData() async {
     if (!mounted) return;
-    setState(() { _errorMessage = null; _isRefreshing = true; });
+    _errorMessage = null;
 
     final storageService = Provider.of<StorageService>(context, listen: false);
     final apiService     = Provider.of<ApiService>(context, listen: false);
 
+    // Phase 1: cache — read before any setState so skeleton doesn't flash
     try {
-      // Phase 1: cache
-      try {
-        final cached = await storageService.getStoredData('attrezzature');
-        if (cached.isNotEmpty) {
-          _attrezzature = cached.map((e) => Attrezzatura.fromJson(e as Map<String, dynamic>)).toList();
-          if (mounted) setState(() {});
-        }
-      } catch (e) {
-        debugPrint('Cache attrezzature: $e');
+      final cached = await storageService.getStoredData('attrezzature');
+      if (cached.isNotEmpty) {
+        _attrezzature = cached.map((e) => Attrezzatura.fromJson(e as Map<String, dynamic>)).toList();
       }
+    } catch (e) {
+      debugPrint('Cache attrezzature: $e');
+    }
+    if (mounted) setState(() { _cacheChecked = true; _isRefreshing = true; });
 
-      // Phase 2: API
+    // Phase 2: API
+    try {
       final svc = AttrezzaturaService(apiService);
       final fresh = await svc.getAttrezzature();
       await storageService.saveData('attrezzature', fresh.map((a) => a.toJson()).toList());
@@ -176,9 +177,8 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
       if (_attrezzature.isEmpty) {
         _errorMessage = 'Errore durante il caricamento: $e';
       }
-    } finally {
-      if (mounted) setState(() { _isRefreshing = false; });
     }
+    if (mounted) setState(() { _isRefreshing = false; });
   }
 
   // -----------------------------------------------------------------------
@@ -306,7 +306,9 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
 
           // List
           Expanded(
-            child: _isRefreshing && _attrezzature.isEmpty
+            child: !_cacheChecked
+                ? const SizedBox.shrink()
+                : _isRefreshing && _attrezzature.isEmpty
                 ? const SkeletonListView(itemCount: 5)
                 : _errorMessage != null
                     ? ErrorDisplayWidget(

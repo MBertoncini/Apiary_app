@@ -40,6 +40,7 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
+      loadingHeight: 200,
       child: _data != null ? _buildChart() : const SizedBox.shrink(),
     );
   }
@@ -54,10 +55,12 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
 
     final maxY = kgList.reduce((a, b) => a > b ? a : b) * 1.2;
 
-    return SizedBox(
+    return IgnorePointer(
+      child: SizedBox(
       height: 200,
       child: BarChart(
         BarChartData(
+          barTouchData: BarTouchData(enabled: false),
           maxY: maxY > 0 ? maxY : 10,
           barGroups: List.generate(anni.length, (i) => BarChartGroupData(
             x: i,
@@ -80,6 +83,7 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
           gridData: const FlGridData(show: true, drawVerticalLine: false),
           borderData: FlBorderData(show: false),
         ),
+      ),
       ),
     );
   }

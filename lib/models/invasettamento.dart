@@ -1,8 +1,10 @@
 class Invasettamento {
   final int id;
   final String data;
-  final int smielatura;
+  final int? smielatura;
   final String? smielaturaInfo;
+  final int? contenitore;
+  final String? contenitoreInfo;
   final String tipoMiele;
   final int formatoVasetto;
   final int numeroVasetti;
@@ -17,8 +19,10 @@ class Invasettamento {
   Invasettamento({
     required this.id,
     required this.data,
-    required this.smielatura,
+    this.smielatura,
     this.smielaturaInfo,
+    this.contenitore,
+    this.contenitoreInfo,
     required this.tipoMiele,
     required this.formatoVasetto,
     required this.numeroVasetti,
@@ -37,6 +41,8 @@ class Invasettamento {
       data: json['data'],
       smielatura: json['smielatura'],
       smielaturaInfo: json['smielatura_info'],
+      contenitore: json['contenitore'],
+      contenitoreInfo: json['contenitore_info'],
       tipoMiele: json['tipo_miele'],
       formatoVasetto: json['formato_vasetto'],
       numeroVasetti: json['numero_vasetti'],
@@ -53,12 +59,13 @@ class Invasettamento {
   Map<String, dynamic> toJson() {
     return {
       'data': data,
-      'smielatura': smielatura,
+      if (smielatura != null) 'smielatura': smielatura,
+      if (contenitore != null) 'contenitore': contenitore,
       'tipo_miele': tipoMiele,
       'formato_vasetto': formatoVasetto,
       'numero_vasetti': numeroVasetti,
-      'lotto': lotto,
-      'note': note,
+      if (lotto != null) 'lotto': lotto,
+      if (note != null) 'note': note,
     };
   }
 }

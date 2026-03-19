@@ -42,6 +42,7 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
+      loadingHeight: 210,
       child: _data != null ? _buildChart() : const SizedBox.shrink(),
     );
   }
@@ -56,7 +57,7 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
       final a = entry.value;
       final dati = a['dati'] as List;
       return LineChartBarData(
-        spots: dati.asMap().entries.map((e) => FlSpot(e.key.toDouble(), (e.value['valore'] as num).toDouble())).toList(),
+        spots: dati.asMap().entries.map((e) => FlSpot(e.key.toDouble(), ((e.value['valore'] as num?) ?? 0).toDouble())).toList(),
         isCurved: true,
         color: _colors[entry.key % _colors.length],
         dotData: const FlDotData(show: false),
@@ -66,10 +67,12 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
 
     return Column(
       children: [
-        SizedBox(
+        IgnorePointer(
+          child: SizedBox(
           height: 180,
           child: LineChart(
             LineChartData(
+              lineTouchData: const LineTouchData(enabled: false, handleBuiltInTouches: false),
               lineBarsData: lines,
               titlesData: FlTitlesData(
                 bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -85,6 +88,7 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
               borderData: FlBorderData(show: false),
             ),
           ),
+        ),
         ),
         const SizedBox(height: 4),
         Wrap(

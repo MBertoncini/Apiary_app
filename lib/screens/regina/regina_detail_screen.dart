@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/regina.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/skeleton_widgets.dart';
 import 'regina_form_screen.dart';
 
 class ReginaDetailScreen extends StatefulWidget {
@@ -23,7 +24,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Regina? _regina;
   Map<String, dynamic>? _genealogia;
-  bool _isRefreshing = true;
+  bool _isRefreshing = false;
+  bool _cacheChecked = false;
   bool _isLoadingGenealogia = true;
   String? _errorMessage;
   String? _genealogiaError;
@@ -43,32 +45,44 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isRefreshing = true;
-      _errorMessage = null;
-    });
+    if (!mounted) return;
+    _errorMessage = null;
 
-    // Fase 1: cache
     final storageService = Provider.of<StorageService>(context, listen: false);
-    final cachedRaw = await storageService.getStoredData('regine');
-    final cachedMap = cachedRaw.cast<Map<String, dynamic>>().firstWhere(
-      (r) => r['id'] == widget.reginaId,
-      orElse: () => <String, dynamic>{},
-    );
-    if (cachedMap.isNotEmpty && mounted) {
-      setState(() { _regina = Regina.fromJson(cachedMap); });
+
+    // Fase 1: cache — leggi prima di setState per evitare flash skeleton
+    try {
+      final cachedRaw = await storageService.getStoredData('regine');
+      final cachedMap = cachedRaw.cast<Map<String, dynamic>>().firstWhere(
+        (r) => r['id'] == widget.reginaId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (cachedMap.isNotEmpty) {
+        _regina = Regina.fromJson(cachedMap);
+      }
+    } catch (e) {
+      debugPrint('Cache regine: $e');
     }
+    if (mounted) setState(() { _cacheChecked = true; _isRefreshing = true; });
 
     // Fase 2: server
     try {
       final response = await _apiService.get('${ApiConstants.regineUrl}${widget.reginaId}/');
-      if (mounted) {
-        setState(() {
-          _regina = Regina.fromJson(response);
-          _isRefreshing = false;
-        });
+      if (!mounted) return;
+      final regina = Regina.fromJson(response);
+
+      // Aggiorna cache
+      final cachedRaw = await storageService.getStoredData('regine');
+      final list = cachedRaw.cast<Map<String, dynamic>>().toList();
+      final idx = list.indexWhere((r) => r['id'] == widget.reginaId);
+      if (idx >= 0) {
+        list[idx] = response as Map<String, dynamic>;
+      } else {
+        list.add(response as Map<String, dynamic>);
       }
-      // Carica la genealogia in parallelo
+      await storageService.saveData('regine', list);
+
+      if (mounted) setState(() { _regina = regina; _isRefreshing = false; });
       _loadGenealogia();
     } catch (e) {
       debugPrint('Errore caricamento regina: $e');
@@ -108,10 +122,17 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    if (!_cacheChecked) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Dettaglio Regina')),
+        body: const SizedBox.shrink(),
+      );
+    }
+
     if (_isRefreshing && _regina == null && _errorMessage == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Dettaglio Regina')),
-        body: const Column(children: [LinearProgressIndicator(minHeight: 2)]),
+        body: const SingleChildScrollView(child: SkeletonDetailHeader()),
       );
     }
 
@@ -136,10 +157,6 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
       appBar: AppBar(
         title: Text('Regina - Arnia ${_regina!.arniaNumero ?? _regina!.arniaId}'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
           IconButton(
             icon: Icon(Icons.delete),
             tooltip: 'Elimina regina',

@@ -82,6 +82,12 @@ class ApiConstants {
   // Endpoint invasettamenti
   static const String invasettamentiUrl = baseUrl + apiPrefix + '/invasettamenti/';
 
+  // Endpoint cantina (maturatori e contenitori stoccaggio)
+  static const String maturatoriUrl = baseUrl + apiPrefix + '/maturatori/';
+  static const String contenitoriStoccaggioUrl = baseUrl + apiPrefix + '/contenitori-stoccaggio/';
+  static const String preferenzeMaturazionUrl = baseUrl + apiPrefix + '/preferenze-maturazione/';
+  static const String preferenzeMaturazionDefaultsUrl = baseUrl + apiPrefix + '/preferenze-maturazione/defaults/';
+
   // Endpoint clienti
   static const String clientiUrl = baseUrl + apiPrefix + '/clienti/';
 

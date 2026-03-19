@@ -86,12 +86,7 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
             Tab(text: 'Tutti'),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _refreshTrattamenti,
-          ),
-        ],
+        actions: [],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.trattamentiRoute),
       body: Column(
@@ -338,70 +333,88 @@ class TrattamentoListItem extends StatelessWidget {
 
   Widget _buildActionButtons(BuildContext context) {
     final deleteButton = ElevatedButton.icon(
-      icon: const Icon(Icons.delete_forever, size: 18),
+      icon: const Icon(Icons.delete_forever, size: 16),
       label: const Text('Elimina'),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.red.shade700,
         foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       onPressed: () => _confirmDeleteTrattamento(context),
     );
 
     // Pulsanti variabili in base allo stato
+    final _compactButtonStyle = const ButtonStyle(
+      padding: WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      ),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
     switch (trattamento.stato) {
       case 'programmato':
         return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             // "Avvia" = il trattamento è iniziato (programmato → in corso)
-            ElevatedButton.icon(
-              icon: const Icon(Icons.play_arrow, size: 18),
-              label: const Text('Avvia'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.play_arrow, size: 16),
+                label: const Text('Avvia'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ).merge(_compactButtonStyle),
+                onPressed: () => _changeStato(context, 'in_corso'),
               ),
-              onPressed: () => _changeStato(context, 'in_corso'),
             ),
+            const SizedBox(width: 6),
             // "Annulla" = il trattamento non verrà eseguito (resta in archivio)
-            ElevatedButton.icon(
-              icon: const Icon(Icons.cancel_outlined, size: 18),
-              label: const Text('Annulla'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.cancel_outlined, size: 16),
+                label: const Text('Annulla'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ).merge(_compactButtonStyle),
+                onPressed: () => _changeStato(context, 'annullato'),
               ),
-              onPressed: () => _changeStato(context, 'annullato'),
             ),
+            const SizedBox(width: 6),
             // "Elimina" = rimuove definitivamente il record
-            deleteButton,
+            Expanded(child: deleteButton),
           ],
         );
       case 'in_corso':
         return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             // "Completa" = trattamento terminato con successo
-            ElevatedButton.icon(
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('Completa'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.check, size: 16),
+                label: const Text('Completa'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ).merge(_compactButtonStyle),
+                onPressed: () => _changeStato(context, 'completato'),
               ),
-              onPressed: () => _changeStato(context, 'completato'),
             ),
+            const SizedBox(width: 6),
             // "Annulla" = interrompi il trattamento prima del termine
-            ElevatedButton.icon(
-              icon: const Icon(Icons.cancel_outlined, size: 18),
-              label: const Text('Interrompi'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.cancel_outlined, size: 16),
+                label: const Text('Interrompi'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ).merge(_compactButtonStyle),
+                onPressed: () => _changeStato(context, 'annullato'),
               ),
-              onPressed: () => _changeStato(context, 'annullato'),
             ),
-            deleteButton,
+            const SizedBox(width: 6),
+            Expanded(child: deleteButton),
           ],
         );
       default:

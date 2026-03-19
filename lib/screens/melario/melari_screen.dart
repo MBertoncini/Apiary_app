@@ -34,7 +34,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() { if (mounted) setState(() {}); });
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService = ApiService(authService);
@@ -111,15 +111,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           tabs: [
             Tab(icon: Icon(Icons.hive, size: 18), text: 'Alveari'),
             Tab(text: 'Smielature'),
-            Tab(text: 'Invasettamento'),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _refreshAll,
-          ),
-        ],
+        actions: [],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.melariRoute),
       body: Column(
@@ -145,7 +139,6 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                         children: [
                           _buildVistaAlveariTab(),
                           _buildSmielatureTab(),
-                          _buildInvasettamentoTab(),
                         ],
                       ),
           ),
@@ -158,7 +151,6 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   Widget _buildFloatingActionButton() {
     return Builder(builder: (context) {
       final currentTab = _tabController.index;
-
       if (currentTab == 0) {
         return FloatingActionButton(
           child: Icon(Icons.add),
@@ -168,21 +160,12 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 .then((result) { if (result == true) _refreshAll(); });
           },
         );
-      } else if (currentTab == 1) {
-        return FloatingActionButton(
-          child: Icon(Icons.add),
-          tooltip: 'Nuova smielatura',
+      } else {
+        return FloatingActionButton.extended(
+          icon: Icon(Icons.add),
+          label: Text('Nuova smielatura'),
           onPressed: () {
             Navigator.pushNamed(context, AppConstants.smielaturaCreateRoute)
-                .then((_) => _refreshAll());
-          },
-        );
-      } else {
-        return FloatingActionButton(
-          child: Icon(Icons.add),
-          tooltip: 'Nuovo invasettamento',
-          onPressed: () {
-            Navigator.pushNamed(context, AppConstants.invasettamentoCreateRoute)
                 .then((_) => _refreshAll());
           },
         );
@@ -281,6 +264,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         child: ListView(
           padding: EdgeInsets.all(16),
           children: [
+            _buildCantinaCard(),
+            SizedBox(height: 8),
             Card(
               color: Colors.amber.shade50,
               child: Padding(
@@ -363,6 +348,23 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         SizedBox(height: 4),
         Text(label, style: TextStyle(color: Colors.grey[600])),
       ],
+    );
+  }
+
+  Widget _buildCantinaCard() {
+    return Card(
+      color: Colors.amber.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.amber.shade300),
+      ),
+      child: ListTile(
+        leading: Text('🍯', style: TextStyle(fontSize: 24)),
+        title: Text('Cantina del miele', style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text('Maturatori · Stoccaggio · Invasettamento'),
+        trailing: Icon(Icons.chevron_right, color: Colors.amber.shade700),
+        onTap: () => Navigator.pushNamed(context, AppConstants.cantinaRoute).then((_) => _refreshAll()),
+      ),
     );
   }
 
@@ -620,7 +622,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                       final melariOnArnia = melariByArnia[arnia.id] ?? [];
                       return Padding(
                         padding: const EdgeInsets.only(right: 20),
-                        child: _buildHiveCol(arnia, melariOnArnia),
+                        child: _buildHiveCol(arnia, melariOnArnia, apiarioId),
                       );
                     }).toList(),
                   ),
@@ -634,7 +636,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildHiveCol(Arnia arnia, List<Melario> melariOnArnia) {
+  Widget _buildHiveCol(Arnia arnia, List<Melario> melariOnArnia, int apiarioId) {
     // Sort: highest posizione at top visually (rendered first in column)
     final activeMelari = melariOnArnia
         .where((m) => m.stato == 'posizionato' || m.stato == 'in_smielatura')
@@ -657,7 +659,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Add melario button
-          _buildAddSuperBtn(arnia.id),
+          _buildAddSuperBtn(arnia.id, apiarioId),
           const SizedBox(height: 4),
           // Melari stacked
           ...activeMelari.map((m) => Padding(
@@ -846,13 +848,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildAddSuperBtn(int arniaId) {
+  Widget _buildAddSuperBtn(int arniaId, int apiarioId) {
     return GestureDetector(
       onTap: () {
         Navigator.pushNamed(
           context,
           AppConstants.melarioCreateRoute,
-          arguments: {'arniaId': arniaId},
+          arguments: {'arniaId': arniaId, 'apiarioId': apiarioId},
         ).then((result) { if (result == true) _refreshAll(); });
       },
       child: Container(
@@ -1036,10 +1038,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               Navigator.pop(ctx);
               try {
                 final peso = double.tryParse(pesoCtrl.text);
-                await _apiService.put(
+                await _apiService.patch(
                   '${ApiConstants.melariUrl}${m.id}/',
                   {
-                    ...m.toJson(),
                     'stato': 'rimosso',
                     'data_rimozione': DateTime.now().toIso8601String().split('T')[0],
                     if (peso != null) 'peso_stimato': peso,

@@ -28,7 +28,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   // null = tutti (personali + gruppo), -1 = solo personali, >0 = gruppo specifico
   int? _filtroGruppoId;
   bool _isLoading = true;
-  bool _isRefreshing = true;
+  bool _isRefreshing = false;
   String? _errorMessage;
 
   static const String _cacheKeyVendite = 'vendite';
@@ -57,41 +57,38 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   }
 
   Future<void> _loadData() async {
-    setState(() { _errorMessage = null; });
+    _errorMessage = null;
 
+    // Phase 1: cache — read before any setState so skeleton doesn't flash
     final cachedVendite = await _storageService.getStoredData(_cacheKeyVendite);
     final cachedClienti = await _storageService.getStoredData(_cacheKeyClienti);
-    if (cachedVendite.isNotEmpty || cachedClienti.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          if (cachedVendite.isNotEmpty) {
-            _vendite = cachedVendite.map((e) => Vendita.fromJson(e as Map<String, dynamic>)).toList();
-          }
-          if (cachedClienti.isNotEmpty) {
-            _clienti = cachedClienti.map((e) => Cliente.fromJson(e as Map<String, dynamic>)).toList();
-          }
-          _isLoading = false;
-          _isRefreshing = true;
-        });
-      }
-    } else {
-      if (mounted) setState(() { _isRefreshing = true; });
+    if (cachedVendite.isNotEmpty) {
+      _vendite = cachedVendite.map((e) => Vendita.fromJson(e as Map<String, dynamic>)).toList();
     }
+    if (cachedClienti.isNotEmpty) {
+      _clienti = cachedClienti.map((e) => Cliente.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    if (mounted) setState(() { _isLoading = false; _isRefreshing = true; });
 
     try {
       final results = await Future.wait([
         _apiService.get(ApiConstants.venditeUrl),
         _apiService.get(ApiConstants.clientiUrl),
-        _apiService.get(ApiConstants.gruppiUrl),
       ]);
       final venditeList = results[0] is List ? results[0] as List : (results[0]['results'] as List? ?? []);
       final clientiList = results[1] is List ? results[1] as List : (results[1]['results'] as List? ?? []);
-      final gruppiList  = results[2] is List ? results[2] as List : (results[2]['results'] as List? ?? []);
 
       await Future.wait([
         _storageService.saveData(_cacheKeyVendite, venditeList),
         _storageService.saveData(_cacheKeyClienti, clientiList),
       ]);
+
+      // Gruppi fetched separately — failure must not prevent vendite/clienti cache
+      List<dynamic> gruppiList = [];
+      try {
+        final gr = await _apiService.get(ApiConstants.gruppiUrl);
+        gruppiList = gr is List ? gr : (gr['results'] as List? ?? []);
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
@@ -196,7 +193,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
           controller: _tabController,
           tabs: [Tab(text: 'Vendite'), Tab(text: 'Clienti')],
         ),
-        actions: [IconButton(icon: Icon(Icons.refresh), onPressed: _loadData)],
+        actions: [],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.venditeRoute),
       body: Column(
@@ -204,7 +201,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
           const OfflineBanner(),
           if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
           Expanded(
-            child: _isRefreshing && _vendite.isEmpty && _clienti.isEmpty
+            child: _isLoading
                 ? const SkeletonListView()
                 : _errorMessage != null
                     ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [

@@ -29,6 +29,7 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
   late final StatisticheService _service;
   bool _initialized = false;
   int _refreshKey = 0;
+  bool _preloading = true;
 
   final List<String> _visibleWidgets = [
     'salute_arnie',
@@ -51,7 +52,29 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
     if (!_initialized) {
       _service = StatisticheService(Provider.of<ApiService>(context, listen: false));
       _initialized = true;
+      _preloadAll();
     }
+  }
+
+  /// Carica tutti i dati in parallelo prima di mostrare la lista.
+  /// Così ogni widget trova la cache già popolata al momento della costruzione
+  /// → nessuna transizione skeleton→contenuto durante lo scroll → nessun effetto calamita.
+  Future<void> _preloadAll() async {
+    await Future.wait([
+      _service.getSaluteArnie().catchError((_) => <String, dynamic>{}),
+      _service.getProduzioneAnnuale().catchError((_) => <String, dynamic>{}),
+      _service.getProduzionePerTipo().catchError((_) => <String, dynamic>{}),
+      _service.getBilancioEconomico().catchError((_) => <String, dynamic>{}),
+      _service.getFrequenzaControlli().catchError((_) => <String, dynamic>{}),
+      _service.getAndamentoScorte().catchError((_) => <String, dynamic>{}),
+      _service.getRegineStatistiche().catchError((_) => <String, dynamic>{}),
+      _service.getPerformanceRegine().catchError((_) => <String, dynamic>{}),
+      _service.getVarroaTrend().catchError((_) => <String, dynamic>{}),
+      _service.getFioritureVicine().catchError((_) => <String, dynamic>{}),
+      _service.getQuoteGruppo().catchError((_) => <String, dynamic>{}),
+      _service.getRiepilogoAttrezzature().catchError((_) => <String, dynamic>{}),
+    ]);
+    if (mounted) setState(() => _preloading = false);
   }
 
   Widget _buildWidgetCard(String widgetId) {
@@ -89,12 +112,17 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (_preloading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return RefreshIndicator(
       onRefresh: () async {
         StatisticheService.clearAllCache();
+        await _preloadAll();
         setState(() => _refreshKey++);
       },
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(12),
         itemCount: _visibleWidgets.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),

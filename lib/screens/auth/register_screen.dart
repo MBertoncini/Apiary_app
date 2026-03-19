@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
+import '../privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -19,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _privacyAccepted = false;
   String _errorMessage = '';
   
   @override
@@ -34,10 +36,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() {
         _errorMessage = 'Le password non corrispondono.';
+      });
+      return;
+    }
+
+    if (!_privacyAccepted) {
+      setState(() {
+        _errorMessage = 'Devi accettare l\'Informativa sulla Privacy per procedere.';
       });
       return;
     }
@@ -256,8 +265,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabled: !_isLoading,
                     onFieldSubmitted: (_) => _register(),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Privacy policy checkbox
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Checkbox(
+                        value: _privacyAccepted,
+                        onChanged: _isLoading
+                            ? null
+                            : (value) => setState(() => _privacyAccepted = value ?? false),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _isLoading
+                              ? null
+                              : () => setState(() => _privacyAccepted = !_privacyAccepted),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              const Text('Ho letto e accetto l\'', style: TextStyle(fontSize: 14)),
+                              GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const PrivacyPolicyScreen()),
+                                ),
+                                child: Text(
+                                  'Informativa sulla Privacy',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: ThemeConstants.primaryColor,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
-                  
+
                   // Pulsante registrazione
                   ElevatedButton(
                     onPressed: _isLoading ? null : _register,

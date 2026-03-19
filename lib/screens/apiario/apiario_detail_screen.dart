@@ -82,7 +82,8 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         final allFioriture = await storageService.getStoredData('fioriture');
         _fioriture = allFioriture.where((f) => f['apiario'] == widget.apiarioId).toList();
 
-        // Mostra subito i dati dalla cache, poi aggiorna dal server
+        // Mostra subito i dati dalla cache (inclusi telaini da SQLite), poi aggiorna dal server
+        await _loadUltimiControlli();
         if (mounted) setState(() {});
 
         // Aggiorna sempre da server: arnie
@@ -152,14 +153,33 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       // Ordina arnie per numero
       _arnie.sort((a, b) => a['numero'].compareTo(b['numero']));
 
-      // Carica melari dal cache locale (filtrati per questo apiario)
+      // Carica melari: prima da cache locale, poi aggiorna dal server
       try {
         final allMelari = await storageService.getStoredData('melari');
         _melari = allMelari
             .where((m) => m['apiario_id'] == widget.apiarioId && m['stato'] == 'posizionato')
             .toList();
+        if (mounted) setState(() {});
       } catch (e) {
-        debugPrint('Error loading melari: $e');
+        debugPrint('Error loading melari from cache: $e');
+      }
+      try {
+        final melariData = await apiService.get('${ApiConstants.melariUrl}?apiario_id=${widget.apiarioId}');
+        List<dynamic> fetched = [];
+        if (melariData is List) {
+          fetched = melariData;
+        } else if (melariData is Map && melariData.containsKey('results')) {
+          fetched = melariData['results'] as List;
+        }
+        if (fetched.isNotEmpty) {
+          _melari = fetched.where((m) => m['stato'] == 'posizionato').toList();
+          // Aggiorna cache unendo con melari degli altri apiari
+          final allMelari = await storageService.getStoredData('melari');
+          final others = allMelari.where((m) => m['apiario_id'] != widget.apiarioId).toList();
+          await storageService.saveData('melari', [...others, ...fetched]);
+        }
+      } catch (e) {
+        debugPrint('Error fetching melari from server: $e');
       }
 
       // Ordina trattamenti per data (più recenti prima)
@@ -913,7 +933,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           ),
           // ── pulsante (i) info in basso a sinistra ──────────────
           Positioned(
-            bottom: 16,
+            bottom: 84,
             left: 16,
             child: FloatingActionButton.small(
               heroTag: 'apiario_info',

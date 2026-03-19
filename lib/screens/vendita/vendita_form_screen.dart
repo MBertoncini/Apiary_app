@@ -72,7 +72,10 @@ class _DettaglioItem {
 
 class VenditaFormScreen extends StatefulWidget {
   final int? venditaId;
-  VenditaFormScreen({this.venditaId});
+  /// Pre-popola i dettagli con vasetti dalla Cantina.
+  /// Ogni elemento: {'tipo_miele': String, 'formato_vasetto': int, 'quantita': int}
+  final List<Map<String, dynamic>>? prefillMiele;
+  VenditaFormScreen({this.venditaId, this.prefillMiele});
 
   @override
   _VenditaFormScreenState createState() => _VenditaFormScreenState();
@@ -112,6 +115,17 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService   = ApiService(authService);
     _storageService = Provider.of<StorageService>(context, listen: false);
+    // Pre-popola dettagli da Cantina se arrivano vasetti pre-selezionati
+    if (widget.prefillMiele != null && widget.prefillMiele!.isNotEmpty) {
+      _dettagli = widget.prefillMiele!.map((item) {
+        final d = _DettaglioItem();
+        d.categoria = 'miele';
+        d.tipoMieleController.text = item['tipo_miele']?.toString() ?? '';
+        d.formatoVasetto = (item['formato_vasetto'] as num?)?.toInt() ?? 500;
+        d.quantitaController.text = (item['quantita'] ?? 0).toString();
+        return d;
+      }).toList();
+    }
     _loadInitialData();
   }
 

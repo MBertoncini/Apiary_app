@@ -224,14 +224,21 @@ class _DonazioneScreenState extends State<DonazioneScreen>
       ),
     ];
 
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.0,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: items.map(_buildInfoCard).toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Each card is ~half the width minus spacing; give it ~20% more height than width.
+        final cardWidth = (constraints.maxWidth - 12) / 2;
+        final aspectRatio = cardWidth / (cardWidth * 1.2);
+        return GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: aspectRatio,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: items.map(_buildInfoCard).toList(),
+        );
+      },
     );
   }
 
@@ -271,8 +278,6 @@ class _DonazioneScreenState extends State<DonazioneScreen>
                 height: 1.3,
               ),
               textAlign: TextAlign.center,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

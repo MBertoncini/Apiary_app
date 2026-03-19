@@ -40,6 +40,7 @@ class _BilancioWidgetState extends State<BilancioWidget> {
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
+      loadingHeight: 270,
       child: _data != null ? _buildContent() : const SizedBox.shrink(),
     );
   }
@@ -71,12 +72,14 @@ class _BilancioWidgetState extends State<BilancioWidget> {
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
+        IgnorePointer(
+          child: SizedBox(
           height: 180,
           child: BarChart(
             BarChartData(
+              barTouchData: BarTouchData(enabled: false),
               maxY: maxY > 0 ? maxY : 10,
-              barGroups: List.generate(12, (i) => BarChartGroupData(
+              barGroups: List.generate(entrate.length, (i) => BarChartGroupData(
                 x: i,
                 barsSpace: 2,
                 barRods: [
@@ -87,7 +90,11 @@ class _BilancioWidgetState extends State<BilancioWidget> {
               titlesData: FlTitlesData(
                 bottomTitles: AxisTitles(sideTitles: SideTitles(
                   showTitles: true,
-                  getTitlesWidget: (v, _) => Text(mesi[v.toInt()], style: const TextStyle(fontSize: 9)),
+                  getTitlesWidget: (v, _) {
+                    final i = v.toInt();
+                    if (i < 0 || i >= mesi.length) return const SizedBox();
+                    return Text(mesi[i], style: const TextStyle(fontSize: 9));
+                  },
                 )),
                 leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36, getTitlesWidget: (v, _) => Text('€${v.toInt()}', style: const TextStyle(fontSize: 9)))),
                 topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -97,6 +104,7 @@ class _BilancioWidgetState extends State<BilancioWidget> {
               borderData: FlBorderData(show: false),
             ),
           ),
+        ),
         ),
         const SizedBox(height: 8),
         Row(

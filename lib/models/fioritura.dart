@@ -69,7 +69,9 @@ class Fioritura {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'apiario': apiario,
+      'apiario_nome': apiarioNome,
       'pianta': pianta,
       'pianta_tipo': piantaTipo,
       'data_inizio': dataInizio,
@@ -78,8 +80,14 @@ class Fioritura {
       'longitudine': longitudine,
       'raggio': raggio,
       'note': note,
+      'creatore': creatore,
+      'creatore_username': creatoreUsername,
+      'is_active': isActive,
       'pubblica': pubblica,
       'intensita': intensita,
+      'n_conferme': nConferme,
+      'intensita_media': intensitaMedia,
+      'confermato_da_me': confermaDaMe,
     };
   }
 

@@ -551,8 +551,13 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           top: top,
           child: _CompassPickerOverlay(
             referenceAngle: referenceAngle,
-            onSelect: (delta) {
-              _extendPath(elementId, isEnd, referenceAngle + delta);
+            onSelect: (absAngle) {
+              // La bussola ora passa angoli assoluti in canvas (0=destra,90=giù).
+              // Per END il segmento va nella direzione assoluta scelta.
+              // Per START il segmento deve andare nella direzione OPPOSTA
+              // all'estensione (new_pos = old_pos - direction(newAngle)*len).
+              final newAngle = isEnd ? absAngle : absAngle + 180;
+              _extendPath(elementId, isEnd, newAngle);
               _hideDirectionPicker();
             },
             onDismiss: _hideDirectionPicker,
@@ -1233,12 +1238,33 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         );
       }
 
-      // ── melari sopra + mini info sotto ogni arnia ─────────────
+      // ── melari tra il tappo e il corpo, mini info sotto ────────
+      final melariBoxes = _buildMelariBoxes(id);
+      Widget hiveWithMelari;
+      if (melariBoxes.isEmpty) {
+        hiveWithMelari = child;
+      } else {
+        // Overlay i melari subito sotto il tappo in lamiera (~15% dall'alto)
+        hiveWithMelari = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            child,
+            Positioned(
+              top: _cellSize * 0.15,
+              left: 0,
+              right: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: melariBoxes,
+              ),
+            ),
+          ],
+        );
+      }
       child = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ..._buildMelariBoxes(id),
-          child,
+          hiveWithMelari,
           _buildMiniHiveInfo(id),
         ],
       );
@@ -1556,8 +1582,12 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
   Widget _buildBottomPanel() {
     return Positioned(
-      bottom: 16, left: 16, right: 16,
-      child: Column(
+      bottom: 0, left: 16, right: 16,
+      child: SafeArea(
+        top: false, left: false, right: false,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1671,6 +1701,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
             ],
           ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -2584,19 +2616,19 @@ class _PathHandle extends StatelessWidget {
 
 class _CompassPickerOverlay extends StatelessWidget {
   final double referenceAngle;
-  final void Function(double delta) onSelect;
+  final void Function(double angle) onSelect; // angolo assoluto canvas (0=dx,90=giù)
   final VoidCallback onDismiss;
 
-  // delta → (pos sul cerchio [0=su], label)
+  // Bussola assoluta: pos=0 in alto, CW → canvas angle = (pos*45 - 90 + 360) % 360
   static const _dirs = [
-    (pos: 0, delta: 0.0,    label: 'Dritto'),
-    (pos: 1, delta: 45.0,   label: '+45°'),
-    (pos: 2, delta: 90.0,   label: '+90°'),
-    (pos: 3, delta: 135.0,  label: '+135°'),
-    (pos: 4, delta: 180.0,  label: '180°'),
-    (pos: 5, delta: -135.0, label: '-135°'),
-    (pos: 6, delta: -90.0,  label: '-90°'),
-    (pos: 7, delta: -45.0,  label: '-45°'),
+    (pos: 0, angle: 270.0, label: '↑'),
+    (pos: 1, angle: 315.0, label: '↗'),
+    (pos: 2, angle: 0.0,   label: '→'),
+    (pos: 3, angle: 45.0,  label: '↘'),
+    (pos: 4, angle: 90.0,  label: '↓'),
+    (pos: 5, angle: 135.0, label: '↙'),
+    (pos: 6, angle: 180.0, label: '←'),
+    (pos: 7, angle: 225.0, label: '↖'),
   ];
 
   const _CompassPickerOverlay({
@@ -2654,9 +2686,11 @@ class _CompassPickerOverlay extends StatelessWidget {
                     final posAngleRad = d.pos * 45.0 * pi / 180.0;
                     final bx = cx + r * sin(posAngleRad);
                     final by = cy - r * cos(posAngleRad);
-                    final isMain = d.delta == 0.0;
-                    final isSharp = d.delta.abs() > 90.0;
-                    final absAngle = referenceAngle + d.delta;
+                    // Evidenzia il bottone più vicino alla direzione di riferimento
+                    final diff = ((d.angle - referenceAngle) % 360 + 360) % 360;
+                    final normDiff = diff > 180 ? 360 - diff : diff;
+                    final isMain = normDiff < 22.5;
+                    final isSharp = d.angle == 135.0 || d.angle == 225.0 || d.angle == 315.0 || d.angle == 45.0;
 
                     return Positioned(
                       left: bx - 17,
@@ -2666,7 +2700,7 @@ class _CompassPickerOverlay extends StatelessWidget {
                         child: GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            onSelect(d.delta);
+                            onSelect(d.angle);
                           },
                           child: Container(
                             width: 34, height: 34,
@@ -2692,8 +2726,8 @@ class _CompassPickerOverlay extends StatelessWidget {
                             ),
                             child: Center(
                               child: Transform.rotate(
-                                // canvas: 0=right,90=down → flutter arrow up base → rotate (absAngle-90)°
-                                angle: (absAngle - 90.0) * pi / 180.0,
+                                // canvas: 0=right,90=down → flutter arrow up base → rotate (angle+90)°
+                                angle: (d.angle + 90.0) * pi / 180.0,
                                 child: Icon(
                                   Icons.arrow_upward_rounded,
                                   color: isMain

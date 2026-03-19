@@ -15,7 +15,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
   @override
   bool get wantKeepAlive => true;
 
-  late final StatisticheService _service;
+  StatisticheService? _service;
   int _currentStep = 0;
   bool _loading = false;
   Map<String, dynamic>? _result;
@@ -46,7 +46,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _service = StatisticheService(Provider.of<ApiService>(context, listen: false));
+    _service ??= StatisticheService(Provider.of<ApiService>(context, listen: false));
   }
 
   Future<void> _eseguiQuery() async {
@@ -62,7 +62,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
         'raggruppa_per': _raggruppa,
         'visualizzazione': _visualizzazione,
       };
-      final result = await _service.eseguiQueryBuilder(payload);
+      final result = await _service!.eseguiQueryBuilder(payload);
       setState(() { _result = result; _loading = false; _currentStep = 2; });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
@@ -143,7 +143,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
                         DropdownMenuItem(value: 'avg', child: Text('Media')),
                         DropdownMenuItem(value: 'none', child: Text('Nessuna (tabella)')),
                       ],
-                      onChanged: (v) => setState(() => _aggregazione = v!),
+                      onChanged: (v) { if (v != null) setState(() => _aggregazione = v); },
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -153,7 +153,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
                         DropdownMenuItem(value: 'mese', child: Text('Mese')),
                         DropdownMenuItem(value: 'anno', child: Text('Anno')),
                       ],
-                      onChanged: (v) => setState(() => _raggruppa = v!),
+                      onChanged: (v) { if (v != null) setState(() => _raggruppa = v); },
                     ),
                   ],
                 ),

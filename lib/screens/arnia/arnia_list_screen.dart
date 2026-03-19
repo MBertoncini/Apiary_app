@@ -111,12 +111,7 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Le mie Arnie'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _refreshArnie,
-          ),
-        ],
+        actions: [],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.arniaListRoute),
       body: Column(

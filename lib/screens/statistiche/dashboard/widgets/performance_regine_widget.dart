@@ -39,6 +39,7 @@ class _PerformanceRegineWidgetState extends State<PerformanceRegineWidget> {
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
+      loadingHeight: 180,
       child: _data != null ? _buildContent() : const SizedBox.shrink(),
     );
   }

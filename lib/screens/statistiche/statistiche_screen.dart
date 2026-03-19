@@ -26,6 +26,9 @@ class StatisticheScreen extends StatelessWidget {
           ),
         ),
         body: const TabBarView(
+          // Disabilita lo swipe orizzontale per evitare che il PageView
+          // del TabBarView rubi i gesti verticali alla ListView della dashboard.
+          physics: NeverScrollableScrollPhysics(),
           children: [
             DashboardTab(),
             QueryBuilderTab(),

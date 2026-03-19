@@ -20,7 +20,8 @@ class GruppiListScreen extends StatefulWidget {
 
 class _GruppiListScreenState extends State<GruppiListScreen> {
   bool _isLoading = true;
-  bool _isRefreshing = true;
+  bool _isRefreshing = false;
+  bool _cacheChecked = false;
   List<Gruppo> _gruppi = [];
   List<InvitoGruppo> _inviti = [];
   String? _errorMessage;
@@ -40,17 +41,15 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() { _errorMessage = null; });
+    _errorMessage = null;
 
-    // Phase 1: cache — gruppi only
+    // Phase 1: cache — read before any setState so skeleton doesn't flash
     final cachedGruppi = await _storageService.getStoredData('gruppi');
     if (cachedGruppi.isNotEmpty) {
       _gruppi = cachedGruppi.map((e) => Gruppo.fromJson(e as Map<String, dynamic>)).toList();
       _isLoading = false;
-      if (mounted) setState(() { _isRefreshing = true; });
-    } else {
-      if (mounted) setState(() { _isRefreshing = true; _errorMessage = null; });
     }
+    if (mounted) setState(() { _isRefreshing = true; _cacheChecked = true; });
 
     // Phase 2: API — gruppi + inviti
     try {
@@ -428,13 +427,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Gruppi'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Aggiorna',
-          ),
-        ],
+        actions: [],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.gruppiListRoute),
       body: Column(
@@ -444,7 +437,9 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadData,
-              child: _isRefreshing && _gruppi.isEmpty && _inviti.isEmpty
+              child: !_cacheChecked
+                  ? const SizedBox.shrink()
+                  : _isRefreshing && _gruppi.isEmpty && _inviti.isEmpty
                   ? const SkeletonListView(itemCount: 4)
                   : _errorMessage != null
                       ? ErrorDisplayWidget(

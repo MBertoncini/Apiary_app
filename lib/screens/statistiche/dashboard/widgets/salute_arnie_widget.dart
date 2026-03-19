@@ -57,11 +57,13 @@ class _SaluteArnieWidgetState extends State<SaluteArnieWidget> {
 
     return Row(
       children: [
-        SizedBox(
+        IgnorePointer(
+          child: SizedBox(
           height: 160,
           width: 160,
           child: PieChart(
             PieChartData(
+              pieTouchData: PieTouchData(enabled: false),
               sections: [
                 if (ottima > 0) PieChartSectionData(value: ottima.toDouble(), color: Colors.green, title: '$ottima', radius: 55, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 if (attenzione > 0) PieChartSectionData(value: attenzione.toDouble(), color: Colors.orange, title: '$attenzione', radius: 55, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -71,6 +73,7 @@ class _SaluteArnieWidgetState extends State<SaluteArnieWidget> {
               sectionsSpace: 2,
             ),
           ),
+        ),
         ),
         const SizedBox(width: 16),
         Expanded(

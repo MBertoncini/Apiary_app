@@ -81,7 +81,12 @@ class Gruppo {
       'nome': nome,
       'descrizione': descrizione,
       'data_creazione': dataCreazione,
-      'creatore_id': creatoreId,
+      'creatore': {
+        'id': creatoreId,
+        'username': creatoreName,
+      },
+      'membri_count': membriCountFromApi,
+      'apiari_count': apiariCountFromApi,
     };
   }
 

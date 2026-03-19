@@ -88,13 +88,7 @@ class _NucleoDetailScreenState extends State<NucleoDetailScreen>
             Tab(icon: Icon(Icons.checklist), text: 'Controlli'),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _load,
-            tooltip: 'Aggiorna',
-          ),
-        ],
+        actions: [],
       ),
       body: Column(
         children: [

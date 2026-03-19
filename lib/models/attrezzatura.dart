@@ -108,17 +108,23 @@ class Attrezzatura {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'nome': nome,
       'categoria': categoria,
+      'categoria_nome': categoriaNome,
       'descrizione': descrizione,
       'marca': marca,
       'modello': modello,
       'numero_serie': numeroSerie,
+      'proprietario': proprietario,
+      'proprietario_username': proprietarioUsername,
       'gruppo': gruppo,
+      'gruppo_nome': gruppoNome,
       'condiviso_con_gruppo': condivisoConGruppo,
       'stato': stato,
       'condizione': condizione,
       'apiario': apiario,
+      'apiario_nome': apiarioNome,
       'posizione': posizione,
       'prezzo_acquisto': prezzoAcquisto,
       'data_acquisto': dataAcquisto?.toIso8601String().split('T')[0],
@@ -128,6 +134,9 @@ class Attrezzatura {
       'quantita': quantita,
       'unita_misura': unitaMisura,
       'note': note,
+      'immagine': immagine,
+      'data_creazione': dataCreazione?.toIso8601String(),
+      'data_modifica': dataModifica?.toIso8601String(),
     };
   }
 

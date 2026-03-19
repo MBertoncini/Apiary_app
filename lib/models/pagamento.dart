@@ -45,11 +45,14 @@ class Pagamento {
     return {
       'id': id,
       'utente': utente,
+      'utente_username': utenteUsername,
       'destinatario': destinatario,
+      'destinatario_username': destinatarioUsername,
       'importo': importo,
       'data': data,
       'descrizione': descrizione,
       'gruppo': gruppo,
+      'gruppo_nome': gruppoNome,
     };
   }
 }
