@@ -11,6 +11,7 @@ import '../../services/storage_service.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/hive_frame_visualizer.dart';
 import '../../database/dao/controllo_arnia_dao.dart';
+import '../../services/controllo_service.dart';
 import '../../widgets/skeleton_widgets.dart';
 
 class ArniaListScreen extends StatefulWidget {
@@ -281,6 +282,13 @@ class _ArniaListItemState extends State<ArniaListItem> {
   }
 
   Future<void> _loadUltimoControllo() async {
+    // Sync dal server poi leggi il più recente da SQLite
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      await ControlloService(apiService).getControlliByArnia(widget.arnia.id);
+    } catch (e) {
+      debugPrint('Error syncing controllo for arnia ${widget.arnia.id}: $e');
+    }
     final c = await _dao.getLatestByArnia(widget.arnia.id);
     if (mounted) setState(() => _ultimoControllo = c);
   }

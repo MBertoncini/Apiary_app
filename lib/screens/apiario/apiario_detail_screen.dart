@@ -13,6 +13,7 @@ import 'apiario_form_screen.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/skeleton_widgets.dart';
 import '../../database/dao/controllo_arnia_dao.dart';
+import '../../services/controllo_service.dart';
 
 class ApiarioDetailScreen extends StatefulWidget {
   final int apiarioId;
@@ -209,20 +210,16 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   Future<void> _loadUltimiControlli({bool syncServer = false}) async {
     final dao = ControlloArniaDao();
 
-    // Sync dal server (una sola chiamata per tutti i controlli dell'apiario)
-    if (syncServer) {
+    // Sync dal server in parallelo per ogni arnia (usa endpoint arnie/{id}/controlli/)
+    if (syncServer && _arnie.isNotEmpty) {
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
-        final response = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
-        List<Map<String, dynamic>> remoteControlli = [];
-        if (response is List) {
-          remoteControlli = response.whereType<Map<String, dynamic>>().toList();
-        } else if (response is Map && response.containsKey('results')) {
-          remoteControlli = (response['results'] as List).whereType<Map<String, dynamic>>().toList();
-        }
-        if (remoteControlli.isNotEmpty) {
-          await dao.syncFromServer(remoteControlli);
-        }
+        final controlloService = ControlloService(apiService);
+        await Future.wait(_arnie.map((arnia) {
+          final id = arnia['id'] as int?;
+          if (id != null) return controlloService.getControlliByArnia(id);
+          return Future.value(<Map<String, dynamic>>[]);
+        }));
       } catch (e) {
         debugPrint('Error syncing controlli from server: $e');
       }

@@ -239,6 +239,9 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     if (old.arnie.length != widget.arnie.length ||
         old.apiarioId != widget.apiarioId) {
       _init();
+    } else if (old.ultimiControlli != widget.ultimiControlli ||
+               old.melariData != widget.melariData) {
+      setState(() {});
     }
   }
 
