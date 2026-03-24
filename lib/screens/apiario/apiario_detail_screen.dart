@@ -83,7 +83,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         _fioriture = allFioriture.where((f) => f['apiario'] == widget.apiarioId).toList();
 
         // Mostra subito i dati dalla cache (inclusi telaini da SQLite), poi aggiorna dal server
-        await _loadUltimiControlli();
+        await _loadUltimiControlli(syncServer: false);
         if (mounted) setState(() {});
 
         // Aggiorna sempre da server: arnie
@@ -193,8 +193,8 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         return a['is_active'] ? -1 : 1;
       });
 
-      // Carica l'ultimo controllo per ciascuna arnia
-      await _loadUltimiControlli();
+      // Carica l'ultimo controllo per ciascuna arnia (con sync dal server)
+      await _loadUltimiControlli(syncServer: true);
 
     } catch (e) {
       debugPrint('Error loading apiario: $e');
@@ -206,8 +206,28 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
     }
   }
 
-  Future<void> _loadUltimiControlli() async {
+  Future<void> _loadUltimiControlli({bool syncServer = false}) async {
     final dao = ControlloArniaDao();
+
+    // Sync dal server (una sola chiamata per tutti i controlli dell'apiario)
+    if (syncServer) {
+      try {
+        final apiService = Provider.of<ApiService>(context, listen: false);
+        final response = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
+        List<Map<String, dynamic>> remoteControlli = [];
+        if (response is List) {
+          remoteControlli = response.whereType<Map<String, dynamic>>().toList();
+        } else if (response is Map && response.containsKey('results')) {
+          remoteControlli = (response['results'] as List).whereType<Map<String, dynamic>>().toList();
+        }
+        if (remoteControlli.isNotEmpty) {
+          await dao.syncFromServer(remoteControlli);
+        }
+      } catch (e) {
+        debugPrint('Error syncing controlli from server: $e');
+      }
+    }
+
     final Map<int, Map<String, dynamic>?> map = {};
     for (final arnia in _arnie) {
       final id = arnia['id'] as int?;
