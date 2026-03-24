@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/statistiche_service.dart';
 import '../../../services/api_service.dart';
+import '../../../services/ai_quota_local_tracker.dart';
 import 'risultato_query_widget.dart';
 
 class NLQueryTab extends StatefulWidget {
@@ -16,6 +17,8 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
   bool get wantKeepAlive => true;
 
   StatisticheService? _service;
+  final _tracker = AiQuotaLocalTracker();
+  String _groqKey = '';
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = false;
@@ -35,7 +38,10 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _service ??= StatisticheService(Provider.of<ApiService>(context, listen: false));
+    if (_service == null) {
+      _service = StatisticheService(Provider.of<ApiService>(context, listen: false));
+      _tracker.getGroqApiKey().then((key) { if (mounted) setState(() => _groqKey = key); });
+    }
   }
 
   @override
@@ -62,7 +68,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
     }
 
     try {
-      final result = await _service!.chiediAI(domanda);
+      final result = await _service!.chiediAI(domanda, groqApiKey: _groqKey.isNotEmpty ? _groqKey : null);
       setState(() {
         _result = result;
         _loading = false;

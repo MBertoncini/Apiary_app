@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
 import '../constants/api_constants.dart';
+import 'ai_quota_local_tracker.dart';
 
 /// Servizio per il modulo Statistiche & AI Analytics.
 /// Gli endpoint statistiche sono sotto /api/stats/ (non /api/v1/).
@@ -149,8 +150,14 @@ class StatisticheService {
   // NL Query (AI)
   // -------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> chiediAI(String domanda) {
-    return _postStats('nl-query', {'domanda': domanda});
+  Future<Map<String, dynamic>> chiediAI(String domanda, {String? groqApiKey}) async {
+    final body = <String, dynamic>{'domanda': domanda};
+    if (groqApiKey != null && groqApiKey.isNotEmpty) {
+      body['groq_api_key'] = groqApiKey;
+    }
+    final result = await _postStats('nl-query', body);
+    AiQuotaLocalTracker().incrementStatsCall();
+    return result;
   }
 
   // -------------------------------------------------------------------------

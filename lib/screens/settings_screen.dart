@@ -6,6 +6,8 @@ import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/storage_service.dart';
+import '../services/ai_quota_local_tracker.dart';
+import '../services/voice_settings_service.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/paper_widgets.dart';
 import '../widgets/skeleton_widgets.dart';
@@ -24,15 +26,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
 
-  // Gemini API key
+  // Gemini API key (ApiarioAI chat + inserimento vocale)
   final _apiKeyController = TextEditingController();
   bool _apiKeyObscured = true;
   bool _isSavingApiKey = false;
   bool _isSavingProfile = false;
 
+  // Groq API key (statistiche NL query)
+  final _groqKeyController = TextEditingController();
+  bool _groqKeyObscured = true;
+  bool _isSavingGroqKey = false;
+  final _quotaTracker = AiQuotaLocalTracker();
+
+  // Modalità inserimento vocale
+  final _voiceSettings = VoiceSettingsService();
+  String _voiceMode = VoiceSettingsService.modeStt;
+
   // AI quota
   Map<String, dynamic>? _quotaData;
   bool _isLoadingQuota = false;
+  int _voiceCallsToday = 0;
+  int _statsCallsToday = 0;
 
   @override
   void initState() {
@@ -42,6 +56,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _populateFields();
       _loadQuota();
+      _loadLocalQuotas();
+      _voiceSettings.getMode().then((m) {
+        if (mounted) setState(() => _voiceMode = m);
+      });
       await Provider.of<AuthService>(context, listen: false).refreshUserProfile();
       _populateFields();
     });
@@ -60,6 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _apiKeyController.dispose();
+    _groqKeyController.dispose();
     super.dispose();
   }
 
@@ -103,11 +122,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ok) _loadQuota();
   }
 
+  Future<void> _saveGroqApiKey() async {
+    setState(() => _isSavingGroqKey = true);
+    await _quotaTracker.setGroqApiKey(_groqKeyController.text.trim());
+    setState(() => _isSavingGroqKey = false);
+    if (!mounted) return;
+    final saved = _groqKeyController.text.trim().isNotEmpty;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(saved ? 'Chiave Groq salvata' : 'Chiave Groq rimossa'),
+      backgroundColor: ThemeConstants.successColor,
+    ));
+  }
+
+  Future<void> _loadLocalQuotas() async {
+    final voice = await _quotaTracker.getVoiceCallsToday();
+    final stats = await _quotaTracker.getStatsCallsToday();
+    final groqKey = await _quotaTracker.getGroqApiKey();
+    if (mounted) {
+      setState(() {
+        _voiceCallsToday = voice;
+        _statsCallsToday = stats;
+        _groqKeyController.text = groqKey;
+      });
+    }
+  }
+
   Future<void> _loadQuota() async {
     setState(() => _isLoadingQuota = true);
     final chatService = Provider.of<ChatService>(context, listen: false);
     final data = await chatService.fetchQuota();
     if (mounted) setState(() { _quotaData = data; _isLoadingQuota = false; });
+  }
+
+  Future<void> _saveVoiceMode(String mode) async {
+    await _voiceSettings.setMode(mode);
+    if (mounted) setState(() => _voiceMode = mode);
   }
 
   Future<void> _clearCache() async {
@@ -277,10 +326,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Icon(Icons.smart_toy_outlined, color: ThemeConstants.secondaryColor, size: 20),
                       const SizedBox(width: 8),
-                      Text('ApiarioAI — Chiave Gemini', style: ThemeConstants.subheadingStyle),
+                      Text('Chiavi API IA', style: ThemeConstants.subheadingStyle),
                     ],
                   ),
+                  // ── Gemini (ApiarioAI chat + Inserimento vocale) ──────────
                   const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: const Color(0xFF4285F4), size: 16),
+                      const SizedBox(width: 6),
+                      Text('Gemini — ApiarioAI & Inserimento Vocale',
+                          style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -292,29 +351,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Perché inserire la tua chiave?',
-                          style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
+                          '• Senza chiave personale l\'app usa la chiave di sistema condivisa (quota condivisa).\n'
+                          '• Con la tua chiave ottieni quota indipendente: 20 richieste/giorno (piano gratuito Gemini 2.5 Flash).\n'
+                          '• Usata per: chat ApiarioAI + trascrizione vocale.\n'
+                          '• La chiave viene salvata sul server in modo sicuro.',
+                          style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '• Senza chiave personale, l\'app usa la chiave di sistema condivisa, soggetta a limiti di quota giornaliera.\n'
-                          '• Con la tua chiave gratuita da Google AI Studio ottieni un limite indipendente: 1 500 richieste/giorno su Gemini 2.5 Flash.\n'
-                          '• La chiave rimane sul server in modo sicuro e non viene mai condivisa.',
-                          style: ThemeConstants.bodyStyle.copyWith(fontSize: 13),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Come ottenerla: vai su aistudio.google.com → "Get API key" → crea una chiave gratuita e incollala qui sotto.',
+                          'Ottienila su aistudio.google.com → "Get API key"',
                           style: ThemeConstants.bodyStyle.copyWith(
-                            fontSize: 12,
-                            color: ThemeConstants.textSecondaryColor,
-                            fontStyle: FontStyle.italic,
-                          ),
+                            fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   TextField(
                     controller: _apiKeyController,
                     obscureText: _apiKeyObscured,
@@ -328,7 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       DiaryButton(
@@ -340,10 +392,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 8),
                       DiaryButton(
                         label: 'Rimuovi',
-                        onPressed: () {
-                          _apiKeyController.clear();
-                          _saveApiKey();
-                        },
+                        onPressed: () { _apiKeyController.clear(); _saveApiKey(); },
+                        icon: Icons.delete_outline,
+                        color: ThemeConstants.secondaryColor,
+                      ),
+                    ],
+                  ),
+
+                  // ── Groq (Statistiche NL Query) ───────────────────────────
+                  const Divider(height: 28),
+                  Row(
+                    children: [
+                      Icon(Icons.bolt, color: const Color(0xFFF55036), size: 16),
+                      const SizedBox(width: 6),
+                      Text('Groq — Statistiche NL Query',
+                          style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF55036).withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF55036).withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '• Usata per le query AI nelle Statistiche (domande in linguaggio naturale).\n'
+                          '• Senza chiave il backend usa la chiave di sistema condivisa.\n'
+                          '• Salvata localmente sul dispositivo.',
+                          style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Ottienila su console.groq.com → "API Keys"',
+                          style: ThemeConstants.bodyStyle.copyWith(
+                            fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _groqKeyController,
+                    obscureText: _groqKeyObscured,
+                    decoration: InputDecoration(
+                      labelText: 'Groq API Key',
+                      hintText: 'gsk_...',
+                      isDense: true,
+                      suffixIcon: IconButton(
+                        icon: Icon(_groqKeyObscured ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                        onPressed: () => setState(() => _groqKeyObscured = !_groqKeyObscured),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      DiaryButton(
+                        label: _isSavingGroqKey ? 'Salvataggio...' : 'Salva chiave',
+                        onPressed: _isSavingGroqKey ? null : _saveGroqApiKey,
+                        icon: _isSavingGroqKey ? null : Icons.key,
+                        color: const Color(0xFFF55036),
+                      ),
+                      const SizedBox(width: 8),
+                      DiaryButton(
+                        label: 'Rimuovi',
+                        onPressed: () { _groqKeyController.clear(); _saveGroqApiKey(); },
                         icon: Icons.delete_outline,
                         color: ThemeConstants.secondaryColor,
                       ),
@@ -352,6 +470,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+
+            // ── INSERIMENTO VOCALE ────────────────────────────────────────
+            _buildVoiceModeCard(),
             const SizedBox(height: 16),
 
             // ── QUOTA AI ──────────────────────────────────────────────────
@@ -430,6 +552,134 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildVoiceModeCard() {
+    return PaperCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.mic_outlined,
+                  color: ThemeConstants.secondaryColor, size: 20),
+              const SizedBox(width: 8),
+              Text('Inserimento Vocale', style: ThemeConstants.subheadingStyle),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Scegli come vengono catturati i dati vocali.',
+            style: ThemeConstants.bodyStyle.copyWith(
+                fontSize: 12, color: ThemeConstants.textSecondaryColor),
+          ),
+          const SizedBox(height: 16),
+
+          // ── STT locale ──────────────────────────────────────────────────
+          _buildVoiceModeOption(
+            value: VoiceSettingsService.modeStt,
+            icon: Icons.text_fields,
+            title: 'Speech-to-text locale',
+            subtitle: 'Il riconoscimento vocale del dispositivo trascrive '
+                'il testo; Gemini lo struttura in dati. '
+                'Consigliato: funziona anche con connessione lenta.',
+          ),
+          const SizedBox(height: 10),
+
+          // ── Audio Gemini ─────────────────────────────────────────────────
+          _buildVoiceModeOption(
+            value: VoiceSettingsService.modeAudio,
+            icon: Icons.graphic_eq,
+            iconColor: const Color(0xFF4285F4),
+            title: 'Registra audio → Gemini multimodale',
+            subtitle: 'L\'audio viene inviato direttamente a Gemini che '
+                'trascrive e struttura in un unico passaggio. '
+                'Più preciso in ambienti rumorosi. Richiede connessione.',
+            badge: 'Gemini Audio',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVoiceModeOption({
+    required String value,
+    required IconData icon,
+    Color? iconColor,
+    required String title,
+    required String subtitle,
+    String? badge,
+  }) {
+    final selected = _voiceMode == value;
+    final color = iconColor ?? ThemeConstants.primaryColor;
+    return GestureDetector(
+      onTap: () => _saveVoiceMode(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? color.withOpacity(0.08) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? color : Colors.grey.shade300,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: _voiceMode,
+              onChanged: (v) => _saveVoiceMode(v!),
+              activeColor: color,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 16, color: color),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(title,
+                            style: ThemeConstants.bodyStyle.copyWith(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                      if (badge != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4285F4).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color:
+                                    const Color(0xFF4285F4).withOpacity(0.4)),
+                          ),
+                          child: Text(badge,
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF4285F4),
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitle,
+                      style: ThemeConstants.bodyStyle.copyWith(
+                          fontSize: 12,
+                          color: ThemeConstants.textSecondaryColor)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuotaCard() {
     return PaperCard(
       child: Column(
@@ -440,7 +690,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icon(Icons.analytics_outlined, color: ThemeConstants.secondaryColor, size: 20),
               const SizedBox(width: 8),
               Flexible(
-                child: Text('ApiarioAI — Quota giornaliera',
+                child: Text('Quota AI — Uso giornaliero',
                     style: ThemeConstants.subheadingStyle, overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 4),
@@ -453,21 +703,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   color: ThemeConstants.secondaryColor,
-                  onPressed: _loadQuota,
+                  onPressed: () { _loadQuota(); _loadLocalQuotas(); },
                   tooltip: 'Aggiorna',
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+
+          // ── 1. ApiarioAI chat (Gemini, tracciata lato backend) ──────────
+          Row(
+            children: [
+              Icon(Icons.smart_toy_outlined, color: const Color(0xFF4285F4), size: 15),
+              const SizedBox(width: 6),
+              Text('ApiarioAI Assistant (Gemini)',
+                  style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 8),
           if (_isLoadingQuota && _quotaData == null)
-            const SkeletonDashboardContent(height: 130)
+            const SkeletonDashboardContent(height: 110)
           else if (_quotaData == null)
             Text('Dati non disponibili (offline o errore di rete)',
                 style: ThemeConstants.bodyStyle.copyWith(
                     fontSize: 13, color: ThemeConstants.textSecondaryColor))
-          else ...[
+          else
             _buildQuotaSection(_quotaData!),
-          ],
+
+          const Divider(height: 28),
+
+          // ── 2. Inserimento vocale (Gemini, tracciato localmente) ─────────
+          Row(
+            children: [
+              Icon(Icons.mic_outlined, color: ThemeConstants.primaryColor, size: 15),
+              const SizedBox(width: 6),
+              Text('Inserimento Vocale (Gemini)',
+                  style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _quotaBar(
+            label: 'Trascrizioni oggi',
+            used: _voiceCallsToday,
+            limit: 20,
+            resetAt: null,
+            isActive: true,
+            color: ThemeConstants.primaryColor,
+            subtitle: 'Piano gratuito: 20 richieste/giorno',
+          ),
+
+          const Divider(height: 28),
+
+          // ── 3. Statistiche NL Query (Groq, tracciato localmente) ─────────
+          Row(
+            children: [
+              Icon(Icons.bolt, color: const Color(0xFFF55036), size: 15),
+              const SizedBox(width: 6),
+              Text('Statistiche NL Query (Groq)',
+                  style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _quotaBar(
+            label: 'Query oggi',
+            used: _statsCallsToday,
+            limit: 0,
+            resetAt: null,
+            isActive: true,
+            color: const Color(0xFFF55036),
+            subtitle: _groqKeyController.text.isNotEmpty
+                ? 'Usando la tua chiave Groq personale'
+                : 'Usando la chiave di sistema condivisa',
+          ),
         ],
       ),
     );
@@ -554,9 +860,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool isActive,
     required Color color,
     bool dimmed = false,
+    String? subtitle,
   }) {
-    final double fraction = limit > 0 ? (used / limit).clamp(0.0, 1.0) : 0.0;
-    final int remaining = (limit - used).clamp(0, limit);
+    final bool hasLimit = limit > 0;
+    final double fraction = hasLimit ? (used / limit).clamp(0.0, 1.0) : 0.0;
+    final int remaining = hasLimit ? (limit - used).clamp(0, limit) : 0;
     final Color barColor = fraction >= 0.9
         ? ThemeConstants.errorColor
         : fraction >= 0.7
@@ -598,29 +906,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         fontSize: 13,
                         fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
               ),
-              Text('$used / $limit',
+              Text(hasLimit ? '$used / $limit' : '$used oggi',
                   style: ThemeConstants.bodyStyle.copyWith(
                       fontSize: 12, color: ThemeConstants.textSecondaryColor)),
             ],
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(subtitle!,
+                style: ThemeConstants.bodyStyle.copyWith(
+                    fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic)),
+          ],
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: fraction,
+              value: hasLimit ? fraction : 0.0,
               minHeight: 10,
               backgroundColor: ThemeConstants.dividerColor,
-              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+              valueColor: AlwaysStoppedAnimation<Color>(hasLimit ? barColor : color.withOpacity(0.4)),
             ),
           ),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$remaining rimaste',
+              Text(hasLimit ? '$remaining rimaste' : 'Reset ogni giorno',
                   style: ThemeConstants.bodyStyle.copyWith(
                       fontSize: 11, color: ThemeConstants.textSecondaryColor)),
-              Text(resetLabel,
+              Text(resetAt != null ? resetLabel : 'Reset a mezzanotte',
                   style: ThemeConstants.bodyStyle.copyWith(
                       fontSize: 11, color: ThemeConstants.textSecondaryColor)),
             ],

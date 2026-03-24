@@ -117,8 +117,8 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> {
                   )
                 : SizedBox(
                     key: const ValueKey('mic'),
-                    width: 180,
-                    height: 180,
+                    width: 220,
+                    height: 220,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [

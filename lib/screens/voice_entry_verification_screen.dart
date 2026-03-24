@@ -1,9 +1,13 @@
 // lib/screens/voice_entry_verification_screen.dart
+import 'dart:async';
+import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/voice_entry.dart';
 import '../services/api_service.dart';
+import '../services/audio_queue_service.dart';
 import '../services/storage_service.dart';
 import '../services/voice_queue_service.dart';
 import '../constants/theme_constants.dart';
@@ -36,6 +40,11 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   final Map<String, TextEditingController> _controllers = {};
   final VoiceQueueService _queueService = VoiceQueueService();
 
+  // Audio player per la riproduzione dell'audio originale (modalità Audio AI)
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  PlayerState _playerState = PlayerState.stopped;
+  StreamSubscription<PlayerState>? _playerStateSub;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +52,9 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     _rebuildControllers();
     // Persist immediately – Gemini tokens are already spent; do not lose this data.
     _queueService.saveVerificationDraft(_editedEntries);
+    _playerStateSub = _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) setState(() => _playerState = state);
+    });
   }
 
   void _rebuildControllers() {
@@ -69,10 +81,13 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     for (final c in _controllers.values) {
       c.dispose();
     }
+    _playerStateSub?.cancel();
+    _audioPlayer.dispose();
     super.dispose();
   }
   
   void _nextEntry() {
+    _audioPlayer.stop();
     if (_currentIndex < _editedEntries.length - 1) {
       setState(() {
         _currentIndex++;
@@ -82,6 +97,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   }
 
   void _previousEntry() {
+    _audioPlayer.stop();
     if (_currentIndex > 0) {
       setState(() {
         _currentIndex--;
@@ -90,7 +106,46 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     }
   }
 
-  void _removeEntry() {
+  Future<void> _removeEntry() async {
+    final entry = _editedEntries[_currentIndex];
+    final arniaLabel = entry.arniaNumero != null
+        ? 'Arnia ${entry.arniaNumero}'
+        : 'questa scheda';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Elimina scheda'),
+          ],
+        ),
+        content: Text(
+          'Vuoi eliminare la scheda di $arniaLabel?\n\n'
+          'L\'operazione non può essere annullata.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('ANNULLA'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('ELIMINA', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    _audioPlayer.stop();
+    // Elimina il file audio associato all'entry rimossa
+    AudioQueueService.deleteFile(entry.audioFilePath);
+
     setState(() {
       _editedEntries.removeAt(_currentIndex);
       if (_currentIndex >= _editedEntries.length) {
@@ -109,11 +164,6 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       widget.onCancel();
       return;
     }
-
-    setState(() {
-      _isSubmitting = true;
-      _error = null;
-    });
 
     final apiService = Provider.of<ApiService>(context, listen: false);
     final storageService = Provider.of<StorageService>(context, listen: false);
@@ -138,6 +188,94 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
         if (raw['numero'] == entry.arniaNumero) return raw['id'] as int?;
       }
       return null;
+    }
+
+    // Detect arnie referenced in entries but absent from local cache.
+    final missingArnie = <Map<String, dynamic>>[];
+    for (final entry in _editedEntries) {
+      if (!entry.isValid()) continue;
+      if (resolveArniaId(entry) == null &&
+          entry.arniaNumero != null &&
+          entry.apiarioId != null) {
+        final alreadyListed = missingArnie.any(
+          (a) =>
+              a['apiarioId'] == entry.apiarioId &&
+              a['numero'] == entry.arniaNumero,
+        );
+        if (!alreadyListed) {
+          missingArnie.add({
+            'apiarioId': entry.apiarioId!,
+            'numero': entry.arniaNumero!,
+            'apiarioNome': entry.apiarioNome,
+          });
+        }
+      }
+    }
+
+    // Ask the user before creating new arnie.
+    if (missingArnie.isNotEmpty) {
+      final arniaList = missingArnie
+          .map((a) =>
+              '• Arnia ${a['numero']}'
+              '${a['apiarioNome'] != null ? '  (${a['apiarioNome']})' : ''}')
+          .join('\n');
+
+      final create = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.hive_outlined, color: Colors.orange),
+              SizedBox(width: 8),
+              Expanded(child: Text('Nuove arnie rilevate')),
+            ],
+          ),
+          content: Text(
+            'Le seguenti arnie non sono presenti nel database:\n\n'
+            '$arniaList\n\n'
+            'Vuoi crearle nell\'apiario selezionato e salvare i controlli?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('ANNULLA'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('CREA E SALVA'),
+            ),
+          ],
+        ),
+      );
+
+      if (create != true || !mounted) return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+
+    // Create any missing arnie first, then update lookup and cache.
+    if (missingArnie.isNotEmpty) {
+      final newCachedArnie = List<dynamic>.from(cachedArnie);
+      for (final arnia in missingArnie) {
+        try {
+          final result = await apiService.post('arnie/', {
+            'apiario': arnia['apiarioId'],
+            'numero': arnia['numero'],
+          });
+          if (result != null && result['id'] != null) {
+            final key = '${arnia['apiarioId']}_${arnia['numero']}';
+            arnieLookup[key] = result['id'] as int;
+            newCachedArnie.add(result);
+          }
+        } catch (e) {
+          debugPrint('Errore creazione arnia ${arnia['numero']}: $e');
+        }
+      }
+      await storageService.saveSyncData({'arnie': newCachedArnie});
     }
 
     // Per-entry save: never abort on a single failure.
@@ -168,6 +306,8 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
         controlloData['arnia'] = arniaId;
         await apiService.post('controlli/', controlloData);
         savedCount++;
+        // Elimina il file audio originale ora che il dato è nel DB
+        await AudioQueueService.deleteFile(entry.audioFilePath);
 
         // Auto-crea scheda regina base se segnalata per la prima volta
         if (entry.presenzaRegina == true) {
@@ -357,6 +497,14 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           ),
           const SizedBox(height: 16),
           
+          // Audio player (solo se disponibile il file originale)
+          if (entry.audioFilePath != null &&
+              File(entry.audioFilePath!).existsSync()) ...[
+            _buildSectionTitle('Registrazione originale'),
+            _buildAudioPlayer(entry.audioFilePath!),
+            const SizedBox(height: 16),
+          ],
+
           // Date and type section
           _buildSectionTitle('Informazioni generali'),
           _buildDatePicker(
@@ -641,6 +789,61 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     );
   }
   
+  Widget _buildAudioPlayer(String filePath) {
+    final isPlaying = _playerState == PlayerState.playing;
+    final isPaused = _playerState == PlayerState.paused;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4285F4).withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: const Color(0xFF4285F4).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.graphic_eq, color: Color(0xFF4285F4), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Audio originale — premi per ascoltare',
+              style: TextStyle(
+                fontSize: 13,
+                color: ThemeConstants.textSecondaryColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: isPlaying ? 'Pausa' : 'Riproduci',
+            icon: Icon(
+              isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+              color: const Color(0xFF4285F4),
+              size: 36,
+            ),
+            onPressed: () async {
+              if (isPlaying) {
+                await _audioPlayer.pause();
+              } else if (isPaused) {
+                await _audioPlayer.resume();
+              } else {
+                await _audioPlayer.play(DeviceFileSource(filePath));
+              }
+            },
+          ),
+          if (isPlaying || isPaused)
+            IconButton(
+              tooltip: 'Stop',
+              icon: const Icon(Icons.stop_circle_outlined,
+                  color: Colors.red, size: 28),
+              onPressed: () => _audioPlayer.stop(),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),

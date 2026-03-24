@@ -35,6 +35,11 @@ class VoiceEntry {
   final bool? reginaColorata;
   final String? coloreRegina;
 
+  /// Path del file audio originale (solo modalità "Registra audio").
+  /// Rimane valorizzato finché il controllo non è salvato nel DB;
+  /// viene eliminato dal disco al momento del salvataggio.
+  final String? audioFilePath;
+
   // Constructor
   VoiceEntry({
     this.apiarioId,
@@ -60,6 +65,7 @@ class VoiceEntry {
     this.note,
     this.reginaColorata,
     this.coloreRegina,
+    this.audioFilePath,
   });
   
   // Create a copy with modified fields
@@ -87,6 +93,7 @@ class VoiceEntry {
     String? note,
     bool? reginaColorata,
     String? coloreRegina,
+    String? audioFilePath,
   }) {
     return VoiceEntry(
       apiarioId: apiarioId ?? this.apiarioId,
@@ -112,6 +119,7 @@ class VoiceEntry {
       note: note ?? this.note,
       reginaColorata: reginaColorata ?? this.reginaColorata,
       coloreRegina: coloreRegina ?? this.coloreRegina,
+      audioFilePath: audioFilePath ?? this.audioFilePath,
     );
   }
   
@@ -164,6 +172,7 @@ class VoiceEntry {
       note: json['note'],
       reginaColorata: json['regina_colorata'],
       coloreRegina: json['colore_regina'],
+      audioFilePath: json['audio_file_path'] as String?,
     );
   }
   
@@ -195,6 +204,7 @@ class VoiceEntry {
     if (note != null) jsonMap['note'] = note;
     if (reginaColorata != null) jsonMap['regina_colorata'] = reginaColorata;
     if (coloreRegina != null) jsonMap['colore_regina'] = coloreRegina;
+    if (audioFilePath != null) jsonMap['audio_file_path'] = audioFilePath;
 
     return jsonMap;
   }

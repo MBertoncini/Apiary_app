@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../services/platform_voice_input_manager.dart';
 import '../services/platform_speech_service.dart';
 import '../services/gemini_data_processor.dart';
+import '../services/gemini_audio_processor.dart';
+import '../services/voice_settings_service.dart';
 import '../services/voice_queue_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/voice_feedback_service.dart';
@@ -14,7 +16,9 @@ import 'voice_transcript_review_screen.dart';
 import '../constants/theme_constants.dart';
 import '../constants/app_constants.dart';
 import '../models/voice_entry.dart';
+import '../widgets/audio_input_widget.dart';
 import '../widgets/drawer_widget.dart';
+import '../services/auth_service.dart';
 
 class VoiceCommandScreen extends StatefulWidget {
   @override
@@ -26,11 +30,14 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   late PlatformVoiceInputManager _voiceManager;
   late PlatformSpeechService _speechService;
   late GeminiDataProcessor _dataProcessor;
+  late GeminiAudioProcessor _audioProcessor;
   final VoiceQueueService _queueService = VoiceQueueService();
   final ConnectivityService _connectivityService = ConnectivityService();
+  final VoiceSettingsService _voiceSettings = VoiceSettingsService();
 
   int _pendingQueueCount = 0;
   bool _isOnline = true;
+  String _voiceMode = VoiceSettingsService.modeStt;
 
   // Contesto sessione corrente
   int? _contextApiarioId;
@@ -43,9 +50,15 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     _refreshQueueCount();
     _checkConnectivity();
     _voiceManager.addListener(_onVoiceManagerChanged);
-    // Restore any data that survived a previous app kill.
-    // Verification draft takes priority (furthest along in the pipeline).
+    // Carica la modalità vocale e applica la chiave personale.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final user = Provider.of<AuthService>(context, listen: false).currentUser;
+      if (user != null && user.geminiApiKey.isNotEmpty) {
+        _dataProcessor.setPersonalKey(user.geminiApiKey);
+        _audioProcessor.setPersonalKey(user.geminiApiKey);
+      }
+      final mode = await _voiceSettings.getMode();
+      if (mounted) setState(() => _voiceMode = mode);
       await _restoreVerificationDraft();
       await _restoreDraft();
     });
@@ -169,6 +182,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   void _initializeServices() {
     _speechService = PlatformSpeechService();
     _dataProcessor = GeminiDataProcessor();
+    _audioProcessor = GeminiAudioProcessor();
     final feedbackService = VoiceFeedbackService();
 
     _voiceManager = PlatformVoiceInputManager(
@@ -198,6 +212,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
       _contextApiarioNome = nome;
     });
     _dataProcessor.setContext(id, nome);
+    _audioProcessor.setContext(id, nome);
   }
 
   Future<void> _saveToOfflineQueue() async {
@@ -524,47 +539,58 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                   ),
                 ),
 
-              // Voice input widget + pulsante "Salva per dopo"
-              ChangeNotifierProvider<PlatformVoiceInputManager>.value(
-                value: _voiceManager,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      VoiceInputWidget(
+              // Voice input widget (STT) o Audio input widget
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _voiceMode == VoiceSettingsService.modeAudio
+                    ? AudioInputWidget(
+                        processor: _audioProcessor,
                         onEntriesReady: _handleEntriesReady,
-                        onTranscriptionsReady: _handleTranscriptionsReady,
-                      ),
-                      // Mostra "Salva per dopo" se c'è un errore di rete
-                      ListenableBuilder(
-                        listenable: _voiceManager,
-                        builder: (context, _) {
-                          final hasError = _voiceManager.error != null;
-                          final hasTranscription =
-                              _voiceManager.getTranscription().isNotEmpty;
-                          if (!hasError || !hasTranscription) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.save_outlined,
-                                  color: Colors.orange),
-                              label: const Text(
-                                'Salva per dopo',
-                                style: TextStyle(color: Colors.orange),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.orange),
-                              ),
-                              onPressed: _saveToOfflineQueue,
+                        contextApiarioId: _contextApiarioId,
+                        contextApiarioNome: _contextApiarioNome,
+                      )
+                    : ChangeNotifierProvider<PlatformVoiceInputManager>.value(
+                        value: _voiceManager,
+                        child: Column(
+                          children: [
+                            VoiceInputWidget(
+                              onEntriesReady: _handleEntriesReady,
+                              onTranscriptionsReady:
+                                  _handleTranscriptionsReady,
                             ),
-                          );
-                        },
+                            // Mostra "Salva per dopo" se c'è un errore di rete
+                            ListenableBuilder(
+                              listenable: _voiceManager,
+                              builder: (context, _) {
+                                final hasError = _voiceManager.error != null;
+                                final hasTranscription = _voiceManager
+                                    .getTranscription()
+                                    .isNotEmpty;
+                                if (!hasError || !hasTranscription) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.save_outlined,
+                                        color: Colors.orange),
+                                    label: const Text(
+                                      'Salva per dopo',
+                                      style:
+                                          TextStyle(color: Colors.orange),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(
+                                          color: Colors.orange),
+                                    ),
+                                    onPressed: _saveToOfflineQueue,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
               ),
             ],
           ),
@@ -745,6 +771,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     _voiceManager.dispose();
     _speechService.dispose();
     _dataProcessor.dispose();
+    _audioProcessor.dispose();
     _connectivityService.dispose();
     super.dispose();
   }

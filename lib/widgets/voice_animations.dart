@@ -86,8 +86,8 @@ class _VoicePulsingRingsState extends State<VoicePulsingRings>
               child: Opacity(
                 opacity: _opacityAnims[i].value,
                 child: Container(
-                  width: 160,
-                  height: 160,
+                  width: 200,
+                  height: 200,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.red.shade400.withOpacity(0.10),
@@ -335,8 +335,8 @@ class _VoiceMicButtonState extends State<VoiceMicButton>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeInOut,
-          width: 76,
-          height: 76,
+          width: 120,
+          height: 120,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
@@ -357,8 +357,8 @@ class _VoiceMicButtonState extends State<VoiceMicButton>
               child: widget.isProcessing
                   ? const SizedBox(
                       key: ValueKey('spinner'),
-                      width: 28,
-                      height: 28,
+                      width: 44,
+                      height: 44,
                       child: CircularProgressIndicator(
                         valueColor:
                             AlwaysStoppedAnimation<Color>(Colors.white),
@@ -369,7 +369,7 @@ class _VoiceMicButtonState extends State<VoiceMicButton>
                       widget.isListening ? Icons.stop_rounded : Icons.mic,
                       key: ValueKey<bool>(widget.isListening),
                       color: Colors.white,
-                      size: widget.isListening ? 34 : 30,
+                      size: widget.isListening ? 54 : 48,
                     ),
             ),
           ),
