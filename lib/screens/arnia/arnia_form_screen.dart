@@ -23,11 +23,15 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
   final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
   late ApiService _apiService;
   late StorageService _storageService;
-  
+
   // Lista degli apiari disponibili
   List<Map<String, dynamic>> _apiari = [];
   bool _loadingApiari = true;
-  
+
+  // Numeri arnia già usati nell'apiario selezionato
+  Set<int> _numeriUsati = {};
+  late TextEditingController _numeroController;
+
   // Campi del form
   int? _apiarioId;
   String? _apiarioNome;
@@ -74,10 +78,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
     super.initState();
     _apiService = Provider.of<ApiService>(context, listen: false);
     _storageService = Provider.of<StorageService>(context, listen: false);
-    
-    // Carica tutti gli apiari disponibili
-    _loadApiari();
-    
+
     // Se siamo in modalità modifica, carica i dati dell'arnia
     if (widget.arnia != null) {
       _apiarioId = widget.arnia!.apiario;
@@ -90,11 +91,19 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
       _tipoArnia = widget.arnia!.tipoArnia;
       _attiva = widget.arnia!.attiva;
     } else if (widget.apiarioId != null) {
-      // Se viene specificato un apiario, utilizza quello
       _apiarioId = widget.apiarioId;
-      // Carica il nome dell'apiario
-      _loadApiarioName();
     }
+
+    _numeroController = TextEditingController(text: _numero.toString());
+
+    // Carica apiari e poi aggiorna il numero suggerito
+    _loadApiari();
+  }
+
+  @override
+  void dispose() {
+    _numeroController.dispose();
+    super.dispose();
   }
 
   // Carica tutti gli apiari disponibili
@@ -132,27 +141,35 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
         }
       }
     }
-  }
-  
-  Future<void> _loadApiarioName() async {
-    if (_apiarioId == null) return;
-    // Try from already-loaded list first
-    final found = _apiari.firstWhere(
-      (a) => a['id'] == _apiarioId,
-      orElse: () => <String, dynamic>{},
-    );
-    if (found.isNotEmpty) {
-      if (mounted) setState(() { _apiarioNome = found['nome']; });
-      return;
-    }
-    try {
-      final apiario = await _apiService.get('${ApiConstants.apiariUrl}$_apiarioId/');
-      if (mounted) setState(() { _apiarioNome = apiario['nome']; });
-    } catch (e) {
-      debugPrint('Errore nel caricare il nome dell\'apiario: $e');
+
+    // Dopo aver caricato gli apiari, carica i numeri usati
+    if (_apiarioId != null) {
+      await _loadNumeriUsati(_apiarioId!);
     }
   }
 
+  /// Carica i numeri arnia già usati nell'apiario e suggerisce il prossimo disponibile.
+  Future<void> _loadNumeriUsati(int apiarioId) async {
+    try {
+      final arnie = await _storageService.getStoredData('arnie');
+      final numeri = arnie
+          .where((a) => a['apiario'] == apiarioId)
+          .map((a) => a['numero'] as int? ?? 0)
+          .toSet();
+      if (mounted) {
+        setState(() { _numeriUsati = numeri; });
+        // In modalità creazione, suggerisci il prossimo numero
+        if (widget.arnia == null) {
+          final next = numeri.isEmpty ? 1 : (numeri.reduce((a, b) => a > b ? a : b) + 1);
+          _numero = next;
+          _numeroController.text = next.toString();
+        }
+      }
+    } catch (e) {
+      debugPrint('Errore nel caricare i numeri arnia: $e');
+    }
+  }
+  
   // Gestisce il cambio di colore
   void _onColoreChanged(String? newValue) {
     if (newValue != null) {
@@ -179,14 +196,15 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
     if (newValue != null) {
       setState(() {
         _apiarioId = newValue;
-        // Aggiorna il nome dell'apiario
         try {
           final apiario = _apiari.firstWhere((a) => a['id'] == newValue);
           _apiarioNome = apiario['nome'];
         } catch (e) {
           _apiarioNome = 'Apiario $newValue';
         }
+        _numeriUsati = {};
       });
+      _loadNumeriUsati(newValue);
     }
   }
 
@@ -288,14 +306,23 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         hintText: 'Inserisci il numero dell\'arnia',
                         border: OutlineInputBorder(),
                       ),
-                      initialValue: _numero.toString(),
+                      controller: _numeroController,
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Inserisci un numero';
                         }
-                        if (int.tryParse(value) == null) {
+                        final n = int.tryParse(value);
+                        if (n == null) {
                           return 'Inserisci un numero valido';
+                        }
+                        // In creazione, blocca i numeri già usati nell'apiario
+                        if (widget.arnia == null && _numeriUsati.contains(n)) {
+                          return 'Il numero $n è già usato in questo apiario';
+                        }
+                        // In modifica, blocca solo se cambia numero e il nuovo è usato da un'altra arnia
+                        if (widget.arnia != null && n != widget.arnia!.numero && _numeriUsati.contains(n)) {
+                          return 'Il numero $n è già usato in questo apiario';
                         }
                         return null;
                       },

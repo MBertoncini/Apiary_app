@@ -884,6 +884,22 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     }
   }
 
+  void _applyZoom(double factor) {
+    final matrix = _transformCtrl.value;
+    final currentScale = matrix.getMaxScaleOnAxis();
+    final newScale = (currentScale * factor).clamp(0.15, 4.0);
+    if ((newScale - currentScale).abs() < 0.001) return;
+    final center = _viewportSize == Size.zero
+        ? const Offset(200, 150)
+        : Offset(_viewportSize.width / 2, _viewportSize.height / 2);
+    final invMatrix = Matrix4.inverted(matrix);
+    final focalCanvas = MatrixUtils.transformPoint(invMatrix, center);
+    _transformCtrl.value = Matrix4.copy(matrix)
+      ..translate(focalCanvas.dx, focalCanvas.dy)
+      ..scale(newScale / currentScale)
+      ..translate(-focalCanvas.dx, -focalCanvas.dy);
+  }
+
   void _confirmDelete(String id, String msg) {
     showDialog<bool>(
       context: context,
@@ -1004,6 +1020,25 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           Positioned(
             top: 12, left: 12,
             child: _InfoChip(icon: Icons.touch_app_rounded, text: 'Tocca per selezionare'),
+          ),
+
+        // ── zoom controls (selection mode) ───────────────────────
+        if (widget.selectionMode && !isEmpty)
+          Positioned(
+            top: 8, right: 8,
+            child: Column(
+              children: [
+                _MapZoomButton(
+                  icon: Icons.add,
+                  onTap: () => _applyZoom(1.4),
+                ),
+                const SizedBox(height: 4),
+                _MapZoomButton(
+                  icon: Icons.remove,
+                  onTap: () => _applyZoom(1 / 1.4),
+                ),
+              ],
+            ),
           ),
 
         // ── selection counter ────────────────────────────────────
@@ -3044,4 +3079,29 @@ class _SnapGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SnapGridPainter o) => o.step != step;
+}
+
+// ── Bottone zoom per selection mode ──────────────────────────────────────────
+
+class _MapZoomButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _MapZoomButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.85),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 20, color: Colors.brown[700]),
+        ),
+      ),
+    );
+  }
 }

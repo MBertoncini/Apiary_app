@@ -184,25 +184,33 @@ class GruppoService {
     try {
       final String endpoint = '${ApiConstants.gruppiUrl}$gruppoId/membri/';
       final response = await _apiService.get(endpoint);
-      
+
       // Debug
       debugPrint('Membri risposta: $response');
-      
+
+      List<dynamic> rawList = [];
       if (response is List) {
-        return response
-            .map((membroJson) => MembroGruppo.fromJson(membroJson))
-            .toList();
+        rawList = response;
       } else if (response['results'] != null) {
-        return (response['results'] as List)
-            .map((membroJson) => MembroGruppo.fromJson(membroJson))
-            .toList();
+        rawList = response['results'] as List;
       }
-      
-      return [];
+
+      if (rawList.isNotEmpty) {
+        await _storageService.saveData('gruppo_membri_$gruppoId', rawList);
+      }
+
+      return rawList.map((m) => MembroGruppo.fromJson(m)).toList();
     } catch (e) {
       debugPrint('Errore nel caricamento dei membri: $e');
-      // IMPORTANTE: NON chiamare più getGruppoDetail qui!
-      // Restituisci una lista vuota invece di utilizzare il fallback
+      // Fallback alla cache locale
+      try {
+        final cached = await _storageService.getStoredData('gruppo_membri_$gruppoId');
+        if (cached.isNotEmpty) {
+          return cached.cast<Map<String, dynamic>>()
+              .map((m) => MembroGruppo.fromJson(m))
+              .toList();
+        }
+      } catch (_) {}
       return [];
     }
   }
@@ -406,8 +414,9 @@ class GruppoService {
       
       if (risultati.isNotEmpty) {
         debugPrint('Primo elemento apiari normalizzato: ${risultati.first}');
+        await _storageService.saveData('gruppo_apiari_$gruppoId', risultati);
       }
-      
+
       return risultati;
     } catch (e) {
       debugPrint('Errore nel caricamento degli apiari: $e');

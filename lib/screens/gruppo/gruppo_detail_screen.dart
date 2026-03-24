@@ -69,13 +69,58 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     if (_gruppo == null) {
       try {
         final storageService = Provider.of<StorageService>(context, listen: false);
+        final authService = Provider.of<AuthService>(context, listen: false);
         final cachedGruppi = await storageService.getStoredData('gruppi');
         final cached = cachedGruppi.cast<Map<String, dynamic>>().firstWhere(
           (g) => g['id'] == widget.gruppoId,
           orElse: () => <String, dynamic>{},
         );
         if (cached.isNotEmpty) {
-          _gruppo = Gruppo.fromJson(cached);
+          final gruppoBase = Gruppo.fromJson(cached);
+
+          // Leggi anche membri e apiari dalla cache
+          List<dynamic> cachedMembri = [];
+          List<dynamic> cachedApiari = [];
+          try {
+            final rawMembri = await storageService.getStoredData('gruppo_membri_${widget.gruppoId}');
+            if (rawMembri.isNotEmpty) {
+              cachedMembri = rawMembri.cast<Map<String, dynamic>>()
+                  .map((m) => MembroGruppo.fromJson(m))
+                  .toList();
+            }
+          } catch (_) {}
+          try {
+            cachedApiari = await storageService.getStoredData('gruppo_apiari_${widget.gruppoId}');
+          } catch (_) {}
+
+          _gruppo = Gruppo(
+            id: gruppoBase.id,
+            nome: gruppoBase.nome,
+            descrizione: gruppoBase.descrizione,
+            dataCreazione: gruppoBase.dataCreazione,
+            creatoreId: gruppoBase.creatoreId,
+            creatoreName: gruppoBase.creatoreName,
+            membri: cachedMembri,
+            immagineProfilo: gruppoBase.immagineProfilo,
+            apiariIds: gruppoBase.apiariIds,
+            membriCountFromApi: gruppoBase.membriCountFromApi,
+            apiariCountFromApi: gruppoBase.apiariCountFromApi,
+          );
+          _apiariCondivisi = cachedApiari;
+
+          // Imposta admin/creator dalla cache così i tab sono già corretti
+          final user = authService.currentUser;
+          if (user != null) {
+            _isAdmin = _gruppo!.isAdmin(user.id);
+            _isCreator = _gruppo!.isCreator(user.id);
+            final neededTabs = _isAdmin ? 3 : 2;
+            if (_tabController.length != neededTabs) {
+              _tabController.removeListener(_onTabChanged);
+              _tabController.dispose();
+              _tabController = TabController(length: neededTabs, vsync: this);
+              _tabController.addListener(_onTabChanged);
+            }
+          }
         }
       } catch (_) {}
     }

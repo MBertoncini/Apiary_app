@@ -627,10 +627,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     final colorHex = _arnia!['colore_hex'] ?? '#FFFFFF';
     final color = Color(int.parse(colorHex.replaceAll('#', '0xFF')));
     
+    final foregroundColor = color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Arnia ${_arnia!['numero']}'),
         backgroundColor: color,
+        foregroundColor: foregroundColor,
+        iconTheme: IconThemeData(color: foregroundColor),
         actions: [
           // Cambio tipo cassetta (stessa famiglia)
           IconButton(

@@ -8,6 +8,7 @@ import '../../services/storage_service.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../apiario/widgets/apiario_map_widget.dart';
+import '../../database/dao/controllo_arnia_dao.dart';
 import '../../services/notification_service.dart';
 
 class TrattamentoFormScreen extends StatefulWidget {
@@ -55,6 +56,8 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   List<dynamic> _arnieApiario = [];
   Set<int> _selectedArnieIds = {};
   bool _loadingArnie = false;
+  bool _mapInteracting = false;
+  Map<int, Map<String, dynamic>?> _ultimiControlli = {};
 
   // Dati per i dropdown
   List<dynamic> _apiari = [];
@@ -197,10 +200,21 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
           ? response
           : (response['results'] as List? ?? []);
       if (mounted) setState(() => _arnieApiario = list);
+      await _loadUltimiControlli(list);
     } catch (_) {
     } finally {
       if (mounted) setState(() => _loadingArnie = false);
     }
+  }
+
+  Future<void> _loadUltimiControlli(List<dynamic> arnie) async {
+    final dao = ControlloArniaDao();
+    final Map<int, Map<String, dynamic>?> map = {};
+    for (final arnia in arnie) {
+      final id = arnia['id'] as int?;
+      if (id != null) map[id] = await dao.getLatestByArnia(id);
+    }
+    if (mounted) setState(() => _ultimiControlli = map);
   }
 
   void _checkBloccoCovataRequirement() {
@@ -530,6 +544,9 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
               ? ErrorDisplayWidget(
                   errorMessage: _errorMessage!, onRetry: _loadInitialData)
               : SingleChildScrollView(
+                  physics: _mapInteracting
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
                   padding: const EdgeInsets.all(16),
                   child: Form(
                     key: _formKey,
@@ -703,61 +720,32 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Stack(
-        children: [
-          SizedBox(
-            height: 280,
-            child: ApiarioMapWidget(
-              arnie: _arnieApiario,
-              apiarioId: _apiarioId!,
-              selectionMode: true,
-              selectedArnieIds: _selectedArnieIds,
-              onArniaTap: (id) {
-                setState(() {
-                  if (_selectedArnieIds.contains(id)) {
-                    _selectedArnieIds.remove(id);
-                  } else {
-                    _selectedArnieIds.add(id);
-                  }
-                });
-              },
-              onAddArnia: () {},
-            ),
+      child: Listener(
+        onPointerDown: (_) => setState(() => _mapInteracting = true),
+        onPointerUp: (_) => setState(() => _mapInteracting = false),
+        onPointerCancel: (_) => setState(() => _mapInteracting = false),
+        child: SizedBox(
+          height: 300,
+          child: ApiarioMapWidget(
+            arnie: _arnieApiario,
+            apiarioId: _apiarioId!,
+            selectionMode: true,
+            selectedArnieIds: _selectedArnieIds,
+            ultimiControlli: _ultimiControlli,
+            onArniaTap: (id) {
+              setState(() {
+                if (_selectedArnieIds.contains(id)) {
+                  _selectedArnieIds.remove(id);
+                } else {
+                  _selectedArnieIds.add(id);
+                }
+              });
+            },
+            onAddArnia: () {},
           ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Material(
-              color: Colors.white.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(20),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: _openFullscreenMapSelector,
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: Icon(Icons.fullscreen_rounded, size: 22,
-                      color: Colors.brown[700]),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
-  }
-
-  Future<void> _openFullscreenMapSelector() async {
-    final result = await showDialog<Set<int>>(
-      context: context,
-      builder: (ctx) => _FullscreenMapSelectorDialog(
-        arnie: _arnieApiario,
-        apiarioId: _apiarioId!,
-        initialSelection: Set<int>.from(_selectedArnieIds),
-      ),
-    );
-    if (result != null && mounted) {
-      setState(() => _selectedArnieIds = result);
-    }
   }
 
   // ──── Tipo trattamento con pulsante "+" ────
@@ -1013,78 +1001,6 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
               const Icon(Icons.calendar_today),
             ]),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Dialog fullscreen per selezione arnie sulla mappa ──────────────────────
-
-class _FullscreenMapSelectorDialog extends StatefulWidget {
-  final List<dynamic> arnie;
-  final int apiarioId;
-  final Set<int> initialSelection;
-
-  const _FullscreenMapSelectorDialog({
-    required this.arnie,
-    required this.apiarioId,
-    required this.initialSelection,
-  });
-
-  @override
-  State<_FullscreenMapSelectorDialog> createState() =>
-      _FullscreenMapSelectorDialogState();
-}
-
-class _FullscreenMapSelectorDialogState
-    extends State<_FullscreenMapSelectorDialog> {
-  late Set<int> _selection;
-
-  @override
-  void initState() {
-    super.initState();
-    _selection = Set<int>.from(widget.initialSelection);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog.fullscreen(
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _selection.isEmpty
-                ? 'Seleziona arnie'
-                : '${_selection.length} selezionate',
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.pop(context, null),
-            tooltip: 'Annulla',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, _selection),
-              child: const Text('Conferma',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-        body: ApiarioMapWidget(
-          arnie: widget.arnie,
-          apiarioId: widget.apiarioId,
-          selectionMode: true,
-          selectedArnieIds: _selection,
-          onArniaTap: (id) {
-            setState(() {
-              if (_selection.contains(id)) {
-                _selection.remove(id);
-              } else {
-                _selection.add(id);
-              }
-            });
-          },
-          onAddArnia: () {},
         ),
       ),
     );
