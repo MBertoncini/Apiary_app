@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/auth_service.dart';
@@ -82,9 +83,17 @@ class _LoginScreenState extends State<LoginScreen> {
         _usernameController.clear();
         _passwordController.clear();
 
-        // Naviga subito alla dashboard senza aspettare la sync
+        // Controlla se mostrare il tutorial al primo accesso
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed(AppConstants.dashboardRoute);
+          final prefs = await SharedPreferences.getInstance();
+          final onboardingCompletato = prefs.getBool('onboarding_completato') ?? false;
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed(
+              onboardingCompletato
+                  ? AppConstants.dashboardRoute
+                  : AppConstants.onboardingRoute,
+            );
+          }
         }
 
         // Sincronizzazione in background: non blocca la navigazione

@@ -932,6 +932,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             ],
           ),
           // ── pulsante (i) info in basso a sinistra ──────────────
+          if (!_mapEditMode)
           Positioned(
             bottom: 84,
             left: 16,
