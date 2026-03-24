@@ -1221,9 +1221,10 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           onDragUpdate: (d) {
             final s = _transformCtrl.value.getMaxScaleOnAxis();
             setState(() {
+              final cur = _arniaPositions[id] ?? Offset(_originX, _originY);
               _arniaPositions[id] = _snap(Offset(
-                (pos.dx + d.dx / s).clamp(0, _canvasSize),
-                (pos.dy + d.dy / s).clamp(0, _canvasSize),
+                (cur.dx + d.dx / s).clamp(0, _canvasSize),
+                (cur.dy + d.dy / s).clamp(0, _canvasSize),
               ));
               _hasChanges = true;
             });
@@ -1299,7 +1300,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         );
       }
 
-      return Positioned(left: pos.dx, top: pos.dy, child: child);
+      return Positioned(key: ValueKey('arnia_$id'), left: pos.dx, top: pos.dy, child: child);
     }).toList();
   }
 
@@ -1359,8 +1360,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                   final s = _transformCtrl.value.getMaxScaleOnAxis();
                   setState(() {
                     el.position = _snap(Offset(
-                      (pos.dx + d.dx / s).clamp(0, _canvasSize),
-                      (pos.dy + d.dy / s).clamp(0, _canvasSize),
+                      (el.position.dx + d.dx / s).clamp(0, _canvasSize),
+                      (el.position.dy + d.dy / s).clamp(0, _canvasSize),
                     ));
                     _hasChanges = true;
                   });
@@ -1394,8 +1395,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                   final s = _transformCtrl.value.getMaxScaleOnAxis();
                   setState(() {
                     el.position = _snap(Offset(
-                      (pos.dx + d.delta.dx / s).clamp(0, _canvasSize),
-                      (pos.dy + d.delta.dy / s).clamp(0, _canvasSize),
+                      (el.position.dx + d.delta.dx / s).clamp(0, _canvasSize),
+                      (el.position.dy + d.delta.dy / s).clamp(0, _canvasSize),
                     ));
                     _hasChanges = true;
                   });
@@ -1427,7 +1428,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         }
       }
 
-      return Positioned(left: pos.dx, top: pos.dy, child: inner);
+      return Positioned(key: ValueKey('el_${el.id}'), left: pos.dx, top: pos.dy, child: inner);
     }).toList();
   }
 
