@@ -374,7 +374,17 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                             ),
                             FieldHelpIcon(
-                              'Bugnola: tradizionale orizzontale.\nLangstroth: verticale standard, la più diffusa.\nWarré: verticale naturale.\nInfluenza le dimensioni dei telai e i melari compatibili.',
+                              '🏠 Dadant-Blatt: la più diffusa in Italia, telaio grande.\n'
+                              '📦 Langstroth: standard internazionale, verticale.\n'
+                              '🛖 Top Bar (Kenyana): orizzontale con listelli, naturale.\n'
+                              '🗼 Warré: verticale a moduli sovrapposti, gestione minimale.\n'
+                              '🔭 Arnia da Osservazione: pareti trasparenti per studio.\n'
+                              '👑 Pappa Reale / Allevamento Regine: per produzione pappa reale o allevamento.\n'
+                              '📫 Nucleo in Legno: nucleo tradizionale 5-6 telaini.\n'
+                              '📮 Nucleo in Polistirolo: nucleo leggero per sciami e regine.\n'
+                              '📦 Portasciami / Prendisciame: raccolta sciami temporanea.\n'
+                              '🔹 Apidea / Kieler: arnia miniatura per fecondazione regine.\n'
+                              '🔸 Mini-Plus: formato ridotto per nuclei e fecondazione.',
                             ),
                           ],
                         ),

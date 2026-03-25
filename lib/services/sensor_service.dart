@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'package:light/light.dart';
-import 'package:weather/weather.dart';
-import '../constants/app_constants.dart';
 
 class SensorData {
   final double? temperature; // °C
@@ -42,14 +39,10 @@ class SensorService {
   factory SensorService() => _instance;
   
   // Sensori integrati
-  Light? _lightSensor;
   StreamSubscription? _lightSubscription;
   StreamSubscription? _accelerometerSubscription;
   StreamSubscription? _gyroscopeSubscription;
   StreamSubscription? _userAccelerometerSubscription;
-  
-  // API meteo
-  final WeatherFactory _weatherFactory = WeatherFactory(AppConstants.openWeatherMapApiKey);
   
   // Stream controller per dati combinati
   final _sensorDataController = StreamController<SensorData>.broadcast();
@@ -62,34 +55,19 @@ class SensorService {
   AccelerometerEvent? _currentAccelerometer;
   GyroscopeEvent? _currentGyroscope;
   UserAccelerometerEvent? _currentUserAccelerometer;
-  Weather? _currentWeather;
   
   SensorService._internal();
   
   // Inizializzazione
   Future<void> init() async {
-    try {
-      _lightSensor = Light();
-      _isLightSensorAvailable = true;
-    } catch (e) {
-      debugPrint('Light sensor not available: $e');
-      _isLightSensorAvailable = false;
-    }
+    // Sensor initialization placeholder
   }
-  
+
   // Avvia monitoraggio sensori
   Future<bool> startMonitoring() async {
     if (_isMonitoring) return true;
-    
+
     try {
-      // Sensore luce
-      if (_isLightSensorAvailable) {
-        _lightSubscription = _lightSensor!.lightSensorStream.listen((luxValue) {
-          _currentLux = luxValue.toDouble();
-          _emitSensorData();
-        });
-      }
-      
       // Accelerometro
       _accelerometerSubscription = accelerometerEvents.listen((AccelerometerEvent event) {
         _currentAccelerometer = event;
@@ -139,64 +117,14 @@ class SensorService {
   
   // Emetti dati sensori combinati
   void _emitSensorData() {
-    // Estrai valori rilevanti
-    double? temperature;
-    double? humidity;
-    double? pressure;
-    
-    // Ottieni dati meteo se disponibili
-    if (_currentWeather != null) {
-      temperature = _currentWeather!.temperature?.celsius;
-      humidity = _currentWeather!.humidity;
-      pressure = _currentWeather!.pressure;
-    }
-    
-    // Crea oggetto dati
     final sensorData = SensorData(
-      temperature: temperature,
-      humidity: humidity,
-      pressure: pressure,
       light: _currentLux,
-      // Gli altri valori richiederebbero sensori esterni specializzati
       anemometer: null,
       precipitationRate: null,
     );
-    
-    // Emetti dati
     _sensorDataController.add(sensorData);
   }
-  
-  // Ottieni dati meteo attuali da API
-  Future<Weather?> fetchWeatherData(double latitude, double longitude) async {
-    try {
-      final weather = await _weatherFactory.currentWeatherByLocation(
-        latitude,
-        longitude,
-      );
-      
-      _currentWeather = weather;
-      _emitSensorData();
-      
-      return weather;
-    } catch (e) {
-      debugPrint('Error fetching weather data: $e');
-      return null;
-    }
-  }
-  
-  // Ottieni previsioni meteo
-  Future<List<Weather>> fetchForecast(double latitude, double longitude, {int days = 5}) async {
-    try {
-      return await _weatherFactory.fiveDayForecastByLocation(
-        latitude,
-        longitude,
-      );
-    } catch (e) {
-      debugPrint('Error fetching forecast: $e');
-      return [];
-    }
-  }
-  
+
   // Rilascia risorse
   void dispose() {
     _stopAllSubscriptions();

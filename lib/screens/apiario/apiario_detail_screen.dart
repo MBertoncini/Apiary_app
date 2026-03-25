@@ -12,6 +12,7 @@ import 'widgets/apiario_map_widget.dart';
 import 'apiario_form_screen.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../widgets/weather_widget.dart';
 import '../../database/dao/controllo_arnia_dao.dart';
 import '../../services/controllo_service.dart';
 
@@ -31,7 +32,6 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   List<dynamic> _arnie = [];
   List<dynamic> _trattamenti = [];
   List<dynamic> _fioriture = [];
-  List<dynamic> _datiMeteo = [];
   // Melari attivi per tutte le arnie dell'apiario
   List<dynamic> _melari = [];
   // Ultimo controllo per ciascuna arnia (arniaId → dati grezzi DAO)
@@ -129,26 +129,16 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           debugPrint('Error fetching trattamenti from API: $e');
         }
 
-        // Carica dati meteo dal server
-        try {
-          final meteoData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/meteo/');
-          _datiMeteo = meteoData;
-        } catch (e) {
-          debugPrint('Error loading meteo data: $e');
-        }
       } else {
         // Se non troviamo l'apiario in locale, prova a caricarlo dal server
         final apiarioData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/');
         _apiario = apiarioData;
-        
+
         // Carica dati correlati
         final arnieData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/arnie/');
         _arnie = arnieData;
-        
+
         await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
-        
-        final meteoData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/meteo/');
-        _datiMeteo = meteoData;
       }
       
       // Ordina arnie per numero
@@ -247,6 +237,69 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
     ).then((_) => _loadApiario());
   }
   
+  Widget _buildMeteoTab() {
+    if (_apiario == null) return const SizedBox.shrink();
+
+    final lat = _apiario!['latitudine'];
+    final lon = _apiario!['longitudine'];
+    final nome = _apiario!['nome'] ?? 'Apiario';
+
+    // Monitoraggio meteo disabilitato
+    if (_apiario!['monitoraggio_meteo'] == false) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wb_sunny_outlined, size: 64,
+                color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text('Monitoraggio meteo non attivato',
+                style: TextStyle(
+                    color: ThemeConstants.textSecondaryColor, fontSize: 16)),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _editApiario,
+              icon: const Icon(Icons.settings),
+              label: const Text('Attiva monitoraggio meteo'),
+              style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Coordinate mancanti
+    if (lat == null || lon == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.location_off_outlined, size: 64,
+                color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text('Coordinate non impostate per questo apiario',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: ThemeConstants.textSecondaryColor, fontSize: 16)),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _editApiario,
+              icon: const Icon(Icons.edit_location_alt),
+              label: const Text('Imposta coordinate'),
+              style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return WeatherWidget(
+      latitude: double.parse(lat.toString()),
+      longitude: double.parse(lon.toString()),
+      locationName: nome,
+    );
+  }
+
   void _editApiario() {
     if (_apiario == null) return;
     Navigator.of(context).push(
@@ -662,287 +715,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                 ),        // Column
 
           // Tab Meteo
-          _apiario!['monitoraggio_meteo'] == false
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.wb_sunny_outlined,
-                        size: 64,
-                        color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Monitoraggio meteo non attivato',
-                        style: TextStyle(
-                          color: ThemeConstants.textSecondaryColor,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _editApiario,
-                        icon: Icon(Icons.settings),
-                        label: Text('Attiva monitoraggio meteo'),
-                        style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
-                      ),
-                    ],
-                  ),
-                )
-              : _datiMeteo.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.cloud_off_outlined,
-                            size: 64,
-                            color: ThemeConstants.textSecondaryColor.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Nessun dato meteo disponibile',
-                            style: TextStyle(
-                              color: ThemeConstants.textSecondaryColor,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        // Meteo attuale
-                        Card(
-                          margin: EdgeInsets.all(16),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Meteo attuale',
-                                  style: ThemeConstants.subheadingStyle,
-                                ),
-                                const SizedBox(height: 16),
-                                
-                                Row(
-                                  children: [
-                                    // Placeholder per icona meteo
-                                    Container(
-                                      width: 80,
-                                      height: 80,
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.wb_sunny,
-                                        size: 48,
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                    SizedBox(width: 16),
-                                    
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            '${_datiMeteo.isNotEmpty ? _datiMeteo[0]['temperatura'] : "--"}°C',
-                                            style: TextStyle(
-                                              fontSize: 32,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          Text(
-                                            _datiMeteo.isNotEmpty ? _datiMeteo[0]['descrizione'] : "Non disponibile",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                
-                                const SizedBox(height: 16),
-                                Divider(),
-                                const SizedBox(height: 8),
-                                
-                                // Dettagli meteo
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    Column(
-                                      children: [
-                                        Icon(
-                                          Icons.water_drop,
-                                          color: Colors.blue,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Umidità',
-                                          style: TextStyle(
-                                            color: ThemeConstants.textSecondaryColor,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${_datiMeteo.isNotEmpty ? _datiMeteo[0]['umidita'] : "--"}%',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Column(
-                                      children: [
-                                        Icon(
-                                          Icons.air,
-                                          color: Colors.blueGrey,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Vento',
-                                          style: TextStyle(
-                                            color: ThemeConstants.textSecondaryColor,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${_datiMeteo.isNotEmpty ? _datiMeteo[0]['velocita_vento'] : "--"} km/h',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Column(
-                                      children: [
-                                        Icon(
-                                          Icons.compress,
-                                          color: Colors.purple,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Pressione',
-                                          style: TextStyle(
-                                            color: ThemeConstants.textSecondaryColor,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${_datiMeteo.isNotEmpty ? _datiMeteo[0]['pressione'] : "--"} hPa',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Dati storici',
-                              style: ThemeConstants.subheadingStyle,
-                            ),
-                          ),
-                        ),
-                        
-                        // Lista dati storici
-                        Expanded(
-                          child: ListView.builder(
-                            padding: EdgeInsets.all(16),
-                            itemCount: _datiMeteo.length,
-                            itemBuilder: (context, index) {
-                              if (index == 0) return SizedBox.shrink(); // Skip current data
-                              
-                              final meteo = _datiMeteo[index];
-                              
-                              // Extract date and time
-                              final dateTime = DateTime.parse(meteo['data']);
-                              final formattedDate = "${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year}";
-                              final formattedTime = "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
-                              
-                              return Card(
-                                margin: EdgeInsets.only(bottom: 8),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Icon(
-                                          Icons.wb_sunny,
-                                          size: 24,
-                                          color: Colors.orange,
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Text(
-                                                  formattedDate,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  formattedTime,
-                                                  style: TextStyle(
-                                                    color: ThemeConstants.textSecondaryColor,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              meteo['descrizione'] ?? 'Non disponibile',
-                                              style: TextStyle(
-                                                color: ThemeConstants.textSecondaryColor,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      Text(
-                                        '${meteo['temperatura']}°C',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+          _buildMeteoTab(),
         ],
       ),
               ),

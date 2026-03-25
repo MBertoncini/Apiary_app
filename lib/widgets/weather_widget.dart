@@ -1,199 +1,165 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import 'package:weather/weather.dart';
-import '../services/sensor_service.dart';
+import '../services/meteo_service.dart';
 import '../constants/theme_constants.dart';
 
 class WeatherWidget extends StatefulWidget {
   final double latitude;
   final double longitude;
   final String locationName;
-  
+
   const WeatherWidget({
     Key? key,
     required this.latitude,
     required this.longitude,
     required this.locationName,
   }) : super(key: key);
-  
+
   @override
-  _WeatherWidgetState createState() => _WeatherWidgetState();
+  State<WeatherWidget> createState() => _WeatherWidgetState();
 }
 
 class _WeatherWidgetState extends State<WeatherWidget> {
-  late SensorService _sensorService;
-  Weather? _currentWeather;
-  List<Weather> _forecast = [];
+  final _meteoService = MeteoService();
+  MeteoData? _data;
   bool _isLoading = true;
-  String? _errorMessage;
-  
+  String? _error;
+
   @override
   void initState() {
     super.initState();
-    _sensorService = SensorService();
-    _loadWeatherData();
+    _load();
   }
-  
-  Future<void> _loadWeatherData() async {
+
+  Future<void> _load() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _error = null;
     });
-    
-    try {
-      // Ottieni meteo attuale
-      final weather = await _sensorService.fetchWeatherData(
-        widget.latitude,
-        widget.longitude,
-      );
-      
-      if (weather != null) {
-        setState(() {
-          _currentWeather = weather;
-        });
-        
-        // Ottieni previsioni
-        final forecast = await _sensorService.fetchForecast(
-          widget.latitude,
-          widget.longitude,
-        );
-        
-        setState(() {
-          _forecast = forecast;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Impossibile ottenere i dati meteo';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
+    final data = await _meteoService.fetchMeteo(widget.latitude, widget.longitude);
+    if (!mounted) return;
+    if (data == null) {
       setState(() {
-        _errorMessage = 'Errore: $e';
+        _error = 'Impossibile ottenere i dati meteo. Controlla la connessione.';
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _data = data;
         _isLoading = false;
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Card(
-        child: Container(
-          height: 200,
-          alignment: Alignment.center,
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
           child: CircularProgressIndicator(),
         ),
       );
     }
-    
-    if (_errorMessage != null) {
-      return Card(
-        child: Container(
-          height: 200,
-          alignment: Alignment.center,
-          padding: EdgeInsets.all(16),
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.cloud_off,
-                size: 48,
-                color: Colors.grey,
-              ),
+              const Icon(Icons.cloud_off_outlined, size: 56, color: Colors.grey),
               const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-              ),
+              Text(_error!, textAlign: TextAlign.center,
+                  style: TextStyle(color: ThemeConstants.textSecondaryColor)),
               const SizedBox(height: 16),
               TextButton.icon(
-                icon: Icon(Icons.refresh),
-                label: Text('Riprova'),
-                onPressed: _loadWeatherData,
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Riprova'),
               ),
             ],
           ),
         ),
       );
     }
-    
-    if (_currentWeather == null) {
-      return Card(
-        child: Container(
-          height: 200,
-          alignment: Alignment.center,
-          child: Text('Nessun dato meteo disponibile'),
-        ),
-      );
-    }
-    
-    return Column(
+
+    final cur = _data!.current;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        // Meteo attuale
+        // ── Meteo attuale ──────────────────────────────────────────
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Localizzazione e orario aggiornamento
                 Row(
                   children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: ThemeConstants.textSecondaryColor,
+                    const Icon(Icons.location_on, size: 14,
+                        color: ThemeConstants.textSecondaryColor),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        widget.locationName,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: ThemeConstants.textSecondaryColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    SizedBox(width: 4),
                     Text(
-                      widget.locationName,
-                      style: TextStyle(
-                        fontSize: 14,
+                      'Aggiornato: ${DateFormat('HH:mm').format(cur.time)}',
+                      style: const TextStyle(
+                        fontSize: 12,
                         color: ThemeConstants.textSecondaryColor,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // Icona + temperatura principale
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Icona meteo
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 72,
+                      height: 72,
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: _iconColor(cur.weatherCode, isDay: cur.isDay).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: _getWeatherIcon(_currentWeather!.weatherIcon ?? ''),
+                      child: Icon(
+                        _weatherIcon(cur.weatherCode, isDay: cur.isDay),
+                        size: 44,
+                        color: _iconColor(cur.weatherCode, isDay: cur.isDay),
+                      ),
                     ),
-                    SizedBox(width: 16),
-                    
-                    // Dati meteo
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${_currentWeather!.temperature?.celsius?.toStringAsFixed(1) ?? "N/A"}°C',
-                            style: TextStyle(
-                              fontSize: 32,
+                            '${cur.temperature.toStringAsFixed(1)}°C',
+                            style: const TextStyle(
+                              fontSize: 34,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            _currentWeather!.weatherDescription ?? 'N/A',
-                            style: TextStyle(
-                              fontSize: 16,
-                            ),
+                            MeteoService.descriptionFromCode(cur.weatherCode, isDay: cur.isDay),
+                            style: const TextStyle(fontSize: 15),
                           ),
-                          const SizedBox(height: 8),
                           Text(
-                            'Aggiornato: ${DateFormat('HH:mm').format(_currentWeather!.date ?? DateTime.now())}',
-                            style: TextStyle(
+                            'Percepita ${cur.apparentTemperature.toStringAsFixed(1)}°C',
+                            style: const TextStyle(
                               fontSize: 12,
                               color: ThemeConstants.textSecondaryColor,
                             ),
@@ -203,178 +169,162 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 16),
-                Divider(),
+                const Divider(),
                 const SizedBox(height: 8),
-                
-                // Dettagli
+
+                // Dettagli: umidità, vento, precipitazioni, pressione
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildDetailColumn(
-                      'Umidità',
-                      '${_currentWeather!.humidity?.toStringAsFixed(0) ?? "N/A"}%',
-                      Icons.water_drop,
-                      Colors.blue,
-                    ),
-                    _buildDetailColumn(
-                      'Vento',
-                      '${_currentWeather!.windSpeed?.toStringAsFixed(1) ?? "N/A"} km/h',
-                      Icons.air,
-                      Colors.blueGrey,
-                    ),
-                    _buildDetailColumn(
-                      'Pressione',
-                      '${_currentWeather!.pressure?.toStringAsFixed(0) ?? "N/A"} hPa',
-                      Icons.compress,
-                      Colors.purple,
-                    ),
+                    _detailCol('Umidità', '${cur.humidity.toStringAsFixed(0)}%',
+                        Icons.water_drop, Colors.blue),
+                    _detailCol('Vento',
+                        '${cur.windSpeed.toStringAsFixed(1)} km/h',
+                        Icons.air, Colors.blueGrey),
+                    _detailCol('Pioggia',
+                        '${cur.precipitation.toStringAsFixed(1)} mm',
+                        Icons.umbrella, Colors.indigo),
+                    _detailCol('Pressione',
+                        '${cur.pressure.toStringAsFixed(0)} hPa',
+                        Icons.compress, Colors.purple),
                   ],
                 ),
               ],
             ),
           ),
         ),
-        
-        // Previsioni
-        if (_forecast.isNotEmpty)
-          Card(
-            margin: EdgeInsets.only(top: 16),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Previsioni prossimi giorni',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
+
+        const SizedBox(height: 16),
+
+        // ── Previsioni 7 giorni ────────────────────────────────────
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Previsioni 7 giorni', style: ThemeConstants.subheadingStyle),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 120,
+                  child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _buildForecastItems(),
-                    ),
+                    itemCount: _data!.daily.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final day = _data!.daily[i];
+                      final isToday = i == 0;
+                      return Container(
+                        width: 80,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: isToday
+                              ? ThemeConstants.primaryColor.withOpacity(0.15)
+                              : Colors.blue.withOpacity(0.07),
+                          borderRadius: BorderRadius.circular(10),
+                          border: isToday
+                              ? Border.all(
+                                  color: ThemeConstants.primaryColor
+                                      .withOpacity(0.4))
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Text(
+                              isToday
+                                  ? 'Oggi'
+                                  : _shortDayName(day.date.weekday),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: isToday
+                                    ? ThemeConstants.primaryColor
+                                    : ThemeConstants.textPrimaryColor,
+                              ),
+                            ),
+                            Icon(
+                              _weatherIcon(day.weatherCode),
+                              size: 26,
+                              color: _iconColor(day.weatherCode),
+                            ),
+                            Text(
+                              '${day.tempMax.toStringAsFixed(0)}°',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            Text(
+                              '${day.tempMin.toStringAsFixed(0)}°',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: ThemeConstants.textSecondaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
+        ),
       ],
     );
   }
-  
-  Widget _buildDetailColumn(String label, String value, IconData icon, Color color) {
+
+  Widget _detailCol(
+      String label, String value, IconData icon, Color color) {
     return Column(
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 24,
-        ),
+        Icon(icon, color: color, size: 22),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: ThemeConstants.textSecondaryColor,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11, color: ThemeConstants.textSecondaryColor)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
       ],
     );
   }
-  
-  List<Widget> _buildForecastItems() {
-    final uniqueDates = <String>{};
-    final dailyForecasts = <Weather>[];
-    
-    // Raggruppa previsioni per giorno
-    for (var weather in _forecast) {
-      final date = DateFormat('yyyy-MM-dd').format(weather.date!);
-      if (!uniqueDates.contains(date)) {
-        uniqueDates.add(date);
-        dailyForecasts.add(weather);
-      }
-    }
-    
-    // Costruisci items di previsione
-    return dailyForecasts.map((weather) {
-      return Container(
-        margin: EdgeInsets.only(right: 16),
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Text(
-              DateFormat('E dd/MM').format(weather.date!),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _getWeatherIcon(weather.weatherIcon ?? '', size: 32),
-            const SizedBox(height: 8),
-            Text('${weather.temperature?.celsius?.toStringAsFixed(1) ?? "N/A"}°C'),
-            const SizedBox(height: 4),
-            Text(
-              '${weather.tempMin?.celsius?.toStringAsFixed(0) ?? "N/A"}° | ${weather.tempMax?.celsius?.toStringAsFixed(0) ?? "N/A"}°',
-              style: TextStyle(
-                fontSize: 12,
-                color: ThemeConstants.textSecondaryColor,
-              ),
-            ),
-          ],
-        ),
-      );
-    }).toList();
+
+  /// Icona Material corrispondente al codice WMO
+  /// [isDay] = false → per i codici sereni/poco nuvolosi mostra luna invece del sole
+  IconData _weatherIcon(int code, {bool isDay = true}) {
+    if (code == 0) return isDay ? Icons.wb_sunny : Icons.nightlight_round;
+    if (code == 1) return isDay ? Icons.wb_sunny : Icons.nightlight_round;
+    if (code == 2) return isDay ? Icons.wb_cloudy : Icons.cloud_queue;
+    if (code == 3) return Icons.cloud;
+    if (code == 45 || code == 48) return Icons.blur_on;
+    if (code >= 51 && code <= 57) return Icons.grain;
+    if (code >= 61 && code <= 67) return Icons.water_drop;
+    if (code >= 71 && code <= 77) return Icons.ac_unit;
+    if (code >= 80 && code <= 82) return Icons.water_drop;
+    if (code >= 85 && code <= 86) return Icons.ac_unit;
+    if (code >= 95) return Icons.thunderstorm;
+    return isDay ? Icons.wb_sunny : Icons.nightlight_round;
   }
-  
-  Widget _getWeatherIcon(String iconCode, {double size = 48}) {
-    // Mapping delle icone OpenWeatherMap a icone Material
-    Map<String, IconData> iconMapping = {
-      '01d': Icons.wb_sunny,          // cielo sereno (giorno)
-      '01n': Icons.nightlight_round,  // cielo sereno (notte)
-      '02d': Icons.wb_cloudy,         // poche nuvole (giorno)
-      '02n': Icons.cloud_queue,       // poche nuvole (notte)
-      '03d': Icons.cloud,             // nuvole sparse
-      '03n': Icons.cloud,
-      '04d': Icons.cloud,             // nuvole
-      '04n': Icons.cloud,
-      '09d': Icons.grain,             // pioggia leggera
-      '09n': Icons.grain,
-      '10d': Icons.beach_access,      // pioggia (giorno)
-      '10n': Icons.beach_access,      // pioggia (notte)
-      '11d': Icons.flash_on,          // temporale
-      '11n': Icons.flash_on,
-      '13d': Icons.ac_unit,           // neve
-      '13n': Icons.ac_unit,
-      '50d': Icons.blur_on,           // nebbia
-      '50n': Icons.blur_on,
-    };
-    
-    return Icon(
-      iconMapping[iconCode] ?? Icons.wb_sunny,
-      size: size,
-      color: iconCode.startsWith('01') || iconCode.startsWith('02') 
-          ? Colors.orange 
-          : iconCode.startsWith('09') || iconCode.startsWith('10') || iconCode.startsWith('11')
-              ? Colors.blue
-              : iconCode.startsWith('13')
-                  ? Colors.blueGrey
-                  : Colors.grey,
-    );
+
+  /// Nome breve del giorno in italiano (1=Lun … 7=Dom)
+  String _shortDayName(int weekday) {
+    const days = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+    return days[(weekday - 1) % 7];
+  }
+
+  /// Colore icona per il codice WMO
+  Color _iconColor(int code, {bool isDay = true}) {
+    if (code == 0 || code == 1) return isDay ? Colors.orange : Colors.indigo.shade300;
+    if (code == 2 || code == 3) return Colors.blueGrey;
+    if (code == 45 || code == 48) return Colors.grey;
+    if (code >= 51 && code <= 67) return Colors.blue;
+    if (code >= 71 && code <= 77) return Colors.lightBlue;
+    if (code >= 80 && code <= 82) return Colors.blue.shade700;
+    if (code >= 95) return Colors.deepPurple;
+    return Colors.grey;
   }
 }
