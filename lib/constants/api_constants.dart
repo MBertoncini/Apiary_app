@@ -13,6 +13,7 @@ class ApiConstants {
   static const String userProfileUrl = baseUrl + apiPrefix + "/users/me/";
   static const String passwordResetUrl = baseUrl + apiPrefix + "/password-reset/";
   static const String passwordResetConfirmUrl = baseUrl + apiPrefix + "/password-reset/confirm/";
+  static const String deleteAccountUrl = baseUrl + apiPrefix + "/users/me/delete/";
   
   // Endpoint apiari
   static const String apiariUrl = baseUrl + apiPrefix + '/apiari/';

@@ -479,6 +479,35 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     return prefs.getString(AppConstants.refreshTokenKey);
   }
 
+  // Elimina definitivamente l'account utente dal server e pulisce tutti i dati locali
+  Future<bool> deleteAccount() async {
+    if (_token == null) return false;
+    try {
+      final response = await http.delete(
+        Uri.parse(ApiConstants.deleteAccountUrl),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        _token = null;
+        _refreshToken = null;
+        _currentUser = null;
+        _isAuthenticated = false;
+        _offlineMode = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error deleting account: $e');
+    }
+    return false;
+  }
+
   // Aggiorna i dati del profilo utente sul server (first_name, last_name, email, gemini_api_key)
   Future<bool> updateProfile(Map<String, String> fields) async {
     if (_token == null) return false;

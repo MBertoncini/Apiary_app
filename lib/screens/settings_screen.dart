@@ -31,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _apiKeyObscured = true;
   bool _isSavingApiKey = false;
   bool _isSavingProfile = false;
+  bool _isDeletingAccount = false;
 
   // Groq API key (statistiche NL query)
   final _groqKeyController = TextEditingController();
@@ -188,6 +189,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ));
   }
 
+  Future<void> _deleteAccount() async {
+    // Prima conferma
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Elimina account', style: ThemeConstants.subheadingStyle),
+        content: Text(
+          'Sei sicuro di voler eliminare definitivamente il tuo account?\n\n'
+          'Tutti i tuoi dati (apiari, arnie, controlli, regine, trattamenti) '
+          'verranno cancellati in modo permanente. Questa azione è irreversibile.',
+          style: ThemeConstants.bodyStyle,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ANNULLA')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: ThemeConstants.errorColor),
+            child: const Text('ELIMINA'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    // Seconda conferma
+    final doubleConfirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Conferma eliminazione', style: ThemeConstants.subheadingStyle.copyWith(color: ThemeConstants.errorColor)),
+        content: Text(
+          'Questa è l\'ultima conferma. L\'account e tutti i dati associati verranno eliminati definitivamente.\n\nProcedere?',
+          style: ThemeConstants.bodyStyle,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ANNULLA')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: ThemeConstants.errorColor),
+            child: const Text('SÌ, ELIMINA DEFINITIVAMENTE'),
+          ),
+        ],
+      ),
+    );
+    if (doubleConfirmed != true) return;
+
+    setState(() => _isDeletingAccount = true);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final ok = await authService.deleteAccount();
+    if (!mounted) return;
+    setState(() => _isDeletingAccount = false);
+    if (ok) {
+      Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Errore durante l\'eliminazione dell\'account. Riprova o contatta il supporto.'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -311,6 +372,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: ThemeConstants.errorColor,
                       ),
                     ],
+                  ),
+                  const Divider(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: _isDeletingAccount ? null : _deleteAccount,
+                      icon: _isDeletingAccount
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
+                          : const Icon(Icons.delete_forever, color: Colors.red, size: 18),
+                      label: Text(
+                        _isDeletingAccount ? 'Eliminazione in corso...' : 'Elimina account',
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                      ),
+                    ),
                   ),
                 ],
               ),
