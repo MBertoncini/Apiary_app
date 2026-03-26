@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
@@ -36,6 +37,7 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
+    final s = Provider.of<LanguageService>(context).strings;
 
     return Drawer(
       child: ListView(
@@ -66,7 +68,7 @@ class AppDrawer extends StatelessWidget {
                   child: Text(
                     (user?.firstName?.isNotEmpty == true)
                         ? user!.firstName!
-                        : (user?.username ?? 'Utente'),
+                        : (user?.username ?? s.defaultUserName),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -75,7 +77,7 @@ class AppDrawer extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Impostazioni',
+                  tooltip: s.navSettingsTooltip,
                   icon: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -93,7 +95,7 @@ class AppDrawer extends StatelessWidget {
           // Dashboard
           ListTile(
             leading: Icon(Icons.dashboard),
-            title: Text('Dashboard'),
+            title: Text(s.navDashboard),
             selected: currentRoute == AppConstants.dashboardRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.dashboardRoute),
@@ -102,7 +104,7 @@ class AppDrawer extends StatelessWidget {
           // Apiari
           ListTile(
             leading: Icon(Icons.hive),
-            title: Text('Apiari'),
+            title: Text(s.navApiari),
             selected: currentRoute == AppConstants.apiarioListRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.apiarioListRoute),
@@ -111,7 +113,7 @@ class AppDrawer extends StatelessWidget {
           // Arnie
           ListTile(
             leading: Icon(Icons.grid_view),
-            title: Text('Arnie'),
+            title: Text(s.navArnie),
             selected: currentRoute == AppConstants.arniaListRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.arniaListRoute),
@@ -120,7 +122,7 @@ class AppDrawer extends StatelessWidget {
           // Mappa
           ListTile(
             leading: Icon(Icons.map),
-            title: Text('Mappa Apiari'),
+            title: Text(s.navMappaApiari),
             selected: currentRoute == AppConstants.mappaRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.mappaRoute),
@@ -129,7 +131,7 @@ class AppDrawer extends StatelessWidget {
           // Fioriture
           ListTile(
             leading: Icon(Icons.eco),
-            title: Text('Fioriture'),
+            title: Text(s.navFioriture),
             selected: currentRoute == AppConstants.fioritureListRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.fioritureListRoute),
@@ -138,7 +140,7 @@ class AppDrawer extends StatelessWidget {
           // Regine
           ListTile(
             leading: Icon(Icons.local_florist),
-            title: Text('Regine'),
+            title: Text(s.navRegine),
             selected: currentRoute == AppConstants.reginaListRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.reginaListRoute),
@@ -147,7 +149,7 @@ class AppDrawer extends StatelessWidget {
           // Trattamenti
           ListTile(
             leading: Icon(Icons.medication),
-            title: Text('Trattamenti sanitari'),
+            title: Text(s.navTrattamentiSanitari),
             selected: currentRoute == AppConstants.trattamentiRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.trattamentiRoute),
@@ -156,7 +158,7 @@ class AppDrawer extends StatelessWidget {
           // Melari
           ListTile(
             leading: Icon(Icons.view_module),
-            title: Text('Melari e produzioni'),
+            title: Text(s.navMelariProduzioni),
             selected: currentRoute == AppConstants.melariRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.melariRoute),
@@ -165,7 +167,7 @@ class AppDrawer extends StatelessWidget {
           // Attrezzature
           ListTile(
             leading: Icon(Icons.build),
-            title: Text('Attrezzature'),
+            title: Text(s.navAttrezzature),
             selected: currentRoute == AppConstants.attrezzatureRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.attrezzatureRoute),
@@ -174,7 +176,7 @@ class AppDrawer extends StatelessWidget {
           // Vendite
           ListTile(
             leading: Icon(Icons.store),
-            title: Text('Vendite'),
+            title: Text(s.navVendite),
             selected: currentRoute == AppConstants.venditeRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.venditeRoute),
@@ -185,7 +187,7 @@ class AppDrawer extends StatelessWidget {
             leading: Icon(Icons.bar_chart),
             title: Row(
               children: [
-                const Text('Statistiche & AI'),
+                Text(s.navStatisticheAI),
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -216,7 +218,7 @@ class AppDrawer extends StatelessWidget {
           // Gruppi
           ListTile(
             leading: Icon(Icons.group),
-            title: Text('Gruppi'),
+            title: Text(s.navGruppi),
             selected: currentRoute == AppConstants.gruppiListRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.gruppiListRoute),
@@ -225,7 +227,7 @@ class AppDrawer extends StatelessWidget {
           // Pagamenti
           ListTile(
             leading: Icon(Icons.payments_outlined),
-            title: Text('Pagamenti'),
+            title: Text(s.navPagamenti),
             selected: currentRoute == AppConstants.pagamentiRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.pagamentiRoute),
@@ -234,7 +236,7 @@ class AppDrawer extends StatelessWidget {
           // Inserimento vocale
           ListTile(
             leading: Icon(Icons.mic),
-            title: Text('Inserimento vocale'),
+            title: Text(s.navInserimentoVocale),
             selected: currentRoute == AppConstants.voiceCommandRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.voiceCommandRoute),
@@ -254,9 +256,9 @@ class AppDrawer extends StatelessWidget {
             ),
             child: ListTile(
               leading: const Text('☕', style: TextStyle(fontSize: 20)),
-              title: const Text(
-                'Offrici un caffè',
-                style: TextStyle(
+              title: Text(
+                s.navOffriciunCaffe,
+                style: const TextStyle(
                   color: Color(0xFFD4880A),
                   fontWeight: FontWeight.w600,
                 ),
@@ -269,7 +271,7 @@ class AppDrawer extends StatelessWidget {
           // Logout
           ListTile(
             leading: Icon(Icons.logout),
-            title: Text('Logout'),
+            title: Text(s.navLogout),
             onTap: () async {
               await authService.logout();
               Navigator.of(context).pushNamedAndRemoveUntil(

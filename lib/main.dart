@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'utils/route_generator.dart';
 import 'utils/navigator_key.dart';
@@ -10,6 +11,7 @@ import 'constants/app_constants.dart';
 import 'constants/theme_constants.dart';
 import 'database/database_helper.dart';
 import 'provider_setup.dart';
+import 'services/language_service.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -35,12 +37,22 @@ void main() {
     runApp(
       MultiProvider(
         providers: providers,
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          title: AppConstants.appName,
-          theme: ThemeConstants.getTheme(),
-          initialRoute: '/',
-          onGenerateRoute: RouteGenerator.generateRoute,
+        child: Consumer<LanguageService>(
+          builder: (context, languageService, _) => MaterialApp(
+            navigatorKey: navigatorKey,
+            title: AppConstants.appName,
+            theme: ThemeConstants.getTheme(),
+            // Locale is driven by LanguageService — changing it rebuilds the whole tree
+            locale: languageService.locale,
+            supportedLocales: LanguageService.supportedLocales,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            initialRoute: '/',
+            onGenerateRoute: RouteGenerator.generateRoute,
+          ),
         ),
       ),
     );
