@@ -10,12 +10,18 @@ import 'services/sync_service.dart';
 import 'services/mcp_service.dart';
 import 'services/chat_service.dart';
 // Import services
+import 'services/language_service.dart';
 import 'services/voice_feedback_service.dart';
 import 'services/audio_service.dart';
 import 'services/bee_detection_service.dart';
 import 'services/analisi_telaino_service.dart';
 
 List<SingleChildWidget> providers = [
+  // Language service (independent) — must be first so MaterialApp can read it
+  ChangeNotifierProvider<LanguageService>(
+    create: (_) => LanguageService(),
+  ),
+
   // Connectivity service (independent)
   Provider<ConnectivityService>(
     create: (_) => ConnectivityService(),

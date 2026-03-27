@@ -9,6 +9,7 @@ import '../constants/api_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
+import '../services/language_service.dart';
 import '../services/storage_service.dart';
 import '../services/ai_quota_local_tracker.dart';
 import '../services/voice_settings_service.dart';
@@ -99,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveProfile() async {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     setState(() => _isSavingProfile = true);
     final authService = Provider.of<AuthService>(context, listen: false);
     final ok = await authService.updateProfile({
@@ -108,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isSavingProfile = false);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok ? 'Profilo aggiornato' : 'Errore nel salvataggio del profilo'),
+      content: Text(ok ? s.msgProfileUpdated : s.msgProfileSaveError),
       backgroundColor: ok ? ThemeConstants.successColor : ThemeConstants.errorColor,
     ));
   }
@@ -129,6 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveApiKey() async {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     setState(() => _isSavingApiKey = true);
     final authService = Provider.of<AuthService>(context, listen: false);
     final key = _apiKeyController.text.trim();
@@ -137,21 +140,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(ok
-          ? (key.isEmpty ? 'Chiave API rimossa' : 'Chiave API salvata')
-          : 'Errore nel salvataggio della chiave API'),
+          ? (key.isEmpty ? s.msgApiKeyRemoved : s.msgApiKeySaved)
+          : s.msgApiKeySaveError),
       backgroundColor: ok ? ThemeConstants.successColor : ThemeConstants.errorColor,
     ));
     if (ok) _loadQuota();
   }
 
   Future<void> _saveGroqApiKey() async {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     setState(() => _isSavingGroqKey = true);
     await _quotaTracker.setGroqApiKey(_groqKeyController.text.trim());
     setState(() => _isSavingGroqKey = false);
     if (!mounted) return;
     final saved = _groqKeyController.text.trim().isNotEmpty;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(saved ? 'Chiave Groq salvata' : 'Chiave Groq rimossa'),
+      content: Text(saved ? s.msgGroqKeySaved : s.msgGroqKeyRemoved),
       backgroundColor: ThemeConstants.successColor,
     ));
   }
@@ -210,20 +214,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _clearCache() async {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Cancella cache', style: ThemeConstants.subheadingStyle),
-        content: Text(
-          'Sei sicuro di voler cancellare tutti i dati salvati localmente? Dovrai sincronizzare nuovamente.',
-          style: ThemeConstants.bodyStyle,
-        ),
+        title: Text(s.clearCacheTitle, style: ThemeConstants.subheadingStyle),
+        content: Text(s.clearCacheMessage, style: ThemeConstants.bodyStyle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ANNULLA')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.btnCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: ThemeConstants.errorColor),
-            child: const Text('CONFERMA'),
+            child: Text(s.btnConfirm),
           ),
         ],
       ),
@@ -232,24 +234,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final storageService = Provider.of<StorageService>(context, listen: false);
     await storageService.clearDataCache();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Cache cancellata'),
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(s.msgCacheCleared),
       backgroundColor: ThemeConstants.successColor,
     ));
   }
 
   Future<void> _logout() async {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Logout', style: ThemeConstants.subheadingStyle),
-        content: Text('Sei sicuro di voler effettuare il logout?', style: ThemeConstants.bodyStyle),
+        title: Text(s.logoutConfirmTitle, style: ThemeConstants.subheadingStyle),
+        content: Text(s.logoutConfirmMessage, style: ThemeConstants.bodyStyle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ANNULLA')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.btnCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: ThemeConstants.errorColor),
-            child: const Text('LOGOUT'),
+            child: Text(s.btnLogout),
           ),
         ],
       ),
@@ -264,9 +267,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).currentUser;
+    final s = Provider.of<LanguageService>(context).strings;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Impostazioni'), elevation: 4),
+      appBar: AppBar(title: Text(s.settingsTitle), elevation: 4),
       drawer: AppDrawer(currentRoute: AppConstants.settingsRoute),
       body: Container(
         decoration: BoxDecoration(
@@ -276,14 +280,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            DiaryTitle(title: 'Impostazioni'),
+            DiaryTitle(title: s.settingsTitle),
 
             // ── PROFILO ──────────────────────────────────────────────────
             PaperCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Profilo', style: ThemeConstants.subheadingStyle),
+                  Text(s.sectionProfile, style: ThemeConstants.subheadingStyle),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -366,14 +370,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Expanded(
                         child: TextField(
                           controller: _firstNameController,
-                          decoration: const InputDecoration(labelText: 'Nome', isDense: true),
+                          decoration: InputDecoration(labelText: s.fieldFirstName, isDense: true),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
                           controller: _lastNameController,
-                          decoration: const InputDecoration(labelText: 'Cognome', isDense: true),
+                          decoration: InputDecoration(labelText: s.fieldLastName, isDense: true),
                         ),
                       ),
                     ],
@@ -383,13 +387,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       DiaryButton(
-                        label: 'Salva nome',
+                        label: s.btnSaveName,
                         onPressed: _isSavingProfile ? null : _saveProfile,
                         icon: _isSavingProfile ? null : Icons.save_outlined,
                         color: ThemeConstants.primaryColor,
                       ),
                       DiaryButton(
-                        label: 'Esci',
+                        label: s.btnExit,
                         onPressed: _logout,
                         icon: Icons.exit_to_app,
                         color: ThemeConstants.errorColor,
@@ -401,6 +405,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 16),
 
+            // ── LINGUA ───────────────────────────────────────────────────
+            _buildLanguageCard(s),
+            const SizedBox(height: 16),
+
             // ── AI ASSISTANT ─────────────────────────────────────────────
             PaperCard(
               child: Column(
@@ -410,7 +418,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Icon(Icons.smart_toy_outlined, color: ThemeConstants.secondaryColor, size: 20),
                       const SizedBox(width: 8),
-                      Text('Chiavi API IA', style: ThemeConstants.subheadingStyle),
+                      Text(s.sectionAiApiKeys, style: ThemeConstants.subheadingStyle),
                     ],
                   ),
                   // ── Gemini (ApiarioAI chat + Inserimento vocale) ──────────
@@ -419,7 +427,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Icon(Icons.auto_awesome, color: const Color(0xFF4285F4), size: 16),
                       const SizedBox(width: 6),
-                      Text('Gemini — ApiarioAI & Inserimento Vocale',
+                      Text(s.geminiSectionLabel,
                           style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
                     ],
                   ),
@@ -435,15 +443,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '• Senza chiave personale l\'app usa la chiave di sistema condivisa (quota condivisa).\n'
-                          '• Con la tua chiave ottieni quota indipendente: 20 richieste/giorno (piano gratuito Gemini 2.5 Flash).\n'
-                          '• Usata per: chat ApiarioAI + trascrizione vocale.\n'
-                          '• La chiave viene salvata sul server in modo sicuro.',
+                          s.geminiDescription,
                           style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Ottienila su aistudio.google.com → "Get API key"',
+                          s.geminiHowToGet,
                           style: ThemeConstants.bodyStyle.copyWith(
                             fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic),
                         ),
@@ -468,14 +473,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Row(
                     children: [
                       DiaryButton(
-                        label: _isSavingApiKey ? 'Salvataggio...' : 'Salva chiave',
+                        label: _isSavingApiKey ? s.btnSaving : s.btnSaveKey,
                         onPressed: _isSavingApiKey ? null : _saveApiKey,
                         icon: _isSavingApiKey ? null : Icons.key,
                         color: ThemeConstants.primaryColor,
                       ),
                       const SizedBox(width: 8),
                       DiaryButton(
-                        label: 'Rimuovi',
+                        label: s.btnRemove,
                         onPressed: () { _apiKeyController.clear(); _saveApiKey(); },
                         icon: Icons.delete_outline,
                         color: ThemeConstants.secondaryColor,
@@ -489,7 +494,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Icon(Icons.bolt, color: const Color(0xFFF55036), size: 16),
                       const SizedBox(width: 6),
-                      Text('Groq — Statistiche NL Query',
+                      Text(s.groqSectionLabel,
                           style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
                     ],
                   ),
@@ -505,14 +510,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '• Usata per le query AI nelle Statistiche (domande in linguaggio naturale).\n'
-                          '• Senza chiave il backend usa la chiave di sistema condivisa.\n'
-                          '• Salvata localmente sul dispositivo.',
+                          s.groqDescription,
                           style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Ottienila su console.groq.com → "API Keys"',
+                          s.groqHowToGet,
                           style: ThemeConstants.bodyStyle.copyWith(
                             fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic),
                         ),
@@ -537,14 +540,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Row(
                     children: [
                       DiaryButton(
-                        label: _isSavingGroqKey ? 'Salvataggio...' : 'Salva chiave',
+                        label: _isSavingGroqKey ? s.btnSaving : s.btnSaveKey,
                         onPressed: _isSavingGroqKey ? null : _saveGroqApiKey,
                         icon: _isSavingGroqKey ? null : Icons.key,
                         color: const Color(0xFFF55036),
                       ),
                       const SizedBox(width: 8),
                       DiaryButton(
-                        label: 'Rimuovi',
+                        label: s.btnRemove,
                         onPressed: () { _groqKeyController.clear(); _saveGroqApiKey(); },
                         icon: Icons.delete_outline,
                         color: ThemeConstants.secondaryColor,
@@ -557,11 +560,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // ── INSERIMENTO VOCALE ────────────────────────────────────────
-            _buildVoiceModeCard(),
+            _buildVoiceModeCard(s),
             const SizedBox(height: 16),
 
             // ── QUOTA AI ──────────────────────────────────────────────────
-            _buildQuotaCard(),
+            _buildQuotaCard(s),
             const SizedBox(height: 16),
 
             // ── GUIDA & TUTORIAL ──────────────────────────────────────────
@@ -569,21 +572,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Guida & Tutorial', style: ThemeConstants.subheadingStyle),
+                  Text(s.sectionGuideTutorial, style: ThemeConstants.subheadingStyle),
                   const SizedBox(height: 8),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.play_circle_outline, color: Color(0xFFD3A121)),
-                    title: Text('Tutorial', style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF3A2E21))),
-                    subtitle: Text('Rivedi il tour introduttivo', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                    title: Text(s.tutorialTitle, style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF3A2E21))),
+                    subtitle: Text(s.tutorialSubtitle, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
                     trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                     onTap: () => Navigator.pushNamed(context, '/onboarding'),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.book_outlined, color: Color(0xFFD3A121)),
-                    title: Text('Guida Completa', style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF3A2E21))),
-                    subtitle: Text('Istruzioni dettagliate per tutte le funzioni', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                    title: Text(s.completeGuideTitle, style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF3A2E21))),
+                    subtitle: Text(s.completeGuideSubtitle, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
                     trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                     onTap: () => Navigator.pushNamed(context, '/guida'),
                   ),
@@ -597,11 +600,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Informazioni', style: ThemeConstants.subheadingStyle),
+                  Text(s.sectionInfo, style: ThemeConstants.subheadingStyle),
                   const SizedBox(height: 16),
-                  _infoRow(Icons.info_outline, 'Versione app', _appVersion),
-                  _infoRow(Icons.cloud_outlined, 'Server API', ApiConstants.baseUrl),
-                  _infoRow(Icons.code, 'Sviluppato da', 'Cible99'),
+                  _infoRow(Icons.info_outline, s.infoAppVersion, _appVersion),
+                  _infoRow(Icons.cloud_outlined, s.infoApiServer, ApiConstants.baseUrl),
+                  _infoRow(Icons.code, s.infoDevelopedBy, 'Cible99'),
                   const Divider(height: 24),
                   InkWell(
                     borderRadius: BorderRadius.circular(8),
@@ -617,14 +620,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: ThemeConstants.secondaryColor.withOpacity(0.8), size: 20),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text('Informativa sulla Privacy',
-                                style: ThemeConstants.bodyStyle),
+                            child: Text(s.infoPrivacyPolicy, style: ThemeConstants.bodyStyle),
                           ),
                           Icon(Icons.chevron_right,
                               color: ThemeConstants.textSecondaryColor, size: 18),
                         ],
                       ),
                     ),
+                  ),
+                  const Divider(height: 24),
+                  // Clear cache button
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.cleaning_services_outlined,
+                        color: ThemeConstants.secondaryColor.withOpacity(0.8), size: 20),
+                    title: Text(s.clearCacheTitle, style: ThemeConstants.bodyStyle),
+                    trailing: Icon(Icons.chevron_right,
+                        color: ThemeConstants.textSecondaryColor, size: 18),
+                    onTap: _clearCache,
                   ),
                 ],
               ),
@@ -636,22 +649,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildVoiceModeCard() {
+  // ── Language selection card ───────────────────────────────────────────────
+
+  Widget _buildLanguageCard(dynamic s) {
+    final languageService = Provider.of<LanguageService>(context);
+    final currentCode = languageService.currentCode;
+
     return PaperCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.mic_outlined,
-                  color: ThemeConstants.secondaryColor, size: 20),
+              Icon(Icons.language, color: ThemeConstants.secondaryColor, size: 20),
               const SizedBox(width: 8),
-              Text('Inserimento Vocale', style: ThemeConstants.subheadingStyle),
+              Text(s.sectionLanguage, style: ThemeConstants.subheadingStyle),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'Scegli come vengono catturati i dati vocali.',
+            s.labelLanguageSubtitle,
+            style: ThemeConstants.bodyStyle.copyWith(
+                fontSize: 12, color: ThemeConstants.textSecondaryColor),
+          ),
+          const SizedBox(height: 16),
+          ...LanguageService.supportedLanguages.entries.map((entry) {
+            final code = entry.key;
+            final name = entry.value;
+            final selected = currentCode == code;
+            return GestureDetector(
+              onTap: () => languageService.setLanguage(code),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? ThemeConstants.primaryColor.withOpacity(0.10)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: selected ? ThemeConstants.primaryColor : Colors.grey.shade300,
+                    width: selected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Radio<String>(
+                      value: code,
+                      groupValue: currentCode,
+                      onChanged: (v) => languageService.setLanguage(v!),
+                      activeColor: ThemeConstants.primaryColor,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      name,
+                      style: ThemeConstants.bodyStyle.copyWith(
+                        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ── Voice mode card ───────────────────────────────────────────────────────
+
+  Widget _buildVoiceModeCard(dynamic s) {
+    return PaperCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.mic_outlined, color: ThemeConstants.secondaryColor, size: 20),
+              const SizedBox(width: 8),
+              Text(s.sectionVoiceInput, style: ThemeConstants.subheadingStyle),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            s.voiceInputSubtitle,
             style: ThemeConstants.bodyStyle.copyWith(
                 fontSize: 12, color: ThemeConstants.textSecondaryColor),
           ),
@@ -661,10 +746,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildVoiceModeOption(
             value: VoiceSettingsService.modeStt,
             icon: Icons.text_fields,
-            title: 'Speech-to-text locale',
-            subtitle: 'Il riconoscimento vocale del dispositivo trascrive '
-                'il testo; Gemini lo struttura in dati. '
-                'Consigliato: funziona anche con connessione lenta.',
+            title: s.voiceModeSttTitle,
+            subtitle: s.voiceModeSttSubtitle,
           ),
           const SizedBox(height: 10),
 
@@ -673,10 +756,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: VoiceSettingsService.modeAudio,
             icon: Icons.graphic_eq,
             iconColor: const Color(0xFF4285F4),
-            title: 'Registra audio → Gemini multimodale',
-            subtitle: 'L\'audio viene inviato direttamente a Gemini che '
-                'trascrive e struttura in un unico passaggio. '
-                'Più preciso in ambienti rumorosi. Richiede connessione.',
+            title: s.voiceModeAudioTitle,
+            subtitle: s.voiceModeAudioSubtitle,
             badge: 'Gemini Audio',
           ),
         ],
@@ -733,14 +814,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       if (badge != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFF4285F4).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color:
-                                    const Color(0xFF4285F4).withOpacity(0.4)),
+                            border: Border.all(color: const Color(0xFF4285F4).withOpacity(0.4)),
                           ),
                           child: Text(badge,
                               style: const TextStyle(
@@ -753,8 +831,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 4),
                   Text(subtitle,
                       style: ThemeConstants.bodyStyle.copyWith(
-                          fontSize: 12,
-                          color: ThemeConstants.textSecondaryColor)),
+                          fontSize: 12, color: ThemeConstants.textSecondaryColor)),
                 ],
               ),
             ),
@@ -764,7 +841,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildQuotaCard() {
+  // ── Quota card ────────────────────────────────────────────────────────────
+
+  Widget _buildQuotaCard(dynamic s) {
     return PaperCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -774,7 +853,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icon(Icons.analytics_outlined, color: ThemeConstants.secondaryColor, size: 20),
               const SizedBox(width: 8),
               Flexible(
-                child: Text('Quota AI — Uso giornaliero',
+                child: Text(s.sectionQuota,
                     style: ThemeConstants.subheadingStyle, overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 4),
@@ -788,7 +867,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   constraints: const BoxConstraints(),
                   color: ThemeConstants.secondaryColor,
                   onPressed: () { _loadQuota(); _loadLocalQuotas(); },
-                  tooltip: 'Aggiorna',
+                  tooltip: s.quotaRefreshTooltip,
                 ),
             ],
           ),
@@ -799,7 +878,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(Icons.smart_toy_outlined, color: const Color(0xFF4285F4), size: 15),
               const SizedBox(width: 6),
-              Text('ApiarioAI Assistant (Gemini)',
+              Text(s.quotaApiarioAIAssistant,
                   style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
             ],
           ),
@@ -807,11 +886,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (_isLoadingQuota && _quotaData == null)
             const SkeletonDashboardContent(height: 110)
           else if (_quotaData == null)
-            Text('Dati non disponibili (offline o errore di rete)',
+            Text(s.quotaDataUnavailable,
                 style: ThemeConstants.bodyStyle.copyWith(
                     fontSize: 13, color: ThemeConstants.textSecondaryColor))
           else
-            _buildQuotaSection(_quotaData!),
+            _buildQuotaSection(_quotaData!, s),
 
           const Divider(height: 28),
 
@@ -820,19 +899,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(Icons.mic_outlined, color: ThemeConstants.primaryColor, size: 15),
               const SizedBox(width: 6),
-              Text('Inserimento Vocale (Gemini)',
+              Text(s.quotaVoiceInput,
                   style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 8),
           _quotaBar(
-            label: 'Trascrizioni oggi',
+            label: s.quotaTranscriptionsToday,
             used: _voiceCallsToday,
             limit: 20,
             resetAt: null,
             isActive: true,
             color: ThemeConstants.primaryColor,
-            subtitle: 'Piano gratuito: 20 richieste/giorno',
+            subtitle: s.quotaFreePlan,
+            s: s,
           ),
 
           const Divider(height: 28),
@@ -842,28 +922,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(Icons.bolt, color: const Color(0xFFF55036), size: 15),
               const SizedBox(width: 6),
-              Text('Statistiche NL Query (Groq)',
+              Text(s.quotaStatsNlQuery,
                   style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 8),
           _quotaBar(
-            label: 'Query oggi',
+            label: s.quotaStatsToday,
             used: _statsCallsToday,
             limit: 0,
             resetAt: null,
             isActive: true,
             color: const Color(0xFFF55036),
             subtitle: _groqKeyController.text.isNotEmpty
-                ? 'Usando la tua chiave Groq personale'
-                : 'Usando la chiave di sistema condivisa',
+                ? s.quotaUsingGroqPersonal
+                : s.quotaUsingSystemKey,
+            s: s,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuotaSection(Map<String, dynamic> data) {
+  Widget _buildQuotaSection(Map<String, dynamic> data, dynamic s) {
     final bool personalKeySet = data['personal_key_set'] == true;
     final String activeKey = data['active_key'] ?? 'system';
     final int dailyLimit = ((data['daily_limit'] ?? 1500) as num).toInt();
@@ -895,9 +976,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           child: Text(
-            activeKey == 'personal'
-                ? 'Usando la tua chiave personale'
-                : 'Usando la chiave di sistema condivisa',
+            activeKey == 'personal' ? s.quotaUsingPersonalKey : s.quotaUsingSystemKey,
             style: ThemeConstants.bodyStyle.copyWith(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -911,26 +990,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         // System key quota
         _quotaBar(
-          label: 'Chiave di sistema (condivisa)',
+          label: s.quotaSystemKeyLabel,
           used: systemUsed,
           limit: dailyLimit,
           resetAt: systemResetAt,
           isActive: activeKey == 'system',
           color: ThemeConstants.primaryColor,
+          s: s,
         ),
         const SizedBox(height: 14),
 
         // Personal key quota
         _quotaBar(
-          label: personalKeySet
-              ? 'Tua chiave personale'
-              : 'Tua chiave personale (non impostata)',
+          label: personalKeySet ? s.quotaPersonalKeyLabel : s.quotaPersonalKeyNotSetLabel,
           used: personalUsed,
           limit: dailyLimit,
           resetAt: personalResetAt,
           isActive: activeKey == 'personal',
           color: ThemeConstants.successColor,
           dimmed: !personalKeySet,
+          s: s,
         ),
       ],
     );
@@ -943,6 +1022,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String? resetAt,
     required bool isActive,
     required Color color,
+    required dynamic s,
     bool dimmed = false,
     String? subtitle,
   }) {
@@ -955,22 +1035,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? ThemeConstants.primaryColor
             : color;
 
-    DateTime? resetTime;
-    String resetLabel = 'Reset: dati non ancora disponibili';
+    String resetLabel = s.quotaResetNoData;
     if (resetAt != null) {
       // Normalizza a UTC: se il backend non include 'Z' o offset, assumiamo UTC.
       final normalized = resetAt.endsWith('Z') || resetAt.contains('+')
           ? resetAt
           : '${resetAt}Z';
-      resetTime = DateTime.tryParse(normalized)?.toLocal();
+      final resetTime = DateTime.tryParse(normalized)?.toLocal();
       if (resetTime != null) {
         final Duration diff = resetTime.difference(DateTime.now());
         if (diff.isNegative) {
-          resetLabel = 'Reset imminente';
+          resetLabel = s.quotaResetSoon;
         } else if (diff.inHours >= 1) {
-          resetLabel = 'Reset tra ${diff.inHours}h ${diff.inMinutes.remainder(60)}m';
+          resetLabel = s.quotaResetInHoursMinutes(diff.inHours, diff.inMinutes.remainder(60));
         } else {
-          resetLabel = 'Reset tra ${diff.inMinutes}m';
+          resetLabel = s.quotaResetInMinutes(diff.inMinutes);
         }
       }
     }
@@ -994,14 +1073,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         fontSize: 13,
                         fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
               ),
-              Text(hasLimit ? '$used / $limit' : '$used oggi',
+              Text(hasLimit ? '$used / $limit' : s.quotaUsedToday(used),
                   style: ThemeConstants.bodyStyle.copyWith(
                       fontSize: 12, color: ThemeConstants.textSecondaryColor)),
             ],
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
-            Text(subtitle!,
+            Text(subtitle,
                 style: ThemeConstants.bodyStyle.copyWith(
                     fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic)),
           ],
@@ -1019,10 +1098,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(hasLimit ? '$remaining rimaste' : 'Reset ogni giorno',
+              Text(hasLimit ? s.quotaRemaining(remaining) : s.quotaResetDaily,
                   style: ThemeConstants.bodyStyle.copyWith(
                       fontSize: 11, color: ThemeConstants.textSecondaryColor)),
-              Text(resetAt != null ? resetLabel : 'Reset a mezzanotte',
+              Text(resetAt != null ? resetLabel : s.quotaResetMidnight,
                   style: ThemeConstants.bodyStyle.copyWith(
                       fontSize: 11, color: ThemeConstants.textSecondaryColor)),
             ],
