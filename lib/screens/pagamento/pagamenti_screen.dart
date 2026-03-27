@@ -480,6 +480,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   void _showQuotePopup(BuildContext context, List<QuotaUtente> quote, int gruppoId) {
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(16),

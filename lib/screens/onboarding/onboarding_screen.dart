@@ -16,6 +16,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   static const String _prefKey = 'onboarding_completato';
 
+  @override
+  void initState() {
+    super.initState();
+    _markOnboardingSeen();
+  }
+
+  Future<void> _markOnboardingSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefKey, true);
+  }
+
   // Colori dal design system
   static const Color primaryColor = Color(0xFFD3A121);
   static const Color bgColor = Color(0xFFF8F5E6);
@@ -186,11 +197,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildStep(_OnboardingStep step) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
           Text(step.icon, style: const TextStyle(fontSize: 64)),
           const SizedBox(height: 20),
           Text(
@@ -280,7 +296,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ],
-        ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

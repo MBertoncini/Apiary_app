@@ -412,6 +412,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             onPressed: () {
               showModalBottomSheet(
                 context: context,
+                useSafeArea: true,
                 isScrollControlled: true,
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -752,6 +753,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
     if (_apiario == null) return;
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),

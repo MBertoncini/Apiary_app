@@ -560,6 +560,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   void _showAddOptions() {
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       builder: (context) {
         return SafeArea(
           child: Column(

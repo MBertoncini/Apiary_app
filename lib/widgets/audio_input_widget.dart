@@ -1,12 +1,16 @@
 // lib/widgets/audio_input_widget.dart
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
 import '../models/voice_entry.dart';
 import '../services/audio_recorder_service.dart';
 import '../services/audio_queue_service.dart';
 import '../services/gemini_audio_processor.dart';
+import '../services/storage_service.dart';
 
 /// Widget per la modalità "Registra audio → Gemini multimodale" con supporto
 /// per inserimento multiplo (multi-arnia).
@@ -37,7 +41,7 @@ class AudioInputWidget extends StatefulWidget {
   State<AudioInputWidget> createState() => _AudioInputWidgetState();
 }
 
-enum _RecState { idle, recording, recorded, processing, processingQueue, error }
+enum _RecState { idle, recording, recorded, extending, processing, processingQueue, error }
 
 class _AudioInputWidgetState extends State<AudioInputWidget> {
   final AudioRecorderService _recorder = AudioRecorderService();
@@ -69,6 +73,10 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   int _queueCount = 0;
   int _queueProcessedCount = 0;
   int _queueTotalCount = 0;
+
+  // Entry parziale: Gemini ha estratto dati ma il numero arnia è assente
+  VoiceEntry? _partialEntry;
+  List<Map<String, dynamic>> _availableArnie = [];
 
   @override
   void initState() {
@@ -146,6 +154,85 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     setState(() => _state = _RecState.recorded);
   }
 
+  // ── Estensione registrazione ──────────────────────────────────────────────
+
+  /// Avvia una nuova registrazione da aggiungere in coda a quella esistente.
+  Future<void> _startExtending() async {
+    if (_playerState == PlayerState.playing) await _player.stop();
+    final ok = await _recorder.startRecording();
+    if (!ok) {
+      setState(() {
+        _state = _RecState.error;
+        _error = 'Impossibile avviare la registrazione. '
+            'Verifica il permesso microfono.';
+      });
+      return;
+    }
+    _seconds = 0;
+    _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _seconds++);
+    });
+    setState(() {
+      _state = _RecState.extending;
+      _error = null;
+    });
+  }
+
+  /// Ferma l'estensione e concatena il nuovo segmento all'audio esistente.
+  Future<void> _stopExtending() async {
+    _durationTimer?.cancel();
+    final newPath = await _recorder.stopRecording();
+    if (newPath == null) {
+      setState(() {
+        _state = _RecState.error;
+        _error = 'Estensione non valida. Riprova.';
+      });
+      return;
+    }
+
+    if (_pendingFilePath != null && _pendingFilePath != newPath) {
+      final merged = await _appendAudioFiles(_pendingFilePath!, newPath);
+      if (merged == null) {
+        // fallback: usa solo il nuovo segmento
+        await AudioQueueService.deleteFile(_pendingFilePath!);
+        _pendingFilePath = newPath;
+      }
+      // se merged != null, _pendingFilePath è già aggiornato in-place
+    } else {
+      _pendingFilePath = newPath;
+    }
+
+    _recordedSeconds += _seconds;
+    _playerPosition = Duration.zero;
+    _playerDuration = Duration.zero;
+    setState(() => _state = _RecState.recorded);
+  }
+
+  /// Concatena due file AAC-ADTS in-place (il formato ADTS è self-framing,
+  /// la concatenazione diretta dei byte produce un file riproduble).
+  Future<String?> _appendAudioFiles(
+      String basePath, String appendPath) async {
+    try {
+      final baseFile = File(basePath);
+      final appendFile = File(appendPath);
+      if (!baseFile.existsSync() || !appendFile.existsSync()) return null;
+
+      final baseBytes = await baseFile.readAsBytes();
+      final appendBytes = await appendFile.readAsBytes();
+
+      final merged = Uint8List(baseBytes.length + appendBytes.length);
+      merged.setAll(0, baseBytes);
+      merged.setAll(baseBytes.length, appendBytes);
+
+      await baseFile.writeAsBytes(merged, flush: true);
+      await appendFile.delete();
+      return basePath;
+    } catch (e) {
+      debugPrint('[AudioInputWidget] _appendAudioFiles error: $e');
+      return null;
+    }
+  }
+
   // ── Playback ──────────────────────────────────────────────────────────────
 
   Future<void> _togglePlayback() async {
@@ -173,13 +260,28 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       final entryWithAudio = entry.copyWith(audioFilePath: filePath);
       setState(() {
         _entries.add(entryWithAudio);
+        _partialEntry = null;
+        _availableArnie = [];
         _state = _RecState.idle;
         _error = null;
         _pendingFilePath = null;
       });
       return true;
+    } else if (entry != null && !entry.isValid()) {
+      // Gemini ha estratto dati utili ma manca il numero/id arnia: mostra picker
+      await _loadArnieForPicker();
+      setState(() {
+        _partialEntry = entry.copyWith(audioFilePath: filePath);
+        _state = _RecState.error;
+        _error = 'Numero arnia non rilevato dall\'audio. '
+            'Seleziona l\'arnia dal menu oppure aggiungi audio con il numero.';
+        // _pendingFilePath rimane per "Continua registrazione"
+      });
+      return false;
     } else {
       setState(() {
+        _partialEntry = null;
+        _availableArnie = [];
         _state = _RecState.error;
         _error = widget.processor.error ??
             'Non è stato possibile estrarre dati dall\'audio. Riprova.';
@@ -187,6 +289,51 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       });
       return false;
     }
+  }
+
+  /// Carica le arnie disponibili da cache locale, filtrate per apiario se
+  /// il contesto di sessione è impostato.
+  Future<void> _loadArnieForPicker() async {
+    if (!mounted) return;
+    try {
+      final storageService =
+          Provider.of<StorageService>(context, listen: false);
+      final allArnie = await storageService.getStoredData('arnie');
+      final filtered = widget.contextApiarioId != null
+          ? allArnie
+              .where((a) => a['apiario'] == widget.contextApiarioId)
+              .cast<Map<String, dynamic>>()
+              .toList()
+          : List<Map<String, dynamic>>.from(allArnie);
+      filtered.sort((a, b) =>
+          (a['numero'] as int? ?? 0).compareTo(b['numero'] as int? ?? 0));
+      if (mounted) setState(() => _availableArnie = filtered);
+    } catch (_) {
+      // StorageService non disponibile: il picker mostrerà lista vuota
+    }
+  }
+
+  /// Completa l'entry parziale assegnando l'arnia selezionata dal picker.
+  void _confirmWithArnia(Map<String, dynamic> arnia) {
+    if (_partialEntry == null) return;
+    final completed = _partialEntry!.copyWith(
+      arniaId: arnia['id'] as int?,
+      arniaNumero: arnia['numero'] as int?,
+      apiarioId:
+          (arnia['apiario'] as int?) ?? _partialEntry!.apiarioId,
+    );
+    if (_pendingFilePath != null &&
+        _partialEntry!.audioFilePath != _pendingFilePath) {
+      // Il file audio potrebbe essere stato esteso; usa il path corrente
+    }
+    setState(() {
+      _entries.add(completed);
+      _partialEntry = null;
+      _availableArnie = [];
+      _state = _RecState.idle;
+      _error = null;
+      _pendingFilePath = null;
+    });
   }
 
   // ── Scarto / Annulla ──────────────────────────────────────────────────────
@@ -198,6 +345,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       _pendingFilePath = null;
     }
     setState(() {
+      _partialEntry = null;
+      _availableArnie = [];
       _state = _RecState.idle;
       _error = null;
     });
@@ -338,7 +487,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     if (_entries.isEmpty) return;
     final batch = VoiceEntryBatch();
     for (final e in _entries) batch.add(e);
-    _entries.clear();
+    setState(() => _entries.clear());
     widget.onEntriesReady(batch);
   }
 
@@ -437,17 +586,45 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: _partialEntry != null
+                    ? Colors.orange.shade50
+                    : Colors.red.shade50,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
+                border: Border.all(
+                    color: _partialEntry != null
+                        ? Colors.orange.shade200
+                        : Colors.red.shade200),
               ),
-              child: Text(
-                _error!,
-                style:
-                    TextStyle(fontSize: 13, color: Colors.red.shade800),
-                textAlign: TextAlign.center,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    _partialEntry != null
+                        ? Icons.warning_amber_rounded
+                        : Icons.error_outline,
+                    size: 16,
+                    color: _partialEntry != null
+                        ? Colors.orange.shade700
+                        : Colors.red.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: _partialEntry != null
+                              ? Colors.orange.shade800
+                              : Colors.red.shade800),
+                    ),
+                  ),
+                ],
               ),
             ),
+            if (_partialEntry != null && _availableArnie.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _buildArniaPickerSection(),
+            ],
           ],
 
           // ── Lista batch arnie ─────────────────────────────────────────────
@@ -533,18 +710,25 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         return _buildPlaybackCircle();
 
       case _RecState.recording:
+      case _RecState.extending:
+        final isExtending = _state == _RecState.extending;
+        final circleColor =
+            isExtending ? Colors.amber.shade700 : Colors.red.shade600;
+        final glowColor = isExtending
+            ? Colors.amber.withValues(alpha: 0.40)
+            : Colors.red.withValues(alpha: 0.40);
         return GestureDetector(
-          onTap: _stopRecording,
+          onTap: isExtending ? _stopExtending : _stopRecording,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             width: 160,
             height: 160,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.red.shade600,
+              color: circleColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.red.withValues(alpha: 0.40),
+                  color: glowColor,
                   blurRadius: 22,
                   spreadRadius: 5,
                 ),
@@ -564,6 +748,17 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
+                if (isExtending) ...[
+                  const SizedBox(height: 2),
+                  const Text(
+                    '+',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -695,6 +890,62 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     );
   }
 
+  // ── Picker arnia (quando numero non rilevato dall'audio) ─────────────────
+
+  Widget _buildArniaPickerSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.amber.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Seleziona arnia:',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.amber.shade900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<Map<String, dynamic>>(
+            value: null,
+            isExpanded: true,
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: Colors.amber.shade400)),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: Colors.amber.shade400)),
+            ),
+            hint: const Text('Scegli arnia…',
+                style: TextStyle(fontSize: 13)),
+            items: _availableArnie.map((a) {
+              final num = a['numero'] as int? ?? 0;
+              return DropdownMenuItem<Map<String, dynamic>>(
+                value: a,
+                child: Text('Arnia $num',
+                    style: const TextStyle(fontSize: 13)),
+              );
+            }).toList(),
+            onChanged: (arnia) {
+              if (arnia != null) _confirmWithArnia(arnia);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Lista batch (chips arnie) ─────────────────────────────────────────────
 
   Widget _buildBatchList() {
@@ -759,7 +1010,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     final buttons = <Widget>[];
 
     switch (_state) {
-      // ── Recorded: riascolta → invia o scarta ───────────────────────
+      // ── Recorded: riascolta → aggiungi / invia o scarta ───────────
       case _RecState.recorded:
         buttons.add(ElevatedButton.icon(
           onPressed: _sendToGemini,
@@ -769,6 +1020,14 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
             backgroundColor: ThemeConstants.primaryColor,
             foregroundColor: Colors.white,
           ),
+        ));
+        buttons.add(OutlinedButton.icon(
+          onPressed: _startExtending,
+          icon: const Icon(Icons.mic, size: 16, color: Colors.amber),
+          label: const Text('Aggiungi audio',
+              style: TextStyle(color: Colors.amber)),
+          style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.amber)),
         ));
         buttons.add(OutlinedButton.icon(
           onPressed: _discardRecording,
@@ -781,9 +1040,30 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         ));
         break;
 
-      // ── Error: riprova / salva in coda (solo offline) / scarta ────
+      // ── Error: gestione differenziata in base al tipo di errore ───
       case _RecState.error:
-        if (_pendingFilePath != null) {
+        if (_partialEntry != null && _pendingFilePath != null) {
+          // Gemini ha estratto dati ma manca il numero arnia:
+          // offri di estendere l'audio o di scartare
+          buttons.add(OutlinedButton.icon(
+            onPressed: _startExtending,
+            icon: const Icon(Icons.mic, size: 16, color: Colors.amber),
+            label: const Text('Aggiungi audio con n° arnia',
+                style: TextStyle(color: Colors.amber)),
+            style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.amber)),
+          ));
+          buttons.add(OutlinedButton.icon(
+            onPressed: _discardRecording,
+            icon: const Icon(Icons.delete_outline,
+                size: 16, color: Colors.red),
+            label: const Text('Scarta',
+                style: TextStyle(color: Colors.red)),
+            style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.red)),
+          ));
+        } else if (_pendingFilePath != null) {
+          // Errore Gemini generico: riprova o salva in coda
           buttons.add(ElevatedButton.icon(
             onPressed: () async {
               final path = _pendingFilePath!;
@@ -854,6 +1134,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         break;
 
       case _RecState.recording:
+      case _RecState.extending:
       case _RecState.processing:
       case _RecState.processingQueue:
         break;
@@ -862,6 +1143,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     // ── "STOP – Rivedi" (visibile quando c'è batch e non si sta registrando)
     final canReview = _entries.isNotEmpty &&
         _state != _RecState.recording &&
+        _state != _RecState.extending &&
         _state != _RecState.processing &&
         _state != _RecState.processingQueue;
 
@@ -884,6 +1166,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     // ── "Annulla sessione" (distruttivo, con conferma) ────────────────
     if (_hasActiveSession &&
         _state != _RecState.recording &&
+        _state != _RecState.extending &&
         _state != _RecState.processing &&
         _state != _RecState.processingQueue) {
       buttons.add(OutlinedButton.icon(
@@ -924,6 +1207,9 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       case _RecState.recording:
         return Icon(Icons.fiber_manual_record,
             size: 18, color: Colors.red.shade600);
+      case _RecState.extending:
+        return Icon(Icons.fiber_manual_record,
+            size: 18, color: Colors.amber.shade700);
       case _RecState.processing:
       case _RecState.processingQueue:
         return SizedBox(
@@ -952,6 +1238,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     switch (_state) {
       case _RecState.recording:
         return 'Registrazione in corso…';
+      case _RecState.extending:
+        return 'Aggiunta audio in corso… (+${_formatDuration(_seconds)})';
       case _RecState.processing:
         return 'Invio a Gemini…';
       case _RecState.processingQueue:

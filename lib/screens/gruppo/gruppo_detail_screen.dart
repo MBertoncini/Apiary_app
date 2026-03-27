@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
@@ -26,6 +29,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _cacheChecked = false;
+  bool _isUploadingImage = false;
   Gruppo? _gruppo;
   List<dynamic> _apiariCondivisi = [];
   List<InvitoGruppo> _inviti = [];
@@ -173,6 +177,48 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
         _isLoading = false;
         _isRefreshing = false;
       });
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Immagine gruppo
+  // ──────────────────────────────────────────────────────────
+
+  Future<void> _pickAndUploadGruppoImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+    setState(() => _isUploadingImage = true);
+    try {
+      final updatedGruppo = await _gruppoService.uploadGruppoImage(widget.gruppoId, File(picked.path));
+      setState(() => _gruppo = Gruppo(
+        id: _gruppo!.id,
+        nome: _gruppo!.nome,
+        descrizione: _gruppo!.descrizione,
+        dataCreazione: _gruppo!.dataCreazione,
+        creatoreId: _gruppo!.creatoreId,
+        creatoreName: _gruppo!.creatoreName,
+        membri: _gruppo!.membri,
+        immagineProfilo: updatedGruppo.immagineProfilo,
+        apiariIds: _gruppo!.apiariIds,
+        membriCountFromApi: _gruppo!.membriCountFromApi,
+        apiariCountFromApi: _gruppo!.apiariCountFromApi,
+      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Immagine gruppo aggiornata'),
+          backgroundColor: ThemeConstants.successColor,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Errore nel caricamento: $e'),
+          backgroundColor: ThemeConstants.errorColor,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
     }
   }
 
@@ -546,7 +592,56 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_gruppo?.nome ?? 'Dettaglio Gruppo'),
+        title: Row(
+          children: [
+            GestureDetector(
+              onTap: (_isAdmin || _isCreator) && !_isUploadingImage
+                  ? _pickAndUploadGruppoImage
+                  : null,
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: ThemeConstants.primaryColor.withOpacity(0.2),
+                    backgroundImage: (_gruppo?.immagineProfilo != null)
+                        ? CachedNetworkImageProvider(_gruppo!.immagineProfilo!)
+                        : null,
+                    child: (_gruppo?.immagineProfilo == null)
+                        ? Text(
+                            (_gruppo?.nome.isNotEmpty == true)
+                                ? _gruppo!.nome[0].toUpperCase()
+                                : 'G',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          )
+                        : null,
+                  ),
+                  if (_isAdmin || _isCreator)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: ThemeConstants.primaryColor,
+                          border: Border.all(color: Colors.white, width: 1),
+                        ),
+                        child: _isUploadingImage
+                            ? const Padding(
+                                padding: EdgeInsets.all(2),
+                                child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                              )
+                            : const Icon(Icons.camera_alt, size: 8, color: Colors.white),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(_gruppo?.nome ?? 'Dettaglio Gruppo'),
+          ],
+        ),
         actions: [
           if (_isAdmin)
             IconButton(
@@ -646,15 +741,18 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
         int membroId = 0;
         int utenteId = 0;
 
+        String? membroImmagine;
         if (membro is MembroGruppo) {
           username = membro.username;
           ruolo = membro.ruolo;
           membroId = membro.id;
           utenteId = membro.utenteId;
+          membroImmagine = membro.immagineProfilo;
         } else if (membro is Map<String, dynamic>) {
           username =
               membro['username'] ?? membro['utente_username'] ?? 'Sconosciuto';
           ruolo = membro['ruolo'] ?? 'viewer';
+          membroImmagine = membro['immagine_profilo'] as String?;
           final rawId = membro['id'];
           if (rawId is int) {
             membroId = rawId;
@@ -682,11 +780,16 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: ThemeConstants.primaryColor,
-            child: Text(
-              username.isNotEmpty ? username[0].toUpperCase() : 'U',
-              style: TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            backgroundImage: membroImmagine != null
+                ? CachedNetworkImageProvider(membroImmagine)
+                : null,
+            child: membroImmagine == null
+                ? Text(
+                    username.isNotEmpty ? username[0].toUpperCase() : 'U',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  )
+                : null,
           ),
           title: Text(username),
           subtitle: Row(

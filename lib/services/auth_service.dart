@@ -187,25 +187,36 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       } else {
         // Controlla se la risposta è in HTML (errore 500 o simili)
         if (response.body.trim().startsWith('<')) {
-          _lastError = 'Il server ha riscontrato un errore interno. Per favore, riprova più tardi.';
+          _lastError = 'server_error';
           throw Exception(_lastError);
         }
-        
+
         // Tenta di estrarre il messaggio di errore dal JSON
         try {
           final responseData = json.decode(utf8.decode(response.bodyBytes));
-          _lastError = responseData['detail'] ?? 'Errore di autenticazione';
+          if (response.statusCode == 401) {
+            // Il backend restituisce un 'code' specifico per distinguere i casi
+            final code = responseData['code'];
+            if (code == 'user_not_found' || code == 'wrong_password') {
+              _lastError = code;
+            } else {
+              _lastError = 'wrong_credentials';
+            }
+          } else {
+            final detail = responseData['detail'] ?? '';
+            _lastError = detail.isNotEmpty ? detail : 'server_error';
+          }
         } catch (e) {
-          _lastError = 'Errore di autenticazione. Codice: ${response.statusCode}';
+          _lastError = 'server_error';
         }
-        
+
         throw Exception(_lastError);
       }
     } on SocketException {
-      _lastError = 'Impossibile connettersi al server. Verifica la tua connessione internet.';
+      _lastError = 'network_error';
       throw Exception(_lastError);
     } on TimeoutException {
-      _lastError = 'La richiesta è scaduta. Il server potrebbe essere sovraccarico o la connessione lenta.';
+      _lastError = 'timeout_error';
       throw Exception(_lastError);
     } catch (e) {
       debugPrint('Login error: $e');
@@ -246,53 +257,6 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       throw Exception('Impossibile connettersi al server. Verifica la tua connessione internet.');
     } on TimeoutException {
       throw Exception('La richiesta è scaduta. Riprova più tardi.');
-    }
-  }
-
-  // Demo login (quando il server non è disponibile)
-  Future<bool> demoLogin(String username, String password) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // Simula un ritardo di rete
-      await Future.delayed(Duration(seconds: 1));
-      
-      // Credenziali demo
-      if (username == 'demo' && password == 'demo') {
-        // Crea un utente demo
-        _currentUser = User(
-          id: 999,
-          username: 'demo',
-          email: 'demo@example.com',
-          isActive: true,
-          firstName: 'Utente',
-          lastName: 'Demo',
-        );
-        
-        // Imposta token fittizio
-        _token = 'demo_token';
-        _refreshToken = 'demo_refresh_token';
-        
-        // Salva i token e le info utente
-        final prefs = await SharedPreferences.getInstance();
-        prefs.setString(AppConstants.tokenKey, _token!);
-        prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
-        prefs.setString(AppConstants.userInfoKey, json.encode(_currentUser!.toJson()));
-        
-        _isAuthenticated = true;
-        _offlineMode = true;
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      } else {
-        _lastError = 'Credenziali demo non valide. Usa "demo" come username e password.';
-        throw Exception(_lastError);
-      }
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      rethrow;
     }
   }
 
@@ -502,6 +466,31 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       }
     } catch (e) {
       debugPrint('Error updating profile: $e');
+    }
+    return false;
+  }
+
+  // Carica/aggiorna l'immagine del profilo utente
+  Future<bool> uploadProfileImage(File image) async {
+    if (_token == null) return false;
+    try {
+      final uri = Uri.parse(ApiConstants.userProfileUrl);
+      final request = http.MultipartRequest('PATCH', uri);
+      request.headers['Authorization'] = 'Bearer $_token';
+      request.headers['Accept'] = 'application/json';
+      request.files.add(await http.MultipartFile.fromPath('immagine', image.path));
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      if (response.statusCode == 200) {
+        final userJson = json.decode(utf8.decode(response.bodyBytes));
+        _currentUser = User.fromJson(userJson);
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error uploading profile image: $e');
     }
     return false;
   }

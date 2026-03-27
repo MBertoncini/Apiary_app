@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/api_constants.dart';
@@ -25,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Profilo
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
+  bool _isUploadingPhoto = false;
 
   // Gemini API key (ApiarioAI chat + inserimento vocale)
   final _apiKeyController = TextEditingController();
@@ -47,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoadingQuota = false;
   int _voiceCallsToday = 0;
   int _statsCallsToday = 0;
+  Timer? _resetTimer;
 
   @override
   void initState() {
@@ -75,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _resetTimer?.cancel();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _apiKeyController.dispose();
@@ -102,6 +109,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(ok ? 'Profilo aggiornato' : 'Errore nel salvataggio del profilo'),
+      backgroundColor: ok ? ThemeConstants.successColor : ThemeConstants.errorColor,
+    ));
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+    setState(() => _isUploadingPhoto = true);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final ok = await authService.uploadProfileImage(File(picked.path));
+    setState(() => _isUploadingPhoto = false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? 'Foto profilo aggiornata' : 'Errore nel caricamento della foto'),
       backgroundColor: ok ? ThemeConstants.successColor : ThemeConstants.errorColor,
     ));
   }
@@ -151,7 +173,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isLoadingQuota = true);
     final chatService = Provider.of<ChatService>(context, listen: false);
     final data = await chatService.fetchQuota();
-    if (mounted) setState(() { _quotaData = data; _isLoadingQuota = false; });
+    if (mounted) {
+      setState(() { _quotaData = data; _isLoadingQuota = false; });
+      if (data != null) _scheduleResetRefresh(data);
+    }
+  }
+
+  /// Programma un refresh automatico al momento del prossimo reset lato backend.
+  void _scheduleResetRefresh(Map<String, dynamic> data) {
+    _resetTimer?.cancel();
+    final resets = [
+      ((data['personal'] ?? {}) as Map<String, dynamic>)['reset_at'] as String?,
+      ((data['system']   ?? {}) as Map<String, dynamic>)['reset_at'] as String?,
+    ].whereType<String>();
+
+    DateTime? earliest;
+    for (final r in resets) {
+      final normalized = r.endsWith('Z') || r.contains('+') ? r : '${r}Z';
+      final dt = DateTime.tryParse(normalized)?.toLocal();
+      if (dt != null && (earliest == null || dt.isBefore(earliest))) {
+        earliest = dt;
+      }
+    }
+
+    if (earliest != null) {
+      final delay = earliest.difference(DateTime.now());
+      if (delay > Duration.zero) {
+        _resetTimer = Timer(delay, _loadQuota);
+      }
+    }
   }
 
   Future<void> _saveVoiceMode(String mode) async {
@@ -237,25 +287,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: ThemeConstants.primaryColor.withOpacity(0.2),
-                          border: Border.all(color: ThemeConstants.primaryColor, width: 2),
-                        ),
-                        child: Center(
-                          child: Text(
-                            (user?.username.isNotEmpty == true)
-                                ? user!.username[0].toUpperCase()
-                                : 'U',
-                            style: GoogleFonts.caveat(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: ThemeConstants.secondaryColor,
+                      GestureDetector(
+                        onTap: _isUploadingPhoto ? null : _pickAndUploadPhoto,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: ThemeConstants.primaryColor.withOpacity(0.2),
+                                border: Border.all(color: ThemeConstants.primaryColor, width: 2),
+                              ),
+                              child: ClipOval(
+                                child: (user?.profileImage != null)
+                                    ? CachedNetworkImage(
+                                        imageUrl: user!.profileImage!,
+                                        fit: BoxFit.cover,
+                                        placeholder: (_, __) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                        errorWidget: (_, __, ___) => Center(
+                                          child: Text(
+                                            (user.username.isNotEmpty) ? user.username[0].toUpperCase() : 'U',
+                                            style: GoogleFonts.caveat(fontSize: 32, fontWeight: FontWeight.bold, color: ThemeConstants.secondaryColor),
+                                          ),
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          (user?.username.isNotEmpty == true) ? user!.username[0].toUpperCase() : 'U',
+                                          style: GoogleFonts.caveat(fontSize: 32, fontWeight: FontWeight.bold, color: ThemeConstants.secondaryColor),
+                                        ),
+                                      ),
+                              ),
                             ),
-                          ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: ThemeConstants.primaryColor,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: _isUploadingPhoto
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(4),
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -782,12 +866,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildQuotaSection(Map<String, dynamic> data) {
     final bool personalKeySet = data['personal_key_set'] == true;
     final String activeKey = data['active_key'] ?? 'system';
-    final int dailyLimit = (data['daily_limit'] ?? 1500) as int;
+    final int dailyLimit = ((data['daily_limit'] ?? 1500) as num).toInt();
 
     final Map<String, dynamic> personal = (data['personal'] ?? {}) as Map<String, dynamic>;
     final Map<String, dynamic> system = (data['system'] ?? {}) as Map<String, dynamic>;
-    final int personalUsed = (personal['requests_today'] ?? 0) as int;
-    final int systemUsed = (system['requests_today'] ?? 0) as int;
+    final int personalUsed = ((personal['requests_today'] ?? 0) as num).toInt();
+    final int systemUsed = ((system['requests_today'] ?? 0) as num).toInt();
     final String? personalResetAt = personal['reset_at'] as String?;
     final String? systemResetAt = system['reset_at'] as String?;
 
@@ -874,7 +958,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     DateTime? resetTime;
     String resetLabel = 'Reset: dati non ancora disponibili';
     if (resetAt != null) {
-      resetTime = DateTime.tryParse(resetAt)?.toLocal();
+      // Normalizza a UTC: se il backend non include 'Z' o offset, assumiamo UTC.
+      final normalized = resetAt.endsWith('Z') || resetAt.contains('+')
+          ? resetAt
+          : '${resetAt}Z';
+      resetTime = DateTime.tryParse(normalized)?.toLocal();
       if (resetTime != null) {
         final Duration diff = resetTime.difference(DateTime.now());
         if (diff.isNegative) {

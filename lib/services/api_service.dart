@@ -419,6 +419,46 @@ class ApiService {
     return await post('${ApiConstants.apiariUrl}$apiarioId/smielatura/registra/', data);
   }
   
+  // PATCH multipart request (for file updates, e.g. profile image)
+  Future<dynamic> patchMultipart(
+    String endpoint,
+    Map<String, String> fields, {
+    File? file,
+    String fileField = 'immagine',
+  }) async {
+    final uri = Uri.parse(_buildUrl(endpoint));
+
+    Future<http.Response> sendRequest(Map<String, String> headers) async {
+      final request = http.MultipartRequest('PATCH', uri);
+      request.headers.addAll({
+        'Authorization': headers['Authorization']!,
+        'Accept': 'application/json',
+      });
+      request.fields.addAll(fields);
+      if (file != null) {
+        request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
+      }
+      final streamed = await request.send();
+      return await http.Response.fromStream(streamed);
+    }
+
+    final headers = await _headers;
+    var response = await sendRequest(headers);
+
+    if (response.statusCode == 401) {
+      final refreshed = await _authService.refreshToken();
+      if (refreshed) {
+        final newHeaders = await _headers;
+        response = await sendRequest(newHeaders);
+      } else {
+        _handleSessionExpired();
+        throw Exception('Sessione scaduta. Effettua nuovamente il login.');
+      }
+    }
+
+    return _handleResponse(response);
+  }
+
   // POST multipart request (for file uploads)
   Future<dynamic> postMultipart(
     String endpoint,

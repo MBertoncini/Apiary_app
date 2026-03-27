@@ -1,4 +1,5 @@
 // lib/services/ai_quota_local_tracker.dart
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Tracks daily call counts locally (SharedPreferences) for:
@@ -12,12 +13,23 @@ class AiQuotaLocalTracker {
   static const _statsCountKey = 'ai_quota_stats_count';
   static const _groqKeyKey    = 'groq_api_key';
 
+  // Serializes concurrent read-modify-write operations to prevent lost updates.
+  Future<void> _lock = Future.value();
+
+  Future<T> _run<T>(Future<T> Function() fn) {
+    final Completer<void> done = Completer();
+    final Future<T> result = _lock.then<T>((_) => fn());
+    _lock = done.future;
+    result.whenComplete(done.complete);
+    return result;
+  }
+
   String _today() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
-  Future<int> _getCount(String dateKey, String countKey) async {
+  Future<int> _getCount(String dateKey, String countKey) => _run(() async {
     final prefs = await SharedPreferences.getInstance();
     final today = _today();
     if ((prefs.getString(dateKey) ?? '') != today) {
@@ -26,9 +38,9 @@ class AiQuotaLocalTracker {
       return 0;
     }
     return prefs.getInt(countKey) ?? 0;
-  }
+  });
 
-  Future<void> _increment(String dateKey, String countKey) async {
+  Future<void> _increment(String dateKey, String countKey) => _run(() async {
     final prefs = await SharedPreferences.getInstance();
     final today = _today();
     if ((prefs.getString(dateKey) ?? '') != today) {
@@ -37,7 +49,7 @@ class AiQuotaLocalTracker {
     } else {
       await prefs.setInt(countKey, (prefs.getInt(countKey) ?? 0) + 1);
     }
-  }
+  });
 
   Future<int> getVoiceCallsToday() => _getCount(_voiceDateKey, _voiceCountKey);
   Future<void> incrementVoiceCall() => _increment(_voiceDateKey, _voiceCountKey);

@@ -64,6 +64,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Evita di refreshare il profilo ad ogni visita: max una volta ogni 5 minuti
   static DateTime? _lastProfileRefresh;
 
+  // Chiave per accedere allo stato dello Scaffold (necessaria per rilevare drawer aperto)
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   // Variabili per ricerca
   bool _isSearching = false;
   String _searchQuery = '';
@@ -1759,12 +1762,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          SystemNavigator.pop(); // Esce dall'app
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Se il drawer è aperto, chiudilo
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState!.closeDrawer();
+          return;
+        }
+        // Altrimenti mostra dialog di conferma uscita
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Uscire dall\'app?'),
+            content: const Text('Vuoi chiudere l\'applicazione?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Annulla'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Esci'),
+              ),
+            ],
+          ),
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
         }
       },
       child: Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: _isSearching ? null : Text('Dashboard'),
         actions: [

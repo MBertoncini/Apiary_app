@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
@@ -305,7 +306,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                             radius: 24,
                             backgroundColor: ThemeConstants.primaryColor,
                             backgroundImage: gruppo.immagineProfilo != null
-                                ? NetworkImage(gruppo.immagineProfilo!)
+                                ? CachedNetworkImageProvider(gruppo.immagineProfilo!)
                                 : null,
                             child: gruppo.immagineProfilo == null
                                 ? Text(

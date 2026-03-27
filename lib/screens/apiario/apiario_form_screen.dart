@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
@@ -25,6 +27,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
   final _latitudineController = TextEditingController();
   final _longitudineController = TextEditingController();
   final _noteController = TextEditingController();
+  final _indirizzoController = TextEditingController();
   
   // Flags
   bool _monitoraggioMeteo = false;
@@ -42,6 +45,10 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
 
   bool _isLoading = false;
   String _errorMessage = '';
+
+  // Address search
+  bool _isSearchingAddress = false;
+  List<Map<String, dynamic>> _addressResults = [];
 
   @override
   void initState() {
@@ -84,6 +91,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
     _latitudineController.dispose();
     _longitudineController.dispose();
     _noteController.dispose();
+    _indirizzoController.dispose();
     super.dispose();
   }
   
@@ -180,6 +188,62 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
       });
       _mapController.move(point, _mapController.zoom);
     }
+  }
+
+  Future<void> _searchAddress() async {
+    final query = _indirizzoController.text.trim();
+    if (query.isEmpty) return;
+
+    setState(() {
+      _isSearchingAddress = true;
+      _addressResults = [];
+    });
+
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': query,
+        'format': 'json',
+        'limit': '5',
+        'accept-language': 'it',
+      });
+      final response = await http.get(
+        uri,
+        headers: {'User-Agent': 'ApiarioManagerApp/1.0'},
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _addressResults = data
+              .map((e) => {
+                    'display_name': e['display_name'] as String,
+                    'lat': double.parse(e['lat'] as String),
+                    'lon': double.parse(e['lon'] as String),
+                  })
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Address search error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore nella ricerca dell\'indirizzo')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() { _isSearchingAddress = false; });
+    }
+  }
+
+  void _selectAddressResult(Map<String, dynamic> result) {
+    final point = LatLng(result['lat'] as double, result['lon'] as double);
+    setState(() {
+      _selectedMapPoint = point;
+      _latitudineController.text = point.latitude.toStringAsFixed(6);
+      _longitudineController.text = point.longitude.toStringAsFixed(6);
+      _addressResults = [];
+      _indirizzoController.clear();
+    });
+    _mapController.move(point, 14.0);
   }
 
   Future<void> _submitForm() async {
@@ -350,6 +414,83 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                     ),
                     const SizedBox(height: 12),
 
+                    // Ricerca indirizzo
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _indirizzoController,
+                            decoration: InputDecoration(
+                              labelText: 'Cerca indirizzo',
+                              hintText: 'Es. Via Roma 1, Milano',
+                              prefixIcon: Icon(Icons.search),
+                              isDense: true,
+                            ),
+                            textInputAction: TextInputAction.search,
+                            onFieldSubmitted: (_) => _searchAddress(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _isSearchingAddress ? null : _searchAddress,
+                          icon: _isSearchingAddress
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Icon(Icons.arrow_forward),
+                          tooltip: 'Cerca',
+                          style: IconButton.styleFrom(
+                            backgroundColor: ThemeConstants.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Risultati ricerca
+                    if (_addressResults.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: ThemeConstants.primaryColor.withOpacity(0.3),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: _addressResults.length,
+                          separatorBuilder: (_, __) => Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final r = _addressResults[index];
+                            return ListTile(
+                              dense: true,
+                              leading: Icon(Icons.location_on, color: ThemeConstants.primaryColor, size: 20),
+                              title: Text(
+                                r['display_name'] as String,
+                                style: TextStyle(fontSize: 13),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () => _selectAddressResult(r),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+
                     // Mappa interattiva
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -403,7 +544,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                     const SizedBox(height: 8),
 
                     Text(
-                      'Tocca la mappa per posizionare il marcatore, oppure inserisci le coordinate manualmente.',
+                      'Cerca un indirizzo per navigare sulla mappa, poi tocca il punto esatto.',
                       style: TextStyle(
                         fontSize: 12,
                         color: ThemeConstants.textSecondaryColor,

@@ -344,6 +344,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
   Future<void> _onAddMaturatore() async {
     final result = await showModalBottomSheet<bool>(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => AggiungiMaturatoreSheet(apiService: _apiService),
@@ -354,6 +355,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
   Future<void> _onEditMaturatore(Maturatore m) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => AggiungiMaturatoreSheet(apiService: _apiService, existing: m),
@@ -364,6 +366,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
   Future<void> _onTrasferisci(Maturatore m) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => TrasferisciSheet(apiService: _apiService, maturatore: m),
@@ -374,6 +377,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
   Future<void> _onInvasetta(ContenitoreStoccaggio c) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => InvasettaSheet(apiService: _apiService, contenitore: c),

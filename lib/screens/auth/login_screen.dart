@@ -17,148 +17,107 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  String? _errorMessage;
-  bool _showDemoLogin = false;
-  bool _serverUnavailable = false;
-  int _loginAttempts = 0;
-  
-  @override
-  void initState() {
-    super.initState();
-    _checkServerAvailability();
-  }
-  
-  // Verifica disponibilità del server
-  Future<void> _checkServerAvailability() async {
-    try {
-      final auth = Provider.of<AuthService>(context, listen: false);
-      await auth.refreshUserProfile();
-    } catch (e) {
-      setState(() {
-        _serverUnavailable = true;
-        _showDemoLogin = true;
-      });
-    }
-  }
-  
+  String? _errorCode;
+
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    
-    // Nasconde la tastiera
+    if (!_formKey.currentState!.validate()) return;
+
     FocusScope.of(context).unfocus();
-    
+
     setState(() {
-      _errorMessage = null;
+      _errorCode = null;
     });
-    
+
     try {
       final auth = Provider.of<AuthService>(context, listen: false);
-      
-      bool success;
-      if (_showDemoLogin) {
-        // Modalità demo (offline)
-        success = await auth.demoLogin(
-          _usernameController.text.trim(),
-          _passwordController.text,
-        );
-      } else {
-        // Login normale
-        success = await auth.login(
-          _usernameController.text.trim(),
-          _passwordController.text,
-        );
-      }
-      
-      if (success) {
-        // Reset form
+      final success = await auth.login(
+        _usernameController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (success && mounted) {
         _usernameController.clear();
         _passwordController.clear();
 
-        // Controlla se mostrare il tutorial al primo accesso
+        final prefs = await SharedPreferences.getInstance();
+        final onboardingCompletato = prefs.getBool('onboarding_completato') ?? false;
         if (mounted) {
-          final prefs = await SharedPreferences.getInstance();
-          final onboardingCompletato = prefs.getBool('onboarding_completato') ?? false;
-          if (mounted) {
-            Navigator.of(context).pushReplacementNamed(
-              onboardingCompletato
-                  ? AppConstants.dashboardRoute
-                  : AppConstants.onboardingRoute,
-            );
+          Navigator.of(context).pushReplacementNamed(
+            onboardingCompletato
+                ? AppConstants.dashboardRoute
+                : AppConstants.onboardingRoute,
+          );
+        }
+
+        // Sincronizzazione in background
+        () async {
+          try {
+            final apiService = Provider.of<ApiService>(context, listen: false);
+            final storageService = Provider.of<StorageService>(context, listen: false);
+            await storageService.clearDataCache();
+            final syncData = await apiService.syncData();
+            await storageService.saveSyncData(syncData);
+          } catch (e) {
+            debugPrint('Post-login sync fallita (non bloccante): $e');
           }
-        }
-
-        // Sincronizzazione in background: non blocca la navigazione
-        if (!_showDemoLogin) {
-          () async {
-            try {
-              final apiService = Provider.of<ApiService>(context, listen: false);
-              final storageService = Provider.of<StorageService>(context, listen: false);
-
-              await storageService.clearDataCache();
-              final syncData = await apiService.syncData();
-              await storageService.saveSyncData(syncData);
-              debugPrint('Post-login sync completata con successo');
-            } catch (e) {
-              debugPrint('Post-login sync fallita (non bloccante): $e');
-            }
-          }();
-        }
+        }();
       }
     } catch (e) {
-      _loginAttempts++;
-      
-      String message;
-      if (e is Exception) {
-        // Estrai il messaggio dall'eccezione
-        message = e.toString().replaceAll('Exception: ', '');
-      } else {
-        message = 'Si è verificato un errore durante il login. Riprova più tardi.';
-      }
-      
+      final raw = e.toString().replaceAll('Exception: ', '');
       setState(() {
-        _errorMessage = message;
-        
-        // Dopo 2 tentativi falliti, mostra l'opzione demo
-        if (_loginAttempts >= 2 && !_showDemoLogin) {
-          _showDemoLogin = true;
-        }
+        _errorCode = raw;
       });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_errorMessage ?? 'Login fallito'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
     }
   }
-  
+
+  String _errorMessage() {
+    switch (_errorCode) {
+      case 'user_not_found':
+        return 'Username o email non trovati. Non hai ancora un account?';
+      case 'wrong_password':
+        return 'Password errata.';
+      case 'wrong_credentials':
+        return 'Credenziali non valide. Controlla username/email e password.';
+      case 'network_error':
+        return 'Impossibile connettersi al server. Controlla la connessione internet.';
+      case 'timeout_error':
+        return 'Il server non risponde. Riprova tra qualche istante.';
+      case 'server_error':
+        return 'Errore interno del server. Riprova più tardi.';
+      default:
+        return _errorCode ?? 'Si è verificato un errore. Riprova.';
+    }
+  }
+
+  // Mostra "Hai dimenticato la password?" solo se la password è sbagliata
+  bool get _showForgotPasswordHint => _errorCode == 'wrong_password';
+
+  // Mostra "Registrati" solo se l'utente non esiste
+  bool get _showRegisterHint => _errorCode == 'user_not_found';
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context);
     final isLoading = auth.isLoading;
-    
+
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo app
+                  // Logo
                   Center(
                     child: Container(
                       width: 100,
@@ -167,15 +126,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: ThemeConstants.primaryColor,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.hive,
-                        size: 60,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.hive, size: 60, color: Colors.white),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   Text(
                     AppConstants.appName,
                     style: TextStyle(
@@ -186,79 +141,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  
+
                   Text(
-                    _showDemoLogin
-                        ? 'Accedi in modalità demo o inserisci le tue credenziali'
-                        : 'Accedi per gestire i tuoi apiari',
+                    'Accedi per gestire i tuoi apiari',
                     style: TextStyle(
                       fontSize: 16,
                       color: ThemeConstants.textSecondaryColor,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
-                  if (_serverUnavailable) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.orange.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Server non disponibile. Funzionalità limitate in modalità offline.',
-                              style: TextStyle(
-                                color: Colors.orange[800],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  
-                  // Messaggio di errore
-                  if (_errorMessage != null)
-                    Container(
-                      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                      margin: EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: ThemeConstants.errorColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: ThemeConstants.errorColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Text(
-                        _errorMessage!,
-                        style: TextStyle(color: ThemeConstants.errorColor),
-                      ),
-                    ),
-                  
-                  // Username
+                  const SizedBox(height: 24),
+
+                  // Box errore contestuale
+                  if (_errorCode != null) _buildErrorBox(),
+
+                  // Username o Email
                   TextFormField(
                     controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      hintText: _showDemoLogin 
-                          ? 'Per la modalità demo, usa "demo"' 
-                          : 'Inserisci il tuo username',
+                    decoration: const InputDecoration(
+                      labelText: 'Username o Email',
+                      hintText: 'Inserisci il tuo username o email',
                       prefixIcon: Icon(Icons.person),
                     ),
+                    keyboardType: TextInputType.emailAddress,
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Inserisci il tuo username';
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Inserisci il tuo username o email';
                       }
                       return null;
                     },
@@ -266,16 +174,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Password
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      hintText: _showDemoLogin 
-                          ? 'Per la modalità demo, usa "demo"' 
-                          : 'Inserisci la tua password',
-                      prefixIcon: Icon(Icons.lock),
+                      hintText: 'Inserisci la tua password',
+                      prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility : Icons.visibility_off,
@@ -303,10 +209,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: isLoading || _serverUnavailable ? null : () {
-                        Navigator.of(context).pushNamed(AppConstants.forgotPasswordRoute);
-                      },
-                      child: Text(
+                      onPressed: isLoading
+                          ? null
+                          : () => Navigator.of(context)
+                              .pushNamed(AppConstants.forgotPasswordRoute),
+                      child: const Text(
                         'Hai dimenticato la password?',
                         style: TextStyle(fontSize: 13),
                       ),
@@ -314,58 +221,120 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Login button
+                  // Bottone login
                   ElevatedButton(
                     onPressed: isLoading ? null : _login,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: isLoading
-                          ? SizedBox(
+                          ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : Text(
-                              _showDemoLogin ? 'ACCEDI / DEMO' : 'ACCEDI',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                          : const Text('ACCEDI', style: TextStyle(fontSize: 16)),
                     ),
                   ),
-                  
-                  if (_showDemoLogin) ...[
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        'Modalità demo disponibile! Usa "demo" come username e password',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                  
                   const SizedBox(height: 16),
-                  
+
                   // Link registrazione
                   TextButton(
-                    onPressed: isLoading || _serverUnavailable ? null : () {
-                      Navigator.of(context).pushNamed(AppConstants.registerRoute);
-                    },
-                    child: Text(_serverUnavailable 
-                        ? 'Registrazione non disponibile in modalità offline'
-                        : 'Non hai un account? Registrati'),
+                    onPressed: isLoading
+                        ? null
+                        : () => Navigator.of(context)
+                            .pushNamed(AppConstants.registerRoute),
+                    child: const Text('Non hai un account? Registrati'),
                   ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildErrorBox() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: ThemeConstants.errorColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: ThemeConstants.errorColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.error_outline,
+                  color: ThemeConstants.errorColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _errorMessage(),
+                  style: TextStyle(
+                      color: ThemeConstants.errorColor, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+
+          // 1° tentativo fallito → suggerisce reset password
+          if (_showForgotPasswordHint) ...[
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Icon(Icons.lock_reset,
+                    size: 16, color: ThemeConstants.primaryColor),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () => Navigator.of(context)
+                      .pushNamed(AppConstants.forgotPasswordRoute),
+                  child: const Text('Hai dimenticato la password?',
+                      style: TextStyle(fontSize: 13)),
+                ),
+              ],
+            ),
+          ],
+
+          // 2°+ tentativi → suggerisce registrazione
+          if (_showRegisterHint) ...[
+            Row(
+              children: [
+                Icon(Icons.person_add_outlined,
+                    size: 16, color: ThemeConstants.primaryColor),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () => Navigator.of(context)
+                      .pushNamed(AppConstants.registerRoute),
+                  child: const Text('Non hai un account? Registrati ora',
+                      style: TextStyle(fontSize: 13)),
+                ),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

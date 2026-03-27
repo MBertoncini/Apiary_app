@@ -3,7 +3,7 @@ description: Un'app per la gestione degli apiari.
 
 publish_to: 'none'
 
-version: 1.0.1+5
+version: 1.0.1+7
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -56,6 +56,7 @@ dependencies:
   tflite_flutter: ^0.10.4
   image: ^4.0.17
   shimmer: ^3.0.0
+  flutter_map_marker_cluster: ^1.2.0
 
 dev_dependencies:
   flutter_test:

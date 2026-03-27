@@ -57,6 +57,7 @@ class ApiConstants {
   static const String gruppoInvitaUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/invita/';
   static const String gruppoInvitiUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/inviti/';
   static const String gruppoApiariUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/apiari/';
+  static const String gruppoImmagineUrl = baseUrl + apiPrefix + '/gruppi/{gruppo_id}/immagine/';
   
   // Endpoint inviti
   static const String invitiUrl = baseUrl + apiPrefix + '/inviti/';

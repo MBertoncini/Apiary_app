@@ -516,6 +516,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
 
     await showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

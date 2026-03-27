@@ -1,5 +1,6 @@
 // File: lib/services/gruppo_service.dart
 import 'dart:convert';
+import 'dart:io';
 import '../constants/api_constants.dart';
 import '../models/gruppo.dart';
 import 'api_service.dart';
@@ -177,6 +178,20 @@ class GruppoService {
   Future<void> deleteGruppo(int gruppoId) async {
     final String endpoint = '${ApiConstants.gruppiUrl}$gruppoId/';
     await _apiService.delete(endpoint);
+  }
+
+  // Carica/aggiorna l'immagine del gruppo
+  Future<Gruppo> uploadGruppoImage(int gruppoId, File image) async {
+    final endpoint = ApiConstants.replaceParams(
+      ApiConstants.gruppoImmagineUrl,
+      {'gruppo_id': gruppoId.toString()},
+    );
+    final response = await _apiService.patchMultipart(
+      endpoint,
+      {},
+      file: image,
+    );
+    return Gruppo.fromJson(response as Map<String, dynamic>);
   }
 
   // Ottiene i membri di un gruppo

@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -196,12 +198,30 @@ class _MappaScreenState extends State<MappaScreen> {
         try {
           final apiService = Provider.of<ApiService>(context, listen: false);
 
-          // Carica apiari dall'API
-          final apiariResponse = await apiService.get('apiari/');
-          if (apiariResponse is List) {
-            apiari = apiariResponse;
-          } else if (apiariResponse is Map) {
-            apiari = apiariResponse['results'] ?? [];
+          // Carica apiari dall'API (propri + gruppo) e community (pubblici altrui)
+          final results = await Future.wait([
+            apiService.get('apiari/'),
+            apiService.get('apiari/community/').catchError((e) {
+              debugPrint('Errore community apiari: $e');
+              return <dynamic>[];
+            }),
+          ]);
+          final apiariResp = results[0];
+          final communityResp = results[1];
+          if (apiariResp is List) {
+            apiari = apiariResp;
+          } else if (apiariResp is Map) {
+            apiari = apiariResp['results'] ?? [];
+          }
+          final List<dynamic> communityApiari = communityResp is List
+              ? communityResp
+              : (communityResp is Map ? communityResp['results'] ?? [] : []);
+          // Aggiungi marker community agli apiari, evitando duplicati
+          final Set<dynamic> existingIds = apiari.map((a) => a['id']).toSet();
+          for (final a in communityApiari) {
+            if (!existingIds.contains(a['id'])) {
+              apiari.add({...a, '_community': true});
+            }
           }
 
           // Carica fioriture dall'API
@@ -386,33 +406,47 @@ class _MappaScreenState extends State<MappaScreen> {
   void _showApiarioInfo(Map<String, dynamic> apiario) {
     final arnieCount = _getArnieCountForApiario(apiario['id']);
     final posizione = apiario['posizione'] ?? '';
-    final hasGroupAccess = apiario['condiviso_con_gruppo'] == true ||
-        apiario['visibilita_mappa'] == 'pubblico' ||
-        apiario['proprietario_username'] != null;
+    final isCommunity = apiario['_community'] == true;
+    final canNavigate = !isCommunity;
+    final isSharedWithGroup = apiario['condiviso_con_gruppo'] == true;
+
+    final Color headerColor = isCommunity
+        ? Colors.orange.shade700
+        : (isSharedWithGroup ? Colors.indigo.shade600 : ThemeConstants.primaryColor);
+
+    final String typeBadge = isCommunity
+        ? 'Community'
+        : (isSharedWithGroup ? 'Condiviso' : 'Mio');
+
+    final IconData typeIcon = isCommunity
+        ? Icons.public
+        : (isSharedWithGroup ? Icons.group : Icons.person_outline);
 
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return Container(
-          margin: EdgeInsets.all(12),
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           decoration: BoxDecoration(
             color: ThemeConstants.cardColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: Colors.black26,
-                blurRadius: 10,
-                offset: Offset(0, -2),
+                blurRadius: 16,
+                offset: const Offset(0, -4),
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle bar
+              // Handle
               Container(
-                margin: EdgeInsets.only(top: 8),
+                margin: const EdgeInsets.only(top: 8),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
@@ -420,97 +454,216 @@ class _MappaScreenState extends State<MappaScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // Colored header card
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [headerColor, headerColor.withOpacity(0.75)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
                   children: [
-                    // Header con nome e icona
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: ThemeConstants.primaryColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.hive, color: Colors.white, size: 24),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                apiario['nome'] ?? 'Apiario',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: ThemeConstants.textPrimaryColor,
-                                ),
-                              ),
-                              if (posizione.isNotEmpty)
-                                Text(
-                                  posizione,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: ThemeConstants.textSecondaryColor,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12),
-                    Divider(height: 1, color: ThemeConstants.dividerColor),
-                    SizedBox(height: 12),
-                    // Info row
-                    Row(
-                      children: [
-                        _infoChip(Icons.grid_view, '$arnieCount arnie'),
-                        SizedBox(width: 12),
-                        if (apiario['proprietario_username'] != null)
-                          _infoChip(Icons.person_outline, '${apiario['proprietario_username']}'),
-                        if (apiario['condiviso_con_gruppo'] == true) ...[
-                          SizedBox(width: 12),
-                          _infoChip(Icons.group, 'Gruppo'),
-                        ],
-                      ],
-                    ),
-                    if (apiario['note'] != null && apiario['note'].toString().isNotEmpty) ...[
-                      SizedBox(height: 8),
-                      Text(
-                        apiario['note'],
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: ThemeConstants.textSecondaryColor,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Icon(Icons.hive, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            apiario['nome'] ?? 'Apiario',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (isCommunity && apiario['proprietario_username'] != null) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.person, color: Colors.white70, size: 13),
+                                const SizedBox(width: 3),
+                                Expanded(
+                                  child: Text(
+                                    '${apiario['proprietario_username']}',
+                                    style: const TextStyle(fontSize: 13, color: Colors.white70),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (posizione.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, color: Colors.white70, size: 13),
+                                const SizedBox(width: 3),
+                                Expanded(
+                                  child: Text(
+                                    posizione,
+                                    style: const TextStyle(fontSize: 13, color: Colors.white70),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // Type badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white38),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(typeIcon, color: Colors.white, size: 13),
+                          const SizedBox(width: 4),
+                          Text(
+                            typeBadge,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Stats row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    if (!isCommunity) ...[
+                      Expanded(
+                        child: _statCard(Icons.hive_outlined, '$arnieCount', 'Arnie'),
+                      ),
+                      const SizedBox(width: 10),
                     ],
-                    SizedBox(height: 16),
-                    // Pulsante per navigare al dettaglio
-                    if (hasGroupAccess)
-                      SizedBox(
+                    if (apiario['proprietario_username'] != null) ...[
+                      Expanded(
+                        child: _statCard(
+                          Icons.person_outline,
+                          '${apiario['proprietario_username']}',
+                          'Apicoltore',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: _statCard(
+                        isCommunity ? Icons.public : Icons.lock_open_outlined,
+                        isCommunity ? 'Community' : 'Tuo/Gruppo',
+                        'Tipo',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Notes
+              if (apiario['note'] != null && apiario['note'].toString().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: ThemeConstants.backgroundColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.notes, size: 16, color: ThemeConstants.textSecondaryColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            apiario['note'],
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: ThemeConstants.textSecondaryColor,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              // Action button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: canNavigate
+                    ? SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.of(context).pop();
                             _navigateToApiarioDetail(apiario['id']);
                           },
-                          icon: Icon(Icons.open_in_new, size: 18),
-                          label: Text('Apri dettaglio'),
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          label: const Text('Apri Apiario'),
                           style: ElevatedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: headerColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
+                      )
+                    : Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: ThemeConstants.backgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: ThemeConstants.dividerColor),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.visibility_outlined,
+                                size: 18, color: ThemeConstants.textSecondaryColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Solo visualizzazione',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: ThemeConstants.textSecondaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -519,23 +672,32 @@ class _MappaScreenState extends State<MappaScreen> {
     );
   }
 
-  Widget _infoChip(IconData icon, String label) {
+  Widget _statCard(IconData icon, String value, String label) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         color: ThemeConstants.backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: ThemeConstants.dividerColor),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         children: [
-          Icon(icon, size: 14, color: ThemeConstants.textSecondaryColor),
-          SizedBox(width: 4),
+          Icon(icon, size: 20, color: ThemeConstants.primaryColor),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: ThemeConstants.textPrimaryColor,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 10,
               color: ThemeConstants.textSecondaryColor,
             ),
           ),
@@ -546,6 +708,141 @@ class _MappaScreenState extends State<MappaScreen> {
 
   int _getArnieCountForApiario(int apiarioId) {
     return _arnie.where((a) => a['apiario'] == apiarioId).length;
+  }
+
+  void _handleMapTap(LatLng tappedPoint) {
+    // In flutter_map v5 i GestureDetector interni ai marker non ricevono tap
+    // perché il layer gesture della mappa li assorbe. Usiamo onTap della mappa
+    // e troviamo l'apiario più vicino al punto toccato entro una soglia in pixel.
+    try {
+      final zoom = _mapController.zoom;
+      final centerLat = _mapController.center.latitude;
+      // Metri per pixel alla latitudine corrente e zoom corrente
+      final metersPerPixel =
+          156543.03392 * cos(centerLat * pi / 180) / pow(2, zoom);
+      // Soglia di 48px — cerchiamo il più vicino entro questa area
+      final thresholdMeters = 48 * metersPerPixel;
+
+      const distance = Distance();
+      Map<String, dynamic>? nearest;
+      double nearestDist = double.infinity;
+
+      for (final apiario in _apiari) {
+        final lat = double.tryParse(apiario['latitudine'].toString());
+        final lng = double.tryParse(apiario['longitudine'].toString());
+        if (lat == null || lng == null) continue;
+        final d = distance.as(LengthUnit.Meter, tappedPoint, LatLng(lat, lng));
+        if (d <= thresholdMeters && d < nearestDist) {
+          nearestDist = d;
+          nearest = Map<String, dynamic>.from(apiario);
+        }
+      }
+
+      if (nearest != null) {
+        _showApiarioInfo(nearest);
+      }
+    } catch (e) {
+      debugPrint('_handleMapTap error: $e');
+    }
+  }
+
+  List<Marker> _buildApiariMarkers() {
+    final result = <Marker>[];
+    for (final apiario in _apiari) {
+      try {
+        final lat = double.parse(apiario['latitudine'].toString());
+        final lng = double.parse(apiario['longitudine'].toString());
+        final isCommunity = apiario['_community'] == true;
+        final isGroup = apiario['condiviso_con_gruppo'] == true;
+        final markerColor = isCommunity
+            ? Colors.orange.shade700
+            : (isGroup ? Colors.indigo.shade600 : ThemeConstants.primaryColor);
+        final arnieNum = _getArnieCountForApiario(apiario['id']);
+
+        result.add(Marker(
+          key: ValueKey(isCommunity ? 'community' : 'own_${apiario['id']}'),
+          width: 64.0,
+          height: 58.0,
+          point: LatLng(lat, lng),
+          builder: (ctx) => Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              Positioned(
+                top: 4,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: markerColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: markerColor.withOpacity(0.45),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.hive, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+              if (arnieNum > 0)
+                Positioned(
+                  top: 0,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: markerColor, width: 1.5),
+                    ),
+                    child: Text(
+                      '$arnieNum',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: markerColor,
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(5),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black26, blurRadius: 3),
+                      ],
+                    ),
+                    child: Text(
+                      apiario['nome'] ?? 'Apiario',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ));
+      } catch (e) {
+        debugPrint('Errore marker apiario: $e');
+      }
+    }
+    return result;
   }
 
   @override
@@ -598,6 +895,7 @@ class _MappaScreenState extends State<MappaScreen> {
                     interactiveFlags: InteractiveFlag.all,
                     enableMultiFingerGestureRace: true,
                     rotationThreshold: 15.0,
+                    onTap: (tapPosition, point) => _handleMapTap(point),
                   ),
                   children: [
                     TileLayer(
@@ -630,75 +928,59 @@ class _MappaScreenState extends State<MappaScreen> {
                           }
                         }).toList(),
                       ),
-                    // Marker per apiari
-                    MarkerLayer(
-                      markers: _apiari.map((apiario) {
-                        try {
-                          final lat = double.parse(apiario['latitudine'].toString());
-                          final lng = double.parse(apiario['longitudine'].toString());
-
-                          return Marker(
-                            width: 50.0,
-                            height: 50.0,
-                            point: LatLng(lat, lng),
-                            builder: (ctx) => GestureDetector(
-                              onTap: () => _showApiarioInfo(apiario),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: ThemeConstants.primaryColor,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black26,
-                                          blurRadius: 4,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Icon(
-                                      Icons.hive,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
+                    // Marker per apiari con clustering automatico
+                    MarkerClusterLayerWidget(
+                      options: MarkerClusterLayerOptions(
+                        maxClusterRadius: 80,
+                        size: const Size(48, 48),
+                        animationsOptions: const AnimationsOptions(
+                          zoom: Duration(milliseconds: 300),
+                          fitBound: Duration(milliseconds: 300),
+                          centerMarker: Duration(milliseconds: 200),
+                          spiderfy: Duration(milliseconds: 200),
+                        ),
+                        fitBoundsOptions: const FitBoundsOptions(
+                          padding: EdgeInsets.all(60),
+                          maxZoom: 14,
+                        ),
+                        markers: _buildApiariMarkers(),
+                        builder: (ctx, markers) {
+                          // Cluster marker: se tutti community → arancione, altrimenti primario
+                          final allCommunity = markers.every(
+                            (m) => (m.key as ValueKey?)?.value == 'community',
+                          );
+                          final clusterColor = allCommunity
+                              ? Colors.orange.shade700
+                              : ThemeConstants.primaryColor;
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: clusterColor,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: clusterColor.withOpacity(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.hive, color: Colors.white, size: 18),
+                                Text(
+                                  '${markers.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(4),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black26,
-                                          blurRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      apiario['nome'] ?? "Apiario",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           );
-                        } catch (e) {
-                          debugPrint("Errore nel creare marker per apiario: $e");
-                          return Marker(
-                            width: 0,
-                            height: 0,
-                            point: LatLng(0, 0),
-                            builder: (ctx) => Container(),
-                          );
-                        }
-                      }).toList(),
+                        },
+                      ),
                     ),
                     // Circles per fioriture (opacità diversa per attive/inattive)
                     CircleLayer(

@@ -50,10 +50,10 @@ class ChatService with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Costruisci la cronologia da passare al backend (esclude il welcome message iniziale)
+      // Costruisci la cronologia da passare al backend.
+      // sublist(1, len-1): salta welcome iniziale e l'ultimo messaggio appena aggiunto.
       final history = _messages
-          .where((m) => !m.isUser || m.text != message) // tutti tranne l'ultimo appena aggiunto
-          .skip(1) // salta il messaggio di benvenuto
+          .sublist(1, _messages.length - 1)
           .map((m) => {'role': m.isUser ? 'user' : 'model', 'text': m.text})
           .toList();
 
@@ -133,19 +133,20 @@ class ChatService with ChangeNotifier {
   }
 
   Future<void> retryLastUserMessage() async {
-    ChatMessage? last;
-    for (int i = _messages.length - 1; i >= 0; i--) {
-      if (_messages[i].isUser) {
-        last = _messages[i];
-        break;
-      }
-    }
-    if (last != null) {
-      await sendMessage(last.text);
-    } else {
+    // Trova l'ultimo messaggio utente e rimuovi esso + eventuali risposte bot successive,
+    // così sendMessage non lo duplica nella lista.
+    int idx = _messages.length - 1;
+    while (idx >= 0 && !_messages[idx].isUser) idx--;
+    if (idx < 0) {
       _error = 'Nessun messaggio da riprovare';
       notifyListeners();
+      return;
     }
+    final text = _messages[idx].text;
+    _messages.removeRange(idx, _messages.length);
+    _error = null;
+    notifyListeners();
+    await sendMessage(text);
   }
 
   Future<void> _loadChart(String chartType, Map<String, dynamic> params) async {

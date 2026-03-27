@@ -68,7 +68,7 @@ class Gruppo {
         creatoreId: creatoreId,
         creatoreName: creatoreName,
         membri: membri,            // Lista vuota, da popolare con chiamata API separata
-        immagineProfilo: null,     // Non presente nella risposta
+        immagineProfilo: json['immagine_profilo'] as String?,
         apiariIds: apiariIds,      // Lista vuota, da popolare con chiamata API separata
         membriCountFromApi: membriCount,
         apiariCountFromApi: apiariCount,
@@ -261,11 +261,11 @@ class MembroGruppo {
         id: id,
         utenteId: utenteId,
         username: username,
-        fullName: null,  // Non fornito nell'API
-        email: null,     // Non fornito nell'API
+        fullName: null,
+        email: null,
         ruolo: json['ruolo'],
         dataAggiunta: json['data_aggiunta'],
-        immagineProfilo: null,  // Non fornito nell'API
+        immagineProfilo: json['immagine_profilo'] as String?,
     );
   }
 }

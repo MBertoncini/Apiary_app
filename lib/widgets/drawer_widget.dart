@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
@@ -50,16 +51,21 @@ class AppDrawer extends StatelessWidget {
                 CircleAvatar(
                   backgroundColor: Colors.white,
                   radius: 30,
-                  child: Text(
-                    (user?.username.isNotEmpty == true)
-                        ? user!.username[0].toUpperCase()
-                        : 'A',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: ThemeConstants.primaryColor,
-                    ),
-                  ),
+                  backgroundImage: (user?.profileImage != null)
+                      ? CachedNetworkImageProvider(user!.profileImage!)
+                      : null,
+                  child: (user?.profileImage == null)
+                      ? Text(
+                          (user?.username.isNotEmpty == true)
+                              ? user!.username[0].toUpperCase()
+                              : 'A',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: ThemeConstants.primaryColor,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(

@@ -168,6 +168,7 @@ class _NucleoDetailScreenState extends State<NucleoDetailScreen>
   void _addControllo() {
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),

@@ -268,6 +268,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
 
     await showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -411,6 +412,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
 
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -659,6 +661,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             onPressed: () {
               showModalBottomSheet(
                 context: context,
+                useSafeArea: true,
                 isScrollControlled: true,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -1409,6 +1412,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
 
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),

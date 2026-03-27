@@ -60,84 +60,89 @@ import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/help/guida_screen.dart';
 
 class RouteGenerator {
- 
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     // Get arguments passed to navigation
     final args = settings.arguments;
-        
+
     switch (settings.name) {
       case '/':
       case AppConstants.splashRoute:
-        return MaterialPageRoute(builder: (_) => SplashScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => SplashScreen());
+
       case AppConstants.loginRoute:
-        return MaterialPageRoute(builder: (_) => LoginScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => LoginScreen());
+
       case AppConstants.registerRoute:
-        return MaterialPageRoute(builder: (_) => RegisterScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => RegisterScreen());
 
       case AppConstants.forgotPasswordRoute:
-        return MaterialPageRoute(builder: (_) => ForgotPasswordScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => ForgotPasswordScreen());
+
       case AppConstants.dashboardRoute:
-        return MaterialPageRoute(builder: (_) => DashboardScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => DashboardScreen());
+
       case AppConstants.apiarioListRoute:
-        return MaterialPageRoute(builder: (_) => ApiarioListScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => ApiarioListScreen());
+
       case AppConstants.apiarioDetailRoute:
         // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => ApiarioDetailScreen(apiarioId: args),
           );
         }
         return _errorRoute();
-      
+
       case AppConstants.apiarioCreateRoute:
-        return MaterialPageRoute(builder: (_) => ApiarioFormScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => ApiarioFormScreen());
+
       case AppConstants.settingsRoute:
-        return MaterialPageRoute(builder: (_) => SettingsScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => SettingsScreen());
+
       // Routes for group management
       case AppConstants.gruppiListRoute:
-        return MaterialPageRoute(builder: (_) => GruppiListScreen());
-        
+        return MaterialPageRoute(settings: settings, builder: (_) => GruppiListScreen());
+
       case AppConstants.gruppoDetailRoute:
         // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => GruppoDetailScreen(gruppoId: args),
           );
         }
         return _errorRoute();
-        
+
       case AppConstants.gruppoCreateRoute:
         // If args is null, it's a creation, otherwise it's a modification
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => GruppoFormScreen(gruppo: args as Gruppo?),
         );
-        
+
       case AppConstants.gruppoInvitoRoute:
         // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => GruppoInvitoScreen(gruppoId: args),
           );
         }
         return _errorRoute();
 
       case AppConstants.qrScannerRoute:
-        return MaterialPageRoute(builder: (_) => MobileScannerWrapperScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => MobileScannerWrapperScreen());
 
       // Routes for hive management
       case AppConstants.arniaListRoute:
-        return MaterialPageRoute(builder: (_) => ArniaListScreen());
-            
+        return MaterialPageRoute(settings: settings, builder: (_) => ArniaListScreen());
+
       case AppConstants.arniaDetailRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => ArniaDetailScreen(arniaId: args),
           );
         }
@@ -146,25 +151,28 @@ class RouteGenerator {
       case AppConstants.nucleoDetailRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => NucleoDetailScreen(nucleoId: args),
           );
         }
         return _errorRoute();
-        
+
       case AppConstants.creaArniaRoute:
         // Check if an apiary is specified
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => ArniaFormScreen(apiarioId: args),
           );
         }
-        return MaterialPageRoute(builder: (_) => ArniaFormScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => ArniaFormScreen());
 
       // Routes for inspection management
       case AppConstants.controlloCreateRoute:
         // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => ControlloArniaScreen(arniaId: args),
           );
         }
@@ -175,6 +183,7 @@ class RouteGenerator {
             args['arniaId'] is int &&
             args['controllo'] is Map<String, dynamic>) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => ControlloArniaScreen(
               arniaId: args['arniaId'] as int,
               controlloEsistente: args['controllo'] as Map<String, dynamic>,
@@ -185,12 +194,13 @@ class RouteGenerator {
 
       // Routes for queen management
       case AppConstants.reginaListRoute:
-        return MaterialPageRoute(builder: (_) => ReginaListScreen());
-        
+        return MaterialPageRoute(settings: settings, builder: (_) => ReginaListScreen());
+
       case AppConstants.reginaDetailRoute:
         // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => ReginaDetailScreen(reginaId: args),
           );
         }
@@ -198,16 +208,18 @@ class RouteGenerator {
 
       // Routes for treatment management
       case AppConstants.trattamentiRoute:
-        return MaterialPageRoute(builder: (_) => TrattamentiScreen());
-        
+        return MaterialPageRoute(settings: settings, builder: (_) => TrattamentiScreen());
+
       case AppConstants.nuovoTrattamentoRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => TrattamentoFormScreen(apiarioId: args),
           );
         }
         if (args is Map<String, dynamic>) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => TrattamentoFormScreen(
               apiarioId: args['apiarioId'] as int?,
               arniaId: args['arniaId'] as int?,
@@ -215,26 +227,28 @@ class RouteGenerator {
             ),
           );
         }
-        return MaterialPageRoute(builder: (_) => TrattamentoFormScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => TrattamentoFormScreen());
 
       // Routes for honey super and production management
       case AppConstants.melariRoute:
-        return MaterialPageRoute(builder: (_) => MelariScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => MelariScreen());
 
       case AppConstants.melarioCreateRoute:
         if (args is Map<String, dynamic>) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => MelarioFormScreen(
               preselectedApiarioId: args['apiarioId'] as int?,
               preselectedArniaId: args['arniaId'] as int?,
             ),
           );
         }
-        return MaterialPageRoute(builder: (_) => const MelarioFormScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => const MelarioFormScreen());
 
       case AppConstants.smielaturaDetailRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => SmielaturaDetailScreen(smielaturaId: args),
           );
         }
@@ -242,24 +256,27 @@ class RouteGenerator {
 
       case AppConstants.smielaturaCreateRoute:
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => SmielaturaFormScreen(initialData: args),
         );
 
       case AppConstants.invasettamentoCreateRoute:
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => InvasettamentoFormScreen(initialData: args as Map<String, dynamic>?),
         );
 
       case AppConstants.cantinaRoute:
-        return MaterialPageRoute(builder: (_) => const CantinaScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => const CantinaScreen());
 
       // Routes for vendite
       case AppConstants.venditeRoute:
-        return MaterialPageRoute(builder: (_) => VenditeScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => VenditeScreen());
 
       case AppConstants.venditaDetailRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => VenditaDetailScreen(venditaId: args),
           );
         }
@@ -268,58 +285,65 @@ class RouteGenerator {
       case AppConstants.venditaCreateRoute:
         if (args is Map<String, dynamic> && args.containsKey('prefill_miele')) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => VenditaFormScreen(
               prefillMiele: (args['prefill_miele'] as List).cast<Map<String, dynamic>>(),
             ),
           );
         }
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => VenditaFormScreen(venditaId: args as int?),
         );
 
       case AppConstants.clienteCreateRoute:
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => ClienteFormScreen(clienteId: args as int?),
         );
 
       // Route for map
       case AppConstants.mappaRoute:
-        return MaterialPageRoute(builder: (_) => MappaScreen());
-      
+        return MaterialPageRoute(settings: settings, builder: (_) => MappaScreen());
+
       // Routes for payment management
       case AppConstants.pagamentiRoute:
-        return MaterialPageRoute(builder: (_) => PagamentiScreen());
-        
+        return MaterialPageRoute(settings: settings, builder: (_) => PagamentiScreen());
+
       case AppConstants.pagamentoDetailRoute:
         // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => PagamentoDetailScreen(pagamentoId: args),
           );
         }
         return _errorRoute();
-        
+
       case AppConstants.pagamentoCreateRoute:
         // args can be: null (new), int (edit), or Map (prefill for saldo)
         if (args is Map<String, dynamic>) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => PagamentoFormScreen(prefill: args),
           );
         }
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => PagamentoFormScreen(pagamentoId: args as int?),
         );
-        
+
       case AppConstants.quoteRoute:
-        return MaterialPageRoute(builder: (_) => QuoteScreen());
-        
+        return MaterialPageRoute(settings: settings, builder: (_) => QuoteScreen());
+
       // Routes for equipment management
       case AppConstants.attrezzatureRoute:
-        return MaterialPageRoute(builder: (_) => AttrezzatureListScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => AttrezzatureListScreen());
 
       case AppConstants.attrezzaturaDetailRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => AttrezzaturaDetailScreen(attrezzaturaId: args),
           );
         }
@@ -328,12 +352,14 @@ class RouteGenerator {
       case AppConstants.attrezzaturaCreateRoute:
         // If args is null, it's a creation, otherwise it's a modification
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => AttrezzaturaFormScreen(attrezzaturaId: args as int?),
         );
 
       case AppConstants.spesaAttrezzaturaCreateRoute:
         if (args is Map<String, dynamic>) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => SpesaAttrezzaturaFormScreen(
               attrezzaturaId: args['attrezzaturaId'],
               attrezzaturaNome: args['attrezzaturaNome'],
@@ -347,6 +373,7 @@ class RouteGenerator {
       case AppConstants.manutenzioneCreateRoute:
         if (args is Map<String, dynamic>) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => ManutenzioneFormScreen(
               attrezzaturaId: args['attrezzaturaId'],
               attrezzaturaNome: args['attrezzaturaNome'],
@@ -358,22 +385,23 @@ class RouteGenerator {
         return _errorRoute();
 
       case AppConstants.statisticheRoute:
-        return MaterialPageRoute(builder: (_) => const StatisticheScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => const StatisticheScreen());
 
       case AppConstants.chatRoute:
-        return MaterialPageRoute(builder: (_) => ChatScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => ChatScreen());
 
       case AppConstants.donazioneRoute:
-        return MaterialPageRoute(builder: (_) => const DonazioneScreen());
-        
+        return MaterialPageRoute(settings: settings, builder: (_) => const DonazioneScreen());
+
       // Route for voice input with Wit.ai - Updated to use the new class
       case AppConstants.voiceCommandRoute:
-        return MaterialPageRoute(builder: (_) => VoiceCommandScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => VoiceCommandScreen());
 
       // Route for analisi telaino
       case AppConstants.analisiTelainoRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => AnalisiTelainoScreen(arniaId: args),
           );
         }
@@ -382,6 +410,7 @@ class RouteGenerator {
       case AppConstants.analisiTelainoListRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => AnalisiTelainoListScreen(arniaId: args),
           );
         }
@@ -389,10 +418,11 @@ class RouteGenerator {
 
       // Routes for fioriture
       case AppConstants.fioritureListRoute:
-        return MaterialPageRoute(builder: (_) => FiorituraListScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => FiorituraListScreen());
 
       case AppConstants.fiorituraCreateRoute:
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => FiorituraFormScreen(
             fioritura: args is Fioritura ? args : null,
           ),
@@ -401,6 +431,7 @@ class RouteGenerator {
       case AppConstants.fiorituraDetailRoute:
         if (args is int) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => FiorituraDetailScreen(fiorituraId: args),
           );
         }
@@ -410,6 +441,7 @@ class RouteGenerator {
       case AppConstants.voiceVerificationRoute:
         if (args is Map<String, dynamic>) {
           return MaterialPageRoute(
+            settings: settings,
             builder: (_) => VoiceEntryVerificationScreen(
               batch: args['batch'],
               onSuccess: args['onSuccess'] ?? () {},
@@ -421,16 +453,16 @@ class RouteGenerator {
 
       // Routes for onboarding and help guide
       case AppConstants.onboardingRoute:
-        return MaterialPageRoute(builder: (_) => const OnboardingScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => const OnboardingScreen());
 
       case AppConstants.guidaRoute:
-        return MaterialPageRoute(builder: (_) => const GuidaScreen());
+        return MaterialPageRoute(settings: settings, builder: (_) => const GuidaScreen());
 
       default:
         return _errorRoute();
     }
   }
-  
+
   static Route<dynamic> _errorRoute() {
     return MaterialPageRoute(builder: (_) {
       return Scaffold(

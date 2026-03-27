@@ -1075,6 +1075,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
     await showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),

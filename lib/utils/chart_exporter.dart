@@ -69,6 +69,7 @@ class ChartExporter {
       // Mostriamo un dialog con opzioni
       showModalBottomSheet(
         context: context,
+        useSafeArea: true,
         builder: (BuildContext bc) {
           return SafeArea(
             child: Wrap(

@@ -32,6 +32,14 @@ void main() {
       DeviceOrientation.portraitDown,
     ]);
 
+    // Edge-to-edge: il contenuto si estende sotto status bar e nav bar
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+    ));
+
     runApp(
       MultiProvider(
         providers: providers,
@@ -41,6 +49,12 @@ void main() {
           theme: ThemeConstants.getTheme(),
           initialRoute: '/',
           onGenerateRoute: RouteGenerator.generateRoute,
+          // SafeArea globale: protegge il basso da gesture bar / tasti nav
+          // top: false perché AppBar gestisce già la status bar
+          builder: (context, child) => SafeArea(
+            top: false,
+            child: child!,
+          ),
         ),
       ),
     );

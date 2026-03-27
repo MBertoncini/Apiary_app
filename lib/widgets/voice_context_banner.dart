@@ -83,6 +83,7 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
 
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),

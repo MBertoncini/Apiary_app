@@ -928,6 +928,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   void _showMelarioBottomSheet(Melario m) {
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
