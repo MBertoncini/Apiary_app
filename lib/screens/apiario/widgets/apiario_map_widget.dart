@@ -967,10 +967,12 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                     ..._buildYSortedWidgets(),
                     // Snap grid indicator
                     if (_editMode && _snapEnabled)
-                      RepaintBoundary(
-                        child: CustomPaint(
-                          size: const Size(_canvasSize, _canvasSize),
-                          painter: _SnapGridPainter(step: _snapSize),
+                      IgnorePointer(
+                        child: RepaintBoundary(
+                          child: CustomPaint(
+                            size: const Size(_canvasSize, _canvasSize),
+                            painter: _SnapGridPainter(step: _snapSize),
+                          ),
                         ),
                       ),
                   ],

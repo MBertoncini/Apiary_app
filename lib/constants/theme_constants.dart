@@ -142,7 +142,7 @@ class ThemeConstants {
         ),
       ),
       
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: paperRadius),
         shadowColor: Colors.black45,
