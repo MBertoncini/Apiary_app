@@ -112,7 +112,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
     return _melari.where((m) {
       final apiarioId = m['apiario_id'];
       final stato = m['stato'] as String?;
-      return apiarioId == _selectedApiarioId && (stato == 'in_smielatura' || stato == 'rimosso');
+      return apiarioId == _selectedApiarioId && stato == 'in_smielatura';
     }).toList();
   }
 
@@ -152,6 +152,12 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
             apiarioNome: (apiarioData['nome'] as String?) ?? '',
             dataSmielatura: _selectedDate,
           );
+          // Marca tutti i melari smielati come 'rimosso' così non appaiono più nel form
+          final oggi = _selectedDate.toIso8601String().split('T')[0];
+          await Future.wait(_selectedMelariIds.map((id) => _apiService.patch(
+            '${ApiConstants.melariUrl}$id/',
+            {'stato': 'rimosso', 'data_rimozione': oggi},
+          )));
         }
       }
       ScaffoldMessenger.of(context).showSnackBar(

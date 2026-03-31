@@ -66,35 +66,20 @@ class StorageService {
     return json.decode(data);
   }
   
-  // Pulisci tutti i dati tranne quelli di autenticazione
+  // Pulisci tutti i dati tranne quelli di autenticazione e preferenze persistenti
   Future<void> clearDataCache() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Salva token e dati utente
-    final token = prefs.getString(AppConstants.tokenKey);
-    final refreshToken = prefs.getString(AppConstants.refreshTokenKey);
-    final userData = prefs.getString(AppConstants.userInfoKey);
-    
-    // Cancella tutto
-    List<String> keysToRemove = prefs.getKeys()
+
+    final keysToRemove = prefs.getKeys()
         .where((key) => key != AppConstants.tokenKey &&
                         key != AppConstants.refreshTokenKey &&
-                        key != AppConstants.userInfoKey)
+                        key != AppConstants.userInfoKey &&
+                        key != 'onboarding_completato' &&
+                        key != _disclaimerAcceptedKey)
         .toList();
-    
-    for (String key in keysToRemove) {
+
+    for (final key in keysToRemove) {
       await prefs.remove(key);
-    }
-    
-    // Ripristina token e dati utente
-    if (token != null) {
-      prefs.setString(AppConstants.tokenKey, token);
-    }
-    if (refreshToken != null) {
-      prefs.setString(AppConstants.refreshTokenKey, refreshToken);
-    }
-    if (userData != null) {
-      prefs.setString(AppConstants.userInfoKey, userData);
     }
   }
 

@@ -73,6 +73,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   int _queueCount = 0;
   int _queueProcessedCount = 0;
   int _queueTotalCount = 0;
+  List<Map<String, dynamic>> _queueItems = [];
+  String? _playingQueueItemId;
 
   // Entry parziale: Gemini ha estratto dati ma il numero arnia è assente
   VoiceEntry? _partialEntry;
@@ -83,7 +85,12 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     super.initState();
     _refreshQueueCount();
     _playerStateSub = _player.onPlayerStateChanged.listen((s) {
-      if (mounted) setState(() => _playerState = s);
+      if (mounted) setState(() {
+        _playerState = s;
+        if (s == PlayerState.stopped || s == PlayerState.completed) {
+          _playingQueueItemId = null;
+        }
+      });
     });
     _positionSub = _player.onPositionChanged.listen((p) {
       if (mounted) setState(() => _playerPosition = p);
@@ -101,12 +108,44 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     _positionSub?.cancel();
     _durationSub?.cancel();
     _player.dispose();
+    // Pulisce i file pendenti non ancora salvati né processati
+    if (_pendingFilePath != null) {
+      AudioQueueService.deleteFile(_pendingFilePath!);
+    }
+    if (_partialEntry?.audioFilePath != null &&
+        _partialEntry!.audioFilePath != _pendingFilePath) {
+      AudioQueueService.deleteFile(_partialEntry!.audioFilePath!);
+    }
     super.dispose();
   }
 
   Future<void> _refreshQueueCount() async {
-    final count = await _audioQueue.getQueueCount();
-    if (mounted) setState(() => _queueCount = count);
+    final items = await _audioQueue.getQueue();
+    if (mounted) setState(() {
+      _queueItems = items;
+      _queueCount = items.length;
+    });
+  }
+
+  Future<void> _playQueueItem(Map<String, dynamic> item) async {
+    final id = item['id'] as String;
+    final filePath = item['file_path'] as String?;
+    if (filePath == null) return;
+    if (_playingQueueItemId == id && _playerState == PlayerState.playing) {
+      await _player.pause();
+    } else {
+      _playingQueueItemId = id;
+      await _player.play(DeviceFileSource(filePath));
+    }
+  }
+
+  Future<void> _deleteQueueItem(Map<String, dynamic> item) async {
+    final id = item['id'] as String;
+    final filePath = item['file_path'] as String?;
+    if (_playingQueueItemId == id) await _player.stop();
+    await _audioQueue.removeFromQueue(id);
+    if (filePath != null) await AudioQueueService.deleteFile(filePath);
+    await _refreshQueueCount();
   }
 
   // ── Registrazione ─────────────────────────────────────────────────────────
@@ -122,6 +161,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       });
       return;
     }
+    _durationTimer?.cancel();
     _seconds = 0;
     _durationTimer =
         Timer.periodic(const Duration(seconds: 1), (_) {
@@ -168,6 +208,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       });
       return;
     }
+    _durationTimer?.cancel();
     _seconds = 0;
     _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _seconds++);
@@ -316,7 +357,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   /// Completa l'entry parziale assegnando l'arnia selezionata dal picker.
   void _confirmWithArnia(Map<String, dynamic> arnia) {
     if (_partialEntry == null) return;
-    final completed = _partialEntry!.copyWith(
+    var completed = _partialEntry!.copyWith(
       arniaId: arnia['id'] as int?,
       arniaNumero: arnia['numero'] as int?,
       apiarioId:
@@ -324,7 +365,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     );
     if (_pendingFilePath != null &&
         _partialEntry!.audioFilePath != _pendingFilePath) {
-      // Il file audio potrebbe essere stato esteso; usa il path corrente
+      // Il file audio è stato esteso dopo l'errore: aggiorna il path
+      completed = completed.copyWith(audioFilePath: _pendingFilePath);
     }
     setState(() {
       _entries.add(completed);
@@ -356,7 +398,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     final hasData = _entries.isNotEmpty || _pendingFilePath != null;
     if (!hasData) return;
 
-    final count = _entries.length;
+    final count = _entries.length + _queueCount;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -364,9 +406,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         content: Text(
           count == 0
               ? 'La registrazione corrente verrà eliminata.'
-              : 'Verranno eliminate la registrazione corrente e '
-                  'tutte le $count arni${count == 1 ? 'a' : 'e'} '
-                  'già elaborate.',
+              : 'Verranno eliminate tutte le $count registrazione/i '
+                  'della sessione.',
         ),
         actions: [
           TextButton(
@@ -394,6 +435,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         await AudioQueueService.deleteFile(entry.audioFilePath!);
       }
     }
+    await _audioQueue.clearQueueAndFiles();
+    await _refreshQueueCount();
     setState(() {
       _entries.clear();
       _state = _RecState.idle;
@@ -409,6 +452,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       filePath: _pendingFilePath!,
       apiarioId: widget.contextApiarioId,
       apiarioNome: widget.contextApiarioNome,
+      recordingDurationSeconds: _recordedSeconds,
     );
     _pendingFilePath = null;
     await _refreshQueueCount();
@@ -416,15 +460,6 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       _state = _RecState.idle;
       _error = null;
     });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Registrazione salvata in coda ($_queueCount in attesa)'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
   }
 
   Future<void> _processQueue() async {
@@ -460,9 +495,36 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           _entries.add(entryWithAudio);
           _queueProcessedCount++;
         });
+      } else if (entry != null && !entry.isValid()) {
+        // Gemini ha estratto dati ma manca il numero arnia:
+        // sposta la registrazione come pendente per il picker manuale
+        await _audioQueue.removeFromQueue(id);
+        await _loadArnieForPicker();
+        setState(() {
+          _partialEntry = entry.copyWith(audioFilePath: filePath);
+          _pendingFilePath = filePath;
+          _state = _RecState.error;
+          _error = 'Numero arnia non rilevato in una registrazione. '
+              'Seleziona l\'arnia dal menu oppure aggiungi audio con il numero.';
+          _queueProcessedCount++;
+        });
+        break; // attende la risoluzione manuale prima di continuare
       } else {
         if (widget.processor.lastCallWasRateLimit ||
             widget.processor.lastCallWasNetworkError) break;
+        // Errore non recuperabile: informa l'utente prima di eliminare
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Registrazione ${i + 1}/${ queue.length} non elaborata: '
+                '${widget.processor.error ?? 'errore sconosciuto'}',
+              ),
+              backgroundColor: Colors.red.shade700,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
         await _audioQueue.removeFromQueue(id);
         await AudioQueueService.deleteFile(filePath);
         setState(() => _queueProcessedCount++);
@@ -479,6 +541,10 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         widget.contextApiarioId, widget.contextApiarioNome);
     await _refreshQueueCount();
     setState(() => _state = _RecState.idle);
+
+    if (_entries.isNotEmpty) {
+      _goToVerification();
+    }
   }
 
   // ── Navigazione ───────────────────────────────────────────────────────────
@@ -506,7 +572,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   }
 
   bool get _hasActiveSession =>
-      _entries.isNotEmpty || _pendingFilePath != null;
+      _entries.isNotEmpty || _pendingFilePath != null || _queueCount > 0;
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
@@ -630,44 +696,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           // ── Lista batch arnie ─────────────────────────────────────────────
           if (_entries.isNotEmpty) _buildBatchList(),
 
-          // ── Badge coda audio ──────────────────────────────────────────────
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            child: _queueCount > 0
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color:
-                                Colors.orange.withValues(alpha: 0.4)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.schedule_send,
-                              size: 16, color: Colors.orange),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '$_queueCount registrazione/i in attesa di connessione',
-                              style: const TextStyle(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : const SizedBox(width: double.infinity),
-          ),
+          // ── Lista registrazioni in sessione ──────────────────────────
+          if (_queueItems.isNotEmpty) _buildSessionQueueList(),
 
           // ── Bottoni ───────────────────────────────────────────────────────
           Padding(
@@ -1004,21 +1034,132 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     );
   }
 
+  // ── Lista registrazioni salvate in sessione ───────────────────────────────
+
+  Widget _buildSessionQueueList() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.queue_music,
+                  size: 15, color: Colors.orange.shade700),
+              const SizedBox(width: 6),
+              Text(
+                'Sessione: ${_queueItems.length} registrazione/i da inviare',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...(_queueItems.asMap().entries.map((e) {
+            final idx = e.key;
+            final item = e.value;
+            final id = item['id'] as String;
+            final filePath = item['file_path'] as String?;
+            final ts = item['timestamp'] as String?;
+            final durSec = item['duration_seconds'] as int?;
+            final isPlaying = _playingQueueItemId == id &&
+                _playerState == PlayerState.playing;
+            DateTime? dt;
+            if (ts != null) {
+              try {
+                dt = DateTime.parse(ts);
+              } catch (_) {}
+            }
+            final timeStr = dt != null
+                ? '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}'
+                : null;
+            final durStr =
+                durSec != null ? _formatDuration(durSec) : null;
+            final label = [
+              'Registrazione ${idx + 1}',
+              if (timeStr != null) timeStr,
+              if (durStr != null) durStr,
+            ].join(' · ');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.mic,
+                        size: 14, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.orange.shade900,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    if (filePath != null)
+                      GestureDetector(
+                        onTap: () => _playQueueItem(item),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.orange.shade700,
+                          ),
+                          child: Icon(
+                            isPlaying ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => _deleteQueueItem(item),
+                      child: Icon(Icons.delete_outline,
+                          size: 20, color: Colors.red.shade400),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList()),
+        ],
+      ),
+    );
+  }
+
   // ── Bottoni contestuali ───────────────────────────────────────────────────
 
   Widget _buildActionButtons() {
     final buttons = <Widget>[];
 
     switch (_state) {
-      // ── Recorded: riascolta → aggiungi / invia o scarta ───────────
+      // ── Recorded: salva in sessione (primario) o invia subito ─────
       case _RecState.recorded:
         buttons.add(ElevatedButton.icon(
-          onPressed: _sendToGemini,
-          icon: const Icon(Icons.auto_awesome, size: 16),
-          label: const Text('Invia a Gemini'),
+          onPressed: _saveToQueue,
+          icon: const Icon(Icons.add_to_queue, size: 16),
+          label: const Text('Salva nella sessione'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: ThemeConstants.primaryColor,
+            backgroundColor: Colors.orange.shade700,
             foregroundColor: Colors.white,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            textStyle: const TextStyle(
+                fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ));
         buttons.add(OutlinedButton.icon(
@@ -1028,6 +1169,15 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
               style: TextStyle(color: Colors.amber)),
           style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Colors.amber)),
+        ));
+        buttons.add(OutlinedButton.icon(
+          onPressed: _sendToGemini,
+          icon: const Icon(Icons.auto_awesome, size: 16,
+              color: Color(0xFF4285F4)),
+          label: const Text('Invia subito a Gemini',
+              style: TextStyle(color: Color(0xFF4285F4))),
+          style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF4285F4))),
         ));
         buttons.add(OutlinedButton.icon(
           onPressed: _discardRecording,
@@ -1117,17 +1267,20 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         }
         break;
 
-      // ── Idle: mostra "Elabora coda" se disponibile ────────────────
+      // ── Idle: "Invia tutto a Gemini" se ci sono registrazioni ────
       case _RecState.idle:
         if (_queueCount > 0) {
           buttons.add(ElevatedButton.icon(
             onPressed: _processQueue,
-            icon: const Icon(Icons.cloud_upload_outlined,
-                size: 16),
-            label: Text('Elabora coda ($_queueCount)'),
+            icon: const Icon(Icons.auto_awesome, size: 18),
+            label: Text('Invia tutto a Gemini ($_queueCount)'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: Colors.green.shade700,
               foregroundColor: Colors.white,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              textStyle: const TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 15),
             ),
           ));
         }
@@ -1183,7 +1336,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     if (buttons.isEmpty) {
       // Nessun bottone → hint "Premi per registrare"
       return Text(
-        _entries.isEmpty
+        _entries.isEmpty && _queueCount == 0
             ? 'Premi il microfono per iniziare'
             : 'Registra la prossima arnia',
         style: TextStyle(
@@ -1247,10 +1400,11 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       case _RecState.error:
         return 'Errore elaborazione';
       case _RecState.recorded:
-        return 'Registrazione pronta – ascolta o invia';
+        return 'Registrazione pronta – salva o ascolta';
       case _RecState.idle:
         if (_entries.isNotEmpty) return 'Registra la prossima arnia';
-        if (_queueCount > 0) return 'Registrazioni in coda da elaborare';
+        if (_queueCount > 0)
+          return 'Registra le prossime arnie o invia tutto a Gemini';
         return 'Premi per iniziare la registrazione';
     }
   }

@@ -158,8 +158,8 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
 
           // Salva i token
           final prefs = await SharedPreferences.getInstance();
-          prefs.setString(AppConstants.tokenKey, _token!);
-          prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
+          await prefs.setString(AppConstants.tokenKey, _token!);
+          await prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
 
           // Estrai info dal token se presente
           extractUserFromToken();
@@ -173,7 +173,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
             _currentUser = user;
             
             // Salva le informazioni dell'utente per uso offline
-            prefs.setString(AppConstants.userInfoKey, json.encode(user.toJson()));
+            await prefs.setString(AppConstants.userInfoKey, json.encode(user.toJson()));
           }
 
           _isLoading = false;
@@ -305,9 +305,9 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
 
         // Salva i nuovi token
         final prefs = await SharedPreferences.getInstance();
-        prefs.setString(AppConstants.tokenKey, _token!);
+        await prefs.setString(AppConstants.tokenKey, _token!);
         if (_refreshToken != null) {
-          prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
+          await prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
         }
 
         // Verifica la validità del nuovo token
@@ -398,8 +398,8 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           
           // Salva le info utente per uso offline
           final prefs = await SharedPreferences.getInstance();
-          prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
-          
+          await prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
+
           debugPrint('Parsed user: ${user.username}, ${user.email}, ${user.fullName}');
           return user;
         } catch (jsonError) {
@@ -460,7 +460,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         final userJson = json.decode(utf8.decode(response.bodyBytes));
         _currentUser = User.fromJson(userJson);
         final prefs = await SharedPreferences.getInstance();
-        prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
+        await prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
         notifyListeners();
         return true;
       }
@@ -485,7 +485,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         final userJson = json.decode(utf8.decode(response.bodyBytes));
         _currentUser = User.fromJson(userJson);
         final prefs = await SharedPreferences.getInstance();
-        prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
+        await prefs.setString(AppConstants.userInfoKey, json.encode(userJson));
         notifyListeners();
         return true;
       }

@@ -18,8 +18,8 @@ class GeminiAudioProcessor extends ChangeNotifier {
   // Stesso fallback del GeminiDataProcessor testo.
   static const List<String> _modelFallbacks = [
     'gemini-2.5-flash',
-    'gemini-3-flash-preview',
-    'gemini-3.1-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
   ];
 
@@ -68,6 +68,15 @@ class GeminiAudioProcessor extends ChangeNotifier {
       final file = File(filePath);
       if (!await file.exists()) {
         _error = 'File audio non trovato';
+        return null;
+      }
+
+      final fileSize = await file.length();
+      // Limite conservativo: ~15 MB raw → ~20 MB base64
+      const maxBytes = 15 * 1024 * 1024;
+      if (fileSize > maxBytes) {
+        _error = 'Il file audio è troppo grande (${(fileSize / 1048576).toStringAsFixed(1)} MB). '
+            'Registrazioni superiori a ~15 minuti non sono supportate.';
         return null;
       }
 
@@ -162,14 +171,15 @@ Regole:
                 headers: {'Content-Type': 'application/json'},
                 body: body,
               )
-              .timeout(const Duration(seconds: 30)); // audio richiede più tempo
+              .timeout(const Duration(seconds: 90)); // audio richiede più tempo
         } on SocketException {
           _lastCallWasNetworkError = true;
           _error = 'Nessuna connessione di rete';
           return null;
         } on TimeoutException {
           _lastCallWasNetworkError = true;
-          _error = 'Timeout nella comunicazione con Gemini';
+          _error = 'Timeout nella comunicazione con Gemini (>90s). '
+              'Connessione lenta o audio troppo lungo.';
           return null;
         }
 
@@ -203,6 +213,11 @@ Regole:
           _error = 'Errore Gemini API ${response.statusCode}'
               '${reason.isNotEmpty ? ': $reason' : ''}';
           debugPrint('[GeminiAudio] ${response.statusCode}: ${response.body}');
+          // Per modello non trovato (404) o non disponibile (503/502)
+          // proviamo il modello successivo; per errori client (400, 401)
+          // usciamo subito perché cambiare modello non aiuta.
+          final status = response.statusCode;
+          if (status == 404 || status == 503 || status == 502) continue;
           return null;
         }
       }

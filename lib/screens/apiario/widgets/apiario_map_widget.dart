@@ -1009,12 +1009,28 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           ),
 
         // ── edit mode hint ───────────────────────────────────────
-        if (_editMode && !isEmpty)
+        if (!isEmpty)
           Positioned(
             top: 12, left: 12,
-            child: _InfoChip(
-              icon: Icons.open_with_rounded,
-              text: 'Trascina · Tocca vialetto per estenderlo',
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, -0.5),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                  child: child,
+                ),
+              ),
+              child: _editMode
+                  ? _InfoChip(
+                      key: const ValueKey('edit_chip'),
+                      icon: Icons.open_with_rounded,
+                      text: 'Trascina · Tocca vialetto per estenderlo',
+                    )
+                  : const SizedBox.shrink(key: ValueKey('empty_chip')),
             ),
           ),
 
@@ -1634,11 +1650,25 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Add elements panel (only in edit mode)
-          AnimatedSize(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.25),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                child: SizeTransition(
+                  sizeFactor: CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+                  axisAlignment: -1,
+                  child: child,
+                ),
+              ),
+            ),
             child: _editMode
                 ? Container(
+                    key: const ValueKey('add_panel'),
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
@@ -1708,7 +1738,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                       ),
                     ),
                   )
-                : const SizedBox.shrink(),
+                : const SizedBox.shrink(key: ValueKey('add_panel_empty')),
           ),
 
           // Control row
@@ -1720,19 +1750,31 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 onTap: _centerOnArnie,
                 tooltip: 'Centra',
               ),
-              if (_editMode) ...[
-                const SizedBox(width: 8),
-                // Snap toggle
-                _MapIconButton(
-                  icon: _snapEnabled ? Icons.grid_on_rounded : Icons.grid_off_rounded,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() => _snapEnabled = !_snapEnabled);
-                  },
-                  tooltip: _snapEnabled ? 'Snap ON' : 'Snap OFF',
-                  active: _snapEnabled,
+              // Snap toggle — slide+fade in/out
+              AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  opacity: _editMode ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: _editMode
+                      ? Row(mainAxisSize: MainAxisSize.min, children: [
+                          const SizedBox(width: 8),
+                          _MapIconButton(
+                            icon: _snapEnabled
+                                ? Icons.grid_on_rounded
+                                : Icons.grid_off_rounded,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _snapEnabled = !_snapEnabled);
+                            },
+                            tooltip: _snapEnabled ? 'Snap ON' : 'Snap OFF',
+                            active: _snapEnabled,
+                          ),
+                        ])
+                      : const SizedBox.shrink(),
                 ),
-              ],
+              ),
               const Spacer(),
               // Edit / save toggle
               _EditToggleBtn(
@@ -2871,7 +2913,7 @@ class _CompassBgPainter extends CustomPainter {
 
 class _InfoChip extends StatelessWidget {
   final IconData icon; final String text;
-  const _InfoChip({required this.icon, required this.text});
+  const _InfoChip({super.key, required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -2933,7 +2975,7 @@ class _AddBtn extends StatelessWidget {
 //  WIDGET — EDIT TOGGLE BUTTON
 // ════════════════════════════════════════════════════════════════
 
-class _EditToggleBtn extends StatelessWidget {
+class _EditToggleBtn extends StatefulWidget {
   final bool editMode, hasChanges;
   final VoidCallback onTap;
 
@@ -2942,40 +2984,123 @@ class _EditToggleBtn extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-      decoration: BoxDecoration(
-        color: editMode
-            ? (hasChanges ? const Color(0xFFF59E0B) : const Color(0xFF16A34A))
-            : const Color(0xFF1C2436),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: (editMode
-                ? (hasChanges ? const Color(0xFFF59E0B) : const Color(0xFF16A34A))
-                : Colors.black).withOpacity(.35),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
+  State<_EditToggleBtn> createState() => _EditToggleBtnState();
+}
+
+class _EditToggleBtnState extends State<_EditToggleBtn>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  static const _kDuration = Duration(milliseconds: 420);
+  static const _kGreen   = Color(0xFF16A34A);
+  static const _kAmber   = Color(0xFFF59E0B);
+  static const _kFabW    = 52.0;
+  static const _kPillW   = 108.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: _kDuration);
+    _anim = CurvedAnimation(
+      parent: _ctrl,
+      curve: Curves.easeInOutCubicEmphasized,
+      reverseCurve: Curves.easeInOutCubicEmphasized.flipped,
+    );
+    if (widget.editMode) _ctrl.value = 1.0;
+  }
+
+  @override
+  void didUpdateWidget(_EditToggleBtn old) {
+    super.didUpdateWidget(old);
+    if (widget.editMode != old.editMode) {
+      widget.editMode ? _ctrl.forward() : _ctrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _anim,
+        builder: (ctx, _) {
+          final t = _anim.value;
+          final pillColor = widget.hasChanges ? _kAmber : _kGreen;
+          final color     = Color.lerp(primary, pillColor, t)!;
+          final radius    = 26.0 - 10.0 * t;           // 26 → 16
+          final width     = _kFabW + (_kPillW - _kFabW) * t; // 52 → 108
+
+          // Curva separata per le opacità: più snappy
+          final fadeOut = (1 - t * 2).clamp(0.0, 1.0);  // scompare a metà
+          final fadeIn  = ((t - 0.4) / 0.6).clamp(0.0, 1.0); // appare da metà in poi
+
+          return Container(
+            width: width,
+            height: _kFabW,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(radius),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(.38),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.hardEdge,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // ── FAB "+" – ruota e svanisce ──
+                Opacity(
+                  opacity: fadeOut,
+                  child: Transform.rotate(
+                    angle: t * (pi * 0.5),
+                    child: Transform.scale(
+                      scale: 1.0 - 0.3 * t,
+                      child: const Icon(Icons.add, color: Colors.white, size: 26),
+                    ),
+                  ),
+                ),
+                // ── Pill content – scala e appare ──
+                Opacity(
+                  opacity: fadeIn,
+                  child: Transform.scale(
+                    scale: 0.7 + 0.3 * t,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.hasChanges ? 'Salva*' : 'Fine',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(
-          editMode ? Icons.check_rounded : Icons.edit_rounded,
-          color: Colors.white, size: 18,
-        ),
-        const SizedBox(width: 7),
-        Text(
-          editMode ? (hasChanges ? 'Salva*' : 'Fine') : 'Modifica',
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
-        ),
-      ]),
-    ),
-  );
+    );
+  }
 }
 
 // ════════════════════════════════════════════════════════════════

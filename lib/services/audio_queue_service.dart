@@ -42,15 +42,18 @@ class AudioQueueService {
     required String filePath,
     int? apiarioId,
     String? apiarioNome,
+    int? recordingDurationSeconds,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final queue = await getQueue();
+    final now = DateTime.now();
     queue.add({
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'id': '${now.millisecondsSinceEpoch}_${now.microsecond}',
       'file_path': filePath,
       'apiario_id': apiarioId,
       'apiario_nome': apiarioNome,
-      'timestamp': DateTime.now().toIso8601String(),
+      'duration_seconds': recordingDurationSeconds,
+      'timestamp': now.toIso8601String(),
     });
     await prefs.setString(_queueKey, jsonEncode(queue));
     debugPrint('[AudioQueue] Added: $filePath (${queue.length} total)');

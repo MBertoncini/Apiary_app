@@ -14,7 +14,7 @@ class JokesService {
     "L'ape è andata dal dottore. Ha la febbre al-veare!",
     "Qual è lo sport preferito delle api? Bee-liardo!",
     "Qual è il motto delle api? Bee yourself!",
-    "Qual è il politico preferito delle api? Bee-rlusconi!"
+    "Qual è il politico preferito delle api? Bee-rlusconi!",
     "Qual è l'attore preferito delle api? Leonardo Di C-api!",
     "Perché le api non usano il telefono? Perché preferiscono il buzz-er!",
     "Qual è il social media preferito delle api? BeeChat!",

@@ -29,8 +29,11 @@ class AudioRecorderService {
   }
 
   Future<bool> hasMicPermission() async {
-    final status = await Permission.microphone.request();
-    return status.isGranted;
+    final status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+    if (status.isPermanentlyDenied) return false;
+    final result = await Permission.microphone.request();
+    return result.isGranted;
   }
 
   /// Avvia la registrazione. Restituisce true se avviata con successo.
@@ -64,8 +67,10 @@ class AudioRecorderService {
   }
 
   /// Ferma la registrazione e restituisce il path del file.
+  /// Restituisce null se non era in corso una registrazione, per evitare
+  /// di restituire il path di una sessione precedente.
   Future<String?> stopRecording() async {
-    if (!_recorder.isRecording) return _currentPath;
+    if (!_recorder.isRecording) return null;
     try {
       final path = await _recorder.stopRecorder();
       debugPrint('[AudioRecorder] Recording stopped: ${path ?? _currentPath}');

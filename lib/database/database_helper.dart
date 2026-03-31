@@ -10,7 +10,7 @@ class DatabaseHelper {
 
   static Database? _database;
   final String _databaseName = "apiario_manager.db";
-  final int _databaseVersion = 3;
+  final int _databaseVersion = 4;
 
   // Tabelle
   final String tableApiari = 'apiari';
@@ -74,6 +74,7 @@ class DatabaseHelper {
         colore TEXT NOT NULL,
         colore_hex TEXT NOT NULL,
         data_installazione TEXT NOT NULL,
+        tipo_arnia TEXT NOT NULL DEFAULT 'dadant',
         note TEXT,
         attiva INTEGER NOT NULL,
         sync_status TEXT NOT NULL,
@@ -333,6 +334,11 @@ class DatabaseHelper {
     if (oldVersion < 3) {
       await db.execute(
         'ALTER TABLE $tableControlli ADD COLUMN telaini_config TEXT;'
+      );
+    }
+    if (oldVersion < 4) {
+      await db.execute(
+        "ALTER TABLE $tableArnie ADD COLUMN tipo_arnia TEXT NOT NULL DEFAULT 'dadant';"
       );
     }
   }

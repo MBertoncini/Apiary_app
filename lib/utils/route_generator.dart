@@ -25,6 +25,7 @@ import '../screens/regina/regina_list_screen.dart';
 import '../screens/regina/regina_detail_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
 import '../screens/trattamento/trattamento_form_screen.dart';
+import '../screens/trattamento/trattamento_detail_screen.dart';
 import '../screens/melario/melari_screen.dart';
 import '../screens/melario/melario_form_screen.dart';
 import '../screens/melario/smielatura_detail_screen.dart';
@@ -209,6 +210,15 @@ class RouteGenerator {
       // Routes for treatment management
       case AppConstants.trattamentiRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => TrattamentiScreen());
+
+      case AppConstants.trattamentoDetailRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => TrattamentoDetailScreen(trattamentoId: args),
+          );
+        }
+        return _errorRoute();
 
       case AppConstants.nuovoTrattamentoRoute:
         if (args is int) {

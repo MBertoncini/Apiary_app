@@ -1042,7 +1042,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 await _apiService.patch(
                   '${ApiConstants.melariUrl}${m.id}/',
                   {
-                    'stato': 'rimosso',
+                    'stato': 'in_smielatura',
                     'data_rimozione': DateTime.now().toIso8601String().split('T')[0],
                     if (peso != null) 'peso_stimato': peso,
                   },

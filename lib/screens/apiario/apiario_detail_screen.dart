@@ -689,9 +689,9 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                               children: [
                                 TextButton(
                                   onPressed: () => Navigator.of(context).pushNamed(
-                                    AppConstants.trattamentoCreateRoute,
-                                    arguments: {'trattamentoId': trattamento['id'] as int},
-                                  ),
+                                    AppConstants.trattamentoDetailRoute,
+                                    arguments: trattamento['id'] as int,
+                                  ).then((_) => _loadApiario()),
                                   child: Text('Dettagli'),
                                 ),
                                 SizedBox(width: 8),
