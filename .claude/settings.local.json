@@ -33,7 +33,8 @@
       "Bash(git -C \"/I/Progetti Git/Apiary\" status --short)",
       "Bash(git:*)",
       "Bash(dir I:)",
-      "Bash(dart --version)",
+      "Read(//i//**)",
+      "Bash(dart analyze:*)",
       "Bash(flutter pub:*)"
     ]
   }
