@@ -14,13 +14,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
           _header('Informativa sulla Privacy'),
           _updated('Ultimo aggiornamento: 12 marzo 2026'),
           _highlight(
-            'La presente Informativa sulla Privacy descrive come Apiary Manager '
+            'La presente Informativa sulla Privacy descrive come Apiary '
             'raccoglie, utilizza e protegge i dati degli utenti. '
             'Ti invitiamo a leggerla attentamente prima di utilizzare l\'applicazione.',
           ),
           _h2('1. Titolare del trattamento'),
           _body(
-            'Il titolare del trattamento è lo sviluppatore dell\'applicazione Apiary Manager.\n'
+            'Il titolare del trattamento è lo sviluppatore dell\'applicazione Apiary.\n'
             'Per qualsiasi richiesta relativa alla privacy puoi contattarci all\'indirizzo:',
           ),
           _emailLink('michele.bertoncini@gmail.com'),
@@ -111,7 +111,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           _emailLink('michele.bertoncini@gmail.com'),
           const SizedBox(height: 32),
           Text(
-            '© 2026 Apiary Manager – Tutti i diritti riservati.',
+            '© 2026 Apiary – Tutti i diritti riservati.',
             style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),

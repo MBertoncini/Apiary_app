@@ -280,8 +280,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            DiaryTitle(title: s.settingsTitle),
-
             // ── PROFILO ──────────────────────────────────────────────────
             PaperCard(
               child: Column(
@@ -472,18 +470,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      DiaryButton(
-                        label: _isSavingApiKey ? s.btnSaving : s.btnSaveKey,
-                        onPressed: _isSavingApiKey ? null : _saveApiKey,
-                        icon: _isSavingApiKey ? null : Icons.key,
-                        color: ThemeConstants.primaryColor,
+                      Flexible(
+                        child: DiaryButton(
+                          label: _isSavingApiKey ? s.btnSaving : s.btnSaveKey,
+                          onPressed: _isSavingApiKey ? null : _saveApiKey,
+                          icon: _isSavingApiKey ? null : Icons.key,
+                          color: ThemeConstants.primaryColor,
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      DiaryButton(
-                        label: s.btnRemove,
-                        onPressed: () { _apiKeyController.clear(); _saveApiKey(); },
-                        icon: Icons.delete_outline,
-                        color: ThemeConstants.secondaryColor,
+                      Flexible(
+                        child: DiaryButton(
+                          label: s.btnRemove,
+                          onPressed: () { _apiKeyController.clear(); _saveApiKey(); },
+                          icon: Icons.delete_outline,
+                          color: ThemeConstants.secondaryColor,
+                        ),
                       ),
                     ],
                   ),
@@ -539,18 +541,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      DiaryButton(
-                        label: _isSavingGroqKey ? s.btnSaving : s.btnSaveKey,
-                        onPressed: _isSavingGroqKey ? null : _saveGroqApiKey,
-                        icon: _isSavingGroqKey ? null : Icons.key,
-                        color: const Color(0xFFF55036),
+                      Flexible(
+                        child: DiaryButton(
+                          label: _isSavingGroqKey ? s.btnSaving : s.btnSaveKey,
+                          onPressed: _isSavingGroqKey ? null : _saveGroqApiKey,
+                          icon: _isSavingGroqKey ? null : Icons.key,
+                          color: const Color(0xFFF55036),
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      DiaryButton(
-                        label: s.btnRemove,
-                        onPressed: () { _groqKeyController.clear(); _saveGroqApiKey(); },
-                        icon: Icons.delete_outline,
-                        color: ThemeConstants.secondaryColor,
+                      Flexible(
+                        child: DiaryButton(
+                          label: s.btnRemove,
+                          onPressed: () { _groqKeyController.clear(); _saveGroqApiKey(); },
+                          icon: Icons.delete_outline,
+                          color: ThemeConstants.secondaryColor,
+                        ),
                       ),
                     ],
                   ),

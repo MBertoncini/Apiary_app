@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../constants/api_constants.dart';
+import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/offline_banner.dart';
@@ -15,6 +18,9 @@ class ApiarioListScreen extends StatefulWidget {
 }
 
 class _ApiarioListScreenState extends State<ApiarioListScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   bool _isLoading = false;
   bool _isRefreshing = true;
   List<dynamic> _allApiari = [];  // Dati completi (non filtrati)
@@ -36,51 +42,147 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
     _loadApiari();
   }
 
+  /// Restituisce true se l'utente può modificare l'apiario:
+  /// - è il proprietario, oppure
+  /// - il gruppo che ha condiviso l'apiario esiste tra i gruppi dell'utente
+  ///   e l'utente ha ruolo creatore/admin/editor in quel gruppo.
+  bool _canEdit(dynamic apiario, int currentUserId, List<dynamic> gruppi) {
+    if (apiario['proprietario'] == currentUserId) return true;
+    if (apiario['condiviso_con_gruppo'] != true || apiario['gruppo'] == null) return false;
+
+    final apiarioGruppoId = apiario['gruppo'];
+    for (final g in gruppi) {
+      final gId = g['id'] is String ? int.tryParse(g['id']) : g['id'];
+      if (gId != apiarioGruppoId) continue;
+
+      // Creatore del gruppo → sempre admin
+      final creatoreId = g['creatore'] is Map
+          ? g['creatore']['id']
+          : (g['creatore'] is String ? int.tryParse(g['creatore'].toString()) : g['creatore']);
+      if (creatoreId == currentUserId) return true;
+
+      // Controlla i membri (presenti solo se il gruppo è stato caricato in dettaglio)
+      final membri = g['membri'];
+      if (membri is List) {
+        for (final m in membri) {
+          final utenteId = m['utente'] is String ? int.tryParse(m['utente'].toString()) : m['utente'];
+          if (utenteId == currentUserId) {
+            final ruolo = m['ruolo'] as String?;
+            return ruolo == 'admin' || ruolo == 'editor';
+          }
+        }
+      }
+      // Il gruppo è presente ma senza dettaglio membri: l'utente non è creatore,
+      // quindi non possiamo confermare i permessi → escludiamo per sicurezza.
+      return false;
+    }
+    return false;
+  }
+
+  List<dynamic> _filterEditable(List<dynamic> apiari, int currentUserId, List<dynamic> gruppi) {
+    return apiari.where((a) => _canEdit(a, currentUserId, gruppi)).toList();
+  }
+
   Future<void> _loadApiari() async {
     final storageService = Provider.of<StorageService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.id;
+    if (currentUserId == null) {
+      if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
+      return;
+    }
 
     // Fase 1: cache — mostra subito senza spinner
-    final cached = await storageService.getStoredData('apiari');
-    if (cached.isNotEmpty) {
-      _allApiari = List<dynamic>.from(cached)
+    final cachedApiari = await storageService.getStoredData('apiari');
+    final cachedGruppi = await storageService.getStoredData('gruppi');
+    if (cachedApiari.isNotEmpty) {
+      _allApiari = _filterEditable(List<dynamic>.from(cachedApiari), currentUserId, cachedGruppi)
         ..sort((a, b) => a['nome'].compareTo(b['nome']));
       if (mounted) setState(() { _isLoading = false; _isRefreshing = true; });
     } else {
       if (mounted) setState(() { _isRefreshing = true; });
     }
 
-    // Fase 2: aggiornamento dal server
+    // Fase 2: aggiornamento dal server (apiari + gruppi in parallelo)
     try {
-      final response = await apiService.get(ApiConstants.apiariUrl);
-      List<dynamic> apiariFromApi = [];
-      if (response is List) {
-        apiariFromApi = response;
-      } else if (response is Map) {
-        if (response.containsKey('results') && response['results'] is List) {
-          apiariFromApi = response['results'];
-        } else {
-          for (var key in ['apiari', 'data', 'items']) {
-            if (response.containsKey(key) && response[key] is List) {
-              apiariFromApi = response[key];
-              break;
-            }
-          }
-          if (apiariFromApi.isEmpty && response.containsKey('id')) {
-            apiariFromApi = [response];
-          }
-        }
+      final results = await Future.wait([
+        apiService.get(ApiConstants.apiariUrl),
+        apiService.get(ApiConstants.gruppiUrl).catchError((e) {
+          debugPrint('Errore caricamento gruppi: $e');
+          return cachedGruppi;
+        }),
+      ]);
+
+      List<dynamic> apiariFromApi = _parseList(results[0]);
+      List<dynamic> gruppiFromApi = _parseList(results[1] is List ? results[1] : cachedGruppi);
+
+      if (gruppiFromApi.isNotEmpty) {
+        await storageService.saveData('gruppi', gruppiFromApi);
+      } else {
+        gruppiFromApi = cachedGruppi;
       }
+
+      // Per i gruppi dove l'utente NON è creatore, carica il dettaglio (con membri)
+      // per verificare il ruolo admin/editor. Solo per gruppi che hanno apiari condivisi.
+      final sharedGruppoIds = apiariFromApi
+          .where((a) => a['proprietario'] != currentUserId && a['condiviso_con_gruppo'] == true && a['gruppo'] != null)
+          .map((a) => a['gruppo'])
+          .toSet();
+
+      if (sharedGruppoIds.isNotEmpty) {
+        final detailFutures = sharedGruppoIds.map((gId) async {
+          // Se già creatore nel gruppo, non serve caricare i dettagli
+          final cached = gruppiFromApi.firstWhere(
+            (g) {
+              final creatoreId = g['creatore'] is Map ? g['creatore']['id'] : g['creatore'];
+              final gIdParsed = g['id'] is String ? int.tryParse(g['id']) : g['id'];
+              return gIdParsed == gId && creatoreId == currentUserId;
+            },
+            orElse: () => null,
+          );
+          if (cached != null) return;
+
+          try {
+            final detail = await apiService.get('${ApiConstants.gruppiUrl}$gId/');
+            if (detail is Map) {
+              final idx = gruppiFromApi.indexWhere((g) {
+                final gIdParsed = g['id'] is String ? int.tryParse(g['id']) : g['id'];
+                return gIdParsed == gId;
+              });
+              if (idx >= 0) {
+                gruppiFromApi[idx] = detail;
+              }
+            }
+          } catch (e) {
+            debugPrint('Errore caricamento dettaglio gruppo $gId: $e');
+          }
+        });
+        await Future.wait(detailFutures);
+      }
+
       if (apiariFromApi.isNotEmpty) {
         await storageService.saveData('apiari', apiariFromApi);
-        apiariFromApi.sort((a, b) => a['nome'].compareTo(b['nome']));
-        _allApiari = apiariFromApi;
+        _allApiari = _filterEditable(apiariFromApi, currentUserId, gruppiFromApi)
+          ..sort((a, b) => a['nome'].compareTo(b['nome']));
       }
     } catch (e) {
       debugPrint('Error fetching apiari from API, using cache: $e');
     }
 
     if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
+  }
+
+  List<dynamic> _parseList(dynamic response) {
+    if (response is List) return response;
+    if (response is Map) {
+      if (response['results'] is List) return response['results'];
+      for (final key in ['apiari', 'gruppi', 'data', 'items']) {
+        if (response[key] is List) return response[key];
+      }
+      if (response.containsKey('id')) return [response];
+    }
+    return [];
   }
 
   void _navigateToApiarioDetail(int apiarioId) {
@@ -142,7 +244,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      apiario['posizione'] ?? 'Posizione non specificata',
+                      apiario['posizione'] ?? _s.dashPositionNone,
                       style: TextStyle(
                         color: ThemeConstants.textSecondaryColor,
                       ),
@@ -172,7 +274,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Mappa',
+                            _s.apiarioBadgeMap,
                             style: TextStyle(
                               fontSize: 12,
                               color: ThemeConstants.secondaryColor,
@@ -199,7 +301,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Meteo',
+                            _s.apiarioBadgeMeteo,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.orange,
@@ -226,7 +328,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Condiviso',
+                            _s.apiarioBadgeShared,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.purple,
@@ -246,9 +348,10 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
   
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
     return Scaffold(
       appBar: AppBar(
-        title: Text('I tuoi apiari'),
+        title: Text(_s.apiarioListTitle),
       ),
       drawer: AppDrawer(currentRoute: AppConstants.apiarioListRoute),
       body: Column(
@@ -260,7 +363,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Cerca per nome o posizione...',
+                hintText: _s.apiarioSearchHint,
                 prefixIcon: Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty 
                     ? IconButton(
@@ -296,8 +399,8 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                             const SizedBox(height: 16),
                             Text(
                               _searchQuery.isNotEmpty
-                                  ? 'Nessun apiario trovato con "$_searchQuery"'
-                                  : 'Nessun apiario disponibile',
+                                  ? _s.apiarioNotFoundForQuery(_searchQuery)
+                                  : _s.dashNoApiari,
                               style: TextStyle(
                                 color: ThemeConstants.textSecondaryColor,
                                 fontSize: 16,
@@ -309,7 +412,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
                               ElevatedButton.icon(
                                 onPressed: _navigateToApiarioCreate,
                                 icon: Icon(Icons.add),
-                                label: Text('Crea nuovo apiario'),
+                                label: Text(_s.dashBtnCreateApiario),
                               ),
                           ],
                         ),
@@ -330,7 +433,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToApiarioCreate,
         child: Icon(Icons.add),
-        tooltip: 'Aggiungi apiario',
+        tooltip: _s.apiarioFabTooltip,
       ),
     );
   }

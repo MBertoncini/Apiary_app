@@ -10,6 +10,8 @@ import '../../widgets/error_widget.dart';
 import '../apiario/widgets/apiario_map_widget.dart';
 import '../../database/dao/controllo_arnia_dao.dart';
 import '../../services/notification_service.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class TrattamentoFormScreen extends StatefulWidget {
   final int? apiarioId;
@@ -28,6 +30,9 @@ class TrattamentoFormScreen extends StatefulWidget {
 }
 
 class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   final _formKey = GlobalKey<FormState>();
   final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
   late ApiService _apiService;
@@ -70,12 +75,14 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
     'altro',
   ];
 
-  static const Map<String, String> _metodiLabels = {
-    'strisce': 'Strisce',
-    'gocciolato': 'Gocciolato',
-    'sublimato': 'Sublimato',
-    'altro': 'Altro',
-  };
+  String _metodoLabel(String metodo, AppStrings s) {
+    switch (metodo) {
+      case 'strisce':    return s.trattamentiMetodoStrisce;
+      case 'gocciolato': return s.trattamentiMetodoGocciolato;
+      case 'sublimato':  return s.trattamentiMetodoSublimato;
+      default:           return s.arniaDetailChangeMotivoAltro;
+    }
+  }
 
   @override
   void initState() {
@@ -178,12 +185,11 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
       if (!mounted) return;
       if (_apiari.isEmpty && _tipiTrattamento.isEmpty) {
         setState(() {
-          _errorMessage = 'Errore nel caricamento dei dati: $e';
+          _errorMessage = _s.trattamentoFormError(e.toString());
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
+          SnackBar(content: Text(_s.trattamentoFormOfflineMsg)),
         );
       }
     } finally {
@@ -251,11 +257,12 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
     int giorniBlocco = 21;
     final giorniBloccoCtrl = TextEditingController(text: '21');
 
+    final s = _s;
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Nuovo prodotto'),
+          title: Text(s.trattamentoFormNewProductTitle),
           scrollable: true,
           content: SizedBox(
             width: double.maxFinite,
@@ -268,45 +275,45 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                   TextFormField(
                     controller: nomeCtrl,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome prodotto *',
-                      hintText: 'Es. Acido ossalico, ApiLife VAR...',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: s.trattamentoFormLblProductName,
+                      hintText: s.trattamentoFormHintProductName,
+                      border: const OutlineInputBorder(),
                     ),
                     textCapitalization: TextCapitalization.sentences,
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Campo obbligatorio' : null,
+                        (v == null || v.trim().isEmpty) ? s.trattamentoFormValidateCampoObbligatorio : null,
                   ),
                   const SizedBox(height: 12),
 
                   // Principio attivo — obbligatorio
                   TextFormField(
                     controller: principioAttivoCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Principio attivo *',
-                      hintText: 'Es. Acido ossalico, Timolo, Flumetrina...',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: s.trattamentoFormLblPrincipioAttivo,
+                      hintText: s.trattamentoFormHintPrincipioAttivo,
+                      border: const OutlineInputBorder(),
                     ),
                     textCapitalization: TextCapitalization.sentences,
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Campo obbligatorio' : null,
+                        (v == null || v.trim().isEmpty) ? s.trattamentoFormValidateCampoObbligatorio : null,
                   ),
                   const SizedBox(height: 12),
 
                   // Tempo di sospensione — default 0, rilevante per sicurezza alimentare
                   TextFormField(
                     controller: tempoSospensioneCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Giorni di sospensione',
-                      hintText: '0 = nessuna sospensione',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: s.trattamentoFormLblGiorniSosp,
+                      hintText: s.trattamentoFormHintGiorniSosp,
+                      border: const OutlineInputBorder(),
                       suffixText: 'gg',
                     ),
                     keyboardType: TextInputType.number,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return null;
                       if (int.tryParse(v.trim()) == null || int.parse(v.trim()) < 0)
-                        return 'Inserisci un numero intero ≥ 0';
+                        return s.trattamentoFormValidateNumeroGe0;
                       return null;
                     },
                   ),
@@ -315,9 +322,9 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                   // Descrizione — opzionale
                   TextFormField(
                     controller: descrizioneCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Descrizione (opzionale)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: s.trattamentoFormLblDescrizione,
+                      border: const OutlineInputBorder(),
                     ),
                     maxLines: 2,
                     textCapitalization: TextCapitalization.sentences,
@@ -328,7 +335,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                   SwitchListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Richiede blocco covata'),
+                    title: Text(s.trattamentoFormBloccoCovataReq),
                     value: richiedeBlocco,
                     onChanged: (v) => setDialogState(() => richiedeBlocco = v),
                   ),
@@ -338,9 +345,9 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: giorniBloccoCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Durata consigliata blocco',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: s.trattamentoFormLblDurataBlockco,
+                        border: const OutlineInputBorder(),
                         suffixText: 'gg',
                       ),
                       keyboardType: TextInputType.number,
@@ -349,7 +356,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                       validator: (v) {
                         if (!richiedeBlocco) return null;
                         if (v == null || int.tryParse(v.trim()) == null || int.parse(v.trim()) <= 0)
-                          return 'Inserisci un numero intero > 0';
+                          return s.trattamentoFormValidateNumeroGt0;
                         return null;
                       },
                     ),
@@ -361,7 +368,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annulla'),
+              child: Text(s.dialogCancelBtn),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -397,12 +404,12 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Errore creazione prodotto: $e')),
+                      SnackBar(content: Text(_s.trattamentoFormNewProductError(e.toString()))),
                     );
                   }
                 }
               },
-              child: const Text('Crea'),
+              child: Text(s.trattamentoFormBtnCreateProduct),
             ),
           ],
         ),
@@ -414,19 +421,20 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     _formKey.currentState?.save();
 
+    final s = _s;
     if (_apiarioId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seleziona un apiario')));
+          SnackBar(content: Text(s.trattamentoFormSelectApiarioMsg)));
       return;
     }
     if (_tipoTrattamentoId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seleziona un tipo di trattamento')));
+          SnackBar(content: Text(s.trattamentoFormSelectTypeMsg)));
       return;
     }
     if (_targetingSpecificArnie && _selectedArnieIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seleziona almeno un\'arnia')));
+          SnackBar(content: Text(s.trattamentoFormSelectArnieMsg)));
       return;
     }
 
@@ -461,19 +469,19 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
             '${ApiConstants.trattamentiUrl}${widget.trattamentoId}/', data);
         if (mounted)
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Trattamento aggiornato')));
+              SnackBar(content: Text(s.trattamentoFormUpdatedOk)));
       } else {
         final result = await _apiService.post(ApiConstants.trattamentiUrl, data);
         if (mounted)
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Trattamento creato')));
+              SnackBar(content: Text(s.trattamentoFormCreatedOk)));
         _scheduleTrattamentoNotifications(result);
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Errore: $e')));
+            .showSnackBar(SnackBar(content: Text(s.trattamentoFormError(e.toString()))));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -532,14 +540,16 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.trattamentoId != null
-            ? 'Modifica Trattamento'
-            : 'Nuovo Trattamento'),
+            ? s.trattamentoFormTitleEdit
+            : s.trattamentoFormTitleNew),
       ),
       body: _isLoading
-          ? const LoadingWidget(message: 'Caricamento dati...')
+          ? LoadingWidget(message: s.trattamentoDetailLblCaricamento)
           : _errorMessage != null
               ? ErrorDisplayWidget(
                   errorMessage: _errorMessage!, onRetry: _loadInitialData)
@@ -564,10 +574,10 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                         _buildDateSection(),
                         const SizedBox(height: 16),
                         TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: 'Note',
-                            hintText: 'Inserisci eventuali note (opzionale)',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: s.trattamentoFormLblNote,
+                            hintText: s.trattamentoFormHintNote,
+                            border: const OutlineInputBorder(),
                           ),
                           initialValue: _note,
                           maxLines: 3,
@@ -585,8 +595,8 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
                                     color: Colors.white)
                                 : Text(
                                     widget.trattamentoId != null
-                                        ? 'AGGIORNA TRATTAMENTO'
-                                        : 'CREA TRATTAMENTO',
+                                        ? s.trattamentoFormBtnUpdate
+                                        : s.trattamentoFormBtnCreate,
                                     style: const TextStyle(fontSize: 16),
                                   ),
                           ),
@@ -601,13 +611,14 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   // ──── Apiario ────
 
   Widget _buildApiarioSection() {
+    final s = _s;
     if (_apiarioId == null) {
       return DropdownButtonFormField<int>(
-        decoration: const InputDecoration(
-          labelText: 'Apiario',
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          labelText: s.labelApiario,
+          border: const OutlineInputBorder(),
         ),
-        hint: const Text('Seleziona un apiario'),
+        hint: Text(s.trattamentoFormSelectApiarioMsg),
         value: _apiarioId,
         items: _apiari.map<DropdownMenuItem<int>>((a) {
           return DropdownMenuItem<int>(
@@ -628,13 +639,13 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
             _loadArnieForApiario(value);
           }
         },
-        validator: (v) => v == null ? 'Seleziona un apiario' : null,
+        validator: (v) => v == null ? s.trattamentoFormSelectApiarioMsg : null,
       );
     }
     return InputDecorator(
-      decoration: const InputDecoration(
-        labelText: 'Apiario',
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: s.labelApiario,
+        border: const OutlineInputBorder(),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -658,23 +669,24 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   // ──── Target: tutto apiario vs arnie specifiche ────
 
   Widget _buildTargetSection() {
+    final s = _s;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Applica a',
-            style: TextStyle(fontSize: 13, color: Colors.grey)),
+        Text(s.trattamentoFormLblApplica,
+            style: const TextStyle(fontSize: 13, color: Colors.grey)),
         const SizedBox(height: 6),
         SegmentedButton<bool>(
-          segments: const [
+          segments: [
             ButtonSegment(
               value: false,
-              label: Text('Tutto l\'apiario'),
-              icon: Icon(Icons.hive),
+              label: Text(s.trattamentoFormApplicaTutto),
+              icon: const Icon(Icons.hive),
             ),
             ButtonSegment(
               value: true,
-              label: Text('Arnie specifiche'),
-              icon: Icon(Icons.select_all),
+              label: Text(s.trattamentoFormApplicaSpecifiche),
+              icon: const Icon(Icons.select_all),
             ),
           ],
           selected: {_targetingSpecificArnie},
@@ -698,11 +710,12 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   }
 
   Widget _buildArnieSelector() {
+    final s = _s;
     if (_apiarioId == null) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 4),
-        child: Text('Seleziona prima un apiario',
-            style: TextStyle(color: Colors.orange)),
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(s.trattamentoFormSelectPrimaApiario,
+            style: const TextStyle(color: Colors.orange)),
       );
     }
     if (_loadingArnie) {
@@ -712,10 +725,10 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
       );
     }
     if (_arnieApiario.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 4),
-        child: Text('Nessuna arnia trovata in questo apiario',
-            style: TextStyle(color: Colors.grey)),
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(s.trattamentoFormNoArnie,
+            style: const TextStyle(color: Colors.grey)),
       );
     }
     return ClipRRect(
@@ -751,16 +764,17 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   // ──── Tipo trattamento con pulsante "+" ────
 
   Widget _buildTipoTrattamentoSection() {
+    final s = _s;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: DropdownButtonFormField<int>(
-            decoration: const InputDecoration(
-              labelText: 'Prodotto / Tipo trattamento',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: s.trattamentoFormLblProdotto,
+              border: const OutlineInputBorder(),
             ),
-            hint: const Text('Seleziona un prodotto'),
+            hint: Text(s.trattamentoFormHintProdotto),
             value: _tipoTrattamentoId,
             items: _tipiTrattamento.map<DropdownMenuItem<int>>((tipo) {
               return DropdownMenuItem<int>(
@@ -773,12 +787,12 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
               _checkBloccoCovataRequirement();
             },
             validator: (v) =>
-                v == null ? 'Seleziona un tipo di trattamento' : null,
+                v == null ? s.trattamentoFormSelectTypeMsg : null,
           ),
         ),
         const SizedBox(width: 8),
         Tooltip(
-          message: 'Nuovo prodotto',
+          message: s.trattamentoFormNewProductTitle,
           child: SizedBox(
             height: 56,
             child: OutlinedButton(
@@ -794,17 +808,18 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   // ──── Metodo applicazione ────
 
   Widget _buildMetodoSection() {
+    final s = _s;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Metodo di applicazione',
-            style: TextStyle(fontSize: 13, color: Colors.grey)),
+        Text(s.trattamentoFormLblMetodoApplicazione,
+            style: const TextStyle(fontSize: 13, color: Colors.grey)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 8,
           children: _metodiApplicazione.map((m) {
             return ChoiceChip(
-              label: Text(_metodiLabels[m]!),
+              label: Text(_metodoLabel(m, s)),
               selected: _metodoApplicazione == m,
               onSelected: (_) => setState(() => _metodoApplicazione = m),
             );
@@ -817,10 +832,11 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   // ──── Date ────
 
   Widget _buildDateSection() {
+    final s = _s;
     return Column(
       children: [
         _buildDatePicker(
-          label: 'Data inizio',
+          label: s.trattamentoFormDataInizio,
           value: _dataInizio,
           firstDate: DateTime.now().subtract(const Duration(days: 365)),
           lastDate: DateTime.now().add(const Duration(days: 365)),
@@ -834,12 +850,13 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
         ),
         const SizedBox(height: 16),
         _buildOptionalDatePicker(
-          label: 'Data fine (opzionale)',
+          label: s.trattamentoFormDataFine,
           value: _dataFine,
           firstDate: _dataInizio,
           lastDate: DateTime.now().add(const Duration(days: 365)),
           onPicked: (d) => setState(() => _dataFine = d),
           onCleared: () => setState(() => _dataFine = null),
+          notSetLabel: s.arniaDetailInfoNonSpecificata,
         ),
       ],
     );
@@ -848,17 +865,18 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   // ──── Blocco covata ────
 
   Widget _buildBloccoCovataCard() {
+    final s = _s;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Blocco di covata',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(s.trattamentoDetailLblBloccoCovata,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             SwitchListTile(
-              title: const Text('Blocco covata attivo'),
+              title: Text(s.trattamentoFormBloccoCovataActive),
               value: _bloccoCovataAttivo,
               contentPadding: EdgeInsets.zero,
               onChanged: (v) => setState(() {
@@ -870,7 +888,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
             if (_bloccoCovataAttivo) ...[
               const SizedBox(height: 16),
               _buildDatePicker(
-                label: 'Data inizio blocco',
+                label: s.trattamentoFormLblDataInizioBlocco,
                 value: _dataInizioBlocco ?? _dataInizio,
                 firstDate: DateTime.now().subtract(const Duration(days: 365)),
                 lastDate: DateTime.now().add(const Duration(days: 365)),
@@ -885,31 +903,32 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
               ),
               const SizedBox(height: 16),
               _buildOptionalDatePicker(
-                label: 'Data fine blocco',
+                label: s.trattamentoFormLblDataFineBlocco,
                 value: _dataFineBlocco,
                 firstDate: _dataInizioBlocco ?? _dataInizio,
                 lastDate: DateTime.now().add(const Duration(days: 365)),
                 onPicked: (d) => setState(() => _dataFineBlocco = d),
                 onCleared: () => setState(() => _dataFineBlocco = null),
-                firstDateError: 'Imposta prima la data di inizio blocco',
+                firstDateError: s.trattamentoFormErrFirstDateBlocco,
                 requireFirstDate: _dataInizioBlocco == null,
+                notSetLabel: s.arniaDetailInfoNonSpecificata,
               ),
               const SizedBox(height: 16),
               TextFormField(
-                decoration: const InputDecoration(
-                  labelText: 'Metodo di blocco',
-                  hintText: 'Es. ingabbiamento regina, rimozione regina...',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: s.trattamentoFormLblMetodoBlocco,
+                  hintText: s.trattamentoFormHintMetodoBlocco,
+                  border: const OutlineInputBorder(),
                 ),
                 initialValue: _metodoBlocco,
                 onSaved: (v) => _metodoBlocco = v ?? '',
               ),
               const SizedBox(height: 16),
               TextFormField(
-                decoration: const InputDecoration(
-                  labelText: 'Note blocco covata',
-                  hintText: 'Dettagli aggiuntivi (opzionale)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: s.trattamentoFormLblNoteBloccoCovata,
+                  hintText: s.trattamentoFormHintNoteBlocco,
+                  border: const OutlineInputBorder(),
                 ),
                 initialValue: _noteBlocco,
                 maxLines: 3,
@@ -966,6 +985,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
     required VoidCallback onCleared,
     bool requireFirstDate = false,
     String firstDateError = '',
+    String notSetLabel = '—',
   }) {
     return InkWell(
       onTap: () async {
@@ -990,7 +1010,7 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(value != null ? dateFormat.format(value) : 'Non specificata'),
+            Text(value != null ? dateFormat.format(value) : notSetLabel),
             Row(children: [
               if (value != null)
                 GestureDetector(

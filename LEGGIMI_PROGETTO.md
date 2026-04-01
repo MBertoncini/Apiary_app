@@ -1,4 +1,4 @@
-# LEGGIMI - Guida Completa al Progetto Apiario Manager
+# LEGGIMI - Guida Completa al Progetto Apiary
 
 > Questo documento serve come riferimento per qualsiasi AI (o sviluppatore) che lavori su questo progetto.
 > Leggilo SEMPRE prima di apportare modifiche.
@@ -7,7 +7,7 @@
 
 ## 1. PANORAMICA DEL SISTEMA
 
-Il progetto **Apiario Manager** e' un sistema di gestione apicoltura composto da **due repository Git separati** che lavorano insieme:
+Il progetto **Apiary** e' un sistema di gestione apicoltura composto da **due repository Git separati** che lavorano insieme:
 
 | Componente | Repository | Percorso locale | Tecnologia |
 |---|---|---|---|
@@ -444,4 +444,4 @@ app_constants.dart (route) → screens/*.dart (widget) → route_generator.dart 
 ---
 
 *Ultimo aggiornamento: Febbraio 2026*
-*Progetto: Apiario Manager - Gestione Apicoltura*
+*Progetto: Apiary - Gestione Apicoltura*

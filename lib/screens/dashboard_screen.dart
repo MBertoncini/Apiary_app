@@ -16,6 +16,8 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../screens/mobile_scanner_wrapper_screen.dart';
 import '../screens/chat_screen.dart';
 import 'package:intl/intl.dart';
+import '../services/language_service.dart';
+import '../l10n/app_strings.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -58,8 +60,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _weatherData;
   Map<String, List<dynamic>> _calendarEvents = {};
   
-  // Cache per alerts (evita ricalcolo ad ogni build)
-  List<Map<String, dynamic>> _cachedAlerts = [];
+  // Accesso corrente alle stringhe localizzate (listen: false — il rebuild è
+  // innescato dall'ascolto esplicito in build())
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
 
   // Evita di refreshare il profilo ad ogni visita: max una volta ogni 5 minuti
   static DateTime? _lastProfileRefresh;
@@ -169,7 +173,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _isLoadingMelari     = false;
       _isLoadingSmielature = false;
       _prepareCalendarEvents();
-      _cachedAlerts = _generateAlerts();
       if (mounted) setState(() { _isRefreshing = true; });
     } else {
       // Nessuna cache: mostra spinner finché l'API risponde
@@ -217,7 +220,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Aggiorna dati derivati e ricostruisci UI
     _prepareCalendarEvents();
-    _cachedAlerts = _generateAlerts();
     _lastSyncTime = DateTime.now();
     if (mounted) setState(() { _isRefreshing = false; });
   }
@@ -369,30 +371,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _refreshData() async {
-    // Mostra messaggio di feedback durante la sincronizzazione
+    final s = _s;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             SizedBox(
-              height: 20, 
-              width: 20, 
+              height: 20,
+              width: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: 12),
-            Text('Sincronizzazione in corso...'),
+            Text(s.dashSyncing),
           ],
         ),
         duration: Duration(seconds: 1),
       ),
     );
-    
+
     await _loadData();
-    
-    // Mostra conferma
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Dati aggiornati!'),
+        content: Text(s.dashSyncDone),
         duration: Duration(seconds: 1),
       ),
     );
@@ -427,6 +428,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _prepareCalendarEvents() {
     _calendarEvents = {};
+    final s = _s;
 
     // Trattamenti — span full date range + suspension + brood block
     for (var t in _trattamenti) {
@@ -438,7 +440,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         endStr: t['data_fine'],
         eventTemplate: {
           'type': 'trattamento',
-          'title': '${t['tipo_trattamento_nome'] ?? 'Trattamento'}${apiarioNome.isNotEmpty ? ' — $apiarioNome' : ''}',
+          'title': '${t['tipo_trattamento_nome'] ?? s.dashEventTrattamento}${apiarioNome.isNotEmpty ? ' — $apiarioNome' : ''}',
           'id': t['id'],
           'color': Colors.purple,
         },
@@ -452,7 +454,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           endStr: t['data_fine_sospensione'],
           eventTemplate: {
             'type': 'sospensione',
-            'title': 'Sospensione — ${t['tipo_trattamento_nome'] ?? 'Trattamento'}${apiarioNome.isNotEmpty ? ' ($apiarioNome)' : ''}',
+            'title': '${s.dashEventSospensione} — ${t['tipo_trattamento_nome'] ?? s.dashEventTrattamento}${apiarioNome.isNotEmpty ? ' ($apiarioNome)' : ''}',
             'id': t['id'],
             'color': Colors.deepOrange,
           },
@@ -466,7 +468,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           endStr: t['data_fine_blocco'],
           eventTemplate: {
             'type': 'blocco_covata',
-            'title': 'Blocco covata — ${t['tipo_trattamento_nome'] ?? 'Trattamento'}${apiarioNome.isNotEmpty ? ' ($apiarioNome)' : ''}',
+            'title': '${s.dashEventBloccoCovata} — ${t['tipo_trattamento_nome'] ?? s.dashEventTrattamento}${apiarioNome.isNotEmpty ? ' ($apiarioNome)' : ''}',
             'id': t['id'],
             'color': Colors.brown,
           },
@@ -482,7 +484,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         endStr: f['data_fine'],
         eventTemplate: {
           'type': 'fioritura',
-          'title': '${f['pianta'] ?? 'Fioritura'}${apiarioNome.isNotEmpty ? ' — $apiarioNome' : ''}',
+          'title': '${f['pianta'] ?? s.dashEventFioritura}${apiarioNome.isNotEmpty ? ' — $apiarioNome' : ''}',
           'id': f['id'],
           'color': Colors.orange,
         },
@@ -495,7 +497,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final date = DateTime.parse(controllo['data']);
         _addCalendarEvent(_dateKey(date), {
           'type': 'controllo',
-          'title': 'Controllo arnia ${controllo['arnia_numero'] ?? ''}',
+          'title': s.dashEventControlloArnia((controllo['arnia_numero'] ?? '').toString()),
           'id': controllo['id'],
           'arnia_id': controllo['arnia'],
           'color': Colors.blue,
@@ -510,7 +512,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final arniaNr = regina['arnia_numero'] ?? '';
         _addCalendarEvent(_dateKey(date), {
           'type': 'regina',
-          'title': 'Regina introdotta${arniaNr.toString().isNotEmpty ? ' — arnia $arniaNr' : ''}',
+          'title': '${s.dashEventReginaIntrodotta}${arniaNr.toString().isNotEmpty ? '${s.dashEventArniaSep}$arniaNr' : ''}',
           'id': regina['id'],
           'color': Colors.red,
         });
@@ -524,7 +526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final date = DateTime.parse(melario['data_posizionamento']);
         _addCalendarEvent(_dateKey(date), {
           'type': 'melario',
-          'title': 'Melario posizionato${arniaNr.toString().isNotEmpty ? ' — arnia $arniaNr' : ''}',
+          'title': '${s.dashEventMelarioPosizionato}${arniaNr.toString().isNotEmpty ? '${s.dashEventArniaSep}$arniaNr' : ''}',
           'id': melario['id'],
           'color': Colors.green,
         });
@@ -533,7 +535,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final date = DateTime.parse(melario['data_rimozione']);
         _addCalendarEvent(_dateKey(date), {
           'type': 'melario',
-          'title': 'Melario rimosso${arniaNr.toString().isNotEmpty ? ' — arnia $arniaNr' : ''}',
+          'title': '${s.dashEventMelarioRimosso}${arniaNr.toString().isNotEmpty ? '${s.dashEventArniaSep}$arniaNr' : ''}',
           'id': melario['id'],
           'color': Colors.green,
         });
@@ -546,7 +548,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final date = DateTime.parse(smielatura['data']);
         _addCalendarEvent(_dateKey(date), {
           'type': 'smielatura',
-          'title': 'Smielatura${smielatura['tipo_miele'] != null ? ' — ${smielatura['tipo_miele']}' : ''}',
+          'title': '${s.dashEventSmielatura}${smielatura['tipo_miele'] != null ? ' — ${smielatura['tipo_miele']}' : ''}',
           'id': smielatura['id'],
           'color': Colors.amber,
         });
@@ -713,12 +715,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
     
   Widget _buildCalendar() {
+    final s = _s;
     List<dynamic> selectedDayEvents = [];
-    
+
     if (_selectedDay != null) {
       selectedDayEvents = _getEventsForDay(_selectedDay!);
     }
-    
+
     return Card(
       elevation: 2,
       margin: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
@@ -732,7 +735,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Calendario attività',
+                  s.dashCalendarTitle,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -766,16 +769,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       IconButton(
                         icon: Icon(Icons.arrow_back),
                         onPressed: _previousMonth,
-                        tooltip: _calendarFormat == 'week' ? 'Settimana precedente' : 'Mese precedente',
+                        tooltip: _calendarFormat == 'week' ? s.dashCalendarPrevWeek : s.dashCalendarPrevMonth,
                       ),
                       TextButton(
                         onPressed: _toToday,
-                        child: Text('Oggi'),
+                        child: Text(s.dashCalendarToday),
                       ),
                       IconButton(
                         icon: Icon(Icons.arrow_forward),
                         onPressed: _nextMonth,
-                        tooltip: _calendarFormat == 'week' ? 'Settimana successiva' : 'Mese successivo',
+                        tooltip: _calendarFormat == 'week' ? s.dashCalendarNextWeek : s.dashCalendarNextMonth,
                       ),
                     ],
                   ),
@@ -792,7 +795,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             _generateVisibleDays();
                           });
                         },
-                        child: Text('Mese'),
+                        child: Text(s.dashCalendarViewMonth),
                         style: TextButton.styleFrom(
                           foregroundColor: _calendarFormat == 'month'
                             ? ThemeConstants.primaryColor
@@ -811,7 +814,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             _generateVisibleDays();
                           });
                         },
-                        child: Text('Settimana'),
+                        child: Text(s.dashCalendarViewWeek),
                         style: TextButton.styleFrom(
                           foregroundColor: _calendarFormat == 'week'
                             ? ThemeConstants.primaryColor
@@ -831,14 +834,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     spacing: 12,
                     runSpacing: 4,
                     children: [
-                      _buildCalendarLegendItem('Controlli', Colors.blue),
-                      _buildCalendarLegendItem('Trattamenti', Colors.purple),
-                      _buildCalendarLegendItem('Fioriture', Colors.orange),
-                      _buildCalendarLegendItem('Regine', Colors.red),
-                      _buildCalendarLegendItem('Melari', Colors.green),
-                      _buildCalendarLegendItem('Smielature', Colors.amber),
-                      _buildCalendarLegendItem('Sospensione', Colors.deepOrange),
-                      _buildCalendarLegendItem('Blocco covata', Colors.brown),
+                      _buildCalendarLegendItem(s.dashCalendarLegendControlli, Colors.blue),
+                      _buildCalendarLegendItem(s.dashCalendarLegendTrattamenti, Colors.purple),
+                      _buildCalendarLegendItem(s.dashCalendarLegendFioriture, Colors.orange),
+                      _buildCalendarLegendItem(s.dashCalendarLegendRegine, Colors.red),
+                      _buildCalendarLegendItem(s.dashCalendarLegendMelari, Colors.green),
+                      _buildCalendarLegendItem(s.dashCalendarLegendSmielature, Colors.amber),
+                      _buildCalendarLegendItem(s.dashCalendarLegendSospensione, Colors.deepOrange),
+                      _buildCalendarLegendItem(s.dashCalendarLegendBloccoCovata, Colors.brown),
                     ],
                   ),
                 ],
@@ -859,8 +862,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     _isSameDay(_selectedDay!, DateTime.now())
-                        ? 'Oggi — ${DateFormat('dd/MM/yyyy').format(_selectedDay!)}'
-                        : 'Eventi del ${DateFormat('dd/MM/yyyy').format(_selectedDay!)}',
+                        ? s.dashCalendarTodayDate(DateFormat('dd/MM/yyyy').format(_selectedDay!))
+                        : s.dashCalendarDateEvents(DateFormat('dd/MM/yyyy').format(_selectedDay!)),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -876,8 +879,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           SizedBox(width: 8),
                           Text(
                             _isSameDay(_selectedDay!, DateTime.now())
-                                ? 'Nessuna attività prevista per oggi.'
-                                : 'Nessun evento per questa giornata.',
+                                ? s.dashCalendarNoEventsToday
+                                : s.dashCalendarNoEvents,
                             style: TextStyle(color: ThemeConstants.textSecondaryColor),
                           ),
                         ],
@@ -921,7 +924,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
             children: [
-              for (final day in ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'])
+              for (final day in _s.dashWeekdayAbbr)
                 Expanded(
                   child: Container(
                     alignment: Alignment.center,
@@ -1009,7 +1012,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'][date.weekday - 1],
+                    _s.dashWeekdayAbbr[date.weekday - 1],
                     style: TextStyle(
                       fontSize: 12,
                       color: ThemeConstants.textSecondaryColor,
@@ -1218,7 +1221,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    weather['location'] ?? 'Meteo locale',
+                    weather['location'] ?? _s.dashWeatherLocal,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -1246,7 +1249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Umidità: ${weather['humidity']}%',
+                  _s.dashWeatherHumidity('${weather['humidity']}'),
                   style: TextStyle(
                     fontSize: 12,
                     color: ThemeConstants.textSecondaryColor,
@@ -1260,66 +1263,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
   
-  List<Map<String, dynamic>> _generateAlerts() {
-    List<Map<String, dynamic>> alerts = [];
-    
-    // Controlla trattamenti che scadono a breve
+  List<Map<String, dynamic>> _generateAlerts(AppStrings s) {
+    final List<Map<String, dynamic>> alerts = [];
+
     for (var t in _trattamenti) {
       if (t['stato'] == 'in_corso' && t['data_fine'] != null) {
-        DateTime dataFine = DateTime.parse(t['data_fine']);
-        DateTime oggi = DateTime.now();
-        
-        if (dataFine.difference(oggi).inDays <= 3) {
+        final dataFine = DateTime.parse(t['data_fine']);
+        final oggi = DateTime.now();
+        final daysLeft = dataFine.difference(oggi).inDays;
+        if (daysLeft <= 3) {
           alerts.add({
             'type': 'warning',
-            'title': 'Trattamento in scadenza',
-            'message': 'Il trattamento "${t['tipo_trattamento_nome']}" scadrà tra ${dataFine.difference(oggi).inDays} giorni.',
+            'title': s.dashAlertTrattamentoExpiringTitle,
+            'message': s.dashAlertTrattamentoExpiringMsg(
+                t['tipo_trattamento_nome'] ?? '', daysLeft),
             'icon': Icons.timer,
             'color': Colors.orange,
-            'action': () {
-              // Navigazione ai dettagli del trattamento
-            },
+            'action': () {},
           });
         }
       }
     }
-    
-    // Controlla se ci sono apiari senza visite recenti
+
     for (var apiario in _apiari) {
       if (apiario['ultima_visita'] != null) {
-        DateTime ultimaVisita = DateTime.parse(apiario['ultima_visita']);
+        final ultimaVisita = DateTime.parse(apiario['ultima_visita']);
         if (DateTime.now().difference(ultimaVisita).inDays > 14) {
           alerts.add({
             'type': 'info',
-            'title': 'Apiario da visitare',
-            'message': 'L\'apiario "${apiario['nome']}" non viene visitato da più di 14 giorni.',
+            'title': s.dashAlertApiarioToVisitTitle,
+            'message': s.dashAlertApiarioToVisitMsg(apiario['nome'] ?? ''),
             'icon': Icons.calendar_today,
             'color': Colors.blue,
-            'action': () {
-              _navigateToApiarioDetail(apiario['id']);
-            },
+            'action': () => _navigateToApiarioDetail(apiario['id']),
           });
         }
       }
     }
-    
+
     return alerts;
   }
 
   Widget _buildAlertsWidget() {
-    final alerts = _cachedAlerts;
+    final s = _s;
+    final alerts = _generateAlerts(s);
 
     if (alerts.isEmpty) {
       return SizedBox.shrink();
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
-            'Avvisi e suggerimenti',
+            s.dashAlertsTitle,
             style: ThemeConstants.subheadingStyle,
           ),
         ),
@@ -1391,7 +1390,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Align(
                               alignment: Alignment.centerRight,
                               child: Text(
-                                'Vedi dettagli',
+                                s.dashAlertViewDetails,
                                 style: TextStyle(
                                   color: ThemeConstants.primaryColor,
                                   fontWeight: FontWeight.bold,
@@ -1444,7 +1443,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                apiario['posizione'] ?? 'Posizione non specificata',
+                apiario['posizione'] ?? _s.dashPositionNone,
                 style: TextStyle(
                   color: ThemeConstants.textSecondaryColor,
                 ),
@@ -1459,9 +1458,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
   
   Widget _buildTrattamentoCard(dynamic trattamento) {
-    // Formatta le date
-    String dataInizio = trattamento['data_inizio'] ?? 'N/D';
-    String dataFine = trattamento['data_fine'] ?? 'In corso';
+    final s = _s;
+    String dataInizio = trattamento['data_inizio'] ?? s.dashStatusNd;
+    String dataFine = trattamento['data_fine'] ?? s.dashStatusInCorso;
     
     List<Widget> children = [];
     
@@ -1471,7 +1470,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Expanded(
             child: Text(
-              trattamento['tipo_trattamento_nome'] ?? 'Trattamento',
+              trattamento['tipo_trattamento_nome'] ?? s.dashEventTrattamento,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -1488,11 +1487,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              trattamento['stato'] == 'in_corso' 
-                  ? 'In corso' 
+              trattamento['stato'] == 'in_corso'
+                  ? s.dashStatusInCorso
                   : trattamento['stato'] == 'programmato'
-                      ? 'Programmato'
-                      : 'Completato',
+                      ? s.dashStatusProgrammato
+                      : s.dashStatusCompletato,
               style: TextStyle(
                 fontSize: 12,
                 color: trattamento['stato'] == 'in_corso' 
@@ -1514,7 +1513,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(width: 4),
           Expanded(
             child: Text(
-              trattamento['apiario_nome'] ?? 'Apiario',
+              trattamento['apiario_nome'] ?? s.dashStatusApiario,
               style: TextStyle(color: ThemeConstants.textSecondaryColor),
               overflow: TextOverflow.ellipsis,
             ),
@@ -1531,7 +1530,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Icon(Icons.calendar_today, size: 16, color: ThemeConstants.textSecondaryColor),
           SizedBox(width: 4),
           Text(
-            'Dal $dataInizio al $dataFine',
+            s.dashTrattamentoDates(dataInizio, dataFine),
             style: TextStyle(color: ThemeConstants.textSecondaryColor),
           ),
         ],
@@ -1577,6 +1576,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFiorituraCard(dynamic fioritura) {
+    final s = _s;
     bool isActive = fioritura['is_active'] ?? false;
     
     return Card(
@@ -1591,7 +1591,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    fioritura['pianta'] ?? 'Fioritura',
+                    fioritura['pianta'] ?? s.dashEventFioritura,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -1608,7 +1608,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    isActive ? 'Attiva' : 'Terminata',
+                    isActive ? s.dashFiorituraAttiva : s.dashFiorituraTerminata,
                     style: TextStyle(
                       fontSize: 12,
                       color: isActive
@@ -1640,7 +1640,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Icon(Icons.calendar_today, size: 16, color: ThemeConstants.textSecondaryColor),
                 SizedBox(width: 4),
                 Text(
-                  'Dal ${fioritura['data_inizio']} ${fioritura['data_fine'] != null ? 'al ${fioritura['data_fine']}' : ''}',
+                  s.dashFiorituraDates(fioritura['data_inizio'] ?? '', fioritura['data_fine']),
                   style: TextStyle(color: ThemeConstants.textSecondaryColor),
                 ),
               ],
@@ -1652,10 +1652,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSearchResultsView() {
-    bool hasResults = _filteredApiari.isNotEmpty || 
-                    _filteredTrattamenti.isNotEmpty || 
+    final s = _s;
+    bool hasResults = _filteredApiari.isNotEmpty ||
+                    _filteredTrattamenti.isNotEmpty ||
                     _filteredFioriture.isNotEmpty;
-                    
+
     if (!hasResults) {
       return Center(
         child: Column(
@@ -1668,7 +1669,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Nessun risultato trovato per "$_searchQuery"',
+              s.dashSearchNoResults(_searchQuery),
               style: TextStyle(
                 color: ThemeConstants.textSecondaryColor,
                 fontSize: 16,
@@ -1691,7 +1692,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
-                'Apiari (${_filteredApiari.length})',
+                s.dashSearchSection(s.navApiari, _filteredApiari.length),
                 style: ThemeConstants.subheadingStyle,
               ),
             ),
@@ -1713,7 +1714,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
-                'Trattamenti (${_filteredTrattamenti.length})',
+                s.dashSearchSection(s.navTrattamentiSanitari, _filteredTrattamenti.length),
                 style: ThemeConstants.subheadingStyle,
               ),
             ),
@@ -1735,7 +1736,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
-                'Fioriture (${_filteredFioriture.length})',
+                s.dashSearchSection(s.navFioriture, _filteredFioriture.length),
                 style: ThemeConstants.subheadingStyle,
               ),
             ),
@@ -1757,6 +1758,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   @override
   Widget build(BuildContext context) {
+    // Ascolta i cambiamenti di lingua e ricostruisce l'intera widget
+    Provider.of<LanguageService>(context);
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
     
@@ -1773,16 +1776,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final shouldExit = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Uscire dall\'app?'),
-            content: const Text('Vuoi chiudere l\'applicazione?'),
+            title: Text(_s.dashExitTitle),
+            content: Text(_s.dashExitMessage),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Annulla'),
+                child: Text(_s.dashExitCancel),
               ),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Esci'),
+                child: Text(_s.dashExitConfirm),
               ),
             ],
           ),
@@ -1794,7 +1797,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: _isSearching ? null : Text('Dashboard'),
+        title: _isSearching ? null : Text(_s.dashTitle),
         actions: [
           // Icona di ricerca
           _isSearching
@@ -1811,7 +1814,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Cerca...',
+                      hintText: _s.dashSearchHint,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
@@ -1836,15 +1839,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : IconButton(
                 icon: Icon(Icons.search),
                 onPressed: _showSearchView,
-                tooltip: 'Cerca',
+                tooltip: _s.dashSearchTooltip,
               ),
-          
+
           // Pulsante per chiudere la ricerca
           if (_isSearching)
             IconButton(
               icon: Icon(Icons.close),
               onPressed: _hideSearchView,
-              tooltip: 'Chiudi ricerca',
+              tooltip: _s.dashCloseSearchTooltip,
             ),
         ],
       ),
@@ -1872,7 +1875,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     ContextualHint(
                       prefKey: 'dashboard_v1',
-                      message: '👋 Qui trovi il riepilogo di tutte le attività — arnie, controlli recenti e raccolti. Tocca una sezione per entrare.',
+                      message: _s.dashContextualHint,
                     ),
                     // Header con benvenuto e fumetto per freddure
                     Padding(
@@ -1885,7 +1888,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Benvenuto, ${(user?.firstName?.isNotEmpty == true) ? user!.firstName! : (user?.username ?? "Utente")}',
+                                  _s.dashWelcomeUser((user?.firstName?.isNotEmpty == true) ? user!.firstName! : (user?.username ?? _s.defaultUserName)),
                                   style: ThemeConstants.headingStyle,
                                 ),
                               ],
@@ -1914,12 +1917,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'I tuoi apiari',
+                                _s.dashSectionApiari,
                                 style: ThemeConstants.subheadingStyle,
                               ),
                               TextButton(
                                 onPressed: () => Navigator.of(context).pushNamed(AppConstants.apiarioListRoute),
-                                child: Text('Vedi tutti'),
+                                child: Text(_s.dashBtnViewAll),
                               ),
                             ],
                           ),
@@ -1945,7 +1948,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Errore nel caricamento dei dati: $_apiariError',
+                                      _s.dashLoadError(_apiariError ?? ''),
                                       style: TextStyle(color: Colors.red),
                                     ),
                                   ),
@@ -1969,7 +1972,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'Nessun apiario disponibile',
+                                      _s.dashNoApiari,
                                       style: TextStyle(
                                         color: ThemeConstants.textSecondaryColor,
                                       ),
@@ -1977,7 +1980,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     const SizedBox(height: 8),
                                     ElevatedButton(
                                       onPressed: _navigateToApiarioCreate,
-                                      child: Text('Crea nuovo apiario'),
+                                      child: Text(_s.dashBtnCreateApiario),
                                     ),
                                   ],
                                 ),
@@ -2005,12 +2008,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Trattamenti sanitari attivi',
+                                _s.dashSectionTrattamenti,
                                 style: ThemeConstants.subheadingStyle,
                               ),
                               TextButton(
                                 onPressed: () => Navigator.of(context).pushNamed(AppConstants.trattamentiRoute),
-                                child: Text('Vedi tutti'),
+                                child: Text(_s.dashBtnViewAll),
                               ),
                             ],
                           ),
@@ -2036,7 +2039,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Errore nel caricamento dei dati: $_trattamentiError',
+                                      _s.dashLoadError(_trattamentiError ?? ''),
                                       style: TextStyle(color: Colors.red),
                                     ),
                                   ),
@@ -2060,7 +2063,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'Nessun trattamento attivo',
+                                      _s.dashNoTrattamenti,
                                       style: TextStyle(
                                         color: ThemeConstants.textSecondaryColor,
                                       ),
@@ -2092,12 +2095,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Fioriture attive',
+                                _s.dashSectionFioriture,
                                 style: ThemeConstants.subheadingStyle,
                               ),
                               TextButton(
                                 onPressed: () => Navigator.of(context).pushNamed(AppConstants.fioritureListRoute),
-                                child: Text('Vedi tutti'),
+                                child: Text(_s.dashBtnViewAll),
                               ),
                             ],
                           ),
@@ -2123,7 +2126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Errore nel caricamento dei dati: $_fioritureError',
+                                      _s.dashLoadError(_fioritureError ?? ''),
                                       style: TextStyle(color: Colors.red),
                                     ),
                                   ),
@@ -2147,7 +2150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'Nessuna fioritura attiva',
+                                      _s.dashNoFioriture,
                                       style: TextStyle(
                                         color: ThemeConstants.textSecondaryColor,
                                       ),
@@ -2183,7 +2186,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   // Aggiungi questo elemento all'inizio della lista dei SpeedDialChild
                   SpeedDialChild(
                     child: Icon(Icons.mic),
-                    label: 'Input vocale',
+                    label: _s.dashFabVoiceInput,
                     backgroundColor: Colors.purple,
                     foregroundColor: Colors.white,
                     onTap: () {
@@ -2193,7 +2196,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   // Mantieni gli elementi esistenti
                   SpeedDialChild(
                     child: Icon(Icons.chat),
-                    label: 'ApiarioAI Assistant',
+                    label: _s.dashFabAiAssistant,
                     backgroundColor: Colors.purple,
                     foregroundColor: Colors.white,
                     onTap: () {
@@ -2214,7 +2217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 SpeedDialChild(
                   child: Icon(Icons.qr_code_scanner),
-                  label: 'Scansiona QR',
+                  label: _s.dashFabScanQr,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -2224,7 +2227,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 SpeedDialChild(
                   child: Icon(Icons.add),
-                  label: 'Nuovo apiario',
+                  label: _s.dashFabNewApiario,
                   onTap: _navigateToApiarioCreate,
                 ),
               ],

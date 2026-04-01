@@ -7,6 +7,8 @@ import '../../models/apiario.dart';  // Import the Apiario model
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';  // Import StorageService
 import '../../widgets/field_help_icon.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class ArniaFormScreen extends StatefulWidget {
   final int? apiarioId;
@@ -19,6 +21,9 @@ class ArniaFormScreen extends StatefulWidget {
 }
 
 class _ArniaFormScreenState extends State<ArniaFormScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   final _formKey = GlobalKey<FormState>();
   final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
   late ApiService _apiService;
@@ -136,7 +141,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
         setState(() { _loadingApiari = false; });
         if (_apiari.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore nel caricare gli apiari')),
+            SnackBar(content: Text(_s.arniaLoadApiariError)),
           );
         }
       }
@@ -234,14 +239,14 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
           await _apiService.put(ApiConstants.arnieUrl + widget.arnia!.id.toString() + '/', data);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Arnia aggiornata con successo')),
+            SnackBar(content: Text(_s.arniaUpdatedOk)),
           );
         } else {
           // Modalità creazione
           await _apiService.post(ApiConstants.arnieUrl, data);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Arnia creata con successo')),
+            SnackBar(content: Text(_s.arniaCreatedOk)),
           );
         }
 
@@ -250,7 +255,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
+          SnackBar(content: Text(_s.arniaFormError(e.toString()))),
         );
       } finally {
         setState(() {
@@ -262,14 +267,17 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
+    final s = _s;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.arnia != null ? 'Modifica Arnia' : 'Nuova Arnia'),
+        title: Text(widget.arnia != null ? s.arniaFormTitleEdit : s.arniaFormTitleNew),
       ),
       body: _isLoading || _loadingApiari
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16.0),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -278,9 +286,9 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                     // Campo per la selezione dell'apiario
                     DropdownButtonFormField<int>(
                       decoration: InputDecoration(
-                        labelText: 'Apiario',
-                        hintText: 'Seleziona l\'apiario',
-                        border: OutlineInputBorder(),
+                        labelText: s.arniaFormLblApiario,
+                        hintText: s.arniaFormHintApiario,
+                        border: const OutlineInputBorder(),
                       ),
                       value: _apiarioId,
                       items: _apiari.map((apiario) {
@@ -292,37 +300,35 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                       onChanged: _onApiarioChanged,
                       validator: (value) {
                         if (value == null) {
-                          return 'Seleziona un apiario';
+                          return s.arniaFormValidateApiario;
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Numero arnia
                     TextFormField(
                       decoration: InputDecoration(
-                        labelText: 'Numero arnia',
-                        hintText: 'Inserisci il numero dell\'arnia',
-                        border: OutlineInputBorder(),
+                        labelText: s.arniaFormLblNumero,
+                        hintText: s.arniaFormHintNumero,
+                        border: const OutlineInputBorder(),
                       ),
                       controller: _numeroController,
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Inserisci un numero';
+                          return s.arniaFormValidateNumero;
                         }
                         final n = int.tryParse(value);
                         if (n == null) {
-                          return 'Inserisci un numero valido';
+                          return s.arniaFormValidateNumeroFormat;
                         }
-                        // In creazione, blocca i numeri già usati nell'apiario
                         if (widget.arnia == null && _numeriUsati.contains(n)) {
-                          return 'Il numero $n è già usato in questo apiario';
+                          return s.arniaFormValidateNumeroUsato(n);
                         }
-                        // In modifica, blocca solo se cambia numero e il nuovo è usato da un'altra arnia
                         if (widget.arnia != null && n != widget.arnia!.numero && _numeriUsati.contains(n)) {
-                          return 'Il numero $n è già usato in questo apiario';
+                          return s.arniaFormValidateNumeroUsato(n);
                         }
                         return null;
                       },
@@ -331,12 +337,12 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Colore arnia
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
-                        labelText: 'Colore arnia',
-                        border: OutlineInputBorder(),
+                        labelText: s.arniaFormLblColore,
+                        border: const OutlineInputBorder(),
                       ),
                       value: _colore,
                       items: _coloriDisponibili.map((color) {
@@ -370,7 +376,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         Row(
                           children: [
                             Text(
-                              'Tipo arnia',
+                              s.arniaFormLblTipoArnia,
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                             ),
                             FieldHelpIcon(
@@ -425,8 +431,8 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                       },
                       child: InputDecorator(
                         decoration: InputDecoration(
-                          labelText: 'Data installazione',
-                          border: OutlineInputBorder(),
+                          labelText: s.arniaFormLblDataInstall,
+                          border: const OutlineInputBorder(),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -441,7 +447,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                     
                     // Stato attivo
                     SwitchListTile(
-                      title: Text('Arnia attiva'),
+                      title: Text(s.arniaFormActiveTitle),
                       value: _attiva,
                       onChanged: (value) {
                         setState(() {
@@ -459,9 +465,9 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                     // Note
                     TextFormField(
                       decoration: InputDecoration(
-                        labelText: 'Note',
-                        hintText: 'Inserisci eventuali note (opzionale)',
-                        border: OutlineInputBorder(),
+                        labelText: s.arniaFormLblNotes,
+                        hintText: s.arniaFormHintNotes,
+                        border: const OutlineInputBorder(),
                       ),
                       initialValue: _note,
                       maxLines: 3,
@@ -477,8 +483,8 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: Text(
-                          widget.arnia != null ? 'AGGIORNA ARNIA' : 'CREA ARNIA',
-                          style: TextStyle(fontSize: 16),
+                          widget.arnia != null ? s.arniaFormBtnUpdate : s.arniaFormBtnCreate,
+                          style: const TextStyle(fontSize: 16),
                         ),
                       ),
                     ),

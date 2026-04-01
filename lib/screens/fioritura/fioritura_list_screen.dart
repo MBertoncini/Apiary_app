@@ -10,6 +10,8 @@ import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class FiorituraListScreen extends StatefulWidget {
   @override
@@ -18,6 +20,9 @@ class FiorituraListScreen extends StatefulWidget {
 
 class _FiorituraListScreenState extends State<FiorituraListScreen>
     with SingleTickerProviderStateMixin {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   late TabController _tabController;
 
   List<Fioritura> _mie = [];
@@ -82,7 +87,7 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
       if (mie != null) _mie = mie;
       if (community != null) _community = community;
       if (mie == null && community == null && _mie.isEmpty && _community.isEmpty) {
-        _errorMessage = 'Errore nel caricamento delle fioriture';
+        _errorMessage = _s.fiorituraListLoadError;
       }
       setState(() { _isRefreshing = false; });
     }
@@ -100,14 +105,16 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Fioriture'),
+        title: Text(s.fiorituraListTitle),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Le mie'),
-            Tab(text: 'Community'),
+            Tab(text: s.fiorituraTabMie),
+            Tab(text: s.fiorituraTabCommunity),
           ],
         ),
         actions: [],
@@ -115,7 +122,7 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
       drawer: AppDrawer(currentRoute: AppConstants.fioritureListRoute),
       floatingActionButton: FloatingActionButton(
         heroTag: 'btnNuovaFioritura',
-        tooltip: 'Aggiungi fioritura',
+        tooltip: s.fiorituraFabTooltip,
         onPressed: () async {
           final result = await Navigator.of(context)
               .pushNamed(AppConstants.fiorituraCreateRoute);
@@ -131,7 +138,7 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Cerca per pianta o apiario...',
+                hintText: s.fiorituraSearchHint,
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -164,15 +171,16 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
   }
 
   Widget _buildList(List<Fioritura> fioriture, {required bool showActions}) {
+    final s = _s;
     if (fioriture.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.local_florist, size: 64, color: Colors.grey[300]),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
-              'Nessuna fioritura trovata',
+              s.fiorituraListNoData,
               style: TextStyle(color: ThemeConstants.textSecondaryColor),
             ),
           ],
@@ -182,7 +190,7 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
-        padding: EdgeInsets.only(bottom: 80),
+        padding: const EdgeInsets.only(bottom: 80),
         itemCount: fioriture.length,
         itemBuilder: (ctx, i) => _FiorituraCard(
           fioritura: fioriture[i],
@@ -205,20 +213,20 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
               : null,
           onDelete: showActions
               ? () async {
+                  final localS = _s;
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: Text('Elimina fioritura'),
-                      content: Text(
-                          'Vuoi eliminare la fioritura "${fioriture[i].pianta}"?'),
+                      title: Text(localS.fiorituraDeleteTitle),
+                      content: Text(localS.fiorituraListDeleteMsg(fioriture[i].pianta)),
                       actions: [
                         TextButton(
                             onPressed: () => Navigator.pop(ctx, false),
-                            child: Text('Annulla')),
+                            child: Text(localS.dialogCancelBtn)),
                         TextButton(
                             onPressed: () => Navigator.pop(ctx, true),
-                            child: Text('Elimina',
-                                style: TextStyle(color: Colors.red))),
+                            child: Text(localS.fiorituraMenuDelete,
+                                style: const TextStyle(color: Colors.red))),
                       ],
                     ),
                   );
@@ -227,9 +235,11 @@ class _FiorituraListScreenState extends State<FiorituraListScreen>
                       await FiorituraService(Provider.of<ApiService>(context, listen: false)).deleteFioritura(fioriture[i].id);
                       _load();
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Errore eliminazione: $e')),
-                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(_s.fiorituraDeleteError(e.toString()))),
+                        );
+                      }
                     }
                   }
                 }
@@ -257,11 +267,12 @@ class _FiorituraCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final isActive = fioritura.isActive;
     final color = isActive ? Colors.green : Colors.grey;
 
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
@@ -273,11 +284,11 @@ class _FiorituraCard extends StatelessWidget {
               Row(
                 children: [
                   Icon(Icons.local_florist, color: color, size: 20),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       fioritura.pianta,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: ThemeConstants.textPrimaryColor,
@@ -286,20 +297,20 @@ class _FiorituraCard extends StatelessWidget {
                   ),
                   if (fioritura.pubblica)
                     Tooltip(
-                      message: 'Pubblica',
+                      message: s.fiorituraCardPubblica,
                       child: Icon(Icons.public, size: 16,
                           color: Colors.blue[400]),
                     ),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   Container(
                     padding:
-                        EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      isActive ? 'Attiva' : 'Non attiva',
+                      isActive ? s.fiorituraCardAttiva : s.fiorituraCardNonAttiva,
                       style: TextStyle(
                           fontSize: 11,
                           color: color,
@@ -307,9 +318,9 @@ class _FiorituraCard extends StatelessWidget {
                     ),
                   ),
                   if (showActions) ...[
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert, size: 18),
+                      icon: const Icon(Icons.more_vert, size: 18),
                       onSelected: (v) {
                         if (v == 'edit') onEdit?.call();
                         if (v == 'delete') onDelete?.call();
@@ -318,41 +329,41 @@ class _FiorituraCard extends StatelessWidget {
                         PopupMenuItem(
                             value: 'edit',
                             child: ListTile(
-                                leading: Icon(Icons.edit),
-                                title: Text('Modifica'),
+                                leading: const Icon(Icons.edit),
+                                title: Text(s.fiorituraMenuEdit),
                                 dense: true)),
                         PopupMenuItem(
                             value: 'delete',
                             child: ListTile(
-                                leading: Icon(Icons.delete,
+                                leading: const Icon(Icons.delete,
                                     color: Colors.red),
-                                title: Text('Elimina',
-                                    style: TextStyle(color: Colors.red)),
+                                title: Text(s.fiorituraMenuDelete,
+                                    style: const TextStyle(color: Colors.red)),
                                 dense: true)),
                       ],
                     ),
                   ],
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   if (fioritura.apiarioNome != null) ...[
                     Icon(Icons.hive, size: 13,
                         color: ThemeConstants.textSecondaryColor),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(fioritura.apiarioNome!,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 12,
                             color: ThemeConstants.textSecondaryColor)),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                   ],
                   Icon(Icons.calendar_today, size: 13,
                       color: ThemeConstants.textSecondaryColor),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   Text(
-                    _dateRange(fioritura.dataInizio, fioritura.dataFine),
-                    style: TextStyle(
+                    _dateRange(fioritura.dataInizio, fioritura.dataFine, s),
+                    style: const TextStyle(
                         fontSize: 12,
                         color: ThemeConstants.textSecondaryColor),
                   ),
@@ -365,29 +376,29 @@ class _FiorituraCard extends StatelessWidget {
                     children: [
                       Icon(Icons.people_outline, size: 13,
                           color: Colors.blue[400]),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
-                        '${fioritura.nConferme} conferme',
+                        s.fiorituraCardConferme(fioritura.nConferme),
                         style: TextStyle(
                             fontSize: 12, color: Colors.blue[400]),
                       ),
                       if (fioritura.intensitaMedia != null) ...[
-                        SizedBox(width: 12),
-                        Icon(Icons.star, size: 13, color: Colors.amber),
-                        SizedBox(width: 2),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.star, size: 13, color: Colors.amber),
+                        const SizedBox(width: 2),
                         Text(
-                          '${fioritura.intensitaMedia!.toStringAsFixed(1)}',
+                          fioritura.intensitaMedia!.toStringAsFixed(1),
                           style: TextStyle(
                               fontSize: 12, color: Colors.amber[700]),
                         ),
                       ],
                       if (fioritura.confermaDaMe) ...[
-                        SizedBox(width: 8),
-                        Icon(Icons.check_circle, size: 13,
+                        const SizedBox(width: 8),
+                        const Icon(Icons.check_circle, size: 13,
                             color: Colors.green),
-                        SizedBox(width: 2),
-                        Text('Tu',
-                            style: TextStyle(
+                        const SizedBox(width: 2),
+                        Text(s.fiorituraCardTu,
+                            style: const TextStyle(
                                 fontSize: 12, color: Colors.green)),
                       ],
                     ],
@@ -400,10 +411,10 @@ class _FiorituraCard extends StatelessWidget {
     );
   }
 
-  String _dateRange(String start, String? end) {
-    final s = _fmt(start);
-    if (end == null) return 'Dal $s';
-    return '$s → ${_fmt(end)}';
+  String _dateRange(String start, String? end, AppStrings s) {
+    final from = _fmt(start);
+    if (end == null) return s.fiorituraDateFrom(from);
+    return '$from → ${_fmt(end)}';
   }
 
   String _fmt(String iso) {

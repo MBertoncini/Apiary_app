@@ -8,6 +8,8 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class TrattamentoDetailScreen extends StatefulWidget {
   final int trattamentoId;
@@ -21,6 +23,9 @@ class TrattamentoDetailScreen extends StatefulWidget {
 }
 
 class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   Map<String, dynamic>? _trattamento;
   bool _isLoading = true;
   String? _errorMessage;
@@ -50,27 +55,27 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore nel caricamento: $e';
+        _errorMessage = _s.trattamentoDetailDeleteError(e.toString());
         _isLoading = false;
       });
     }
   }
 
   Future<void> _deleteTrattamento() async {
+    final s = _s;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Conferma eliminazione'),
-        content:
-            const Text('Sei sicuro di voler eliminare questo trattamento?'),
+        title: Text(s.trattamentoDetailDeleteTitle),
+        content: Text(s.trattamentoDetailDeleteMsg),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('ANNULLA')),
+              child: Text(s.dialogCancelBtn.toUpperCase())),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('ELIMINA',
-                  style: TextStyle(color: Colors.red))),
+              child: Text(s.btnDeleteCaps,
+                  style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -80,13 +85,13 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
           .delete('${ApiConstants.trattamentiUrl}${widget.trattamentoId}/');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Trattamento eliminato')));
+            SnackBar(content: Text(s.trattamentoDetailDeletedOk)));
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore eliminazione: $e')));
+            SnackBar(content: Text(s.trattamentoDetailDeleteError(e.toString()))));
       }
     }
   }
@@ -113,44 +118,41 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
     }
   }
 
-  String _statusLabel(String? stato) {
+  String _statusLabel(String? stato, AppStrings s) {
     switch (stato) {
-      case 'in_corso':
-        return 'In corso';
-      case 'programmato':
-        return 'Programmato';
-      case 'completato':
-        return 'Completato';
-      case 'annullato':
-        return 'Annullato';
-      default:
-        return stato ?? '—';
+      case 'in_corso':    return s.dashStatusInCorso;
+      case 'programmato': return s.dashStatusProgrammato;
+      case 'completato':  return s.dashStatusCompletato;
+      case 'annullato':   return s.trattamentoStatusAnnullato;
+      default:            return stato ?? '—';
     }
   }
 
-  String _metodoLabel(String? metodo) {
-    const labels = {
-      'strisce': 'Strisce',
-      'gocciolato': 'Gocciolato',
-      'sublimato': 'Sublimato',
-      'altro': 'Altro',
-    };
-    return labels[metodo] ?? metodo ?? '—';
+  String _metodoLabel(String? metodo, AppStrings s) {
+    switch (metodo) {
+      case 'strisce':    return s.trattamentiMetodoStrisce;
+      case 'gocciolato': return s.trattamentiMetodoGocciolato;
+      case 'sublimato':  return s.trattamentiMetodoSublimato;
+      case 'altro':      return s.arniaDetailChangeMotivoAltro;
+      default:           return metodo ?? '—';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
+    final s = _s;
     final stato = _trattamento?['stato'] as String?;
     final canEdit = stato == 'in_corso' || stato == 'programmato';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dettaglio Trattamento'),
+        title: Text(s.trattamentoDetailTitle),
         actions: [
           if (_trattamento != null && canEdit)
             IconButton(
               icon: const Icon(Icons.edit),
-              tooltip: 'Modifica',
+              tooltip: s.trattamentoDetailTooltipEdit,
               onPressed: () => Navigator.of(context)
                   .pushNamed(
                     AppConstants.trattamentoCreateRoute,
@@ -163,13 +165,13 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
           if (_trattamento != null)
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              tooltip: 'Elimina',
+              tooltip: s.trattamentoDetailTooltipDelete,
               onPressed: _deleteTrattamento,
             ),
         ],
       ),
       body: _isLoading
-          ? const LoadingWidget(message: 'Caricamento trattamento...')
+          ? LoadingWidget(message: s.trattamentoDetailLblCaricamento)
           : _errorMessage != null
               ? ErrorDisplayWidget(
                   errorMessage: _errorMessage!, onRetry: _loadTrattamento)
@@ -178,6 +180,7 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
   }
 
   Widget _buildDetail() {
+    final s = _s;
     final t = _trattamento!;
     final stato = t['stato'] as String?;
     final statusColor = _statusColor(stato);
@@ -217,7 +220,7 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                           border: Border.all(color: statusColor.withOpacity(0.4)),
                         ),
                         child: Text(
-                          _statusLabel(stato),
+                          _statusLabel(stato, s),
                           style: TextStyle(
                               color: statusColor, fontWeight: FontWeight.w600),
                         ),
@@ -254,22 +257,22 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionTitle('Dettagli trattamento'),
+                  _sectionTitle(s.trattamentoDetailSectionDettagli),
                   const SizedBox(height: 12),
-                  _infoRow(Icons.science_outlined, 'Metodo di applicazione',
-                      _metodoLabel(t['metodo_applicazione'] as String?)),
+                  _infoRow(Icons.science_outlined, s.trattamentoDetailLblMetodo,
+                      _metodoLabel(t['metodo_applicazione'] as String?, s)),
                   const Divider(height: 20),
-                  _infoRow(Icons.calendar_today_outlined, 'Data inizio',
+                  _infoRow(Icons.calendar_today_outlined, s.trattamentoDetailLblDataInizio,
                       _formatDate(t['data_inizio'] as String?)),
                   if (t['data_fine'] != null) ...[
                     const Divider(height: 20),
-                    _infoRow(Icons.event_available_outlined, 'Data fine',
+                    _infoRow(Icons.event_available_outlined, s.trattamentoDetailLblDataFine,
                         _formatDate(t['data_fine'] as String?)),
                   ],
                   if (t['data_fine_sospensione'] != null) ...[
                     const Divider(height: 20),
                     _infoRow(Icons.warning_amber_outlined,
-                        'Sospensione fino al',
+                        s.trattamentoDetailLblSospFino,
                         _formatDate(t['data_fine_sospensione'] as String?),
                         color: Colors.orange),
                   ],
@@ -287,14 +290,14 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle('Arnie trattate'),
+                    _sectionTitle(s.trattamentoDetailLblArnieTrattate),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 4,
                       children: arnie
                           .map((id) => Chip(
-                                label: Text('Arnia $id'),
+                                label: Text(s.trattamentoDetailArniaLabel(id.toString())),
                                 visualDensity: VisualDensity.compact,
                               ))
                           .toList(),
@@ -315,8 +318,8 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                         size: 18,
                         color: ThemeConstants.textSecondaryColor),
                     const SizedBox(width: 8),
-                    Text('Applicato a tutto l\'apiario',
-                        style: TextStyle(
+                    Text(s.trattamentoDetailApplicatoTutto,
+                        style: const TextStyle(
                             color: ThemeConstants.textSecondaryColor)),
                   ],
                 ),
@@ -338,28 +341,28 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                       children: [
                         const Icon(Icons.block, color: Colors.red, size: 20),
                         const SizedBox(width: 8),
-                        _sectionTitle('Blocco di covata'),
+                        _sectionTitle(s.trattamentoDetailLblBloccoCovata),
                       ],
                     ),
                     const SizedBox(height: 12),
                     if (t['data_inizio_blocco'] != null)
-                      _infoRow(Icons.calendar_today_outlined, 'Inizio blocco',
+                      _infoRow(Icons.calendar_today_outlined, s.trattamentoDetailLblInizioBlocko,
                           _formatDate(t['data_inizio_blocco'] as String?)),
                     if (t['data_fine_blocco'] != null) ...[
                       const Divider(height: 20),
-                      _infoRow(Icons.event_available_outlined, 'Fine blocco',
+                      _infoRow(Icons.event_available_outlined, s.trattamentoDetailLblFineBlocko,
                           _formatDate(t['data_fine_blocco'] as String?)),
                     ],
                     if (t['metodo_blocco'] != null &&
                         (t['metodo_blocco'] as String).isNotEmpty) ...[
                       const Divider(height: 20),
-                      _infoRow(Icons.info_outline, 'Metodo',
+                      _infoRow(Icons.info_outline, s.trattamentoDetailLblMetodoBlocko,
                           t['metodo_blocco'] as String),
                     ],
                     if (t['note_blocco'] != null &&
                         (t['note_blocco'] as String).isNotEmpty) ...[
                       const Divider(height: 20),
-                      _infoRow(Icons.notes, 'Note blocco',
+                      _infoRow(Icons.notes, s.trattamentoDetailLblNoteBlocko,
                           t['note_blocco'] as String),
                     ],
                   ],
@@ -377,7 +380,7 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle('Note'),
+                    _sectionTitle(s.labelNotes),
                     const SizedBox(height: 8),
                     Text(
                       t['note'] as String,

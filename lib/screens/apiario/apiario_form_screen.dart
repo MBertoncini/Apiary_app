@@ -7,28 +7,33 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
 import '../../constants/api_constants.dart';
+import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 
 class ApiarioFormScreen extends StatefulWidget {
   final Map<String, dynamic>? apiario; // Null se è creazione, altrimenti è modifica
-  
+
   ApiarioFormScreen({this.apiario});
-  
+
   @override
   _ApiarioFormScreenState createState() => _ApiarioFormScreenState();
 }
 
 class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final _nomeController = TextEditingController();
   final _latitudineController = TextEditingController();
   final _longitudineController = TextEditingController();
   final _noteController = TextEditingController();
   final _indirizzoController = TextEditingController();
-  
+
   // Flags
   bool _monitoraggioMeteo = false;
   bool _condivisoConGruppo = false;
@@ -84,7 +89,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
 
     _loadGruppi();
   }
-  
+
   @override
   void dispose() {
     _nomeController.dispose();
@@ -94,7 +99,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
     _indirizzoController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadGruppi() async {
     final storageService = Provider.of<StorageService>(context, listen: false);
 
@@ -135,7 +140,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
         if (permission == LocationPermission.denied) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Permessi di localizzazione negati')),
+              SnackBar(content: Text(_s.apiarioPermDenied)),
             );
           }
           return;
@@ -145,9 +150,9 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Permessi negati permanentemente. Attivali dalle impostazioni.'),
+              content: Text(_s.apiarioPermDeniedPermanent),
               action: SnackBarAction(
-                label: 'Impostazioni',
+                label: _s.navSettingsTooltip,
                 onPressed: () => Geolocator.openAppSettings(),
               ),
             ),
@@ -172,7 +177,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
       debugPrint('Error getting current position: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nel recupero della posizione')),
+          SnackBar(content: Text(_s.apiarioErrorPos)),
         );
       }
     }
@@ -226,7 +231,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
       debugPrint('Address search error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nella ricerca dell\'indirizzo')),
+          SnackBar(content: Text(_s.apiarioErrorAddr)),
         );
       }
     } finally {
@@ -250,16 +255,16 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
-      
+
       // Preparazione dati
       // Il campo 'posizione' è richiesto dal backend: lo deriviamo dalle coordinate
       String posizione = '';
@@ -286,28 +291,28 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
         data['latitudine'] = double.parse(_latitudineController.text);
         data['longitudine'] = double.parse(_longitudineController.text);
       }
-      
+
       // Invio dati al server
       Map<String, dynamic> response;
       if (widget.apiario == null) {
         // Creazione
         response = await apiService.post(ApiConstants.apiariUrl, data);
-        
+
         // Aggiorna lo storage locale
         final apiari = await storageService.getStoredData('apiari');
         apiari.add(response);
         await storageService.saveSyncData({'apiari': apiari});
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Apiario creato con successo'),
+            content: Text(_s.apiarioCreatedOk),
             backgroundColor: ThemeConstants.successColor,
           ),
         );
       } else {
         // Modifica
         response = await apiService.put('${ApiConstants.apiariUrl}${widget.apiario!['id']}/', data);
-        
+
         // Aggiorna lo storage locale
         final apiari = await storageService.getStoredData('apiari');
         final index = apiari.indexWhere((a) => a['id'] == widget.apiario!['id']);
@@ -315,21 +320,21 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
           apiari[index] = response;
           await storageService.saveSyncData({'apiari': apiari});
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Apiario aggiornato con successo'),
+            content: Text(_s.apiarioUpdatedOk),
             backgroundColor: ThemeConstants.successColor,
           ),
         );
       }
-      
+
       // Torna alla schermata precedente
       Navigator.of(context).pop();
     } catch (e) {
       debugPrint('Error saving apiario: $e');
       setState(() {
-        _errorMessage = 'Errore durante il salvataggio: $e';
+        _errorMessage = _s.msgErrorGeneric(e.toString());
       });
     } finally {
       setState(() {
@@ -337,12 +342,15 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.apiario == null ? 'Nuovo apiario' : 'Modifica apiario'),
+        title: Text(widget.apiario == null
+            ? _s.apiarioFormTitleNew
+            : _s.apiarioFormTitleEdit),
       ),
       body: Form(
         key: _formKey,
@@ -366,7 +374,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                   style: TextStyle(color: ThemeConstants.errorColor),
                 ),
               ),
-            
+
             // Informazioni di base
             Card(
               child: Padding(
@@ -375,22 +383,22 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Informazioni generali',
+                      _s.apiarioFormSectionGeneral,
                       style: ThemeConstants.subheadingStyle,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Nome
                     TextFormField(
                       controller: _nomeController,
                       decoration: InputDecoration(
-                        labelText: 'Nome apiario',
-                        hintText: 'Es. Apiario montagna',
+                        labelText: _s.apiarioFormLblName,
+                        hintText: _s.apiarioFormHintName,
                         prefixIcon: Icon(Icons.hive),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Inserisci il nome dell\'apiario';
+                          return _s.apiarioFormValidateName;
                         }
                         return null;
                       },
@@ -400,7 +408,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Coordinate geografiche + mappa interattiva
             Card(
               child: Padding(
@@ -409,7 +417,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Posizione sulla mappa',
+                      _s.apiarioFormSectionPos,
                       style: ThemeConstants.subheadingStyle,
                     ),
                     const SizedBox(height: 12),
@@ -421,8 +429,8 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                           child: TextFormField(
                             controller: _indirizzoController,
                             decoration: InputDecoration(
-                              labelText: 'Cerca indirizzo',
-                              hintText: 'Es. Via Roma 1, Milano',
+                              labelText: _s.apiarioFormLblSearchAddr,
+                              hintText: _s.apiarioFormHintSearchAddr,
                               prefixIcon: Icon(Icons.search),
                               isDense: true,
                             ),
@@ -440,7 +448,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : Icon(Icons.arrow_forward),
-                          tooltip: 'Cerca',
+                          tooltip: _s.apiarioFormTooltipSearch,
                           style: IconButton.styleFrom(
                             backgroundColor: ThemeConstants.primaryColor,
                             foregroundColor: Colors.white,
@@ -538,13 +546,13 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       child: TextButton.icon(
                         onPressed: _useCurrentLocation,
                         icon: Icon(Icons.my_location, size: 18),
-                        label: Text('Usa posizione attuale'),
+                        label: Text(_s.apiarioFormBtnUsePos),
                       ),
                     ),
                     const SizedBox(height: 8),
 
                     Text(
-                      'Cerca un indirizzo per navigare sulla mappa, poi tocca il punto esatto.',
+                      _s.apiarioFormMapHint,
                       style: TextStyle(
                         fontSize: 12,
                         color: ThemeConstants.textSecondaryColor,
@@ -559,7 +567,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                           child: TextFormField(
                             controller: _latitudineController,
                             decoration: InputDecoration(
-                              labelText: 'Latitudine',
+                              labelText: _s.apiarioFormLblLat,
                               prefixIcon: Icon(Icons.map),
                             ),
                             keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -569,10 +577,10 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
                                 if (_longitudineController.text.isEmpty) {
-                                  return 'Inserisci anche la longitudine';
+                                  return _s.apiarioFormValidateLon;
                                 }
                                 if (double.tryParse(value) == null) {
-                                  return 'Formato non valido';
+                                  return _s.apiarioFormValidateFormat;
                                 }
                               }
                               return null;
@@ -584,7 +592,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                           child: TextFormField(
                             controller: _longitudineController,
                             decoration: InputDecoration(
-                              labelText: 'Longitudine',
+                              labelText: _s.apiarioFormLblLon,
                               prefixIcon: Icon(Icons.map),
                             ),
                             keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -594,10 +602,10 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
                                 if (_latitudineController.text.isEmpty) {
-                                  return 'Inserisci anche la latitudine';
+                                  return _s.apiarioFormValidateLat;
                                 }
                                 if (double.tryParse(value) == null) {
-                                  return 'Formato non valido';
+                                  return _s.apiarioFormValidateFormat;
                                 }
                               }
                               return null;
@@ -613,7 +621,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
 
                     // Visibilità sulla mappa
                     Text(
-                      'Visibilità sulla mappa',
+                      _s.apiarioFormSectionVisib,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -622,7 +630,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                     const SizedBox(height: 8),
 
                     RadioListTile<String>(
-                      title: Text('Solo proprietario'),
+                      title: Text(_s.apiarioFormVisibOwner),
                       value: 'privato',
                       groupValue: _visibilitaMappa,
                       onChanged: (value) {
@@ -634,7 +642,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                     ),
 
                     RadioListTile<String>(
-                      title: Text('Membri del gruppo'),
+                      title: Text(_s.apiarioFormVisibGroup),
                       value: 'gruppo',
                       groupValue: _visibilitaMappa,
                       onChanged: (value) {
@@ -646,7 +654,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                     ),
 
                     RadioListTile<String>(
-                      title: Text('Tutti gli utenti'),
+                      title: Text(_s.apiarioFormVisibAll),
                       value: 'pubblico',
                       groupValue: _visibilitaMappa,
                       onChanged: (value) {
@@ -661,7 +669,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Funzionalità aggiuntive
             Card(
               child: Padding(
@@ -670,15 +678,15 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Funzionalità aggiuntive',
+                      _s.apiarioFormSectionFeatures,
                       style: ThemeConstants.subheadingStyle,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Monitoraggio meteo
                     SwitchListTile(
-                      title: Text('Monitoraggio meteo'),
-                      subtitle: Text('Attiva il monitoraggio delle condizioni meteo'),
+                      title: Text(_s.apiarioFormMeteoTitle),
+                      subtitle: Text(_s.apiarioFormMeteoSubtitle),
                       value: _monitoraggioMeteo,
                       onChanged: (value) {
                         setState(() {
@@ -687,11 +695,11 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       },
                       activeColor: ThemeConstants.primaryColor,
                     ),
-                    
+
                     // Condivisione con gruppo
                     SwitchListTile(
-                      title: Text('Condivisione con gruppo'),
-                      subtitle: Text('Condividi questo apiario con un gruppo'),
+                      title: Text(_s.apiarioFormShareTitle),
+                      subtitle: Text(_s.apiarioFormShareSubtitle),
                       value: _condivisoConGruppo,
                       onChanged: (value) {
                         setState(() {
@@ -713,7 +721,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                             ? Center(child: CircularProgressIndicator(strokeWidth: 2))
                             : _gruppi.isEmpty
                                 ? Text(
-                                    'Non fai parte di nessun gruppo. Crea o unisciti a un gruppo per condividere.',
+                                    _s.apiarioFormNoGruppi,
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: ThemeConstants.textSecondaryColor,
@@ -723,7 +731,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                                 : DropdownButtonFormField<int>(
                                     value: _selectedGruppoId,
                                     decoration: InputDecoration(
-                                      labelText: 'Seleziona gruppo',
+                                      labelText: _s.apiarioFormLblGroup,
                                       prefixIcon: Icon(Icons.group),
                                     ),
                                     items: _gruppi.map<DropdownMenuItem<int>>((gruppo) {
@@ -739,7 +747,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                                     },
                                     validator: (value) {
                                       if (_condivisoConGruppo && value == null && _gruppi.isNotEmpty) {
-                                        return 'Seleziona un gruppo';
+                                        return _s.apiarioFormValidateGroup;
                                       }
                                       return null;
                                     },
@@ -751,7 +759,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Note
             Card(
               child: Padding(
@@ -760,16 +768,16 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Note',
+                      _s.apiarioFormLblNotes,
                       style: ThemeConstants.subheadingStyle,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     TextFormField(
                       controller: _noteController,
                       decoration: InputDecoration(
-                        labelText: 'Note',
-                        hintText: 'Inserisci eventuali note su questo apiario...',
+                        labelText: _s.apiarioFormLblNotes,
+                        hintText: _s.apiarioFormHintNotes,
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 5,
@@ -779,7 +787,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Pulsanti
             Row(
               children: [
@@ -790,7 +798,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text('ANNULLA'),
+                      child: Text(_s.btnCancel),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: ThemeConstants.primaryColor),
@@ -812,7 +820,9 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : Text(widget.apiario == null ? 'CREA APIARIO' : 'AGGIORNA APIARIO'),
+                          : Text(widget.apiario == null
+                              ? _s.apiarioFormBtnCreate
+                              : _s.apiarioFormBtnUpdate),
                     ),
                   ),
                 ),

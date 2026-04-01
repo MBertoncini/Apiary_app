@@ -1,3 +1,5 @@
+import '../constants/piante_mellifere.dart';
+
 class Fioritura {
   final int id;
   final int? apiario;
@@ -90,6 +92,9 @@ class Fioritura {
       'confermato_da_me': confermaDaMe,
     };
   }
+
+  /// Chiave standardizzata della pianta (null se inserita manualmente e non riconosciuta)
+  String? get piantaChiave => PiantaMellifera.daNome(pianta)?.chiave;
 
   static const Map<String, String> piantaTipoLabel = {
     'spontanea': 'Spontanea',

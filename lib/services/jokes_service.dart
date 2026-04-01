@@ -5,8 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class JokesService {
   static const String _shownJokesKey = 'shown_bee_jokes';
   
-  // Lista di 35 freddure sulle api
+  // Lista di 45 freddure sulle api
   static final List<String> _apiFreddure = [
+    // --- BATTUTE ORIGINALI ---
     "Qual è il cantante preferito delle api? Bee Gees!",
     "Qual è il supereroe preferito delle api? Wasp!",
     "Cosa dice un'ape quando torna a casa? Honey, I'm home!",
@@ -30,7 +31,19 @@ class JokesService {
     "Qual è lo strumento musicale preferito dalle api? Il saxofavo!",
     "Come si chiama un'ape campione di nuoto? Michael Bee-lps!",
     "Come si chiama un'ape scienziata? Albert Ein-sting!",
-    "Qual è la festa preferita dalle api? Il Capodanno, quando tutte in coro urlano il conto alla ro-vespa!"
+    "Qual è la festa preferita dalle api? Il Capodanno, quando tutte in coro urlano il conto alla ro-vespa!",
+    "Cosa guida un'ape in città? Un'Ape Car!",
+    "Dove va un'ape quando viene arrestata? In cella!",
+    "Qual è il gruppo sanguigno delle api? Bee positivo!",
+    "Cosa fanno due api appena sposate? Vanno in luna di miele!",
+    "Come si chiama un'ape che non si lava mai? Un'ape-zzente!",
+    "Cosa si dicono le api prima di mettersi a tavola? Buon ape-tito!",
+    "Come si chiamano le montagne dove sciano le api? Gli Ape-nnini!",
+    "Che cosa fa un'ape all'università? Studia per il prossimo ape-llo!",
+    "Dove appendono i cappotti le api? All'ape-ndino!",
+    "Come si chiama un'ape criminale che collabora con la giustizia? Un'ape-ntita!",
+    "Che moto invidiano tutte le api? La Vespa!",
+    "Come si chiama un'ape che lavora in un salone di bellezza? Un'ape-ttinatrice!"
   ];
   
   // Ottieni una freddura casuale

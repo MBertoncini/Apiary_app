@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
@@ -84,9 +85,12 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() { _isLoadingData = false; });
+      final isNetworkError = e is SocketException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup');
       if (_smielature.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore caricamento: $e')));
-      } else {
+      } else if (isNetworkError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
         );

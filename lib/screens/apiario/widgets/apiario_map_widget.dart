@@ -204,7 +204,12 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   String? _draggingElementId;
   String? _selectedPathId;
 
-  OverlayEntry? _dirPickerOverlay;
+  // ── drawing state (drag-to-extend vialetto) ───────────────────
+  String? _drawingPathId;
+  bool _drawingIsEnd = true;
+  Offset _drawingHandleCanvasPos = Offset.zero;
+  Offset _drawingCurrentCanvasPos = Offset.zero;
+  List<PathSegment> _drawingPreviewSegs = [];
 
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
@@ -248,7 +253,6 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   @override
   void dispose() {
     _pulseCtrl.dispose();
-    _hideDirectionPicker();
     _transformCtrl.dispose();
     super.dispose();
   }
@@ -406,11 +410,11 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     );
   }
 
-  Offset _canvasToScreen(Offset canvas) {
+  Offset _screenToCanvas(Offset screen) {
     final m = _transformCtrl.value;
     final s = m.getMaxScaleOnAxis();
     final t = m.getTranslation();
-    return Offset(canvas.dx * s + t.x, canvas.dy * s + t.y);
+    return Offset((screen.dx - t.x) / s, (screen.dy - t.y) / s);
   }
 
   void _centerOnArnie() {
@@ -502,7 +506,11 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         position: _snap(Offset(c.dx - 35, c.dy - 35)),
       );
     }
-    setState(() { _elements.add(el); _hasChanges = true; });
+    setState(() {
+      _elements.add(el);
+      _hasChanges = true;
+      if (type == MapElementType.vialetto) _selectedPathId = el.id;
+    });
   }
 
   void _removeElement(String id) {
@@ -514,66 +522,92 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     });
   }
 
-  // ── estensione vialetto ────────────────────────────────────────
+  // ── estensione vialetto con drag ortogonale ───────────────────
 
-  void _extendPath(String elementId, bool isEnd, double newAngle) {
-    final el = _elements.firstWhere((e) => e.id == elementId);
-    const segLen = 100.0;
-    if (isEnd) {
-      el.segments.add(PathSegment(angle: newAngle, length: segLen));
+  List<PathSegment> _computeOrthogonalSegments(Offset from, Offset to) {
+    final dx = to.dx - from.dx;
+    final dy = to.dy - from.dy;
+    const minLen = 5.0;
+    final segs = <PathSegment>[];
+    if (dx.abs() >= dy.abs()) {
+      if (dx.abs() >= minLen)
+        segs.add(PathSegment(angle: dx > 0 ? 0 : 180, length: dx.abs()));
+      if (dy.abs() >= minLen)
+        segs.add(PathSegment(angle: dy > 0 ? 90 : 270, length: dy.abs()));
     } else {
-      final r = newAngle * pi / 180;
-      el.position = Offset(
-        el.position.dx - cos(r) * segLen,
-        el.position.dy - sin(r) * segLen,
-      );
-      el.segments.insert(0, PathSegment(angle: newAngle, length: segLen));
+      if (dy.abs() >= minLen)
+        segs.add(PathSegment(angle: dy > 0 ? 90 : 270, length: dy.abs()));
+      if (dx.abs() >= minLen)
+        segs.add(PathSegment(angle: dx > 0 ? 0 : 180, length: dx.abs()));
     }
-    setState(() => _hasChanges = true);
+    return segs;
   }
 
-  // ── direction picker (compass overlay) ────────────────────────
-
-  void _showDirectionPicker({
-    required String elementId,
-    required bool isEnd,
-    required double referenceAngle,
-    required Offset handleCanvasPos,
-  }) {
-    _hideDirectionPicker();
-    final screen = _canvasToScreen(handleCanvasPos);
-    _dirPickerOverlay = OverlayEntry(
-      builder: (ctx) {
-        final sw = MediaQuery.of(ctx).size.width;
-        final sh = MediaQuery.of(ctx).size.height;
-        const pw = 220.0, ph = 280.0;
-        final left = (screen.dx - pw / 2).clamp(8.0, sw - pw - 8);
-        final top = (screen.dy - ph - 12).clamp(8.0, sh - ph - 8);
-        return Positioned(
-          left: left,
-          top: top,
-          child: _CompassPickerOverlay(
-            referenceAngle: referenceAngle,
-            onSelect: (absAngle) {
-              // La bussola ora passa angoli assoluti in canvas (0=destra,90=giù).
-              // Per END il segmento va nella direzione assoluta scelta.
-              // Per START il segmento deve andare nella direzione OPPOSTA
-              // all'estensione (new_pos = old_pos - direction(newAngle)*len).
-              final newAngle = isEnd ? absAngle : absAngle + 180;
-              _extendPath(elementId, isEnd, newAngle);
-              _hideDirectionPicker();
-            },
-            onDismiss: _hideDirectionPicker,
-          ),
-        );
-      },
-    );
-    Overlay.of(context).insert(_dirPickerOverlay!);
+  /// Merge the first new segment into [prev] if they share the same angle,
+  /// avoiding collinear segment accumulation.
+  List<PathSegment> _mergeCollinear(List<PathSegment> newSegs, PathSegment? prev) {
+    if (newSegs.isEmpty) return newSegs;
+    if (prev == null) return newSegs;
+    final first = newSegs.first;
+    if ((first.angle - prev.angle).abs() < 0.01) {
+      prev.length += first.length;
+      return newSegs.sublist(1);
+    }
+    return newSegs;
   }
 
-  void _hideDirectionPicker() {
-    _dirPickerOverlay?.remove();
-    _dirPickerOverlay = null;
+  void _startDraw(String id, bool isEnd, Offset handleCanvasPos) {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _drawingPathId = id;
+      _drawingIsEnd = isEnd;
+      _drawingHandleCanvasPos = handleCanvasPos;
+      _drawingCurrentCanvasPos = handleCanvasPos;
+      _drawingPreviewSegs = [];
+    });
+  }
+
+  void _updateDraw(Offset fingerScreenPos) {
+    if (_drawingPathId == null) return;
+    final fingerCanvas = _screenToCanvas(fingerScreenPos);
+    final segs = _drawingIsEnd
+        ? _computeOrthogonalSegments(_drawingHandleCanvasPos, fingerCanvas)
+        : _computeOrthogonalSegments(fingerCanvas, _drawingHandleCanvasPos);
+    setState(() {
+      _drawingCurrentCanvasPos = fingerCanvas;
+      _drawingPreviewSegs = segs;
+    });
+  }
+
+  void _commitDraw() {
+    if (_drawingPathId != null && _drawingPreviewSegs.isNotEmpty) {
+      MapElement? el;
+      try { el = _elements.firstWhere((e) => e.id == _drawingPathId); } catch (_) {}
+      if (el != null) {
+        final target = el; // non-nullable local for closure capture
+        setState(() {
+          if (_drawingIsEnd) {
+            target.segments.addAll(_mergeCollinear(_drawingPreviewSegs,
+                target.segments.isEmpty ? null : target.segments.last));
+          } else {
+            final merged = _mergeCollinear(_drawingPreviewSegs, null);
+            target.segments.insertAll(0, merged);
+            target.position = _drawingCurrentCanvasPos;
+          }
+          _hasChanges = true;
+          _drawingPathId = null;
+          _drawingPreviewSegs = [];
+        });
+        return;
+      }
+    }
+    setState(() { _drawingPathId = null; _drawingPreviewSegs = []; });
+  }
+
+  void _cancelDraw() {
+    if (_drawingPathId != null || _drawingPreviewSegs.isNotEmpty) {
+      setState(() { _drawingPathId = null; _drawingPreviewSegs = []; });
+    }
   }
 
   // ── cassette piccole: dialog aggiunta ─────────────────────────
@@ -876,7 +910,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               duration: Duration(seconds: 2)));
       }
     }
-    _hideDirectionPicker();
+    _cancelDraw();
     if (mounted) {
       final nm = !_editMode;
       setState(() { _editMode = nm; _selectedPathId = null; });
@@ -941,7 +975,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
             onTap: () {
               if (_selectedPathId != null) {
                 setState(() => _selectedPathId = null);
-                _hideDirectionPicker();
+                _cancelDraw();
               }
             },
             child: InteractiveViewer(
@@ -964,6 +998,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                       ),
                     ),
                     ..._buildVialettiWidgets(),
+                    if (_buildDrawingPreview() case final w?) w,
                     ..._buildYSortedWidgets(),
                     // Snap grid indicator
                     if (_editMode && _snapEnabled)
@@ -1008,10 +1043,20 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
             ),
           ),
 
-        // ── edit mode hint ───────────────────────────────────────
+        // ── minimap ──────────────────────────────────────────────
         if (!isEmpty)
           Positioned(
             top: 12, left: 12,
+            child: AnimatedBuilder(
+              animation: _transformCtrl,
+              builder: (_, __) => _buildMinimap(),
+            ),
+          ),
+
+        // ── edit mode hint ───────────────────────────────────────
+        if (!isEmpty)
+          Positioned(
+            top: 116, left: 12,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               transitionBuilder: (child, anim) => FadeTransition(
@@ -1037,7 +1082,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         // ── selection mode hint ──────────────────────────────────
         if (widget.selectionMode && !isEmpty)
           Positioned(
-            top: 12, left: 12,
+            top: 116, left: 12,
             child: _InfoChip(icon: Icons.touch_app_rounded, text: 'Tocca per selezionare'),
           ),
 
@@ -1513,6 +1558,52 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         .toList();
   }
 
+  Widget? _buildDrawingPreview() {
+    if (_drawingPathId == null || _drawingPreviewSegs.isEmpty) return null;
+    MapElement? drawingEl;
+    try { drawingEl = _elements.firstWhere((e) => e.id == _drawingPathId); } catch (_) {}
+    final pw = drawingEl?.pathWidth ?? 40.0;
+    final previewStart = _drawingIsEnd
+        ? _drawingHandleCanvasPos
+        : _drawingCurrentCanvasPos;
+    final hw = pw / 2 + 28.0;
+    final pts = <Offset>[Offset.zero];
+    var cur = Offset.zero;
+    for (final s in _drawingPreviewSegs) {
+      final r = s.angle * pi / 180;
+      cur = Offset(cur.dx + cos(r) * s.length, cur.dy + sin(r) * s.length);
+      pts.add(cur);
+    }
+    final xs = pts.map((p) => p.dx);
+    final ys = pts.map((p) => p.dy);
+    final minX = xs.reduce(min) - hw;
+    final maxX = xs.reduce(max) + hw;
+    final minY = ys.reduce(min) - hw;
+    final maxY = ys.reduce(max) + hw;
+    return Positioned(
+      left: previewStart.dx + minX,
+      top: previewStart.dy + minY,
+      child: IgnorePointer(
+        child: Opacity(
+          opacity: 0.6,
+          child: SizedBox(
+            width: maxX - minX,
+            height: maxY - minY,
+            child: CustomPaint(
+              painter: _PathPainter(
+                segments: _drawingPreviewSegs,
+                drawOffset: Offset(-minX, -minY),
+                pathWidth: pw,
+                isSelected: false,
+                isDragging: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSingleVialetto(MapElement el) {
     if (el.segments.isEmpty) return const SizedBox.shrink();
     final bounds = _pathBounds(el);
@@ -1534,7 +1625,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
             behavior: HitTestBehavior.opaque,
             onTap: _editMode
                 ? () {
-                    _hideDirectionPicker();
+                    _cancelDraw();
                     setState(() => _selectedPathId = isSelected ? null : el.id);
                   }
                 : null,
@@ -1581,16 +1672,12 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               top: startInBox.dy - 20,
               child: _PathHandle(
                 icon: Icons.add_rounded,
-                color: const Color(0xFF3B82F6),
-                onTap: () {
-                  final refAngle = el.segments.first.angle + 180;
-                  _showDirectionPicker(
-                    elementId: el.id,
-                    isEnd: false,
-                    referenceAngle: refAngle,
-                    handleCanvasPos: el.position,
-                  );
-                },
+                color: _drawingPathId == el.id && !_drawingIsEnd
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFF3B82F6),
+                onDragStart: (_) => _startDraw(el.id, false, el.position),
+                onDragUpdate: (d) => _updateDraw(d.globalPosition),
+                onDragEnd: (_) => _commitDraw(),
               ),
             ),
 
@@ -1601,17 +1688,12 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               top: endInBox.dy - 20,
               child: _PathHandle(
                 icon: Icons.add_rounded,
-                color: const Color(0xFF3B82F6),
-                onTap: () {
-                  final refAngle = el.segments.last.angle;
-                  final canvasEndPos = el.position + endRel;
-                  _showDirectionPicker(
-                    elementId: el.id,
-                    isEnd: true,
-                    referenceAngle: refAngle,
-                    handleCanvasPos: canvasEndPos,
-                  );
-                },
+                color: _drawingPathId == el.id && _drawingIsEnd
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFF3B82F6),
+                onDragStart: (_) => _startDraw(el.id, true, el.position + endRel),
+                onDragUpdate: (d) => _updateDraw(d.globalPosition),
+                onDragEnd: (_) => _commitDraw(),
               ),
             ),
 
@@ -1636,7 +1718,82 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     );
   }
 
-  // ── bottom panel ───────────────────────────────────────────────
+  // ── minimap ────────────────────────────────────────────────────
+
+  static const double _minimapSize = 96.0;
+
+  /// Computes the canvas bounding box (with padding) for all placed elements.
+  /// Returns null when there are no elements at all.
+  Rect? _minimapBoundsFor(Map<int, Offset> arniaPos) {
+    final all = <Offset>[
+      ...arniaPos.values,
+      ..._elements.map((e) => e.position),
+    ];
+    if (all.isEmpty) return null;
+    double x0 = all.first.dx, y0 = all.first.dy;
+    double x1 = x0, y1 = y0;
+    for (final p in all) {
+      if (p.dx < x0) x0 = p.dx;
+      if (p.dy < y0) y0 = p.dy;
+      if (p.dx > x1) x1 = p.dx;
+      if (p.dy > y1) y1 = p.dy;
+    }
+    const pad = 350.0;
+    return Rect.fromLTRB(x0 - pad, y0 - pad, x1 + pad, y1 + pad);
+  }
+
+  Widget _buildMinimap() {
+    if (_viewportSize == Size.zero) return const SizedBox.shrink();
+
+    // Build color map and filter positions to only currently existing arnie
+    final Map<int, Color> arniaColors = {};
+    final Map<int, Offset> activePositions = {};
+    for (final a in widget.arnie) {
+      final id = a['id'] as int;
+      arniaColors[id] = _parseHex(a['colore_hex'] as String? ?? '#FFC107');
+      if (_arniaPositions.containsKey(id)) {
+        activePositions[id] = _arniaPositions[id]!;
+      }
+    }
+
+    final bounds = _minimapBoundsFor(activePositions);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (d) {
+        if (bounds == null) return;
+        final contentW = bounds.width;
+        final contentH = bounds.height;
+        final s = min(_minimapSize / contentW, _minimapSize / contentH);
+        final offsetX = (_minimapSize - contentW * s) / 2;
+        final offsetY = (_minimapSize - contentH * s) / 2;
+        final cx = (d.localPosition.dx - offsetX) / s + bounds.left;
+        final cy = (d.localPosition.dy - offsetY) / s + bounds.top;
+        _minimapNavigateTo(Offset(cx, cy));
+      },
+      child: CustomPaint(
+        size: const Size(_minimapSize, _minimapSize),
+        painter: _MinimapPainter(
+          arniaPositions: activePositions,
+          arniaColors: arniaColors,
+          elements: _elements,
+          transform: _transformCtrl.value,
+          viewportSize: _viewportSize,
+          bounds: bounds,
+        ),
+      ),
+    );
+  }
+
+  void _minimapNavigateTo(Offset canvasPoint) {
+    final currentScale = _transformCtrl.value.getMaxScaleOnAxis();
+    _transformCtrl.value = Matrix4.identity()
+      ..translate(
+        _viewportSize.width / 2 - currentScale * canvasPoint.dx,
+        _viewportSize.height / 2 - currentScale * canvasPoint.dy,
+      )
+      ..scale(currentScale);
+  }
 
   Widget _buildBottomPanel() {
     return Positioned(
@@ -2661,7 +2818,8 @@ class _PathPainter extends CustomPainter {
   @override
   bool shouldRepaint(_PathPainter o) =>
       segments != o.segments || drawOffset != o.drawOffset ||
-      pathWidth != o.pathWidth || isSelected != o.isSelected;
+      pathWidth != o.pathWidth || isSelected != o.isSelected ||
+      isDragging != o.isDragging;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -2671,14 +2829,24 @@ class _PathPainter extends CustomPainter {
 class _PathHandle extends StatelessWidget {
   final IconData icon;
   final Color color;
-  final VoidCallback onTap;
+  final void Function(DragStartDetails) onDragStart;
+  final void Function(DragUpdateDetails) onDragUpdate;
+  final void Function(DragEndDetails) onDragEnd;
 
-  const _PathHandle({required this.icon, required this.color, required this.onTap});
+  const _PathHandle({
+    required this.icon,
+    required this.color,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     behavior: HitTestBehavior.opaque,
-    onTap: onTap,
+    onPanStart: onDragStart,
+    onPanUpdate: onDragUpdate,
+    onPanEnd: onDragEnd,
     child: Container(
       width: 40, height: 40,
       decoration: BoxDecoration(
@@ -2692,219 +2860,6 @@ class _PathHandle extends StatelessWidget {
       child: Icon(icon, color: Colors.white, size: 20),
     ),
   );
-}
-
-// ════════════════════════════════════════════════════════════════
-//  WIDGET — COMPASS PICKER OVERLAY (direzione vialetto)
-// ════════════════════════════════════════════════════════════════
-
-class _CompassPickerOverlay extends StatelessWidget {
-  final double referenceAngle;
-  final void Function(double angle) onSelect; // angolo assoluto canvas (0=dx,90=giù)
-  final VoidCallback onDismiss;
-
-  // Bussola assoluta: pos=0 in alto, CW → canvas angle = (pos*45 - 90 + 360) % 360
-  static const _dirs = [
-    (pos: 0, angle: 270.0, label: '↑'),
-    (pos: 1, angle: 315.0, label: '↗'),
-    (pos: 2, angle: 0.0,   label: '→'),
-    (pos: 3, angle: 45.0,  label: '↘'),
-    (pos: 4, angle: 90.0,  label: '↓'),
-    (pos: 5, angle: 135.0, label: '↙'),
-    (pos: 6, angle: 180.0, label: '←'),
-    (pos: 7, angle: 225.0, label: '↖'),
-  ];
-
-  const _CompassPickerOverlay({
-    required this.referenceAngle,
-    required this.onSelect,
-    required this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        width: 220,
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1C2436),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(.5),
-                blurRadius: 28, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Row(children: [
-              const Icon(Icons.route_rounded, color: Colors.white38, size: 13),
-              const SizedBox(width: 6),
-              const Text('DIREZIONE SEGMENTO',
-                  style: TextStyle(color: Colors.white38, fontSize: 9,
-                      letterSpacing: 1.4, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              GestureDetector(
-                onTap: onDismiss,
-                child: const Icon(Icons.close_rounded, color: Colors.white38, size: 18),
-              ),
-            ]),
-            const SizedBox(height: 12),
-
-            // Compass rose
-            SizedBox(
-              width: 168, height: 168,
-              child: Stack(
-                children: [
-                  // Background
-                  Positioned.fill(
-                    child: CustomPaint(
-                        painter: _CompassBgPainter(referenceAngle: referenceAngle)),
-                  ),
-                  // Direction buttons
-                  ..._dirs.map((d) {
-                    const cx = 84.0, cy = 84.0, r = 58.0;
-                    final posAngleRad = d.pos * 45.0 * pi / 180.0;
-                    final bx = cx + r * sin(posAngleRad);
-                    final by = cy - r * cos(posAngleRad);
-                    // Evidenzia il bottone più vicino alla direzione di riferimento
-                    final diff = ((d.angle - referenceAngle) % 360 + 360) % 360;
-                    final normDiff = diff > 180 ? 360 - diff : diff;
-                    final isMain = normDiff < 22.5;
-                    final isSharp = d.angle == 135.0 || d.angle == 225.0 || d.angle == 315.0 || d.angle == 45.0;
-
-                    return Positioned(
-                      left: bx - 17,
-                      top: by - 17,
-                      child: Tooltip(
-                        message: d.label,
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            onSelect(d.angle);
-                          },
-                          child: Container(
-                            width: 34, height: 34,
-                            decoration: BoxDecoration(
-                              color: isMain
-                                  ? const Color(0xFFF59E0B)
-                                  : isSharp
-                                      ? Colors.white.withOpacity(.06)
-                                      : Colors.white.withOpacity(.14),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isMain
-                                    ? const Color(0xFFFBBF24)
-                                    : Colors.white.withOpacity(.2),
-                                width: isMain ? 2.0 : 1.0,
-                              ),
-                              boxShadow: isMain
-                                  ? [BoxShadow(
-                                      color: const Color(0xFFF59E0B).withOpacity(.5),
-                                      blurRadius: 10,
-                                    )]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Transform.rotate(
-                                // canvas: 0=right,90=down → flutter arrow up base → rotate (angle+90)°
-                                angle: (d.angle + 90.0) * pi / 180.0,
-                                child: Icon(
-                                  Icons.arrow_upward_rounded,
-                                  color: isMain
-                                      ? Colors.white
-                                      : Colors.white.withOpacity(isSharp ? .3 : .7),
-                                  size: 15,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-
-                  // Centro
-                  Center(
-                    child: Container(
-                      width: 28, height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(.06),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(.15), width: 1),
-                      ),
-                      child: const Icon(Icons.close_rounded,
-                          color: Colors.white24, size: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: onDismiss,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Text('annulla',
-                    style: TextStyle(color: Colors.white30, fontSize: 11)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CompassBgPainter extends CustomPainter {
-  final double referenceAngle;
-  const _CompassBgPainter({required this.referenceAngle});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final r = cx - 2;
-
-    // Outer ring fill
-    canvas.drawCircle(Offset(cx, cy), r,
-        Paint()..color = Colors.white.withOpacity(.05));
-    // Outer ring border
-    canvas.drawCircle(Offset(cx, cy), r,
-        Paint()..color = Colors.white.withOpacity(.10)
-            ..style = PaintingStyle.stroke..strokeWidth = 1);
-
-    // Inner ring (middle)
-    canvas.drawCircle(Offset(cx, cy), 30,
-        Paint()..color = Colors.white.withOpacity(.04));
-
-    // Tick marks (8 cardinal)
-    final tick = Paint()..color = Colors.white.withOpacity(.18)..strokeWidth = 1;
-    for (int i = 0; i < 8; i++) {
-      final a = i * 45.0 * pi / 180;
-      canvas.drawLine(
-        Offset(cx + cos(a) * (r - 1), cy + sin(a) * (r - 1)),
-        Offset(cx + cos(a) * (r - 8), cy + sin(a) * (r - 8)),
-        tick,
-      );
-    }
-
-    // Beam verso "dritto" (posizione 0 = alto nella bussola)
-    canvas.drawLine(
-      Offset(cx, cy),
-      Offset(cx, cy - (r - 10)),
-      Paint()
-        ..color = const Color(0xFFF59E0B).withOpacity(.25)
-        ..strokeWidth = 1.5
-        ..style = PaintingStyle.stroke,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_CompassBgPainter o) => referenceAngle != o.referenceAngle;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -3207,6 +3162,161 @@ class _SnapGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SnapGridPainter o) => o.step != step;
+}
+
+// ── Minimap painter ───────────────────────────────────────────────────────────
+
+class _MinimapPainter extends CustomPainter {
+  final Map<int, Offset> arniaPositions;
+  final Map<int, Color> arniaColors;
+  final List<MapElement> elements;
+  final Matrix4 transform;
+  final Size viewportSize;
+  final Rect? bounds;
+
+  const _MinimapPainter({
+    required this.arniaPositions,
+    required this.arniaColors,
+    required this.elements,
+    required this.transform,
+    required this.viewportSize,
+    required this.bounds,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const radius = Radius.circular(10);
+    final rrect = RRect.fromRectAndRadius(Offset.zero & size, radius);
+
+    // Clip to rounded rect
+    canvas.clipRRect(rrect);
+
+    // Background
+    canvas.drawRRect(
+      rrect,
+      Paint()..color = const Color(0xCC151515),
+    );
+
+    final b = bounds;
+    if (b == null || b.width <= 0 || b.height <= 0) {
+      // No content — just draw background
+      _drawBorder(canvas, size, rrect);
+      return;
+    }
+
+    final scale = min(size.width / b.width, size.height / b.height);
+    final ox = (size.width - b.width * scale) / 2;
+    final oy = (size.height - b.height * scale) / 2;
+
+    Offset toMini(Offset p) => Offset(
+      (p.dx - b.left) * scale + ox,
+      (p.dy - b.top) * scale + oy,
+    );
+
+    // ── Draw vialetti paths ──────────────────────────────────────
+    final pathPaint = Paint()
+      ..color = const Color(0xFF8B7355).withOpacity(0.55)
+      ..strokeWidth = max(1.0, 3.0 * scale)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    for (final el in elements) {
+      if (el.type != MapElementType.vialetto || el.segments.isEmpty) continue;
+      final path = Path();
+      final start = toMini(el.position);
+      path.moveTo(start.dx, start.dy);
+      var cur = Offset.zero;
+      for (final seg in el.segments) {
+        final r = seg.angle * pi / 180;
+        cur = Offset(cur.dx + cos(r) * seg.length,
+                     cur.dy + sin(r) * seg.length);
+        final p = toMini(el.position + cur);
+        path.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(path, pathPaint);
+    }
+
+    // ── Draw trees / other elements ──────────────────────────────
+    for (final el in elements) {
+      if (el.type == MapElementType.vialetto) continue;
+      final p = toMini(el.position);
+      Color c;
+      switch (el.type) {
+        case MapElementType.albero:
+          c = const Color(0xFF4CAF50);
+        case MapElementType.nucleo:
+        case MapElementType.apidea:
+        case MapElementType.mini_plus:
+        case MapElementType.portasciami:
+          c = const Color(0xFF90CAF9);
+        default:
+          c = const Color(0xFFBBBBBB);
+      }
+      canvas.drawCircle(p, max(2.0, 3.0 * scale), Paint()..color = c);
+    }
+
+    // ── Draw arnie ───────────────────────────────────────────────
+    final arniaBorderPaint = Paint()
+      ..color = Colors.white.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    for (final entry in arniaPositions.entries) {
+      final p = toMini(entry.value);
+      final color = arniaColors[entry.key] ?? const Color(0xFFFFC107);
+      canvas.drawCircle(p, max(2.5, 4.0 * scale), Paint()..color = color);
+      canvas.drawCircle(p, max(2.5, 4.0 * scale), arniaBorderPaint);
+    }
+
+    // ── Draw viewport rectangle ──────────────────────────────────
+    final s = transform.getMaxScaleOnAxis();
+    final t = transform.getTranslation();
+    final vpLeft   = -t.x / s;
+    final vpTop    = -t.y / s;
+    final vpRight  = vpLeft + viewportSize.width / s;
+    final vpBottom = vpTop  + viewportSize.height / s;
+
+    final vpRect = Rect.fromLTRB(
+      (vpLeft   - b.left) * scale + ox,
+      (vpTop    - b.top)  * scale + oy,
+      (vpRight  - b.left) * scale + ox,
+      (vpBottom - b.top)  * scale + oy,
+    );
+
+    // Fill
+    canvas.drawRect(
+      vpRect,
+      Paint()..color = Colors.white.withOpacity(0.10),
+    );
+    // Stroke
+    canvas.drawRect(
+      vpRect,
+      Paint()
+        ..color = Colors.white.withOpacity(0.75)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+
+    _drawBorder(canvas, size, rrect);
+  }
+
+  void _drawBorder(Canvas canvas, Size size, RRect rrect) {
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = Colors.white.withOpacity(0.18)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_MinimapPainter o) =>
+      o.transform != transform ||
+      o.viewportSize != viewportSize ||
+      o.arniaPositions != arniaPositions ||
+      o.elements != elements ||
+      o.bounds != bounds;
 }
 
 // ── Bottone zoom per selection mode ──────────────────────────────────────────

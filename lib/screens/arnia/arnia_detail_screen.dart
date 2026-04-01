@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -19,12 +19,14 @@ import 'arnia_form_screen.dart';
 import '../../widgets/offline_banner.dart';
 import '../../services/regina_service.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class ArniaDetailScreen extends StatefulWidget {
   final int arniaId;
-  
+
   ArniaDetailScreen({required this.arniaId});
-  
+
   @override
   _ArniaDetailScreenState createState() => _ArniaDetailScreenState();
 }
@@ -40,46 +42,49 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   List<dynamic> _controlli = [];
   List<dynamic> _melari = [];
   List<AnalisiTelaino> _analisiTelaini = [];
-  
+
   late TabController _tabController;
-  
+
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadArnia();
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadArnia() async {
     setState(() { _isRefreshing = true; });
 
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
-      
+
       // Carica dati locali
       final arnie = await storageService.getStoredData('arnie');
       final arnia = arnie.firstWhere(
         (a) => a['id'] == widget.arniaId,
         orElse: () => null,
       );
-      
+
       if (arnia != null) {
         _arnia = arnia;
-        
+
         // Carica apiario
         final apiari = await storageService.getStoredData('apiari');
         _apiario = apiari.firstWhere(
           (a) => a['id'] == arnia['apiario'],
           orElse: () => null,
         );
-        
+
         // Carica regina - prima da storage locale, poi dal server se non trovata
         final regine = await storageService.getStoredData('regine');
         _regina = regine.firstWhere(
@@ -128,7 +133,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             debugPrint('Regina non trovata per arnia ${widget.arniaId}: $e');
           }
         }
-        
+
         // Sincronizza controlli dal server in background (aggiorna SQLite e UI)
         try {
           final controlloService = ControlloService(apiService);
@@ -139,7 +144,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         } catch (e) {
           debugPrint('Error syncing controlli: $e');
         }
-        
+
         // Carica melari
         final allMelari = await storageService.getStoredData('melari');
         _melari = allMelari.where((m) => m['arnia'] == widget.arniaId).toList();
@@ -157,11 +162,11 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         try {
           final arniaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/');
           _arnia = arniaData;
-          
+
           // Carica apiario
           final apiarioData = await apiService.get('${ApiConstants.apiariUrl}${arniaData['apiario']}/');
           _apiario = apiarioData;
-          
+
           // Carica regina
           try {
             final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
@@ -169,24 +174,28 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           } catch (e) {
             debugPrint('Regina non trovata: $e');
           }
-          
+
           // Carica controlli
           final controlliData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/controlli/');
           _controlli = controlliData;
           _controlli.sort((a, b) => b['data'].compareTo(a['data']));
         } catch (e) {
           debugPrint('Errore caricamento arnia dal server: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Arnia non trovata')),
-          );
-          Navigator.of(context).pop();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(_s.arniaDetailNotFound)),
+            );
+            Navigator.of(context).pop();
+          }
         }
       }
     } catch (e) {
       debugPrint('Error loading arnia: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante il caricamento dei dati')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.arniaDetailErrorLoad)),
+        );
+      }
     } finally {
       setState(() { _isRefreshing = false; });
     }
@@ -210,7 +219,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     );
     _loadArnia();
   }
-  
+
   void _navigateToAnalisiTelaino() async {
     final result = await Navigator.of(context).pushNamed(
       AppConstants.analisiTelainoRoute,
@@ -253,17 +262,18 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     final apiService = Provider.of<ApiService>(context, listen: false);
     final storageService = Provider.of<StorageService>(context, listen: false);
     final fmt = DateFormat('yyyy-MM-dd');
+    final s = _s;
 
     String motivoFine = 'sostituzione';
     DateTime dataFine = DateTime.now();
     bool isLoading = false;
 
-    const motiviOptions = [
-      {'id': 'sostituzione', 'label': 'Sostituzione programmata'},
-      {'id': 'morte', 'label': 'Morte naturale'},
-      {'id': 'sciamatura', 'label': 'Sciamatura'},
-      {'id': 'problema_sanitario', 'label': 'Problema sanitario'},
-      {'id': 'altro', 'label': 'Altro'},
+    final motiviOptions = [
+      {'id': 'sostituzione', 'label': s.arniaDetailChangeMotivoSostituzione},
+      {'id': 'morte',        'label': s.arniaDetailChangeMotivoMorte},
+      {'id': 'sciamatura',   'label': s.arniaDetailChangeMotivoSciamatura},
+      {'id': 'problema_sanitario', 'label': s.arniaDetailChangeMotivoProblemaSanitario},
+      {'id': 'altro',        'label': s.arniaDetailChangeMotivoAltro},
     ];
 
     await showModalBottomSheet(
@@ -283,17 +293,17 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Sostituisci Regina',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(s.arniaDetailReplaceReginaTitle,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
-                'La regina attuale verrà rimossa. Potrai subito aggiungerne una nuova.',
+                s.arniaDetailReplaceReginaMsg,
                 style: TextStyle(color: Colors.grey[600], fontSize: 13),
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                    labelText: 'Motivo', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                    labelText: s.arniaDetailLblMotivo, border: const OutlineInputBorder()),
                 value: motivoFine,
                 items: motiviOptions
                     .map((m) => DropdownMenuItem(
@@ -313,8 +323,9 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                   if (picked != null) setSheetState(() => dataFine = picked);
                 },
                 child: InputDecorator(
-                  decoration: const InputDecoration(
-                      labelText: 'Data rimozione', border: OutlineInputBorder()),
+                  decoration: InputDecoration(
+                      labelText: s.arniaDetailLblDataRimozione,
+                      border: const OutlineInputBorder()),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -354,8 +365,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           if (result == true || result == null) _loadArnia();
                         } catch (e) {
                           setSheetState(() => isLoading = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Errore: $e')));
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(s.arniaDetailError(e.toString()))));
+                          }
                         }
                       },
                 child: Padding(
@@ -366,14 +379,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           width: 20,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2))
-                      : const Text('CONFERMA SOSTITUZIONE',
-                          style: TextStyle(fontSize: 16)),
+                      : Text(s.arniaDetailReplaceReginaBtn,
+                          style: const TextStyle(fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Annulla'),
+                child: Text(s.dialogCancelBtn),
               ),
             ],
           ),
@@ -381,7 +394,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       ),
     );
   }
-  
+
   void _editArnia() {
     if (_arnia == null) return;
     Navigator.of(context).push(
@@ -409,6 +422,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   void _showCambioTipoSheet() {
     if (_arnia == null) return;
     final currentTipo = _arnia!['tipo_arnia'] as String? ?? 'dadant';
+    final s = _s;
 
     showModalBottomSheet(
       context: context,
@@ -432,11 +446,11 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Cambia tipo scatola',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(s.arniaDetailChangeTypeTitle,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
-                'La famiglia rimane invariata — cambia solo il modello della cassetta.',
+                s.arniaDetailChangeTypeMsg,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 16),
@@ -486,13 +500,11 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
 
-      // PATCH solo il campo tipo_arnia
       await apiService.patch(
         '${ApiConstants.arnieUrl}$arniaId/',
         {'tipo_arnia': nuovoTipo},
       );
 
-      // Aggiorna la cache locale
       setState(() => _arnia = {..._arnia!, 'tipo_arnia': nuovoTipo});
 
       final cached = await storageService.getStoredData('arnie');
@@ -507,7 +519,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tipo aggiornato: ${_tipoArniaLabel(nuovoTipo)}'),
+            content: Text(_s.arniaDetailTypeUpdated(_tipoArniaLabel(nuovoTipo))),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -515,25 +527,23 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore aggiornamento tipo: $e')),
+          SnackBar(content: Text(_s.arniaDetailTypeError(e.toString()))),
         );
       }
     }
   }
 
   void _confirmDeleteArnia() {
+    final s = _s;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Elimina Arnia'),
-        content: Text(
-          'Sei sicuro di voler eliminare "Arnia ${_arnia?['numero']}"?\n\n'
-          'Verranno eliminati anche tutti i controlli, la regina e i melari associati.',
-        ),
+        title: Text(s.arniaDetailDeleteTitle),
+        content: Text(s.arniaDetailDeleteMsg(_arnia?['numero']?.toString() ?? '')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annulla'),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -541,7 +551,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
               await _deleteArnia();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: Text(s.btnDelete),
           ),
         ],
       ),
@@ -553,30 +563,32 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       final apiService = Provider.of<ApiService>(context, listen: false);
       await apiService.delete('${ApiConstants.arnieUrl}${widget.arniaId}/');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Arnia eliminata con successo')),
-      );
-
-      Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.arniaDetailDeletedOk)),
+        );
+        Navigator.pop(context, true);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.arniaDetailDeleteError(e.toString()))),
+        );
+      }
     }
   }
 
   void _confirmDeleteControllo(dynamic controllo) {
+    final s = _s;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Elimina Controllo'),
-        content: Text(
-          'Sei sicuro di voler eliminare il controllo del ${controllo['data']}?',
-        ),
+        title: Text(s.arniaDetailDeleteControlloTitle),
+        content: Text(s.arniaDetailDeleteControlloMsg(controllo['data'] ?? '')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annulla'),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -584,7 +596,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
               await _deleteControllo(controllo['id']);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: Text(s.btnDelete),
           ),
         ],
       ),
@@ -597,23 +609,30 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       final controlloService = ControlloService(apiService);
       await controlloService.deleteControllo(controlloId);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Controllo eliminato con successo')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.arniaDetailControlloDeletedOk)),
+        );
+      }
 
       _loadArnia();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.arniaDetailControlloDeleteError(e.toString()))),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
+    final s = _s;
+
     if (_arnia == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Caricamento...')),
+        appBar: AppBar(title: Text(s.labelLoading)),
         body: const SingleChildScrollView(
           child: Column(
             children: [
@@ -625,49 +644,46 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         ),
       );
     }
-    
+
     final colorHex = _arnia!['colore_hex'] ?? '#FFFFFF';
     final color = Color(int.parse(colorHex.replaceAll('#', '0xFF')));
-    
+
     final foregroundColor = color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Arnia ${_arnia!['numero']}'),
+        title: Text(s.arniaDetailTitle(_arnia!['numero'] as int? ?? 0)),
         backgroundColor: color,
         foregroundColor: foregroundColor,
         iconTheme: IconThemeData(color: foregroundColor),
         actions: [
-          // Cambio tipo cassetta (stessa famiglia)
           IconButton(
             icon: const Icon(Icons.swap_horiz_rounded),
             onPressed: _showCambioTipoSheet,
-            tooltip: 'Cambia tipo scatola',
+            tooltip: s.arniaDetailTooltipType,
           ),
-          // Pulsante di modifica esistente
           IconButton(
-            icon: Icon(Icons.edit),
+            icon: const Icon(Icons.edit),
             onPressed: _editArnia,
-            tooltip: 'Modifica arnia',
+            tooltip: s.arniaDetailTooltipEdit,
           ),
           IconButton(
-            icon: Icon(Icons.delete),
+            icon: const Icon(Icons.delete),
             onPressed: _confirmDeleteArnia,
-            tooltip: 'Elimina arnia',
+            tooltip: s.arniaDetailTooltipDelete,
           ),
-          // Nuovo pulsante QR
           IconButton(
-            icon: Icon(Icons.qr_code),
+            icon: const Icon(Icons.qr_code),
             onPressed: () {
               showModalBottomSheet(
                 context: context,
                 useSafeArea: true,
                 isScrollControlled: true,
-                shape: RoundedRectangleBorder(
+                shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 builder: (context) => Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: QrGeneratorWidget(
                     entity: _arnia!,
                     service: MobileScannerService(),
@@ -675,15 +691,15 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                 ),
               );
             },
-            tooltip: 'Genera QR Code',
+            tooltip: s.arniaDetailTooltipQr,
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Controlli'),
-            Tab(text: 'Regina'),
-            Tab(text: 'Analisi'),
+            Tab(text: s.arniaTabControlli),
+            Tab(text: s.arniaTabRegina),
+            Tab(text: s.arniaTabAnalisi),
           ],
         ),
       ),
@@ -710,8 +726,8 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Nessun controllo registrato',
-                        style: TextStyle(
+                        s.arniaDetailNoControlli,
+                        style: const TextStyle(
                           color: ThemeConstants.textSecondaryColor,
                           fontSize: 16,
                         ),
@@ -719,19 +735,19 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _navigateToControlloCreate,
-                        icon: Icon(Icons.add),
-                        label: Text('Registra controllo'),
+                        icon: const Icon(Icons.add),
+                        label: Text(s.arniaDetailBtnRegControllo),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   itemCount: _controlli.length,
                   itemBuilder: (context, index) {
                     final controllo = _controlli[index];
                     return Card(
-                      margin: EdgeInsets.only(bottom: 16),
+                      margin: const EdgeInsets.only(bottom: 16),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -740,32 +756,32 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             Row(
                               children: [
                                 Container(
-                                  padding: EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     color: ThemeConstants.primaryColor.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Icon(
+                                  child: const Icon(
                                     Icons.check_circle,
                                     color: ThemeConstants.primaryColor,
                                   ),
                                 ),
-                                SizedBox(width: 12),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Controllo del ${controllo['data']}',
-                                        style: TextStyle(
+                                        s.arniaDetailControlloTitle(controllo['data'] ?? ''),
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Effettuato da ${controllo['utente_username']}',
-                                        style: TextStyle(
+                                        s.arniaDetailControlloBy(controllo['utente_username'] ?? ''),
+                                        style: const TextStyle(
                                           fontSize: 12,
                                           color: ThemeConstants.textSecondaryColor,
                                         ),
@@ -774,13 +790,13 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   ),
                                 ),
                                 IconButton(
-                                  icon: Icon(Icons.edit, color: ThemeConstants.primaryColor),
-                                  tooltip: 'Modifica controllo',
+                                  icon: const Icon(Icons.edit, color: ThemeConstants.primaryColor),
+                                  tooltip: s.arniaDetailTooltipEditControllo,
                                   onPressed: () => _navigateToControlloEdit(Map<String, dynamic>.from(controllo)),
                                 ),
                                 IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  tooltip: 'Elimina controllo',
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  tooltip: s.arniaDetailTooltipDeleteControllo,
                                   onPressed: () => _confirmDeleteControllo(controllo),
                                 ),
                               ],
@@ -792,53 +808,55 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                               runSpacing: 8,
                               children: [
                                 _buildControlloTag(
-                                  'Scorte: ${controllo['telaini_scorte']}', 
+                                  s.arniaDetailScorte(controllo['telaini_scorte'] as int? ?? 0),
                                   Icons.grid_view,
                                   Colors.orange,
                                 ),
                                 _buildControlloTag(
-                                  'Covata: ${controllo['telaini_covata']}', 
+                                  s.arniaDetailCovata(controllo['telaini_covata'] as int? ?? 0),
                                   Icons.grid_view,
                                   Colors.blue,
                                 ),
                                 _buildControlloTag(
-                                  controllo['presenza_regina'] ? 'Regina presente' : 'Regina assente', 
+                                  controllo['presenza_regina'] == true
+                                      ? s.arniaDetailReginaPresente
+                                      : s.arniaDetailReginaAssente,
                                   Icons.star,
-                                  controllo['presenza_regina'] ? Colors.green : Colors.red,
+                                  controllo['presenza_regina'] == true ? Colors.green : Colors.red,
                                 ),
-                                if (controllo['regina_vista'])
+                                if (controllo['regina_vista'] == true)
                                   _buildControlloTag(
-                                    'Regina vista', 
+                                    s.arniaDetailReginaVista,
                                     Icons.visibility,
                                     Colors.purple,
                                   ),
-                                if (controllo['uova_fresche'])
+                                if (controllo['uova_fresche'] == true)
                                   _buildControlloTag(
-                                    'Uova fresche', 
+                                    s.arniaDetailUovaFresche,
                                     Icons.egg_alt,
                                     Colors.green,
                                   ),
-                                if (controllo['celle_reali'])
+                                if (controllo['celle_reali'] == true)
                                   _buildControlloTag(
-                                    'Celle reali: ${controllo['numero_celle_reali']}', 
+                                    s.arniaDetailCelleReali(controllo['numero_celle_reali'] as int? ?? 0),
                                     Icons.cell_tower,
                                     Colors.amber,
                                   ),
-                                if (controllo['problemi_sanitari'])
+                                if (controllo['problemi_sanitari'] == true)
                                   _buildControlloTag(
-                                    'Problemi sanitari', 
+                                    s.arniaDetailProblemiSanitari,
                                     Icons.warning,
                                     Colors.red,
                                   ),
-                                if (controllo['sciamatura'])
+                                if (controllo['sciamatura'] == true)
                                   _buildControlloTag(
-                                    'Sciamatura', 
+                                    s.arniaChipSciamatura,
                                     Icons.grain,
                                     Colors.deepOrange,
                                   ),
                               ],
                             ),
-                            
+
                             if (controllo['note'] != null && controllo['note'].isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 16),
@@ -846,8 +864,8 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Note:',
-                                      style: TextStyle(
+                                      '${s.labelNotes}:',
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
                                       ),
@@ -863,7 +881,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                     );
                   },
                 ),
-                
+
           // Tab Regina
           _regina == null
               ? Center(
@@ -877,8 +895,8 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Nessuna regina registrata',
-                        style: TextStyle(
+                        s.arniaDetailNoRegina,
+                        style: const TextStyle(
                           color: ThemeConstants.textSecondaryColor,
                           fontSize: 16,
                         ),
@@ -886,14 +904,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _navigateToReginaCreate,
-                        icon: Icon(Icons.add),
-                        label: Text('Aggiungi regina'),
+                        icon: const Icon(Icons.add),
+                        label: Text(s.arniaDetailBtnAddRegina),
                       ),
                     ],
                   ),
                 )
               : SingleChildScrollView(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -915,7 +933,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      Icon(Icons.star, color: Colors.amber, size: 32),
+                                      const Icon(Icons.star, color: Colors.amber, size: 32),
                                       Positioned(
                                         top: -4,
                                         right: -4,
@@ -946,7 +964,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Scheda regina incompleta',
+                                          s.arniaDetailReginaIncompleta,
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: Colors.red.shade800,
@@ -955,7 +973,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Regina rilevata automaticamente. Tocca per completare razza, origine e altri dettagli.',
+                                          s.arniaDetailReginaAutoMsg,
                                           style: TextStyle(
                                             color: Colors.red.shade700,
                                             fontSize: 12,
@@ -983,32 +1001,32 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                               Container(
                                 width: 60,
                                 height: 60,
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   color: Colors.amber,
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(
+                                child: const Icon(
                                   Icons.star,
                                   color: Colors.white,
                                   size: 36,
                                 ),
                               ),
-                              SizedBox(width: 16),
+                              const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'Regina ${_regina!['razza']}',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Introdotta il ${_regina!['data_introduzione']}',
-                                      style: TextStyle(
+                                      s.arniaDetailIntrodottaIl(_regina!['data_introduzione'] ?? ''),
+                                      style: const TextStyle(
                                         fontSize: 14,
                                         color: ThemeConstants.textSecondaryColor,
                                       ),
@@ -1021,7 +1039,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Informazioni generali
                       Card(
                         child: Padding(
@@ -1030,52 +1048,46 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Informazioni generali',
+                                s.arniaDetailSectionGeneral,
                                 style: ThemeConstants.subheadingStyle,
                               ),
                               const SizedBox(height: 16),
-                              
-                              // Data di nascita
+
                               if (_regina!['data_nascita'] != null)
                                 _buildReginaInfoItem(
-                                  'Data di nascita',
+                                  s.arniaDetailLblDataNascita,
                                   _regina!['data_nascita'],
                                   Icons.cake,
                                 ),
-                              
-                              // Origine
+
                               _buildReginaInfoItem(
-                                'Origine',
-                                _getOrigineRegina(_regina!['origine']),
+                                s.reginaListOrigine,
+                                _getOrigineRegina(_regina!['origine'] ?? ''),
                                 Icons.source,
                               ),
-                              
-                              // Marcata
+
                               _buildReginaInfoItem(
-                                'Marcata',
-                                _regina!['marcata'] ? 'Sì' : 'No',
+                                s.reginaFormMarcataTitle,
+                                _regina!['marcata'] == true ? s.labelYes : s.labelNo,
                                 Icons.colorize,
                               ),
-                              
-                              // Colore marcatura
-                              if (_regina!['marcata'] && _regina!['colore_marcatura'] != 'non_marcata')
+
+                              if (_regina!['marcata'] == true && _regina!['colore_marcatura'] != 'non_marcata')
                                 _buildReginaInfoItem(
-                                  'Colore marcatura',
-                                  _regina!['colore_marcatura'].toString().toUpperCase(),
+                                  s.reginaFormLblColoreMarcatura,
+                                  (_regina!['colore_marcatura'] ?? '').toString().toUpperCase(),
                                   Icons.color_lens,
                                 ),
-                              
-                              // Fecondata
+
                               _buildReginaInfoItem(
-                                'Fecondata',
-                                _regina!['fecondata'] ? 'Sì' : 'No',
+                                s.reginaFormFecondataTitle,
+                                _regina!['fecondata'] == true ? s.labelYes : s.labelNo,
                                 Icons.favorite,
                               ),
-                              
-                              // Selezionata
+
                               _buildReginaInfoItem(
-                                'Selezionata',
-                                _regina!['selezionata'] ? 'Sì' : 'No',
+                                s.reginaFormSelezionataTitle,
+                                _regina!['selezionata'] == true ? s.labelYes : s.labelNo,
                                 Icons.verified,
                               ),
                             ],
@@ -1083,11 +1095,11 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Valutazioni
-                      if (_regina!['docilita'] != null || 
-                          _regina!['produttivita'] != null || 
-                          _regina!['resistenza_malattie'] != null || 
+                      if (_regina!['docilita'] != null ||
+                          _regina!['produttivita'] != null ||
+                          _regina!['resistenza_malattie'] != null ||
                           _regina!['tendenza_sciamatura'] != null)
                         Card(
                           child: Padding(
@@ -1096,38 +1108,43 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Valutazioni',
+                                  s.arniaDetailLblValutazioni,
                                   style: ThemeConstants.subheadingStyle,
                                 ),
                                 const SizedBox(height: 16),
-                                
+
                                 if (_regina!['docilita'] != null)
-                                  _buildRatingBar('Docilità', _regina!['docilita'], Colors.green),
-                                
+                                  _buildRatingBar(s.arniaDetailRatingDocilita,
+                                      _regina!['docilita'] as int, Colors.green),
+
                                 if (_regina!['produttivita'] != null)
-                                  _buildRatingBar('Produttività', _regina!['produttivita'], Colors.amber),
-                                
+                                  _buildRatingBar(s.arniaDetailRatingProduttivita,
+                                      _regina!['produttivita'] as int, Colors.amber),
+
                                 if (_regina!['resistenza_malattie'] != null)
-                                  _buildRatingBar('Resistenza malattie', _regina!['resistenza_malattie'], Colors.blue),
-                                
+                                  _buildRatingBar(s.arniaDetailRatingResistenza,
+                                      _regina!['resistenza_malattie'] as int, Colors.blue),
+
                                 if (_regina!['tendenza_sciamatura'] != null)
-                                  _buildRatingBar('Tendenza sciamatura', _regina!['tendenza_sciamatura'], Colors.orange, invertRating: true),
+                                  _buildRatingBar(s.arniaDetailRatingTendenzaSciamatura,
+                                      _regina!['tendenza_sciamatura'] as int, Colors.orange,
+                                      invertRating: true),
                               ],
                             ),
                           ),
                         ),
-                      
+
                       // Note
                       if (_regina!['note'] != null && _regina!['note'].isNotEmpty)
                         Card(
-                          margin: EdgeInsets.only(top: 16),
+                          margin: const EdgeInsets.only(top: 16),
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Note',
+                                  s.labelNotes,
                                   style: ThemeConstants.subheadingStyle,
                                 ),
                                 const SizedBox(height: 8),
@@ -1144,7 +1161,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           Expanded(
                             child: OutlinedButton.icon(
                               icon: const Icon(Icons.edit),
-                              label: const Text('Modifica'),
+                              label: Text(s.arniaDetailBtnModifica),
                               onPressed: _navigateToReginaEdit,
                             ),
                           ),
@@ -1152,7 +1169,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           Expanded(
                             child: ElevatedButton.icon(
                               icon: const Icon(Icons.swap_horiz),
-                              label: const Text('Sostituisci'),
+                              label: Text(s.arniaDetailBtnSostituisci),
                               style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.orange,
                                   foregroundColor: Colors.white),
@@ -1171,7 +1188,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Genealogia', style: ThemeConstants.subheadingStyle),
+                                Text(s.arniaDetailLblGenealogia, style: ThemeConstants.subheadingStyle),
                                 const SizedBox(height: 12),
 
                                 // Madre
@@ -1180,14 +1197,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                     const Icon(Icons.arrow_upward, size: 18, color: Colors.amber),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'Madre: ',
+                                      '${s.arniaDetailLblMadre}: ',
                                       style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     Expanded(
                                       child: Text(
                                         _reginaGenealogia!['madre'] != null
-                                            ? '${_reginaGenealogia!['madre']['razza']} – Arnia ${_reginaGenealogia!['madre']['arnia_numero']}'
-                                            : 'Regina fondatrice',
+                                            ? '${_reginaGenealogia!['madre']['razza']} – ${s.arniaDetailTitle(_reginaGenealogia!['madre']['arnia_numero'] as int? ?? 0)}'
+                                            : s.arniaDetailReginaFondatrice,
                                         style: TextStyle(
                                           color: _reginaGenealogia!['madre'] != null
                                               ? Colors.black87
@@ -1210,13 +1227,13 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                       const Icon(Icons.arrow_downward, size: 18, color: Colors.green),
                                       const SizedBox(width: 8),
                                       Text(
-                                        'Figlie: ',
+                                        '${s.arniaDetailLblFiglie}: ',
                                         style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
                                       Expanded(
                                         child: Text(
                                           (_reginaGenealogia!['figlie'] as List)
-                                              .map((f) => '${f['razza']} (Arnia ${f['arnia_numero']})')
+                                              .map((f) => '${f['razza']} (${s.arniaDetailTitle(f['arnia_numero'] as int? ?? 0)})')
                                               .join(', '),
                                         ),
                                       ),
@@ -1228,14 +1245,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                 if ((_reginaGenealogia!['storia_arnia'] as List?)?.isNotEmpty == true) ...[
                                   const SizedBox(height: 12),
                                   Text(
-                                    'Storia nell\'arnia',
+                                    s.arniaDetailLblStoria,
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                   ),
                                   const SizedBox(height: 6),
-                                  ...(_reginaGenealogia!['storia_arnia'] as List).map((s) {
-                                    final fine = s['data_fine'] as String?;
-                                    final periodo = '${s['data_inizio']}'
-                                        '${fine != null ? ' → $fine' : ' → in corso'}';
+                                  ...(_reginaGenealogia!['storia_arnia'] as List).map((st) {
+                                    final fine = st['data_fine'] as String?;
+                                    final periodo = '${st['data_inizio']}'
+                                        '${fine != null ? ' → $fine' : ' → ${s.arniaDetailStoriaCorrente}'}';
                                     return Padding(
                                       padding: const EdgeInsets.only(bottom: 4),
                                       child: Row(
@@ -1248,10 +1265,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                               style: const TextStyle(fontSize: 13),
                                             ),
                                           ),
-                                          if (s['motivo_fine'] != null)
+                                          if (st['motivo_fine'] != null)
                                             Text(
-                                              s['motivo_fine'],
-                                              style: TextStyle(
+                                              st['motivo_fine'],
+                                              style: const TextStyle(
                                                 fontSize: 12,
                                                 color: ThemeConstants.textSecondaryColor,
                                               ),
@@ -1283,8 +1300,8 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Nessuna analisi registrata',
-                        style: TextStyle(
+                        s.arniaDetailNoAnalisi,
+                        style: const TextStyle(
                           color: ThemeConstants.textSecondaryColor,
                           fontSize: 16,
                         ),
@@ -1292,19 +1309,19 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: () => _navigateToAnalisiTelaino(),
-                        icon: Icon(Icons.camera_alt),
-                        label: Text('Avvia Analisi'),
+                        icon: const Icon(Icons.camera_alt),
+                        label: Text(s.arniaDetailBtnAvviaAnalisi),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   itemCount: _analisiTelaini.length,
                   itemBuilder: (context, index) {
                     final analisi = _analisiTelaini[index];
                     return Card(
-                      margin: EdgeInsets.only(bottom: 12),
+                      margin: const EdgeInsets.only(bottom: 12),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -1313,41 +1330,41 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             Row(
                               children: [
                                 Container(
-                                  padding: EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     color: Colors.amber.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Icon(Icons.analytics, color: Colors.amber),
+                                  child: const Icon(Icons.analytics, color: Colors.amber),
                                 ),
-                                SizedBox(width: 12),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Telaino ${analisi.numeroTelaino} - Facciata ${analisi.facciata}',
-                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                       ),
-                                      SizedBox(height: 2),
+                                      const SizedBox(height: 2),
                                       Text(
                                         analisi.data ?? '',
-                                        style: TextStyle(fontSize: 13, color: ThemeConstants.textSecondaryColor),
+                                        style: const TextStyle(fontSize: 13, color: ThemeConstants.textSecondaryColor),
                                       ),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
-                            SizedBox(height: 12),
+                            const SizedBox(height: 12),
                             Wrap(
                               spacing: 8,
                               runSpacing: 6,
                               children: [
-                                _buildControlloTag('Api: ${analisi.conteggioApi}', Icons.bug_report, Colors.orange),
-                                _buildControlloTag('Regine: ${analisi.conteggioRegine}', Icons.star, Colors.purple),
-                                _buildControlloTag('Fuchi: ${analisi.conteggioFuchi}', Icons.circle, Colors.blue),
-                                _buildControlloTag('Celle R.: ${analisi.conteggioCelleReali}', Icons.hexagon_outlined, Colors.amber),
+                                _buildControlloTag(s.arniaDetailAnalisiTagApi(analisi.conteggioApi), Icons.bug_report, Colors.orange),
+                                _buildControlloTag(s.arniaDetailAnalisiTagRegine(analisi.conteggioRegine), Icons.star, Colors.purple),
+                                _buildControlloTag(s.arniaDetailAnalisiTagFuchi(analisi.conteggioFuchi), Icons.circle, Colors.blue),
+                                _buildControlloTag(s.arniaDetailAnalisiTagCelleReali(analisi.conteggioCelleReali), Icons.hexagon_outlined, Colors.amber),
                               ],
                             ),
                             if (analisi.note != null && analisi.note!.isNotEmpty)
@@ -1355,7 +1372,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
                                   analisi.note!,
-                                  style: TextStyle(fontSize: 13, color: ThemeConstants.textSecondaryColor),
+                                  style: const TextStyle(fontSize: 13, color: ThemeConstants.textSecondaryColor),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1380,7 +1397,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
               onPressed: _showArniaInfoSheet,
               backgroundColor: Theme.of(context).colorScheme.surface,
               foregroundColor: Theme.of(context).colorScheme.onSurface,
-              tooltip: 'Informazioni arnia',
+              tooltip: s.arniaDetailTooltipInfo,
               child: const Icon(Icons.info_outline),
             ),
           ),
@@ -1391,24 +1408,25 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         activeIcon: Icons.close,
         children: [
           SpeedDialChild(
-            child: Icon(Icons.check_circle),
-            label: 'Registra Controllo',
+            child: const Icon(Icons.check_circle),
+            label: s.arniaDetailRegistraControllo,
             onTap: _navigateToControlloCreate,
           ),
           SpeedDialChild(
-            child: Icon(Icons.analytics),
-            label: 'Analisi Telaino',
+            child: const Icon(Icons.analytics),
+            label: s.arniaDetailBtnAnalisiTelaino,
             onTap: () => _navigateToAnalisiTelaino(),
           ),
         ],
       ),
     );
   }
-  
+
   void _showArniaInfoSheet() {
     if (_arnia == null) return;
     final colorHex = _arnia!['colore_hex'] ?? '#FFFFFF';
     final color = Color(int.parse(colorHex.replaceAll('#', '0xFF')));
+    final s = _s;
 
     showModalBottomSheet(
       context: context,
@@ -1459,7 +1477,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Arnia ${_arnia!['numero']}',
+                        Text(s.arniaDetailTitle(_arnia!['numero'] as int? ?? 0),
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         if (_apiario != null)
                           Text(_apiario!['nome'] ?? '',
@@ -1474,7 +1492,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            (_arnia!['attiva'] == true) ? 'Attiva' : 'Inattiva',
+                            (_arnia!['attiva'] == true) ? s.arniaStatusActive : s.arniaStatusInactive,
                             style: TextStyle(
                               fontSize: 11,
                               color: (_arnia!['attiva'] == true)
@@ -1489,14 +1507,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                 ],
               ),
               const Divider(height: 24),
-              _arniaInfoRow(Icons.calendar_today, 'Installata il',
-                  _arnia!['data_installazione'] ?? 'Non specificata'),
-              _arniaInfoRow(Icons.category_outlined, 'Tipo',
+              _arniaInfoRow(Icons.calendar_today, s.arniaDetailInfoInstallata,
+                  _arnia!['data_installazione'] ?? s.arniaDetailInfoNonSpecificata),
+              _arniaInfoRow(Icons.category_outlined, s.arniaDetailInfoTipo,
                   _tipoArniaLabel(_arnia!['tipo_arnia'] as String? ?? 'dadant')),
-              _arniaInfoRow(Icons.color_lens, 'Colore',
+              _arniaInfoRow(Icons.color_lens, s.arniaDetailInfoColore,
                   (_arnia!['colore'] ?? '').toString().toUpperCase()),
               if (_arnia!['note'] != null && (_arnia!['note'] as String).isNotEmpty)
-                _arniaInfoRow(Icons.notes, 'Note', _arnia!['note']),
+                _arniaInfoRow(Icons.notes, s.labelNotes, _arnia!['note']),
             ],
           ),
         ),
@@ -1534,7 +1552,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor)),
+                    style: const TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor)),
                 const SizedBox(height: 2),
                 Text(value, style: const TextStyle(fontSize: 15)),
               ],
@@ -1547,7 +1565,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
 
   Widget _buildControlloTag(String label, IconData icon, Color color) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
@@ -1561,7 +1579,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             size: 12,
             color: color,
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
@@ -1573,7 +1591,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       ),
     );
   }
-  
+
   Widget _buildReginaInfoItem(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1585,21 +1603,21 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             color: ThemeConstants.textSecondaryColor,
             size: 20,
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: ThemeConstants.textSecondaryColor,
                     fontSize: 14,
                   ),
                 ),
                 Text(
                   value,
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                 ),
               ],
             ),
@@ -1608,10 +1626,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       ),
     );
   }
-  
+
   Widget _buildRatingBar(String label, int rating, Color color, {bool invertRating = false}) {
     final effectiveRating = invertRating ? 6 - rating : rating;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -1619,18 +1637,18 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         children: [
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Row(
             children: List.generate(5, (index) {
               return Container(
                 width: 24,
                 height: 8,
-                margin: EdgeInsets.only(right: 4),
+                margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   color: index < effectiveRating ? color : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(4),
@@ -1642,21 +1660,16 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       ),
     );
   }
-  
+
   String _getOrigineRegina(String origine) {
+    final s = _s;
     switch (origine) {
-      case 'acquistata':
-        return 'Acquistata';
-      case 'allevata':
-        return 'Allevata';
-      case 'sciamatura':
-        return 'Sciamatura naturale';
-      case 'emergenza':
-        return 'Celle di emergenza';
-      case 'sconosciuta':
-        return 'Sconosciuta';
-      default:
-        return origine.toString().toUpperCase();
+      case 'acquistata':  return s.arniaDetailOrigineAcquistata;
+      case 'allevata':    return s.arniaDetailOrigineAllevata;
+      case 'sciamatura':  return s.arniaDetailOrigineSciamatura;
+      case 'emergenza':   return s.arniaDetailOrigineEmergenza;
+      case 'sconosciuta': return s.arniaDetailOrigineSconosciuta;
+      default:            return origine.toString().toUpperCase();
     }
   }
 }

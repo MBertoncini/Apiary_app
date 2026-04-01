@@ -1,4 +1,5 @@
-import 'dart:math';
+import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
@@ -7,8 +8,10 @@ import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
+import '../../models/osm_vegetazione.dart';
 import '../../services/api_service.dart';
 import '../../services/api_cache_helper.dart';
+import '../../services/osm_vegetazione_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 
@@ -28,7 +31,12 @@ class _MappaScreenState extends State<MappaScreen> {
   bool _permissionsChecked = false;
   StorageService? _storageService;
   bool _showRaggioVolo = true; // raggio di volo api ~3km
-  
+  bool _showOsmVegetazione = false;
+  bool _isLoadingOsm = false;
+  List<OsmVegetazione> _osmVegetazione = [];
+  Timer? _osmDebounceTimer;
+  final OsmVegetazioneService _osmService = OsmVegetazioneService();
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +46,12 @@ class _MappaScreenState extends State<MappaScreen> {
     // Li sposteremo in didChangeDependencies()
   }
   
+  @override
+  void dispose() {
+    _osmDebounceTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -356,6 +370,133 @@ class _MappaScreenState extends State<MappaScreen> {
     }
   }
   
+  // ── OSM Vegetazione ─────────────────────────────────────────────────────────
+
+  Future<void> _toggleOsmVegetazione() async {
+    final show = !_showOsmVegetazione;
+    setState(() => _showOsmVegetazione = show);
+    if (!show) {
+      setState(() => _osmVegetazione = []);
+      return;
+    }
+    final zoom = _mapController.zoom;
+    if (zoom < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Avvicinati per vedere la vegetazione OSM (zoom ≥ 10)'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    final bounds = _mapController.bounds;
+    if (bounds != null) await _loadOsmVegetazione(bounds);
+  }
+
+  Future<void> _loadOsmVegetazione(LatLngBounds bounds) async {
+    if (_isLoadingOsm) return;
+    if (mounted) setState(() => _isLoadingOsm = true);
+    try {
+      final features = await _osmService.fetchVegetazione(
+        south: bounds.south,
+        west: bounds.west,
+        north: bounds.north,
+        east: bounds.east,
+      );
+      if (mounted) setState(() => _osmVegetazione = features);
+    } catch (e) {
+      debugPrint('OSM vegetation error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Errore nel caricamento vegetazione OSM')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingOsm = false);
+    }
+  }
+
+  bool _pointInPolygon(LatLng point, List<LatLng> polygon) {
+    int count = 0;
+    for (int i = 0; i < polygon.length; i++) {
+      final a = polygon[i];
+      final b = polygon[(i + 1) % polygon.length];
+      if ((a.latitude <= point.latitude && b.latitude > point.latitude) ||
+          (b.latitude <= point.latitude && a.latitude > point.latitude)) {
+        final t = (point.latitude - a.latitude) / (b.latitude - a.latitude);
+        if (point.longitude < a.longitude + t * (b.longitude - a.longitude)) {
+          count++;
+        }
+      }
+    }
+    return count % 2 == 1;
+  }
+
+  void _showOsmFeatureInfo(OsmVegetazione feature) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.forest, color: feature.colore),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(feature.etichetta, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...feature.tags.entries
+                  .where((e) => [
+                        'natural', 'landuse', 'crop', 'trees',
+                        'species', 'wood', 'leaf_type', 'name'
+                      ].contains(e.key))
+                  .map((e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: RichText(
+                          text: TextSpan(
+                            style: DefaultTextStyle.of(context).style,
+                            children: [
+                              TextSpan(
+                                text: '${e.key}: ',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              TextSpan(
+                                text: e.value,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+              const SizedBox(height: 8),
+              Text(
+                'Fonte: OpenStreetMap contributors',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: ThemeConstants.textSecondaryColor),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Chiudi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Fine OSM ─────────────────────────────────────────────────────────────────
+
   // Verifica se una fioritura è attiva
   bool _isFiorituraActive(Map<String, dynamic> fioritura) {
     // Controlla se la fioritura è marcata come attiva
@@ -711,39 +852,26 @@ class _MappaScreenState extends State<MappaScreen> {
   }
 
   void _handleMapTap(LatLng tappedPoint) {
-    // In flutter_map v5 i GestureDetector interni ai marker non ricevono tap
-    // perché il layer gesture della mappa li assorbe. Usiamo onTap della mappa
-    // e troviamo l'apiario più vicino al punto toccato entro una soglia in pixel.
+    // Il tap sugli apiari è ora gestito da onMarkerTap del MarkerClusterLayerWidget.
+    // Qui gestiamo solo il tap sui poligoni OSM.
     try {
-      final zoom = _mapController.zoom;
-      final centerLat = _mapController.center.latitude;
-      // Metri per pixel alla latitudine corrente e zoom corrente
-      final metersPerPixel =
-          156543.03392 * cos(centerLat * pi / 180) / pow(2, zoom);
-      // Soglia di 48px — cerchiamo il più vicino entro questa area
-      final thresholdMeters = 48 * metersPerPixel;
-
-      const distance = Distance();
-      Map<String, dynamic>? nearest;
-      double nearestDist = double.infinity;
-
-      for (final apiario in _apiari) {
-        final lat = double.tryParse(apiario['latitudine'].toString());
-        final lng = double.tryParse(apiario['longitudine'].toString());
-        if (lat == null || lng == null) continue;
-        final d = distance.as(LengthUnit.Meter, tappedPoint, LatLng(lat, lng));
-        if (d <= thresholdMeters && d < nearestDist) {
-          nearestDist = d;
-          nearest = Map<String, dynamic>.from(apiario);
+      if (_showOsmVegetazione) {
+        for (final feat in _osmVegetazione) {
+          if (_pointInPolygon(tappedPoint, feat.punti)) {
+            _showOsmFeatureInfo(feat);
+            return;
+          }
         }
-      }
-
-      if (nearest != null) {
-        _showApiarioInfo(nearest);
       }
     } catch (e) {
       debugPrint('_handleMapTap error: $e');
     }
+  }
+
+  /// Genera un colore stabile a partire da una stringa (es. username)
+  Color _colorFromString(String s) {
+    final hue = (s.codeUnits.fold(0, (a, b) => a + b) * 37) % 360;
+    return HSLColor.fromAHSL(1.0, hue.toDouble(), 0.55, 0.45).toColor();
   }
 
   List<Marker> _buildApiariMarkers() {
@@ -758,9 +886,26 @@ class _MappaScreenState extends State<MappaScreen> {
             ? Colors.orange.shade700
             : (isGroup ? Colors.indigo.shade600 : ThemeConstants.primaryColor);
         final arnieNum = _getArnieCountForApiario(apiario['id']);
+        final username = apiario['proprietario_username'] as String?;
+        final avatarInitial = (username != null && username.isNotEmpty)
+            ? username[0].toUpperCase()
+            : null;
+        final avatarColor = username != null ? _colorFromString(username) : null;
+        // Campo immagine profilo proprietario (campo restituito dall'API)
+        final proprietarioFoto =
+            (apiario['proprietario_immagine_profilo'] as String?)?.trim().isNotEmpty == true
+                ? apiario['proprietario_immagine_profilo'] as String
+                : (apiario['proprietario_profile_image'] as String?)?.trim().isNotEmpty == true
+                    ? apiario['proprietario_profile_image'] as String
+                    : null;
+
+        // Chiave: 'c_<id>' per community, 'a_<id>' per propri/gruppo
+        final markerKey = isCommunity
+            ? ValueKey('c_${apiario['id']}')
+            : ValueKey('a_${apiario['id']}');
 
         result.add(Marker(
-          key: ValueKey(isCommunity ? 'community' : 'own_${apiario['id']}'),
+          key: markerKey,
           width: 64.0,
           height: 58.0,
           point: LatLng(lat, lng),
@@ -789,6 +934,49 @@ class _MappaScreenState extends State<MappaScreen> {
                   ),
                 ),
               ),
+              // Avatar proprietario in alto a sinistra
+              if (avatarInitial != null)
+                Positioned(
+                  top: 0,
+                  left: 8,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: avatarColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.2),
+                    ),
+                    child: ClipOval(
+                      child: proprietarioFoto != null
+                          ? CachedNetworkImage(
+                              imageUrl: proprietarioFoto,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => Center(
+                                child: Text(
+                                  avatarInitial,
+                                  style: const TextStyle(
+                                    fontSize: 7,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              placeholder: (_, __) => const SizedBox.shrink(),
+                            )
+                          : Center(
+                              child: Text(
+                                avatarInitial,
+                                style: const TextStyle(
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
               if (arnieNum > 0)
                 Positioned(
                   top: 0,
@@ -845,24 +1033,98 @@ class _MappaScreenState extends State<MappaScreen> {
     return result;
   }
 
+  List<Marker> _buildFioritureMarkers() {
+    final result = <Marker>[];
+    for (final fioritura in _fioriture) {
+      try {
+        final lat = double.parse(fioritura['latitudine'].toString());
+        final lng = double.parse(fioritura['longitudine'].toString());
+        final isActive = fioritura['_isActive'] == true;
+
+        result.add(Marker(
+          key: ValueKey('fioritura_${fioritura['id']}'),
+          width: 26.0,
+          height: 26.0,
+          point: LatLng(lat, lng),
+          builder: (ctx) => GestureDetector(
+            onTap: () => _showFiorituraInfo(fioritura),
+            child: Opacity(
+              opacity: isActive ? 0.82 : 0.45,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 2),
+                  ],
+                ),
+                child: Icon(
+                  Icons.local_florist,
+                  color: isActive ? Colors.green.shade600 : Colors.grey,
+                  size: 14,
+                ),
+              ),
+            ),
+          ),
+        ));
+      } catch (e) {
+        debugPrint('Errore marker fioritura: $e');
+      }
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Mappa Apiari'),
+            Flexible(
+              child: Text(
+                'Mappa Apiari',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             if (_isOffline)
               Padding(
-                padding: const EdgeInsets.only(left: 8.0),
+                padding: const EdgeInsets.only(left: 6.0),
                 child: Tooltip(
                   message: 'Modalità offline - Dati caricati dalla cache',
-                  child: Icon(Icons.offline_bolt, size: 18, color: Colors.amber),
+                  child: Icon(Icons.offline_bolt, size: 16, color: Colors.amber),
                 ),
               ),
           ],
         ),
         actions: [
+          // Vegetazione OSM
+          if (_isLoadingOsm)
+            const SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: Icon(
+                Icons.forest,
+                color: _showOsmVegetazione
+                    ? Colors.green.shade300
+                    : Colors.white,
+              ),
+              tooltip: _showOsmVegetazione
+                  ? 'Nascondi vegetazione OSM'
+                  : 'Mostra vegetazione OSM',
+              onPressed: _toggleOsmVegetazione,
+            ),
           IconButton(
             icon: Icon(
               _showRaggioVolo ? Icons.radar : Icons.radar_outlined,
@@ -896,12 +1158,39 @@ class _MappaScreenState extends State<MappaScreen> {
                     enableMultiFingerGestureRace: true,
                     rotationThreshold: 15.0,
                     onTap: (tapPosition, point) => _handleMapTap(point),
+                    onPositionChanged: (MapPosition position, bool hasGesture) {
+                      if (!_showOsmVegetazione || !hasGesture) return;
+                      final zoom = position.zoom ?? 0;
+                      if (zoom < 10) return;
+                      _osmDebounceTimer?.cancel();
+                      _osmDebounceTimer =
+                          Timer(const Duration(milliseconds: 1500), () {
+                        final bounds = position.bounds;
+                        if (bounds != null && mounted) {
+                          _loadOsmVegetazione(bounds);
+                        }
+                      });
+                    },
                   ),
                   children: [
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.apiario_manager',
                     ),
+                    // Layer vegetazione OSM (sotto tutto il resto)
+                    if (_showOsmVegetazione && _osmVegetazione.isNotEmpty)
+                      PolygonLayer(
+                        polygonCulling: true,
+                        polygons: _osmVegetazione
+                            .map((f) => Polygon(
+                                  points: f.punti,
+                                  color: f.colore.withOpacity(0.22),
+                                  borderColor: f.colore.withOpacity(0.65),
+                                  borderStrokeWidth: 1.5,
+                                  isFilled: true,
+                                ))
+                            .toList(),
+                      ),
                     // Raggio di volo (3 km) per ogni apiario
                     if (_showRaggioVolo)
                       CircleLayer(
@@ -928,11 +1217,103 @@ class _MappaScreenState extends State<MappaScreen> {
                           }
                         }).toList(),
                       ),
-                    // Marker per apiari con clustering automatico
+                    // ── FIORITURE (sotto gli apiari) ───────────────────────────
+                    // Cerchi area fioritura
+                    CircleLayer(
+                      circles: _fioriture.map((fioritura) {
+                        try {
+                          final lat = double.parse(fioritura['latitudine'].toString());
+                          final lng = double.parse(fioritura['longitudine'].toString());
+                          final raggio = fioritura['raggio'] != null
+                              ? double.parse(fioritura['raggio'].toString())
+                              : 500.0;
+                          final isActive = fioritura['_isActive'] == true;
+                          return CircleMarker(
+                            point: LatLng(lat, lng),
+                            radius: raggio,
+                            color: (isActive ? Colors.green : Colors.grey)
+                                .withOpacity(isActive ? 0.18 : 0.10),
+                            borderColor: (isActive ? Colors.green : Colors.grey)
+                                .withOpacity(isActive ? 0.55 : 0.30),
+                            borderStrokeWidth: isActive ? 1.5 : 1.0,
+                            useRadiusInMeter: true,
+                          );
+                        } catch (e) {
+                          debugPrint("Errore cerchio fioritura: $e");
+                          return CircleMarker(
+                            point: LatLng(0, 0),
+                            radius: 0,
+                            color: Colors.transparent,
+                            borderColor: Colors.transparent,
+                            borderStrokeWidth: 0,
+                          );
+                        }
+                      }).toList(),
+                    ),
+                    // Marker fioriture con clustering — semitrasparenti
                     MarkerClusterLayerWidget(
                       options: MarkerClusterLayerOptions(
-                        maxClusterRadius: 80,
-                        size: const Size(48, 48),
+                        maxClusterRadius: 70,
+                        size: const Size(36, 36),
+                        animationsOptions: const AnimationsOptions(
+                          zoom: Duration(milliseconds: 300),
+                          fitBound: Duration(milliseconds: 300),
+                          centerMarker: Duration(milliseconds: 200),
+                          spiderfy: Duration(milliseconds: 200),
+                        ),
+                        fitBoundsOptions: const FitBoundsOptions(
+                          padding: EdgeInsets.all(60),
+                          maxZoom: 15,
+                        ),
+                        markers: _buildFioritureMarkers(),
+                        builder: (ctx, markers) {
+                          final hasActive = markers.any(
+                            (m) => (m.key as ValueKey?)?.value
+                                    .toString()
+                                    .startsWith('fioritura_') ==
+                                true,
+                          );
+                          final clusterColor =
+                              hasActive ? Colors.green.shade600 : Colors.grey;
+                          return Opacity(
+                            opacity: 0.82,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: clusterColor,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: clusterColor.withOpacity(0.35),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.local_florist,
+                                      color: Colors.white, size: 14),
+                                  Text(
+                                    '${markers.length}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // ── APIARI (sopra le fioriture) ────────────────────────────
+                    MarkerClusterLayerWidget(
+                      options: MarkerClusterLayerOptions(
+                        maxClusterRadius: 90,
+                        size: const Size(44, 44),
                         animationsOptions: const AnimationsOptions(
                           zoom: Duration(milliseconds: 300),
                           fitBound: Duration(milliseconds: 300),
@@ -944,10 +1325,30 @@ class _MappaScreenState extends State<MappaScreen> {
                           maxZoom: 14,
                         ),
                         markers: _buildApiariMarkers(),
+                        onMarkerTap: (marker) {
+                          final keyVal =
+                              (marker.key as ValueKey?)?.value?.toString() ?? '';
+                          final id = int.tryParse(keyVal.split('_').last);
+                          if (id != null) {
+                            final found = _apiari
+                                .cast<Map<String, dynamic>?>()
+                                .firstWhere(
+                                  (a) => a != null && a['id'] == id,
+                                  orElse: () => null,
+                                );
+                            if (found != null) {
+                              _showApiarioInfo(Map<String, dynamic>.from(found));
+                            }
+                          }
+                        },
                         builder: (ctx, markers) {
-                          // Cluster marker: se tutti community → arancione, altrimenti primario
                           final allCommunity = markers.every(
-                            (m) => (m.key as ValueKey?)?.value == 'community',
+                            (m) =>
+                                (m.key as ValueKey?)
+                                    ?.value
+                                    ?.toString()
+                                    .startsWith('c_') ==
+                                true,
                           );
                           final clusterColor = allCommunity
                               ? Colors.orange.shade700
@@ -967,7 +1368,7 @@ class _MappaScreenState extends State<MappaScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.hive, color: Colors.white, size: 18),
+                                const Icon(Icons.hive, color: Colors.white, size: 17),
                                 Text(
                                   '${markers.length}',
                                   style: const TextStyle(
@@ -982,103 +1383,32 @@ class _MappaScreenState extends State<MappaScreen> {
                         },
                       ),
                     ),
-                    // Circles per fioriture (opacità diversa per attive/inattive)
-                    CircleLayer(
-                      circles: _fioriture.map((fioritura) {
-                        try {
-                          final lat = double.parse(fioritura['latitudine'].toString());
-                          final lng = double.parse(fioritura['longitudine'].toString());
-                          final raggio = fioritura['raggio'] != null ? double.parse(fioritura['raggio'].toString()) : 500.0;
-                          final isActive = fioritura['_isActive'] == true;
-
-                          return CircleMarker(
-                            point: LatLng(lat, lng),
-                            radius: raggio,
-                            color: (isActive ? Colors.green : Colors.grey).withOpacity(isActive ? 0.3 : 0.15),
-                            borderColor: isActive ? Colors.green : Colors.grey,
-                            borderStrokeWidth: isActive ? 2.0 : 1.0,
-                            useRadiusInMeter: true,
-                          );
-                        } catch (e) {
-                          debugPrint("Errore nel creare circle per fioritura: $e");
-                          return CircleMarker(
-                            point: LatLng(0, 0),
-                            radius: 0,
-                            color: Colors.transparent,
-                            borderColor: Colors.transparent,
-                            borderStrokeWidth: 0,
-                          );
-                        }
-                      }).toList(),
-                    ),
-                    // Marker per fioriture (opacità diversa per attive/inattive)
-                    MarkerLayer(
-                      markers: _fioriture.map((fioritura) {
-                        try {
-                          final lat = double.parse(fioritura['latitudine'].toString());
-                          final lng = double.parse(fioritura['longitudine'].toString());
-                          final isActive = fioritura['_isActive'] == true;
-
-                          return Marker(
-                            width: 30.0,
-                            height: 30.0,
-                            point: LatLng(lat, lng),
-                            builder: (ctx) => GestureDetector(
-                              onTap: () {
-                                _showFiorituraInfo(fioritura);
-                              },
-                              child: Opacity(
-                                opacity: isActive ? 1.0 : 0.5,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 2,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.local_florist,
-                                    color: isActive ? Colors.green : Colors.grey,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        } catch (e) {
-                          debugPrint("Errore nel creare marker per fioritura: $e");
-                          return Marker(
-                            width: 0,
-                            height: 0,
-                            point: LatLng(0, 0),
-                            builder: (ctx) => Container(),
-                          );
-                        }
-                      }).toList(),
-                    ),
-                    // Marker per posizione attuale
+                    // ── Posizione attuale (piccola, non invasiva) ──────────────
                     if (_currentPosition != null)
                       MarkerLayer(
                         markers: [
                           Marker(
-                            width: 30.0,
-                            height: 30.0,
+                            width: 18.0,
+                            height: 18.0,
                             point: LatLng(
                               _currentPosition!.latitude,
                               _currentPosition!.longitude,
                             ),
                             builder: (ctx) => Container(
                               decoration: BoxDecoration(
-                                color: Colors.blue,
+                                color: Colors.blue.shade600,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: Colors.white,
                                   width: 2,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blue.withOpacity(0.4),
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -1190,6 +1520,108 @@ class _MappaScreenState extends State<MappaScreen> {
                               Text('Fioritura inattiva'),
                             ],
                           ),
+                          if (_showOsmVegetazione) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2E7D32)
+                                        .withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                        color: const Color(0xFF2E7D32)
+                                            .withOpacity(0.65)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Bosco / Foresta'),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF689F38)
+                                        .withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                        color: const Color(0xFF689F38)
+                                            .withOpacity(0.65)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Macchia'),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF9CCC65)
+                                        .withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                        color: const Color(0xFF9CCC65)
+                                            .withOpacity(0.65)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Prato / Pascolo'),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00897B)
+                                        .withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                        color: const Color(0xFF00897B)
+                                            .withOpacity(0.65)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Frutteto'),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9A825)
+                                        .withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                        color: const Color(0xFFF9A825)
+                                            .withOpacity(0.65)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Coltura'),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Row(
                             mainAxisSize: MainAxisSize.min,

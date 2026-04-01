@@ -101,6 +101,7 @@ class AttrezzaturaService {
           'importo': prezzoAcquisto,
           'data': dataAcquisto,
           'gruppo': gruppoId,
+          'utente': userId,
         });
       } catch (e) {
         debugPrint('Errore creazione SpesaAttrezzatura per acquisto: $e');
@@ -291,6 +292,7 @@ class AttrezzaturaService {
           'importo': costo,
           'data': dataSpesa,
           'gruppo': gruppoId,
+          'utente': userId,
         });
       } catch (e) {
         debugPrint('Errore creazione SpesaAttrezzatura per manutenzione: $e');
@@ -372,6 +374,7 @@ class AttrezzaturaService {
           'importo': costo,
           'data': dataEsecuzione,
           'gruppo': gruppoIdEffettivo,
+          'utente': userId,
         });
       } catch (e) {
         debugPrint('Errore creazione SpesaAttrezzatura per completamento manutenzione: $e');

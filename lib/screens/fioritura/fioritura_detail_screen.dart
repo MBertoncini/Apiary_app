@@ -8,6 +8,8 @@ import '../../models/fioritura.dart';
 import '../../models/fioritura_conferma.dart';
 import '../../services/api_service.dart';
 import '../../services/fioritura_service.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class FiorituraDetailScreen extends StatefulWidget {
   final int fiorituraId;
@@ -19,6 +21,9 @@ class FiorituraDetailScreen extends StatefulWidget {
 }
 
 class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   late FiorituraService _service;
   Fioritura? _fioritura;
   List<FiorituraConferma> _conferme = [];
@@ -70,7 +75,7 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
       if (mounted) {
         setState(() => _isRefreshing = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Errore: $e')));
+            .showSnackBar(SnackBar(content: Text(_s.fiorituraDetailError(e.toString()))));
       }
     }
   }
@@ -89,13 +94,13 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
           _savingConferma = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Conferma registrata!')),
+          SnackBar(content: Text(_s.fiorituraDetailConfirmOk)),
         );
       }
     } catch (e) {
       setState(() => _savingConferma = false);
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Errore: $e')));
+          .showSnackBar(SnackBar(content: Text(_s.fiorituraDetailError(e.toString()))));
     }
   }
 
@@ -109,22 +114,24 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
     } catch (e) {
       setState(() => _savingConferma = false);
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Errore: $e')));
+          .showSnackBar(SnackBar(content: Text(_s.fiorituraDetailError(e.toString()))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
+    final s = _s;
     if (_isRefreshing && _fioritura == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Fioritura')),
+        appBar: AppBar(title: Text(s.fiorituraDetailTitle)),
         body: const Column(children: [LinearProgressIndicator(minHeight: 2)]),
       );
     }
     if (_fioritura == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Fioritura')),
-        body: const Center(child: Text('Fioritura non trovata')),
+        appBar: AppBar(title: Text(s.fiorituraDetailTitle)),
+        body: Center(child: Text(s.fiorituraDetailNotFound)),
       );
     }
 
@@ -136,8 +143,8 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
         title: Text(f.pianta),
         actions: [
           IconButton(
-            icon: Icon(Icons.edit),
-            tooltip: 'Modifica',
+            icon: const Icon(Icons.edit),
+            tooltip: s.fiorituraDetailTooltipEdit,
             onPressed: () async {
               final result = await Navigator.of(context).pushNamed(
                 AppConstants.fiorituraCreateRoute,
@@ -177,7 +184,7 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    isActive ? 'Attiva' : 'Non attiva',
+                    isActive ? s.fiorituraCardAttiva : s.fiorituraCardNonAttiva,
                     style: TextStyle(
                         color: isActive ? Colors.green : Colors.grey,
                         fontWeight: FontWeight.w600),
@@ -194,26 +201,26 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
                 child: Column(
                   children: [
                     if (f.apiarioNome != null)
-                      _infoRow(Icons.hive, 'Apiario', f.apiarioNome!),
-                    _infoRow(Icons.calendar_today, 'Periodo',
-                        _dateRange(f.dataInizio, f.dataFine)),
+                      _infoRow(Icons.hive, s.labelApiario, f.apiarioNome!),
+                    _infoRow(Icons.calendar_today, s.fiorituraDetailLblPeriodo,
+                        _dateRange(f.dataInizio, f.dataFine, s)),
                     if (f.raggio != null)
-                      _infoRow(Icons.radio_button_checked, 'Raggio',
+                      _infoRow(Icons.radio_button_checked, s.fiorituraDetailLblRaggio,
                           '${f.raggio} m'),
                     if (f.piantaTipo != null)
-                      _infoRow(Icons.park, 'Tipo pianta',
+                      _infoRow(Icons.park, s.fiorituraDetailLblTipoPianta,
                           Fioritura.piantaTipoLabel[f.piantaTipo] ??
                               f.piantaTipo!),
                     if (f.intensita != null)
-                      _infoRow(Icons.star, 'Intensità stimata',
+                      _infoRow(Icons.star, s.fiorituraDetailLblIntensitaStimata,
                           Fioritura.intensitaLabel[f.intensita!]),
-                    _infoRow(Icons.public, 'Visibilità',
-                        f.pubblica ? 'Pubblica (community)' : 'Privata'),
+                    _infoRow(Icons.public, s.fiorituraDetailLblVisibilita,
+                        f.pubblica ? s.fiorituraDetailValPubblica : s.fiorituraDetailValPrivata),
                     if (f.creatoreUsername != null)
-                      _infoRow(Icons.person_outline, 'Segnalata da',
+                      _infoRow(Icons.person_outline, s.fiorituraDetailLblSegnalata,
                           f.creatoreUsername!),
                     if (f.note != null && f.note!.isNotEmpty)
-                      _infoRow(Icons.note, 'Note', f.note!),
+                      _infoRow(Icons.note, s.labelNotes, f.note!),
                   ],
                 ),
               ),
@@ -227,19 +234,19 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Community',
-                        style: TextStyle(
+                    Text(s.fiorituraDetailLblCommunity,
+                        style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 15)),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         _statChip(
-                            Icons.people, '${f.nConferme}', 'confermanti'),
-                        SizedBox(width: 12),
+                            Icons.people, '${f.nConferme}', s.fiorituraDetailStatConfermanti),
+                        const SizedBox(width: 12),
                         if (f.intensitaMedia != null)
                           _statChip(Icons.star,
                               f.intensitaMedia!.toStringAsFixed(1),
-                              'intensità media'),
+                              s.fiorituraDetailStatIntensita),
                       ],
                     ),
                   ],
@@ -269,16 +276,16 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
                         SizedBox(width: 8),
                         Text(
                           f.confermaDaMe
-                              ? 'Hai confermato questa fioritura'
-                              : 'Hai visto questa fioritura?',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                              ? s.fiorituraDetailConfermata
+                              : s.fiorituraDetailConfermaQuestion,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     // Slider intensità
-                    Text('La tua valutazione di intensità:',
-                        style: TextStyle(fontSize: 12,
+                    Text(s.fiorituraDetailLblIntensity,
+                        style: const TextStyle(fontSize: 12,
                             color: ThemeConstants.textSecondaryColor)),
                     SizedBox(height: 6),
                     Row(
@@ -317,7 +324,7 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
                       controller: _notaCtrl,
                       maxLines: 2,
                       decoration: InputDecoration(
-                        hintText: 'Nota (opzionale)',
+                        hintText: s.fiorituraDetailHintNota,
                         prefixIcon: Icon(Icons.note, size: 18),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -339,8 +346,8 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
                                         color: Colors.white))
                                 : Icon(Icons.check),
                             label: Text(f.confermaDaMe
-                                ? 'Aggiorna conferma'
-                                : 'Conferma avvistamento'),
+                                ? s.fiorituraDetailBtnAggiorna
+                                : s.fiorituraDetailBtnConferma),
                             onPressed: _savingConferma ? null : _conferma,
                           ),
                         ),
@@ -350,10 +357,10 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
                             onPressed: _savingConferma
                                 ? null
                                 : _rimuoviConferma,
-                            child: Text('Rimuovi',
-                                style: TextStyle(color: Colors.red)),
                             style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Colors.red[200]!)),
+                            child: Text(s.fiorituraDetailBtnRemove,
+                                style: const TextStyle(color: Colors.red)),
                           ),
                         ],
                       ],
@@ -365,8 +372,8 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
             SizedBox(height: 12),
 
             // Mini mappa
-            Text('Posizione',
-                style: TextStyle(
+            Text(s.fiorituraDetailLblPosizione,
+                style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: ThemeConstants.textPrimaryColor)),
             SizedBox(height: 8),
@@ -470,10 +477,10 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
     );
   }
 
-  String _dateRange(String start, String? end) {
-    final s = _fmt(start);
-    if (end == null) return 'Dal $s';
-    return '$s → ${_fmt(end)}';
+  String _dateRange(String start, String? end, AppStrings s) {
+    final from = _fmt(start);
+    if (end == null) return s.fiorituraDateFrom(from);
+    return '$from → ${_fmt(end)}';
   }
 
   String _fmt(String iso) {

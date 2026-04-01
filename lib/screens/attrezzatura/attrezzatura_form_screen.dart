@@ -356,6 +356,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 value: _selectedStato,
+                                isExpanded: true,
                                 decoration: InputDecoration(
                                   labelText: 'Stato',
                                   border: OutlineInputBorder(),
@@ -363,7 +364,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                 items: Attrezzatura.statiDisponibili.map((stato) {
                                   return DropdownMenuItem(
                                     value: stato,
-                                    child: Text(_displayStato(stato)),
+                                    child: Text(_displayStato(stato), overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
                                 onChanged: (value) {
@@ -375,6 +376,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 value: _selectedCondizione,
+                                isExpanded: true,
                                 decoration: InputDecoration(
                                   labelText: 'Condizione',
                                   border: OutlineInputBorder(),
@@ -382,7 +384,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                 items: Attrezzatura.condizioniDisponibili.map((cond) {
                                   return DropdownMenuItem(
                                     value: cond,
-                                    child: Text(_displayCondizione(cond)),
+                                    child: Text(_displayCondizione(cond), overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
                                 onChanged: (value) {

@@ -3,7 +3,9 @@ import '../../widgets/drawer_widget.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
+import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../models/arnia.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
@@ -67,6 +69,9 @@ class ArniaListScreen extends StatefulWidget {
 }
 
 class _ArniaListScreenState extends State<ArniaListScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   late ApiService _apiService;
   late StorageService _storageService;
   Map<String, List<Arnia>> _arnieByApiario = {};
@@ -160,9 +165,10 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Le mie Arnie'),
+        title: Text(_s.arniaListTitle),
       ),
       drawer: AppDrawer(currentRoute: AppConstants.arniaListRoute),
       body: Column(
@@ -194,7 +200,7 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () => Navigator.of(context).pushNamed(AppConstants.creaArniaRoute),
-        tooltip: 'Aggiungi arnia',
+        tooltip: _s.arniaFabTooltip,
       ),
     );
   }
@@ -206,22 +212,22 @@ class _ArniaListScreenState extends State<ArniaListScreen> {
         children: [
           Icon(Icons.hive_outlined, size: 80, color: Colors.grey.withOpacity(0.5)),
           const SizedBox(height: 16),
-          const Text('Nessuna arnia trovata',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(_s.arniaEmptyTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('Non hai ancora creato arnie o non è stato possibile caricarle',
+          Text(_s.arniaEmptySubtitle,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             icon: const Icon(Icons.add),
-            label: const Text('Crea arnia'),
+            label: Text(_s.arniaBtnCreate),
             onPressed: () => Navigator.of(context).pushNamed(AppConstants.creaArniaRoute),
           ),
           const SizedBox(height: 12),
           TextButton.icon(
             icon: const Icon(Icons.refresh),
-            label: const Text('Riprova a caricare'),
+            label: Text(_s.arniaBtnRetry),
             onPressed: _refreshArnie,
           ),
         ],
@@ -246,12 +252,25 @@ class ApiarioGroupWidget extends StatefulWidget {
 }
 
 class _ApiarioGroupWidgetState extends State<ApiarioGroupWidget> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   bool _isExpanded = true;
 
   int get _totale => widget.arnie.length;
 
+  String _catLabel(String key) {
+    switch (key) {
+      case 'Arnie':    return _s.navArnie;
+      case 'Nuclei':   return _s.arniaCatNuclei;
+      case 'Speciali': return _s.arniaCatSpeciali;
+      default:         return key;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
     // Conta arnie attive per il badge nell'intestazione
     final attive = widget.arnie.where((a) => a.attiva).length;
 
@@ -276,7 +295,7 @@ class _ApiarioGroupWidgetState extends State<ApiarioGroupWidget> {
                     ),
                   ),
                   Text(
-                    '$attive/$_totale attive',
+                    _s.arniaActiveCount(attive, _totale),
                     style: TextStyle(color: ThemeConstants.textSecondaryColor, fontSize: 13),
                   ),
                   const SizedBox(width: 8),
@@ -328,7 +347,7 @@ class _ApiarioGroupWidgetState extends State<ApiarioGroupWidget> {
             children: [
               const Icon(Icons.device_unknown_outlined, size: 16, color: Colors.grey),
               const SizedBox(width: 6),
-              const Text('Altri', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
+              Text(_s.arniaCatAltri, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
               const SizedBox(width: 6),
               Text('(${altri.length})', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
@@ -365,7 +384,7 @@ class _ApiarioGroupWidgetState extends State<ApiarioGroupWidget> {
               Icon(cat.icon, size: 16, color: cat.color),
               const SizedBox(width: 6),
               Text(
-                cat.label,
+                _catLabel(cat.label),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -404,6 +423,9 @@ class ArniaListItem extends StatefulWidget {
 }
 
 class _ArniaListItemState extends State<ArniaListItem> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   final _dao = ControlloArniaDao();
   Map<String, dynamic>? _ultimoControllo;
 
@@ -482,7 +504,7 @@ class _ArniaListItemState extends State<ArniaListItem> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Arnia ${widget.arnia.numero}',
+                          _s.arniaItemTitle(widget.arnia.numero),
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                         ),
                         Text(
@@ -506,7 +528,7 @@ class _ArniaListItemState extends State<ArniaListItem> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      widget.arnia.attiva ? 'Attiva' : 'Inattiva',
+                      widget.arnia.attiva ? _s.arniaStatusActive : _s.arniaStatusInactive,
                       style: TextStyle(
                         fontSize: 12,
                         color: widget.arnia.attiva
@@ -526,7 +548,7 @@ class _ArniaListItemState extends State<ArniaListItem> {
               ] else ...[
                 const SizedBox(height: 4),
                 Text(
-                  'Nessun controllo registrato',
+                  _s.arniaNoControllo,
                   style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
                 ),
               ],
@@ -560,6 +582,7 @@ class _ControlloSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final data = _formatData(controllo['data'] as String?);
     final problemi  = controllo['problemi_sanitari'] == 1 || controllo['problemi_sanitari'] == true;
     final sciamatura = controllo['sciamatura'] == 1 || controllo['sciamatura'] == true;
@@ -569,16 +592,16 @@ class _ControlloSummary extends StatelessWidget {
         Icon(Icons.calendar_today, size: 11, color: Colors.grey[500]),
         const SizedBox(width: 3),
         Text(
-          'Controllo: $data',
+          s.arniaControlloDate(data),
           style: TextStyle(fontSize: 11, color: Colors.grey[600]),
         ),
         if (problemi) ...[
           const SizedBox(width: 8),
-          _Chip(icon: '⚠', label: 'Problemi', color: Colors.red.shade800),
+          _Chip(icon: '⚠', label: s.arniaChipProblemi, color: Colors.red.shade800),
         ],
         if (sciamatura) ...[
           const SizedBox(width: 4),
-          _Chip(icon: '🐝', label: 'Sciamatura', color: Colors.amber.shade800),
+          _Chip(icon: '🐝', label: s.arniaChipSciamatura, color: Colors.amber.shade800),
         ],
       ],
     );

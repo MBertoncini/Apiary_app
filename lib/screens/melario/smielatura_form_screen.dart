@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
@@ -97,9 +98,12 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() { _isLoadingData = false; });
+      final isNetworkError = e is SocketException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup');
       if (_apiari.isEmpty && _melari.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore caricamento dati: $e')));
-      } else {
+      } else if (isNetworkError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
         );

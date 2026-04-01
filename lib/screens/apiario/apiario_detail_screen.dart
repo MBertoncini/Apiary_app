@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../constants/api_constants.dart';  // Aggiunto per risolvere l'errore di ApiConstants
+import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/qr_generator_widget.dart';
 import '../../services/mobile_scanner_service.dart';
@@ -26,6 +28,9 @@ class ApiarioDetailScreen extends StatefulWidget {
 }
 
 class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTickerProviderStateMixin {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   bool _isLoading = false;
   bool _isRefreshing = false;
   Map<String, dynamic>? _apiario;
@@ -190,7 +195,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
     } catch (e) {
       debugPrint('Error loading apiario: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante il caricamento dei dati')),
+        SnackBar(content: Text(_s.apiarioDetailErrorLoad)),
       );
     } finally {
       setState(() { _isRefreshing = false; });
@@ -253,14 +258,14 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             Icon(Icons.wb_sunny_outlined, size: 64,
                 color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
             const SizedBox(height: 16),
-            Text('Monitoraggio meteo non attivato',
+            Text(_s.apiarioDetailNoMeteo,
                 style: TextStyle(
                     color: ThemeConstants.textSecondaryColor, fontSize: 16)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _editApiario,
               icon: const Icon(Icons.settings),
-              label: const Text('Attiva monitoraggio meteo'),
+              label: Text(_s.apiarioDetailActivateMeteo),
               style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
             ),
           ],
@@ -277,7 +282,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             Icon(Icons.location_off_outlined, size: 64,
                 color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
             const SizedBox(height: 16),
-            Text('Coordinate non impostate per questo apiario',
+            Text(_s.apiarioDetailNoCoords,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: ThemeConstants.textSecondaryColor, fontSize: 16)),
@@ -285,7 +290,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             ElevatedButton.icon(
               onPressed: _editApiario,
               icon: const Icon(Icons.edit_location_alt),
-              label: const Text('Imposta coordinate'),
+              label: Text(_s.apiarioDetailSetCoords),
               style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
             ),
           ],
@@ -313,15 +318,12 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Elimina Apiario'),
-        content: Text(
-          'Sei sicuro di voler eliminare "${_apiario?['nome']}"?\n\n'
-          'Verranno eliminate anche tutte le arnie, controlli, trattamenti e dati associati.',
-        ),
+        title: Text(_s.apiarioDetailDeleteTitle),
+        content: Text(_s.apiarioDetailDeleteMsg(_apiario?['nome'] ?? '')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annulla'),
+            child: Text(_s.dialogCancelBtn),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -329,7 +331,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
               await _deleteApiario();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: Text(_s.btnDelete),
           ),
         ],
       ),
@@ -342,13 +344,13 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       await apiService.delete('${ApiConstants.apiariUrl}${widget.apiarioId}/');
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Apiario eliminato con successo')),
+        SnackBar(content: Text(_s.apiarioDetailDeletedOk)),
       );
 
       Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+        SnackBar(content: Text(_s.apiarioDetailDeleteError(e.toString()))),
       );
     }
   }
@@ -356,7 +358,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   Future<void> _printArnieQrSheet() async {
     if (_apiario == null || _arnie.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nessuna arnia disponibile per la stampa')),
+        SnackBar(content: Text(_s.apiarioDetailNoPdfArnie)),
       );
       return;
     }
@@ -366,7 +368,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore durante la generazione del PDF: $e'),
+            content: Text(_s.apiarioDetailPdfError(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -376,9 +378,10 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
     if (_apiario == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Caricamento...')),
+        appBar: AppBar(title: Text(_s.apiarioDetailLoading)),
         body: const SingleChildScrollView(
           child: Column(
             children: [
@@ -398,17 +401,17 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           IconButton(
             icon: Icon(Icons.edit),
             onPressed: _editApiario,
-            tooltip: 'Modifica apiario',
+            tooltip: _s.apiarioDetailTooltipEdit,
           ),
           IconButton(
             icon: Icon(Icons.delete),
             onPressed: _confirmDeleteApiario,
-            tooltip: 'Elimina apiario',
+            tooltip: _s.apiarioDetailTooltipDelete,
           ),
           // Pulsante QR: mostra QR apiario + opzione stampa PDF arnie
           IconButton(
             icon: const Icon(Icons.qr_code),
-            tooltip: 'QR Code',
+            tooltip: _s.apiarioDetailTooltipQr,
             onPressed: () {
               showModalBottomSheet(
                 context: context,
@@ -459,9 +462,9 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Arnie'),
-            Tab(text: 'Trattamenti'),
-            Tab(text: 'Meteo'),
+            Tab(text: _s.navArnie),
+            Tab(text: _s.apiarioDetailLblTrattamenti),
+            Tab(text: _s.apiarioTabMeteo),
           ],
         ),
       ),
@@ -502,7 +505,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Nessun trattamento sanitario registrato',
+                        _s.apiarioDetailNoTrattamenti,
                         style: TextStyle(
                           color: ThemeConstants.textSecondaryColor,
                           fontSize: 16,
@@ -517,7 +520,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                           ).then((_) => _loadApiario());
                         },
                         icon: Icon(Icons.add),
-                        label: Text('Aggiungi trattamento'),
+                        label: Text(_s.apiarioDetailAddTrattamento),
                         style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
                       ),
                     ],
@@ -532,7 +535,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                         children: [
                           ElevatedButton.icon(
                             icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Nuovo trattamento'),
+                            label: Text(_s.apiarioDetailNewTrattamento),
                             onPressed: () => Navigator.of(context)
                                 .pushNamed(
                                   AppConstants.trattamentoCreateRoute,
@@ -588,13 +591,13 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    stato == 'in_corso' 
-                                        ? 'In corso' 
+                                    stato == 'in_corso'
+                                        ? _s.dashStatusInCorso
                                         : stato == 'programmato'
-                                            ? 'Programmato'
+                                            ? _s.dashStatusProgrammato
                                             : stato == 'completato'
-                                                ? 'Completato'
-                                                : 'Annullato',
+                                                ? _s.dashStatusCompletato
+                                                : _s.trattamentoStatusAnnullato,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: statusColor,
@@ -614,18 +617,15 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  'Dal ${trattamento['data_inizio']}',
+                                  trattamento['data_fine'] != null
+                                      ? _s.dashTrattamentoDates(
+                                          trattamento['data_inizio'],
+                                          trattamento['data_fine'])
+                                      : _s.trattamentiInizio(trattamento['data_inizio']),
                                   style: TextStyle(
                                     color: ThemeConstants.textSecondaryColor,
                                   ),
                                 ),
-                                if (trattamento['data_fine'] != null)
-                                  Text(
-                                    ' al ${trattamento['data_fine']}',
-                                    style: TextStyle(
-                                      color: ThemeConstants.textSecondaryColor,
-                                    ),
-                                  ),
                               ],
                             ),
                             
@@ -641,7 +641,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Sospensione fino al ${trattamento['data_fine_sospensione']}',
+                                      _s.trattamentiFineSOSP(trattamento['data_fine_sospensione']),
                                       style: TextStyle(
                                         color: Colors.orange,
                                       ),
@@ -662,7 +662,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Blocco covata attivo',
+                                      _s.trattamentoFormBloccoCovataActive,
                                       style: TextStyle(
                                         color: Colors.red,
                                       ),
@@ -692,7 +692,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                     AppConstants.trattamentoDetailRoute,
                                     arguments: trattamento['id'] as int,
                                   ).then((_) => _loadApiario()),
-                                  child: Text('Dettagli'),
+                                  child: Text(_s.apiarioDetailBtnDettagli),
                                 ),
                                 SizedBox(width: 8),
                                 if (stato == 'in_corso' || stato == 'programmato')
@@ -701,7 +701,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                                       AppConstants.trattamentoCreateRoute,
                                       arguments: {'trattamentoId': trattamento['id'] as int},
                                     ),
-                                    child: Text('Modifica'),
+                                    child: Text(_s.btnEdit),
                                   ),
                               ],
                             ),
@@ -732,7 +732,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
               onPressed: _showApiarioInfoSheet,
               backgroundColor: Theme.of(context).colorScheme.surface,
               foregroundColor: Theme.of(context).colorScheme.onSurface,
-              tooltip: 'Informazioni apiario',
+              tooltip: _s.apiarioDetailTooltipInfo,
               child: const Icon(Icons.info_outline),
             ),
           ),
@@ -744,7 +744,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           : FloatingActionButton(
               onPressed: _navigateToArniaCreate,
               child: const Icon(Icons.add),
-              tooltip: 'Aggiungi arnia',
+              tooltip: _s.apiarioDetailTooltipAddArnia,
             ),
     );
   }
@@ -782,42 +782,46 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
               Text(_apiario!['nome'] ?? 'Apiario',
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              _infoRow(Icons.location_on, 'Posizione', _apiario!['posizione'] ?? 'Non specificata'),
+              _infoRow(Icons.location_on, _s.apiarioDetailInfoPos,
+                  _apiario!['posizione'] ?? _s.dashPositionNone),
               if (_apiario!['latitudine'] != null)
-                _infoRow(Icons.map, 'Coordinate',
+                _infoRow(Icons.map, _s.apiarioDetailInfoCoord,
                     'Lat: ${_apiario!['latitudine']}, Long: ${_apiario!['longitudine']}'),
-              _infoRow(Icons.wb_sunny, 'Monitoraggio meteo',
-                  (_apiario!['monitoraggio_meteo'] == true) ? 'Attivo' : 'Disattivato'),
-              _infoRow(Icons.visibility, 'Visibilità mappa',
+              _infoRow(Icons.wb_sunny, _s.apiarioFormMeteoTitle,
+                  (_apiario!['monitoraggio_meteo'] == true)
+                      ? _s.apiarioDetailInfoMeteoOn
+                      : _s.apiarioDetailInfoMeteoOff),
+              _infoRow(Icons.visibility, _s.apiarioDetailInfoVis,
                   _apiario!['visibilita_mappa'] == 'privato'
-                      ? 'Solo proprietario'
+                      ? _s.apiarioFormVisibOwner
                       : _apiario!['visibilita_mappa'] == 'gruppo'
-                          ? 'Membri del gruppo'
-                          : 'Tutti gli utenti'),
-              _infoRow(Icons.group, 'Condivisione gruppi',
+                          ? _s.apiarioFormVisibGroup
+                          : _s.apiarioFormVisibAll),
+              _infoRow(Icons.group, _s.apiarioDetailInfoSharing,
                   (_apiario!['condiviso_con_gruppo'] == true)
-                      ? 'Condiviso con il gruppo'
-                      : 'Non condiviso'),
+                      ? _s.apiarioDetailInfoShared
+                      : _s.apiarioDetailInfoNotShared),
               if (_apiario!['note'] != null && (_apiario!['note'] as String).isNotEmpty) ...[
                 const Divider(height: 24),
-                Text('Note', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                Text(_s.apiarioDetailLblNote,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                 const SizedBox(height: 4),
                 Text(_apiario!['note']),
               ],
               const Divider(height: 24),
-              Text('Statistiche',
+              Text(_s.apiarioDetailLblStatistiche,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _statChip('${_arnie.length}', 'Arnie', ThemeConstants.primaryColor),
+                  _statChip('${_arnie.length}', _s.navArnie, ThemeConstants.primaryColor),
                   _statChip(
                     '${_arnie.where((a) => a['attiva'] == true).length}',
-                    'Attive', ThemeConstants.secondaryColor),
+                    _s.labelActive, ThemeConstants.secondaryColor),
                   _statChip(
                     '${_trattamenti.where((t) => t['stato'] == 'in_corso' || t['stato'] == 'programmato').length}',
-                    'Trattamenti', Colors.orange),
+                    _s.apiarioDetailLblTrattamenti, Colors.orange),
                 ],
               ),
             ],

@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../constants/piante_mellifere.dart';
 import '../../constants/theme_constants.dart';
 import '../../models/fioritura.dart';
 import '../../services/api_service.dart';
 import '../../services/fioritura_service.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class FiorituraFormScreen extends StatefulWidget {
   final Fioritura? fioritura; // null = crea, non-null = modifica
@@ -18,10 +21,14 @@ class FiorituraFormScreen extends StatefulWidget {
 }
 
 class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   final _formKey = GlobalKey<FormState>();
   late FiorituraService _service;
 
   final _piantaCtrl = TextEditingController();
+  final _piantaFocusNode = FocusNode();
   final _noteCtrl = TextEditingController();
   final _raggioCtrl = TextEditingController();
 
@@ -37,21 +44,31 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
 
   final MapController _mapCtrl = MapController();
 
-  static const List<Map<String, String>> _tipiPianta = [
-    {'value': 'spontanea', 'label': 'Spontanea'},
-    {'value': 'coltivata', 'label': 'Coltivata'},
-    {'value': 'alberata', 'label': 'Alberata'},
-    {'value': 'arborea', 'label': 'Arborea'},
-    {'value': 'arbustiva', 'label': 'Arbustiva'},
+  static const List<String> _tipiPiantaValues = [
+    'spontanea', 'coltivata', 'alberata', 'arborea', 'arbustiva',
   ];
 
-  static const List<Map<String, dynamic>> _intensitaOptions = [
-    {'value': 1, 'label': 'Scarsa'},
-    {'value': 2, 'label': 'Discreta'},
-    {'value': 3, 'label': 'Buona'},
-    {'value': 4, 'label': 'Ottima'},
-    {'value': 5, 'label': 'Eccezionale'},
-  ];
+  String _tipoLabel(String value, AppStrings s) {
+    switch (value) {
+      case 'spontanea':  return s.fiorituraFormTipoSpontanea;
+      case 'coltivata':  return s.fiorituraFormTipoColtivata;
+      case 'alberata':   return s.fiorituraFormTipoAlberata;
+      case 'arborea':    return s.fiorituraFormTipoArborea;
+      case 'arbustiva':  return s.fiorituraFormTipoArbustiva;
+      default:           return value;
+    }
+  }
+
+  String _intensitaLabel(int value, AppStrings s) {
+    switch (value) {
+      case 1: return s.fiorituraFormIntensita1;
+      case 2: return s.fiorituraFormIntensita2;
+      case 3: return s.fiorituraFormIntensita3;
+      case 4: return s.fiorituraFormIntensita4;
+      case 5: return s.fiorituraFormIntensita5;
+      default: return value.toString();
+    }
+  }
 
   @override
   void initState() {
@@ -86,6 +103,7 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
   @override
   void dispose() {
     _piantaCtrl.dispose();
+    _piantaFocusNode.dispose();
     _noteCtrl.dispose();
     _raggioCtrl.dispose();
     super.dispose();
@@ -137,15 +155,16 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    final s = _s;
     if (_dataInizio == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Inserisci la data di inizio')),
+        SnackBar(content: Text(s.fiorituraFormErrDataInizio)),
       );
       return;
     }
     if (_lat == null || _lng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Seleziona la posizione sulla mappa')),
+        SnackBar(content: Text(s.fiorituraFormErrPosition)),
       );
       return;
     }
@@ -178,21 +197,23 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
     } catch (e) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore: $e')),
+        SnackBar(content: Text(_s.fiorituraFormError(e.toString()))),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context); // rebuild on language change
+    final s = _s;
     final isEdit = widget.fioritura != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Modifica fioritura' : 'Nuova fioritura'),
+        title: Text(isEdit ? s.fiorituraFormTitleEdit : s.fiorituraFormTitleNew),
         actions: [
           if (_saving)
-            Padding(
-              padding: const EdgeInsets.all(12.0),
+            const Padding(
+              padding: EdgeInsets.all(12.0),
               child: SizedBox(
                   width: 24,
                   height: 24,
@@ -201,8 +222,8 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
             )
           else
             IconButton(
-              icon: Icon(Icons.check),
-              tooltip: 'Salva',
+              icon: const Icon(Icons.check),
+              tooltip: s.fiorituraFormTooltipSave,
               onPressed: _save,
             ),
         ],
@@ -212,17 +233,75 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
         child: ListView(
           padding: EdgeInsets.all(16),
           children: [
-            // Pianta
-            TextFormField(
-              controller: _piantaCtrl,
-              decoration: InputDecoration(
-                labelText: 'Pianta *',
-                prefixIcon: Icon(Icons.local_florist),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+            // Pianta – autocomplete da vocabolario standardizzato
+            RawAutocomplete<PiantaMellifera>(
+              textEditingController: _piantaCtrl,
+              focusNode: _piantaFocusNode,
+              displayStringForOption: (p) => p.nome,
+              optionsBuilder: (textEditingValue) {
+                final q = textEditingValue.text.trim();
+                if (q.isEmpty) return const [];
+                return PiantaMellifera.cerca(q);
+              },
+              onSelected: (PiantaMellifera pianta) {
+                // Auto-compila tipo pianta se non già selezionato
+                if (_piantaTipo == null && pianta.piantaTipo != null) {
+                  setState(() => _piantaTipo = pianta.piantaTipo);
+                }
+              },
+              fieldViewBuilder: (context, ctrl, focusNode, onFieldSubmitted) {
+                return TextFormField(
+                  controller: ctrl,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    labelText: s.fiorituraFormLblPianta,
+                    prefixIcon: const Icon(Icons.local_florist),
+                    hintText: 'Es. Acacia, Castagno, Tiglio…',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? s.trattamentoFormValidateCampoObbligatorio
+                      : null,
+                  onFieldSubmitted: (_) => onFieldSubmitted(),
+                );
+              },
+              optionsViewBuilder: (context, onSelected, options) => Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(8),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, indent: 16),
+                      itemBuilder: (context, index) {
+                        final pianta = options.elementAt(index);
+                        final periodo = pianta.periodoFormatted;
+                        return ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.local_florist,
+                              size: 18, color: Colors.green),
+                          title: Text(pianta.labelCompleta),
+                          subtitle: pianta.nomeScientifico != null
+                              ? Text(
+                                  periodo.isNotEmpty
+                                      ? '${pianta.nomeScientifico} · $periodo'
+                                      : pianta.nomeScientifico!,
+                                  style: const TextStyle(fontSize: 11),
+                                )
+                              : null,
+                          onTap: () => onSelected(pianta),
+                        );
+                      },
+                    ),
+                  ),
+                ),
               ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Campo obbligatorio' : null,
             ),
             SizedBox(height: 12),
 
@@ -230,15 +309,15 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
             DropdownButtonFormField<String>(
               value: _piantaTipo,
               decoration: InputDecoration(
-                labelText: 'Tipo di pianta',
-                prefixIcon: Icon(Icons.park),
+                labelText: s.fiorituraFormLblTipoPianta,
+                prefixIcon: const Icon(Icons.park),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
               items: [
-                DropdownMenuItem(value: null, child: Text('Non specificato')),
-                ..._tipiPianta.map((t) => DropdownMenuItem(
-                    value: t['value'], child: Text(t['label']!))),
+                DropdownMenuItem(value: null, child: Text(s.fiorituraFormHintNonSpecificato)),
+                ..._tipiPiantaValues.map((v) => DropdownMenuItem(
+                    value: v, child: Text(_tipoLabel(v, s)))),
               ],
               onChanged: (v) => setState(() => _piantaTipo = v),
             ),
@@ -252,37 +331,37 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
                     onTap: () => _pickDate(isStart: true),
                     child: InputDecorator(
                       decoration: InputDecoration(
-                        labelText: 'Data inizio *',
-                        prefixIcon: Icon(Icons.calendar_today),
+                        labelText: s.fiorituraFormLblDataInizio,
+                        prefixIcon: const Icon(Icons.calendar_today),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(_dataInizio != null
                           ? '${_dataInizio!.day}/${_dataInizio!.month}/${_dataInizio!.year}'
-                          : 'Seleziona'),
+                          : s.fiorituraFormHintSeleziona),
                     ),
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: InkWell(
                     onTap: () => _pickDate(isStart: false),
                     child: InputDecorator(
                       decoration: InputDecoration(
-                        labelText: 'Data fine',
-                        prefixIcon: Icon(Icons.event),
+                        labelText: s.fiorituraFormLblDataFine,
+                        prefixIcon: const Icon(Icons.event),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                         suffixIcon: _dataFine != null
                             ? IconButton(
-                                icon: Icon(Icons.clear, size: 16),
+                                icon: const Icon(Icons.clear, size: 16),
                                 onPressed: () =>
                                     setState(() => _dataFine = null))
                             : null,
                       ),
                       child: Text(_dataFine != null
                           ? '${_dataFine!.day}/${_dataFine!.month}/${_dataFine!.year}'
-                          : 'Nessuna'),
+                          : s.fiorituraFormHintNessuna),
                     ),
                   ),
                 ),
@@ -295,52 +374,51 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
               controller: _raggioCtrl,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Raggio (metri)',
-                prefixIcon: Icon(Icons.radio_button_checked),
+                labelText: s.fiorituraFormLblRaggio,
+                prefixIcon: const Icon(Icons.radio_button_checked),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
 
             // Intensità
             DropdownButtonFormField<int>(
               value: _intensita,
               decoration: InputDecoration(
-                labelText: 'Intensità fioritura',
-                prefixIcon: Icon(Icons.star_border),
+                labelText: s.fiorituraFormLblIntensita,
+                prefixIcon: const Icon(Icons.star_border),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
               items: [
-                DropdownMenuItem(value: null, child: Text('Non valutata')),
-                ..._intensitaOptions.map((o) => DropdownMenuItem(
-                    value: o['value'] as int,
-                    child: Text(o['label'] as String))),
+                DropdownMenuItem(value: null, child: Text(s.fiorituraFormHintNonValutata)),
+                ...[1, 2, 3, 4, 5].map((v) => DropdownMenuItem(
+                    value: v,
+                    child: Text(_intensitaLabel(v, s)))),
               ],
               onChanged: (v) => setState(() => _intensita = v),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
 
             // Note
             TextFormField(
               controller: _noteCtrl,
               maxLines: 3,
               decoration: InputDecoration(
-                labelText: 'Note',
-                prefixIcon: Icon(Icons.note),
+                labelText: s.fiorituraFormLblNote,
+                prefixIcon: const Icon(Icons.note),
                 alignLabelWithHint: true,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
 
             // Pubblica
             SwitchListTile(
-              title: Text('Visibile alla community'),
-              subtitle: Text(
-                  'Condividi questa fioritura con tutti gli apicoltori'),
+              title: Text(s.fiorituraFormVisibilitaTitle),
+              subtitle: Text(s.fiorituraFormVisibilitaSubtitle),
               secondary: Icon(Icons.public,
                   color: _pubblica ? Colors.blue : Colors.grey),
               value: _pubblica,
@@ -354,15 +432,15 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
 
             // Mappa per selezionare posizione
             Text(
-              'Posizione *',
-              style: TextStyle(
+              s.fiorituraDetailLblPosizione,
+              style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   color: ThemeConstants.textPrimaryColor),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
-              'Tocca la mappa per impostare la posizione della fioritura',
-              style: TextStyle(
+              s.fiorituraFormMapHint,
+              style: const TextStyle(
                   fontSize: 12,
                   color: ThemeConstants.textSecondaryColor),
             ),
@@ -424,8 +502,8 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
               ),
             SizedBox(height: 8),
             OutlinedButton.icon(
-              icon: Icon(Icons.my_location),
-              label: Text('Usa la mia posizione attuale'),
+              icon: const Icon(Icons.my_location),
+              label: Text(s.fiorituraFormBtnUsePos),
               onPressed: _fetchCurrentLocation,
             ),
             SizedBox(height: 32),
