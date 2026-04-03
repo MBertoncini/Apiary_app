@@ -296,6 +296,9 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
           },
           onSendToAI: (editedTranscriptions) async {
             final entries = <VoiceEntry>[];
+            // Items Gemini returned null for (parse error, not rate-limit/network)
+            // — must be re-queued to prevent silent data loss.
+            final List<String> parseFailed = [];
             // Track the index up to which items have been successfully
             // dispatched to Gemini so we can re-queue the rest on early stop.
             int firstUnprocessedIndex = 0;
@@ -316,11 +319,14 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                     _contextApiarioId, _contextApiarioNome);
               }
               final entry = await _dataProcessor.processVoiceInput(text);
-              if (entry != null) entries.add(entry);
+              if (entry != null) {
+                entries.add(entry);
+              }
               if (_dataProcessor.lastCallWasRateLimit ||
                   _dataProcessor.lastCallWasNetworkError) break;
-              // Only advance past this item when it was handled without
-              // a hard stop — so a rate-limited item stays in "unprocessed".
+              // Advance past this item (it was reached without a hard stop).
+              // If entry == null here it was a parse error: save for re-queue.
+              if (entry == null) parseFailed.add(text);
               firstUnprocessedIndex = i + 1;
               if (i < editedTranscriptions.length - 1) {
                 await Future.delayed(const Duration(seconds: 5));
@@ -330,6 +336,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
 
             if (entries.isEmpty) {
               // Nothing succeeded — leave original items in queue as-is.
+              // parseFailed items are already in the queue (not removed yet).
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -347,16 +354,17 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
             // Some items succeeded: remove all originals (they have been
             // consumed into the edited transcriptions flow).
             await _queueService.removeItemsFromQueue(allIds);
-            // Re-queue any edited transcriptions that were never reached due
-            // to rate-limit / network error — preserving the user's edits.
+            // Re-queue items never reached (rate-limit/network) AND items that
+            // were reached but returned null (parse errors) — preserving data.
             final unprocessed = editedTranscriptions
                 .sublist(firstUnprocessedIndex)
                 .where((t) => t.isNotEmpty)
                 .toList();
-            if (unprocessed.isNotEmpty) {
+            final toRequeue = [...unprocessed, ...parseFailed];
+            if (toRequeue.isNotEmpty) {
               final ctx = queue.isNotEmpty ? queue[0] : null;
               await _queueService.addBatchToQueue(
-                unprocessed,
+                toRequeue,
                 ctx?['apiario_id'] as int?,
                 ctx?['apiario_nome'] as String?,
               );

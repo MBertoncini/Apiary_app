@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
@@ -9,6 +10,10 @@ import '../constants/api_constants.dart';
 import '../models/user.dart';
 import 'dart:async';
 import 'auth_token_provider.dart';
+
+// Web Client ID da google-services.json (oauth_client type 3)
+const _googleServerClientId =
+    '349177568966-it8t7p7d79geijhup4l3n51gkh16bc6k.apps.googleusercontent.com';
 
 class AuthService extends ChangeNotifier implements AuthTokenProvider {
   bool _isLoading = true;
@@ -223,6 +228,92 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       if (_lastError == null) {
         _lastError = 'Si è verificato un errore durante il login: ${e.toString()}';
       }
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Login con Google OAuth
+  Future<bool> loginWithGoogle() async {
+    _isLoading = true;
+    _lastError = null;
+    notifyListeners();
+
+    try {
+      final googleSignIn = GoogleSignIn(
+        serverClientId: _googleServerClientId,
+        scopes: ['email', 'profile'],
+      );
+
+      // Forza sempre il selettore account
+      await googleSignIn.signOut();
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) {
+        // L'utente ha annullato
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await account.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        _lastError = 'google_token_error';
+        throw Exception(_lastError);
+      }
+
+      final response = await http.post(
+        Uri.parse(ApiConstants.googleAuthUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'id_token': idToken}),
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('Google auth response: ${response.statusCode} — ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(utf8.decode(response.bodyBytes));
+        _token = responseData['access'];
+        _refreshToken = responseData['refresh'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(AppConstants.tokenKey, _token!);
+        await prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
+
+        _isAuthenticated = true;
+        _offlineMode = false;
+
+        final user = await _fetchUserInfo();
+        if (user != null) {
+          _currentUser = user;
+          await prefs.setString(AppConstants.userInfoKey, json.encode(user.toJson()));
+        }
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        try {
+          final data = json.decode(utf8.decode(response.bodyBytes));
+          _lastError = data['detail'] ?? 'google_auth_error';
+        } catch (_) {
+          _lastError = 'google_auth_error';
+        }
+        throw Exception(_lastError);
+      }
+    } on SocketException {
+      _lastError = 'network_error';
+      throw Exception(_lastError);
+    } on TimeoutException {
+      _lastError = 'timeout_error';
+      throw Exception(_lastError);
+    } catch (e) {
+      debugPrint('Google login error: $e');
+      _lastError ??= 'google_auth_error';
       _isLoading = false;
       notifyListeners();
       rethrow;

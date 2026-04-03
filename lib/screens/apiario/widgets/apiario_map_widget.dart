@@ -159,7 +159,7 @@ class ApiarioMapWidget extends StatefulWidget {
   final Function(int arniaId) onArniaTap;
   final VoidCallback onAddArnia;
   final ValueChanged<bool>? onEditModeChanged;
-  final VoidCallback? onNucleoConverted;
+  final VoidCallback? onRefresh;
   final bool selectionMode;
   final Set<int> selectedArnieIds;
 
@@ -176,7 +176,7 @@ class ApiarioMapWidget extends StatefulWidget {
     required this.onArniaTap,
     required this.onAddArnia,
     this.onEditModeChanged,
-    this.onNucleoConverted,
+    this.onRefresh,
     this.selectionMode = false,
     this.selectedArnieIds = const {},
     this.ultimiControlli,
@@ -195,7 +195,6 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     with SingleTickerProviderStateMixin {
   Map<int, Offset> _arniaPositions = {};
   List<MapElement> _elements = [];
-  List<dynamic> _nucleiDb = [];
 
   bool _editMode = false;
   bool _hasChanges = false;
@@ -258,33 +257,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   }
 
   Future<void> _init() async {
-    await Future.wait([_loadLayout(), _loadNucleiDb()]);
-  }
-
-  // ── nuclei dal DB ──────────────────────────────────────────────
-
-  Future<void> _loadNucleiDb() async {
-    if (!mounted) return;
-    final prefs = await SharedPreferences.getInstance();
-
-    // Fase 1: cache locale — mostra subito
-    final cached = prefs.getString('nuclei_${widget.apiarioId}');
-    if (cached != null) {
-      try {
-        final list = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
-        if (mounted) setState(() => _nucleiDb = list);
-      } catch (_) {}
-    }
-
-    // Fase 2: aggiornamento dal server in background
-    try {
-      final api = Provider.of<ApiService>(context, listen: false);
-      final list = await api.getNucleiByApiario(widget.apiarioId);
-      await prefs.setString('nuclei_${widget.apiarioId}', jsonEncode(list));
-      if (mounted) setState(() => _nucleiDb = list);
-    } catch (e) {
-      debugPrint('Nuclei fetch failed: $e');
-    }
+    await _loadLayout();
   }
 
   // ── storage ────────────────────────────────────────────────────
@@ -479,8 +452,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       setState(() => _editMode = true);
       widget.onEditModeChanged?.call(true);
     }
-    if (type == MapElementType.nucleo ||
-        type == MapElementType.apidea ||
+    if (type == MapElementType.apidea ||
         type == MapElementType.mini_plus ||
         type == MapElementType.portasciami) {
       _showAddSmallHiveDialog(type);
@@ -614,7 +586,6 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
   void _showAddSmallHiveDialog(MapElementType type) {
     final labels = {
-      MapElementType.nucleo:      'nucleo',
       MapElementType.apidea:      'Apidea/Kieler',
       MapElementType.mini_plus:   'Mini-Plus',
       MapElementType.portasciami: 'portasciami',
@@ -682,7 +653,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 final num = int.tryParse(numCtrl.text.trim());
                 if (num == null) return;
                 Navigator.pop(ctx);
-                await _createNucleoDb(num, selectedColor, type);
+                await _createSmallHiveDb(num, selectedColor, type);
               },
               child: const Text('Aggiungi'),
             ),
@@ -692,63 +663,28 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     );
   }
 
-  Future<void> _createNucleoDb(int numero, String coloreHex,
-      [MapElementType type = MapElementType.nucleo]) async {
+  Future<void> _createSmallHiveDb(int numero, String coloreHex, MapElementType type) async {
     try {
       final api = Provider.of<ApiService>(context, listen: false);
       final today = DateTime.now().toIso8601String().substring(0, 10);
       final c = _viewportCenter();
 
-      // Apidea, Mini-Plus e Portasciami diventano vere Arnie nel DB
-      if (type == MapElementType.apidea ||
-          type == MapElementType.mini_plus ||
-          type == MapElementType.portasciami) {
-        final resp = await api.createArnia({
-          'apiario': widget.apiarioId,
-          'numero': numero,
-          'colore_hex': coloreHex,
-          'tipo_arnia': type.name,
-          'data_installazione': today,
-        });
-        if (resp == null) return;
-        final arniaId = resp['id'] as int;
-        HapticFeedback.mediumImpact();
-        setState(() {
-          _arniaPositions[arniaId] = _snap(Offset(c.dx - 35, c.dy - 35));
-          _hasChanges = true;
-        });
-        await _saveLayout();
-        widget.onNucleoConverted?.call();
-        return;
-      }
-
-      // Nucleo: crea record Nucleo nel DB
-      int? nucleoId;
-      if (type == MapElementType.nucleo) {
-        final resp = await api.createNucleo({
-          'apiario': widget.apiarioId,
-          'numero': numero,
-          'colore_hex': coloreHex,
-          'data_installazione': today,
-        });
-        if (resp == null) return;
-        nucleoId = resp['id'] as int;
-        _nucleiDb.add(resp);
-      }
-      final id = '${type.name}_${DateTime.now().millisecondsSinceEpoch}';
+      final resp = await api.createArnia({
+        'apiario': widget.apiarioId,
+        'numero': numero,
+        'colore_hex': coloreHex,
+        'tipo_arnia': type.name,
+        'data_installazione': today,
+      });
+      if (resp == null) return;
+      final arniaId = resp['id'] as int;
       HapticFeedback.mediumImpact();
       setState(() {
-        _elements.add(MapElement(
-          id: id,
-          type: type,
-          position: _snap(Offset(c.dx - 35, c.dy - 35)),
-          numero: numero,
-          coloreHex: coloreHex,
-          attiva: true,
-          nucleoDbId: nucleoId,
-        ));
+        _arniaPositions[arniaId] = _snap(Offset(c.dx - 35, c.dy - 35));
         _hasChanges = true;
       });
+      await _saveLayout();
+      widget.onRefresh?.call();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -757,17 +693,10 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     }
   }
 
-  // ── nucleo: sheet info ─────────────────────────────────────────
+  // ── nucleo legacy: sheet info (elementi esistenti in layout) ───
 
   void _showNucleoSheet(MapElement el) {
-    final dbData = el.nucleoDbId != null
-        ? _nucleiDb.firstWhere(
-            (n) => n['id'] == el.nucleoDbId,
-            orElse: () => <String, dynamic>{},
-          ) as Map<String, dynamic>
-        : <String, dynamic>{};
-    final num = dbData['numero'] ?? el.numero ?? '?';
-    final conv = dbData['convertito'] == true;
+    final num = el.numero ?? '?';
 
     showModalBottomSheet(
       context: context,
@@ -784,112 +713,68 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             Text('Nucleo $num',
-                style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold)),
-            if (dbData['data_installazione'] != null)
-              Text('Installato: ${dbData['data_installazione']}',
-                  style: const TextStyle(color: Colors.grey)),
-            if (dbData['note'] != null && dbData['note'] != '')
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(dbData['note'] as String),
-              ),
-            const SizedBox(height: 20),
-            // Pulsante scheda tecnica
-            if (el.nucleoDbId != null)
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: const Text('Apri scheda tecnica'),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Navigator.of(context).pushNamed(
-                      AppConstants.nucleoDetailRoute,
-                      arguments: el.nucleoDbId,
-                    ).then((result) {
-                      if (result == true) {
-                        // Il nucleo è stato convertito: ricarica la mappa
-                        _init();
-                        widget.onNucleoConverted?.call();
-                      }
-                    });
-                  },
-                ),
-              ),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            if (conv)
-              const Chip(
-                label: Text('Già convertito in arnia'),
-                backgroundColor: Colors.green,
-                labelStyle: TextStyle(color: Colors.white),
-              )
-            else if (el.nucleoDbId != null)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.upgrade),
-                  label: const Text('Converti in arnia'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _confirmConvertNucleo(el);
-                  },
-                ),
+            const Text('Elemento legacy — rimuovilo dalla mappa se non più in uso.',
+                style: TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                label: const Text('Rimuovi dalla mappa', style: TextStyle(color: Colors.red)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _removeElement(el.id);
+                  _saveLayout();
+                },
               ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _confirmConvertNucleo(MapElement el) {
-    showDialog<bool>(
+  Future<int?> _askNumeroConflict(int current, int suggested) async {
+    final ctrl = TextEditingController(text: '$suggested');
+    final result = await showDialog<int>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Converti in arnia'),
-        content: Text(
-            'Il nucleo ${el.numero ?? ''} verrà trasformato in un\'arnia completa. Continuare?'),
+        title: const Text('Numero già esistente'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('L\'arnia numero $current esiste già.\nScegli un numero per la nuova arnia:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Numero arnia',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annulla')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annulla'),
+          ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Converti'),
+            onPressed: () {
+              final v = int.tryParse(ctrl.text.trim());
+              if (v != null && v > 0) Navigator.pop(ctx, v);
+            },
+            child: const Text('Conferma'),
           ),
         ],
       ),
-    ).then((ok) { if (ok == true) _convertNucleo(el); });
-  }
-
-  Future<void> _convertNucleo(MapElement el) async {
-    if (el.nucleoDbId == null) return;
-    try {
-      final api = Provider.of<ApiService>(context, listen: false);
-      final arnia = await api.convertNucleoToArnia(el.nucleoDbId!);
-      if (arnia == null) return;
-      final arniaId = arnia['id'] as int;
-      _arniaPositions[arniaId] = el.position;
-      _removeElement(el.id);
-      await _saveLayout();
-      await _loadNucleiDb();
-      widget.onNucleoConverted?.call();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nucleo convertito in arnia!')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore conversione: $e')));
-      }
-    }
+    );
+    ctrl.dispose();
+    return result;
   }
 
   // ── helpers ────────────────────────────────────────────────────
@@ -1424,17 +1309,9 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           el.type == MapElementType.portasciami;
 
       if (isSmallHive) {
-        final dbData = el.nucleoDbId != null
-            ? _nucleiDb.firstWhere(
-                (n) => n['id'] == el.nucleoDbId,
-                orElse: () => <String, dynamic>{},
-              ) as Map<String, dynamic>
-            : <String, dynamic>{};
-        final num = (dbData['numero'] ?? el.numero ?? 1) as int;
-        final hex = (dbData['colore_hex'] ?? el.coloreHex ?? '#8B6914') as String;
-        final active = (dbData['attiva'] ?? el.attiva ?? true) as bool;
-        final converted = dbData['convertito'] == true;
-        if (converted) return const SizedBox.shrink();
+        final num = (el.numero ?? 1) as int;
+        final hex = (el.coloreHex ?? '#8B6914') as String;
+        final active = (el.attiva ?? true) as bool;
 
         // Mappa tipo elemento → HiveTipo painter
         final HiveTipo smallTipo;
@@ -1509,25 +1386,35 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               )
             : _AlberoWidget(isDragging: false);
 
-        // Albero semi-trasparente se un'arnia con Y maggiore (in primo piano) si sovrappone.
-        // La pos dell'arnia è il top-left della Column (melari + hive + info).
-        // L'arnia vera occupa _cellSize px in altezza a partire da pos.dy;
-        // usiamo un rect generoso (1.4× _cellSize) per coprire anche il corpo completo.
+        // Albero semi-trasparente se un'arnia "davanti" (base più bassa) si sovrappone.
+        // Fix: (1) always-wrapper AnimatedOpacity per animazione simmetrica fade-in/out;
+        //      (2) altezza arnia calcolata con melari reali (14px cadauno) non 1.4×cellSize;
+        //      (3) confronto bottom-Y invece di top-Y per depth ordering corretto.
         const treeW = 72.0, treeH = 82.0;
+        const melarioH = 14.0; // 13px box + 1px margin bottom
         final treeRect = Rect.fromLTWH(pos.dx, pos.dy, treeW, treeH);
-        final isOverlapped = _arniaPositions.entries.any((e) {
-          if (e.value.dy <= el.position.dy) return false;
+        final treeBaseY = pos.dy + treeH;
+        final isOverlapped = _arniaPositions.entries.any((arniaEntry) {
+          final arniaPos = arniaEntry.value;
+          final numMelari = widget.melariData == null
+              ? 0
+              : widget.melariData!
+                  .where((m) =>
+                      m['arnia'] == arniaEntry.key &&
+                      m['stato'] == 'posizionato')
+                  .length;
+          final arniaH = numMelari * melarioH + _cellSize;
+          // L'arnia è "davanti" se la sua base è più bassa di quella dell'albero
+          if (arniaPos.dy + arniaH <= treeBaseY) return false;
           return treeRect.overlaps(
-            Rect.fromLTWH(e.value.dx, e.value.dy, _cellSize, _cellSize * 1.4),
+            Rect.fromLTWH(arniaPos.dx, arniaPos.dy, _cellSize, arniaH),
           );
         });
-        if (isOverlapped) {
-          inner = AnimatedOpacity(
-            opacity: 0.42,
-            duration: const Duration(milliseconds: 200),
-            child: inner,
-          );
-        }
+        inner = AnimatedOpacity(
+          opacity: isOverlapped ? 0.42 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: inner,
+        );
       }
 
       return Positioned(key: ValueKey('el_${el.id}'), left: pos.dx, top: pos.dy, child: inner);
@@ -1851,13 +1738,6 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                           ),
                           const SizedBox(width: 4),
                           _AddBtn(
-                            icon: Icons.hive_outlined,
-                            label: 'Nucleo',
-                            color: const Color(0xFF8B6914),
-                            onTap: () => _addElement(MapElementType.nucleo),
-                          ),
-                          const SizedBox(width: 4),
-                          _AddBtn(
                             icon: Icons.square_outlined,
                             label: 'Apidea',
                             color: const Color(0xFF5B8DEF),
@@ -1960,16 +1840,19 @@ class _StaticHive extends StatelessWidget {
   final HiveTipo tipo;
   final double cellSize;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const _StaticHive({
     required this.numero, required this.color, required this.isActive,
     required this.isSelected, required this.cellSize, required this.onTap,
     this.tipo = HiveTipo.dadant,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
+    onLongPress: onLongPress,
     child: Stack(clipBehavior: Clip.none, children: [
       _HiveCell(numero: numero, color: color, isActive: isActive,
           isSelected: isSelected, cellSize: cellSize,

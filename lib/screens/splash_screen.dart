@@ -10,6 +10,7 @@ import '../widgets/beehive_illustrations.dart'; // Widget personalizzati per le 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
+import 'whats_new/whats_new_screen.dart' show getAppBuildNumber, getLastSeenBuildNumber;
 
 
 class SplashScreen extends StatefulWidget {
@@ -97,6 +98,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       if (!mounted) return;
       if (!onboardingCompletato) {
         Navigator.of(context).pushReplacementNamed(AppConstants.onboardingRoute);
+        return;
+      }
+
+      // Check versione: mostra what's new se l'app è stata aggiornata
+      final currentBuild = await getAppBuildNumber();
+      final lastSeenBuild = await getLastSeenBuildNumber();
+      if (!mounted) return;
+
+      if (currentBuild > lastSeenBuild) {
+        Navigator.of(context).pushReplacementNamed(
+          AppConstants.whatsNewRoute,
+          arguments: {
+            'currentBuild': currentBuild,
+            'lastSeenBuild': lastSeenBuild,
+          },
+        );
         return;
       }
 

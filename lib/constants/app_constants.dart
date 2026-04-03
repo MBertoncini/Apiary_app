@@ -27,8 +27,12 @@ class AppConstants {
   static const String arniaDetailRoute = "/arnia/detail";
   static const String arniaCreateRoute = "/arnia/create";
 
-  // Route per nuclei
-  static const String nucleoDetailRoute = "/nucleo/detail";
+  // Route per colonie
+  static const String coloniaListRoute    = "/colonie";
+  static const String coloniaDetailRoute  = "/colonia/detail";
+  static const String coloniaCreateRoute  = "/colonia/create";
+  static const String coloniaChiudiRoute  = "/colonia/chiudi";
+
   @Deprecated('Usa arniaCreateRoute')
   static const String creaArniaRoute = arniaCreateRoute;
   static const String controlloCreateRoute = "/controllo/create";
@@ -86,6 +90,7 @@ class AppConstants {
   static const String mappaRoute = "/mappa";
   static const String mappaApiariRoute = "/mappa/apiari";
   static const String mappaMeteoRoute = "/mappa/meteo";
+  static const String mappaNomadismoRoute = "/mappa/nomadismo";
 
   // Route per gestione pagamenti
   static const String pagamentiRoute = "/pagamenti";
@@ -120,8 +125,9 @@ class AppConstants {
   static const String voiceCommandRoute = "/voice_command";
   static const String voiceVerificationRoute = "/voice/verification";
 
-  // Route per onboarding e guida
+  // Route per onboarding, what's new e guida
   static const String onboardingRoute = "/onboarding";
+  static const String whatsNewRoute = "/whats-new";
   static const String guidaRoute = "/guida";
 
   // Altri parametri

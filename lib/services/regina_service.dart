@@ -34,18 +34,21 @@ class ReginaService {
     await prefs.setStringList(_autoCreatedKey, list);
   }
 
-  /// Se [arniaId] non ha una regina attiva e [presenzaRegina] è true,
+  /// Se l'arnia/colonia non ha una regina attiva e [presenzaRegina] è true,
   /// crea automaticamente una scheda base e la segna come "da completare".
   ///
   /// Restituisce la mappa della regina creata, o null se non è stata creata.
   static Future<Map<String, dynamic>?> maybeAutoCreate({
     required int arniaId,
+    int? coloniaId,
     required bool presenzaRegina,
     required String dataControllo,
     required ApiService apiService,
     required StorageService storageService,
   }) async {
     if (!presenzaRegina) return null;
+    // Senza coloniaId non possiamo associare la regina alla colonia
+    if (coloniaId == null) return null;
 
     // Controlla se l'arnia ha già una regina attiva
     try {
@@ -61,10 +64,10 @@ class ReginaService {
       // 404 o errore di rete → nessuna regina, procediamo
     }
 
-    // Crea scheda base
+    // Crea scheda base associata alla colonia
     try {
       final created = await apiService.post(ApiConstants.regineUrl, {
-        'arnia': arniaId,
+        'colonia': coloniaId,
         'data_introduzione': dataControllo,
         'razza': 'altro',
         'origine': 'sconosciuta',

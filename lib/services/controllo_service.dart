@@ -182,6 +182,28 @@ class ControlloService {
     return localControlli;
   }
   
+  /// Restituisce i controlli di una colonia (prima locale, poi server).
+  Future<List<Map<String, dynamic>>> getControlliByColonia(int coloniaId) async {
+    List<Map<String, dynamic>> local = await _controlloDao.getByColonia(coloniaId);
+    try {
+      final response = await _apiService
+          .get('${ApiConstants.colonieUrl}$coloniaId/controlli/');
+      List<Map<String, dynamic>> remote = [];
+      if (response is List) {
+        remote = List<Map<String, dynamic>>.from(response);
+      } else if (response is Map && response['results'] != null) {
+        remote = List<Map<String, dynamic>>.from(response['results']);
+      }
+      if (remote.isNotEmpty) {
+        await _controlloDao.syncFromServer(remote);
+        local = await _controlloDao.getByColonia(coloniaId);
+      }
+    } catch (e) {
+      debugPrint('getControlliByColonia error: $e');
+    }
+    return local;
+  }
+
   /// Elimina un controllo dal server e dal SQLite locale.
   /// Lancia eccezione se la chiamata API fallisce (il record rimane in SQLite).
   Future<void> deleteControllo(int id) async {

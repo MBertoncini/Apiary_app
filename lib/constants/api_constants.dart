@@ -13,6 +13,7 @@ class ApiConstants {
   static const String userProfileUrl = baseUrl + apiPrefix + "/users/me/";
   static const String passwordResetUrl = baseUrl + apiPrefix + "/password-reset/";
   static const String passwordResetConfirmUrl = baseUrl + apiPrefix + "/password-reset/confirm/";
+  static const String googleAuthUrl = baseUrl + apiPrefix + "/auth/google/";
   
   // Endpoint apiari
   static const String apiariUrl = baseUrl + apiPrefix + '/apiari/';
@@ -101,9 +102,16 @@ class ApiConstants {
   // Endpoint layout mappa apiario
   static const String apiarioMapLayoutUrl = baseUrl + apiPrefix + '/apiari/{apiario_id}/map_layout/';
 
-  // Endpoint nuclei
-  static const String nucleiUrl = baseUrl + apiPrefix + '/nuclei/';
-  static const String nucleoConvertUrl = baseUrl + apiPrefix + '/nuclei/{nucleo_id}/converti_in_arnia/';
+  // Endpoint colonie
+  static const String colonieUrl = baseUrl + apiPrefix + '/colonie/';
+  static const String coloniaDettaglioUrl = baseUrl + apiPrefix + '/colonie/{colonia_id}/';
+  static const String coloniaControlliUrl = baseUrl + apiPrefix + '/colonie/{colonia_id}/controlli/';
+  static const String coloniaReginaUrl = baseUrl + apiPrefix + '/colonie/{colonia_id}/regina/';
+  static const String coloniaChiudiUrl = baseUrl + apiPrefix + '/colonie/{colonia_id}/chiudi/';
+  static const String coloniaSpostaUrl = baseUrl + apiPrefix + '/colonie/{colonia_id}/sposta_contenitore/';
+  // Azioni sull'arnia relative alle colonie
+  static const String arniaColoniaAttivaUrl  = baseUrl + apiPrefix + '/arnie/{arnia_id}/colonia_attiva/';
+  static const String arniaStoriaColonieUrl  = baseUrl + apiPrefix + '/arnie/{arnia_id}/storia_colonie/';
 
   // Endpoint AI
   static const String aiChatUrl = baseUrl + apiPrefix + '/ai/chat/';

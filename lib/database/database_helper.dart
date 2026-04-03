@@ -10,11 +10,12 @@ class DatabaseHelper {
 
   static Database? _database;
   final String _databaseName = "apiario_manager.db";
-  final int _databaseVersion = 4;
+  final int _databaseVersion = 5;
 
   // Tabelle
   final String tableApiari = 'apiari';
   final String tableArnie = 'arnie';
+  final String tableColonie = 'colonie';   // FASE 3+4 — nuovo
   final String tableControlli = 'controlli';
   final String tableRegine = 'regine';
   final String tableFioriture = 'fioriture';
@@ -83,12 +84,39 @@ class DatabaseHelper {
       )
     ''');
 
+    // Tabella Colonie
+    await db.execute('''
+      CREATE TABLE $tableColonie (
+        id INTEGER PRIMARY KEY,
+        apiario INTEGER NOT NULL,
+        apiario_nome TEXT NOT NULL,
+        arnia INTEGER,
+        nucleo INTEGER,
+        contenitore TEXT NOT NULL DEFAULT '',
+        contenitore_numero INTEGER,
+        data_inizio TEXT NOT NULL,
+        data_fine TEXT,
+        stato TEXT NOT NULL DEFAULT 'attiva',
+        is_attiva INTEGER NOT NULL DEFAULT 1,
+        motivo_fine TEXT,
+        note_fine TEXT,
+        note TEXT,
+        colonia_origine INTEGER,
+        colonia_successore INTEGER,
+        data_creazione TEXT,
+        n_controlli INTEGER,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        last_updated INTEGER NOT NULL
+      )
+    ''');
+
     // Tabella Controlli
     await db.execute('''
       CREATE TABLE $tableControlli (
         id INTEGER PRIMARY KEY,
-        arnia INTEGER NOT NULL,
-        arnia_numero INTEGER NOT NULL,
+        colonia_id INTEGER,
+        arnia INTEGER,
+        arnia_numero INTEGER,
         apiario_nome TEXT NOT NULL,
         apiario_id INTEGER NOT NULL,
         data TEXT NOT NULL,
@@ -112,7 +140,8 @@ class DatabaseHelper {
         telaini_config TEXT,
         sync_status TEXT NOT NULL,
         last_updated INTEGER NOT NULL,
-        FOREIGN KEY (arnia) REFERENCES $tableArnie(id) ON DELETE CASCADE
+        FOREIGN KEY (colonia_id) REFERENCES $tableColonie(id) ON DELETE SET NULL,
+        FOREIGN KEY (arnia) REFERENCES $tableArnie(id) ON DELETE SET NULL
       )
     ''');
 
@@ -290,7 +319,7 @@ class DatabaseHelper {
 
     // Inizializza tabella di stato sincronizzazione
     final entities = [
-      'apiari', 'arnie', 'controlli', 'regine', 
+      'apiari', 'arnie', 'colonie', 'controlli', 'regine',
       'fioriture', 'trattamenti', 'melari', 'smielature'
     ];
     
@@ -340,6 +369,43 @@ class DatabaseHelper {
       await db.execute(
         "ALTER TABLE $tableArnie ADD COLUMN tipo_arnia TEXT NOT NULL DEFAULT 'dadant';"
       );
+    }
+    if (oldVersion < 5) {
+      // Crea la tabella colonie (nuova in FASE 3+4)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $tableColonie (
+          id INTEGER PRIMARY KEY,
+          apiario INTEGER NOT NULL,
+          apiario_nome TEXT NOT NULL,
+          arnia INTEGER,
+          nucleo INTEGER,
+          contenitore TEXT NOT NULL DEFAULT '',
+          contenitore_numero INTEGER,
+          data_inizio TEXT NOT NULL,
+          data_fine TEXT,
+          stato TEXT NOT NULL DEFAULT 'attiva',
+          is_attiva INTEGER NOT NULL DEFAULT 1,
+          motivo_fine TEXT,
+          note_fine TEXT,
+          note TEXT,
+          colonia_origine INTEGER,
+          colonia_successore INTEGER,
+          data_creazione TEXT,
+          n_controlli INTEGER,
+          sync_status TEXT NOT NULL DEFAULT 'synced',
+          last_updated INTEGER NOT NULL
+        )
+      ''');
+      // Aggiunge colonia_id alla tabella controlli esistente (non distruttivo)
+      try {
+        await db.execute(
+          'ALTER TABLE $tableControlli ADD COLUMN colonia_id INTEGER;'
+        );
+      } catch (_) {
+        // colonna già presente (es. fresh install su v5): ignora
+      }
+      // Rende arnia_numero e arnia nullable (SQLite non supporta ALTER COLUMN,
+      // ma i nuovi record possono già avere null grazie ai DEFAULT)
     }
   }
 

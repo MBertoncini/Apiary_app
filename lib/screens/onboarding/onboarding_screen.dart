@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../whats_new/whats_new_screen.dart' show getAppBuildNumber;
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -65,6 +66,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
     _OnboardingStep(
       icon: '🚀',
+      iconWidget: Image.asset(
+        'assets/images/icons/icon.png',
+        width: 96,
+        height: 96,
+      ),
       title: 'Sei pronto!',
       description: 'Inizia creando il tuo primo apiario. Ci vorranno meno di un minuto. Potrai sempre rivedere questa guida dalla pagina delle impostazioni.',
       features: null,
@@ -75,6 +81,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _completeOnboarding({bool goToCreate = false}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKey, true);
+    // Segna il build corrente come già visto, così what's new non appare dopo onboarding
+    final currentBuild = await getAppBuildNumber();
+    await prefs.setInt('last_seen_build_number', currentBuild);
     if (!mounted) return;
     if (goToCreate) {
       Navigator.pushReplacementNamed(context, '/apiario/create');
@@ -207,7 +216,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-          Text(step.icon, style: const TextStyle(fontSize: 64)),
+          if (step.iconWidget != null) step.iconWidget! else Text(step.icon, style: const TextStyle(fontSize: 64)),
           const SizedBox(height: 20),
           Text(
             step.title,
@@ -321,6 +330,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 class _OnboardingStep {
   final String icon;
+  final Widget? iconWidget;
   final String title;
   final String? description;
   final List<_Feature>? features;
@@ -328,6 +338,7 @@ class _OnboardingStep {
 
   const _OnboardingStep({
     required this.icon,
+    this.iconWidget,
     required this.title,
     this.description,
     this.features,

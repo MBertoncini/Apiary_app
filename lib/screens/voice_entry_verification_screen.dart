@@ -260,22 +260,44 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
     // Create any missing arnie first, then update lookup and cache.
     if (missingArnie.isNotEmpty) {
       final newCachedArnie = List<dynamic>.from(cachedArnie);
+      final List<String> creationErrors = [];
       for (final arnia in missingArnie) {
         try {
           final result = await apiService.post('arnie/', {
             'apiario': arnia['apiarioId'],
             'numero': arnia['numero'],
+            'data_installazione': DateFormat('yyyy-MM-dd').format(DateTime.now()),
           });
           if (result != null && result['id'] != null) {
             final key = '${arnia['apiarioId']}_${arnia['numero']}';
             arnieLookup[key] = result['id'] as int;
             newCachedArnie.add(result);
+          } else {
+            creationErrors.add('Arnia ${arnia['numero']}: risposta non valida dal server.');
           }
         } catch (e) {
           debugPrint('Errore creazione arnia ${arnia['numero']}: $e');
+          creationErrors.add('Arnia ${arnia['numero']}: ${e.toString()}');
         }
       }
       await storageService.saveSyncData({'arnie': newCachedArnie});
+      if (creationErrors.isNotEmpty && mounted) {
+        setState(() => _isSubmitting = false);
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Errore creazione arnie'),
+            content: Text(creationErrors.join('\n')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
     }
 
     // Per-entry save: never abort on a single failure.

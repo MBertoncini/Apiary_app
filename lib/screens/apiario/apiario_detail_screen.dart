@@ -20,9 +20,10 @@ import '../../services/controllo_service.dart';
 
 class ApiarioDetailScreen extends StatefulWidget {
   final int apiarioId;
-  
-  ApiarioDetailScreen({required this.apiarioId});
-  
+  final bool isCommunity;
+
+  ApiarioDetailScreen({required this.apiarioId, this.isCommunity = false});
+
   @override
   _ApiarioDetailScreenState createState() => _ApiarioDetailScreenState();
 }
@@ -232,7 +233,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
     Navigator.of(context).pushNamed(
       AppConstants.arniaDetailRoute,
       arguments: arniaId,
-    );
+    ).then((_) => _loadApiario());
   }
   
   void _navigateToArniaCreate() {
@@ -262,12 +263,13 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                 style: TextStyle(
                     color: ThemeConstants.textSecondaryColor, fontSize: 16)),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _editApiario,
-              icon: const Icon(Icons.settings),
-              label: Text(_s.apiarioDetailActivateMeteo),
-              style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
-            ),
+            if (!widget.isCommunity)
+              ElevatedButton.icon(
+                onPressed: _editApiario,
+                icon: const Icon(Icons.settings),
+                label: Text(_s.apiarioDetailActivateMeteo),
+                style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
+              ),
           ],
         ),
       );
@@ -287,12 +289,13 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                 style: TextStyle(
                     color: ThemeConstants.textSecondaryColor, fontSize: 16)),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _editApiario,
-              icon: const Icon(Icons.edit_location_alt),
-              label: Text(_s.apiarioDetailSetCoords),
-              style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
-            ),
+            if (!widget.isCommunity)
+              ElevatedButton.icon(
+                onPressed: _editApiario,
+                icon: const Icon(Icons.edit_location_alt),
+                label: Text(_s.apiarioDetailSetCoords),
+                style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
+              ),
           ],
         ),
       );
@@ -398,16 +401,18 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       appBar: AppBar(
         title: Text(_apiario!['nome']),
         actions: [
-          IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: _editApiario,
-            tooltip: _s.apiarioDetailTooltipEdit,
-          ),
-          IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: _confirmDeleteApiario,
-            tooltip: _s.apiarioDetailTooltipDelete,
-          ),
+          if (!widget.isCommunity) ...[
+            IconButton(
+              icon: Icon(Icons.edit),
+              onPressed: _editApiario,
+              tooltip: _s.apiarioDetailTooltipEdit,
+            ),
+            IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: _confirmDeleteApiario,
+              tooltip: _s.apiarioDetailTooltipDelete,
+            ),
+          ],
           // Pulsante QR: mostra QR apiario + opzione stampa PDF arnie
           IconButton(
             icon: const Icon(Icons.qr_code),
@@ -486,7 +491,7 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             onArniaTap: _navigateToArniaDetail,
             onAddArnia: _navigateToArniaCreate,
             onEditModeChanged: (active) => setState(() => _mapEditMode = active),
-            onNucleoConverted: _loadApiario,
+            onRefresh: _loadApiario,
             ultimiControlli: _ultimiControlli,
             melariData: _melari,
           ),
@@ -512,17 +517,18 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pushNamed(
-                            AppConstants.trattamentoCreateRoute,
-                            arguments: widget.apiarioId,
-                          ).then((_) => _loadApiario());
-                        },
-                        icon: Icon(Icons.add),
-                        label: Text(_s.apiarioDetailAddTrattamento),
-                        style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
-                      ),
+                      if (!widget.isCommunity)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pushNamed(
+                              AppConstants.trattamentoCreateRoute,
+                              arguments: widget.apiarioId,
+                            ).then((_) => _loadApiario());
+                          },
+                          icon: Icon(Icons.add),
+                          label: Text(_s.apiarioDetailAddTrattamento),
+                          style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
+                        ),
                     ],
                   ),
                 )
@@ -533,16 +539,17 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.add, size: 18),
-                            label: Text(_s.apiarioDetailNewTrattamento),
-                            onPressed: () => Navigator.of(context)
-                                .pushNamed(
-                                  AppConstants.trattamentoCreateRoute,
-                                  arguments: widget.apiarioId,
-                                )
-                                .then((_) => _loadApiario()),
-                          ),
+                          if (!widget.isCommunity)
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.add, size: 18),
+                              label: Text(_s.apiarioDetailNewTrattamento),
+                              onPressed: () => Navigator.of(context)
+                                  .pushNamed(
+                                    AppConstants.trattamentoCreateRoute,
+                                    arguments: widget.apiarioId,
+                                  )
+                                  .then((_) => _loadApiario()),
+                            ),
                         ],
                       ),
                     ),

@@ -26,6 +26,39 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _loginWithGoogle() async {
+    setState(() => _errorCode = null);
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      final success = await auth.loginWithGoogle();
+      if (success && mounted) {
+        final prefs = await SharedPreferences.getInstance();
+        final onboardingCompletato = prefs.getBool('onboarding_completato') ?? false;
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(
+            onboardingCompletato
+                ? AppConstants.dashboardRoute
+                : AppConstants.onboardingRoute,
+          );
+        }
+        () async {
+          try {
+            final apiService = Provider.of<ApiService>(context, listen: false);
+            final storageService = Provider.of<StorageService>(context, listen: false);
+            await storageService.clearDataCache();
+            final syncData = await apiService.syncData();
+            await storageService.saveSyncData(syncData);
+          } catch (e) {
+            debugPrint('Post-login sync fallita (non bloccante): $e');
+          }
+        }();
+      }
+    } catch (e) {
+      final raw = e.toString().replaceAll('Exception: ', '');
+      setState(() => _errorCode = raw);
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -85,6 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'Password errata.';
       case 'wrong_credentials':
         return 'Credenziali non valide. Controlla username/email e password.';
+      case 'google_auth_error':
+        return 'Accesso con Google fallito. Riprova.';
+      case 'google_token_error':
+        return 'Impossibile ottenere il token Google. Riprova.';
       case 'network_error':
         return 'Impossibile connettersi al server. Controlla la connessione internet.';
       case 'timeout_error':
@@ -240,6 +277,56 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // Divider "oppure"
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'oppure',
+                          style: TextStyle(
+                            color: ThemeConstants.textSecondaryColor,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Bottone Google
+                  OutlinedButton(
+                    onPressed: isLoading ? null : _loginWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/images/icons/google_logo.png',
+                          height: 20,
+                          width: 20,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.g_mobiledata, size: 24),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Continua con Google',
+                          style: TextStyle(fontSize: 15, color: Colors.black87),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
 
                   // Link registrazione
                   TextButton(

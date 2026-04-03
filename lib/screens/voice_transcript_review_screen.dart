@@ -98,7 +98,29 @@ class _VoiceTranscriptReviewScreenState
     });
   }
 
-  void _deleteItem(int index) {
+  Future<void> _deleteItem(int index) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Elimina trascrizione?'),
+        content: Text(
+          '"${_items[index].length > 80 ? '${_items[index].substring(0, 80)}…' : _items[index]}"',
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('ANNULLA'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('ELIMINA', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     final deletedId = _itemIds[index];
     setState(() {
       _controllers[index].dispose();

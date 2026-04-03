@@ -19,8 +19,10 @@ import '../screens/mobile_scanner_wrapper_screen.dart';
 import '../screens/arnia/arnia_detail_screen.dart';
 import '../screens/arnia/arnia_list_screen.dart';
 import '../screens/arnia/arnia_form_screen.dart';
-import '../screens/nucleo/nucleo_detail_screen.dart';
 import '../screens/controllo/controllo_form_screen.dart';
+import '../screens/colonia/colonia_detail_screen.dart';
+import '../screens/colonia/colonia_form_screen.dart';
+import '../models/colonia.dart';
 import '../screens/regina/regina_list_screen.dart';
 import '../screens/regina/regina_detail_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
@@ -37,6 +39,7 @@ import '../screens/vendita/vendita_detail_screen.dart';
 import '../screens/vendita/vendita_form_screen.dart';
 import '../screens/vendita/cliente_form_screen.dart';
 import '../screens/mappa/mappa_screen.dart';
+import '../screens/mappa/nomadismo_screen.dart';
 import '../screens/pagamento/pagamenti_screen.dart';
 import '../screens/pagamento/pagamento_detail_screen.dart';
 import '../screens/pagamento/pagamento_form_screen.dart';
@@ -58,6 +61,7 @@ import '../models/fioritura.dart' show Fioritura;
 import '../screens/donazione/donazione_screen.dart';
 import '../screens/statistiche/statistiche_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
+import '../screens/whats_new/whats_new_screen.dart';
 import '../screens/help/guida_screen.dart';
 
 class RouteGenerator {
@@ -87,11 +91,19 @@ class RouteGenerator {
         return MaterialPageRoute(settings: settings, builder: (_) => ApiarioListScreen());
 
       case AppConstants.apiarioDetailRoute:
-        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => ApiarioDetailScreen(apiarioId: args),
+          );
+        }
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => ApiarioDetailScreen(
+              apiarioId: args['id'] as int,
+              isCommunity: args['isCommunity'] as bool? ?? false,
+            ),
           );
         }
         return _errorRoute();
@@ -149,15 +161,6 @@ class RouteGenerator {
         }
         return _errorRoute();
 
-      case AppConstants.nucleoDetailRoute:
-        if (args is int) {
-          return MaterialPageRoute(
-            settings: settings,
-            builder: (_) => NucleoDetailScreen(nucleoId: args),
-          );
-        }
-        return _errorRoute();
-
       case AppConstants.creaArniaRoute:
         // Check if an apiary is specified
         if (args is int) {
@@ -170,11 +173,19 @@ class RouteGenerator {
 
       // Routes for inspection management
       case AppConstants.controlloCreateRoute:
-        // Verify arguments are correct
         if (args is int) {
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => ControlloArniaScreen(arniaId: args),
+          );
+        }
+        if (args is Map<String, dynamic> && args['arniaId'] is int) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => ControlloArniaScreen(
+              arniaId: args['arniaId'] as int,
+              coloniaId: args['coloniaId'] as int?,
+            ),
           );
         }
         return _errorRoute();
@@ -187,6 +198,7 @@ class RouteGenerator {
             settings: settings,
             builder: (_) => ControlloArniaScreen(
               arniaId: args['arniaId'] as int,
+              coloniaId: args['coloniaId'] as int?,
               controlloEsistente: args['controllo'] as Map<String, dynamic>,
             ),
           );
@@ -315,6 +327,9 @@ class RouteGenerator {
       // Route for map
       case AppConstants.mappaRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => MappaScreen());
+
+      case AppConstants.mappaNomadismoRoute:
+        return MaterialPageRoute(settings: settings, builder: (_) => const NomadismoScreen());
 
       // Routes for payment management
       case AppConstants.pagamentiRoute:
@@ -461,9 +476,54 @@ class RouteGenerator {
         }
         return _errorRoute();
 
+      // Routes for colony lifecycle management
+      case AppConstants.coloniaDetailRoute:
+        if (args is int) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => ColoniaDetailScreen(coloniaId: args),
+          );
+        }
+        return _errorRoute();
+
+      case AppConstants.coloniaCreateRoute:
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => ColoniaFormScreen(
+              arniaId: args['arniaId'] as int?,
+              nucleoId: args['nucleoId'] as int?,
+            ),
+          );
+        }
+        return MaterialPageRoute(settings: settings, builder: (_) => const ColoniaFormScreen());
+
+      case AppConstants.coloniaChiudiRoute:
+        if (args is Colonia) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => ColoniaChiudiScreen(colonia: args),
+          );
+        }
+        return _errorRoute();
+
       // Routes for onboarding and help guide
       case AppConstants.onboardingRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => const OnboardingScreen());
+
+      case AppConstants.whatsNewRoute:
+        if (args is Map<String, dynamic> &&
+            args['currentBuild'] is int &&
+            args['lastSeenBuild'] is int) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => WhatsNewScreen(
+              currentBuild: args['currentBuild'] as int,
+              lastSeenBuild: args['lastSeenBuild'] as int,
+            ),
+          );
+        }
+        return _errorRoute();
 
       case AppConstants.guidaRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => const GuidaScreen());

@@ -2,8 +2,11 @@ import 'dart:convert';
 
 class ControlloArnia {
   final int id;
-  final int arnia;
-  final int arniaNumero;
+  /// ID della colonia ispezionata (FK primario post-refactor).
+  final int? coloniaId;
+  /// ID del box fisico al momento del controllo (denormalizzato, può essere null).
+  final int? arnia;
+  final int? arniaNumero;
   final String apiarioNome;
   final int apiarioId;
   final String data;
@@ -28,8 +31,9 @@ class ControlloArnia {
 
   ControlloArnia({
     required this.id,
-    required this.arnia,
-    required this.arniaNumero,
+    this.coloniaId,
+    this.arnia,
+    this.arniaNumero,
     required this.apiarioNome,
     required this.apiarioId,
     required this.data,
@@ -55,11 +59,12 @@ class ControlloArnia {
   
   factory ControlloArnia.fromJson(Map<String, dynamic> json) {
     return ControlloArnia(
-      id: json['id'],
-      arnia: json['arnia'],
-      arniaNumero: json['arnia_numero'],
-      apiarioNome: json['apiario_nome'],
-      apiarioId: json['apiario_id'],
+      id:           json['id'] as int,
+      coloniaId:    json['colonia'] as int?,
+      arnia:        json['arnia'] as int?,
+      arniaNumero:  json['arnia_numero'] as int?,
+      apiarioNome:  json['apiario_nome'] as String? ?? '',
+      apiarioId:    json['apiario_id'] as int? ?? 0,
       data: json['data'],
       utente: json['utente'],
       utenteUsername: json['utente_username'],
@@ -84,11 +89,12 @@ class ControlloArnia {
   
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'arnia': arnia,
+      'id':           id,
+      'colonia':      coloniaId,
+      'arnia':        arnia,
       'arnia_numero': arniaNumero,
       'apiario_nome': apiarioNome,
-      'apiario_id': apiarioId,
+      'apiario_id':   apiarioId,
       'data': data,
       'utente': utente,
       'utente_username': utenteUsername,

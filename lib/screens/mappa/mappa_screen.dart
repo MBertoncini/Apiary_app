@@ -32,6 +32,7 @@ class _MappaScreenState extends State<MappaScreen> {
   StorageService? _storageService;
   bool _showRaggioVolo = true; // raggio di volo api ~3km
   bool _showOsmVegetazione = false;
+  bool _legendaAperta = false;
   bool _isLoadingOsm = false;
   List<OsmVegetazione> _osmVegetazione = [];
   Timer? _osmDebounceTimer;
@@ -537,10 +538,12 @@ class _MappaScreenState extends State<MappaScreen> {
     }
   }
   
-  void _navigateToApiarioDetail(int apiarioId) {
+  void _navigateToApiarioDetail(int apiarioId, {bool isCommunity = false}) {
     Navigator.of(context).pushNamed(
       AppConstants.apiarioDetailRoute,
-      arguments: apiarioId,
+      arguments: isCommunity
+          ? <String, dynamic>{'id': apiarioId, 'isCommunity': true}
+          : apiarioId,
     );
   }
 
@@ -548,7 +551,6 @@ class _MappaScreenState extends State<MappaScreen> {
     final arnieCount = _getArnieCountForApiario(apiario['id']);
     final posizione = apiario['posizione'] ?? '';
     final isCommunity = apiario['_community'] == true;
-    final canNavigate = !isCommunity;
     final isSharedWithGroup = apiario['condiviso_con_gruppo'] == true;
 
     final Color headerColor = isCommunity
@@ -761,50 +763,25 @@ class _MappaScreenState extends State<MappaScreen> {
               // Action button
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: canNavigate
-                    ? SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            _navigateToApiarioDetail(apiario['id']);
-                          },
-                          icon: const Icon(Icons.open_in_new, size: 18),
-                          label: const Text('Apri Apiario'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: headerColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      )
-                    : Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: ThemeConstants.backgroundColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ThemeConstants.dividerColor),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.visibility_outlined,
-                                size: 18, color: ThemeConstants.textSecondaryColor),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Solo visualizzazione',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: ThemeConstants.textSecondaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _navigateToApiarioDetail(apiario['id'], isCommunity: isCommunity);
+                    },
+                    icon: Icon(isCommunity ? Icons.visibility : Icons.open_in_new, size: 18),
+                    label: Text(isCommunity ? 'Visualizza' : 'Apri Apiario'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: headerColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1134,6 +1111,11 @@ class _MappaScreenState extends State<MappaScreen> {
             onPressed: () => setState(() => _showRaggioVolo = !_showRaggioVolo),
           ),
           IconButton(
+            icon: Icon(Icons.route),
+            tooltip: 'Nomadismo & Flora',
+            onPressed: () => Navigator.pushNamed(context, AppConstants.mappaNomadismoRoute),
+          ),
+          IconButton(
             icon: Icon(Icons.sync),
             tooltip: 'Sincronizza dati',
             onPressed: _loadData,
@@ -1417,233 +1399,101 @@ class _MappaScreenState extends State<MappaScreen> {
                   ],
                 ),
                 
-                // Legenda
+                // Legenda collassabile
                 Positioned(
                   left: 16,
                   bottom: 16,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Legenda',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 190),
+                    decoration: BoxDecoration(
+                      color: ThemeConstants.cardColor.withOpacity(0.94),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          onTap: () => setState(() => _legendaAperta = !_legendaAperta),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.info_outline, size: 15, color: ThemeConstants.textSecondaryColor),
+                                const SizedBox(width: 6),
+                                Text('Legenda', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeConstants.textSecondaryColor)),
+                                const SizedBox(width: 16),
+                                Text(_legendaAperta ? '−' : '+', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ThemeConstants.primaryColor)),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: ThemeConstants.primaryColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.hive,
-                                  color: Colors.white,
-                                  size: 10,
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text('Apiario'),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          if (_showRaggioVolo)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(0.08),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.amber.withOpacity(0.55),
-                                      width: 1,
-                                    ),
+                        ),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          child: _legendaAperta
+                              ? Padding(
+                                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 6),
+                                      _LegendaVoceMappa(
+                                        icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: ThemeConstants.primaryColor, shape: BoxShape.circle), child: const Icon(Icons.hive, color: Colors.white, size: 9)),
+                                        label: 'Mio apiario',
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _LegendaVoceMappa(
+                                        icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.orange.shade700, shape: BoxShape.circle), child: const Icon(Icons.hive, color: Colors.white, size: 9)),
+                                        label: 'Apiario community',
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _LegendaVoceMappa(
+                                        icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.indigo.shade600, shape: BoxShape.circle), child: const Icon(Icons.hive, color: Colors.white, size: 9)),
+                                        label: 'Apiario gruppo',
+                                      ),
+                                      if (_showRaggioVolo) ...[
+                                        const SizedBox(height: 4),
+                                        _LegendaVoceMappa(
+                                          icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.amber.withOpacity(0.08), shape: BoxShape.circle, border: Border.all(color: Colors.amber.withOpacity(0.55), width: 1))),
+                                          label: 'Raggio volo (3 km)',
+                                        ),
+                                      ],
+                                      const SizedBox(height: 4),
+                                      _LegendaVoceMappa(
+                                        icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.green.withOpacity(0.3), shape: BoxShape.circle, border: Border.all(color: Colors.green, width: 1))),
+                                        label: 'Fioritura attiva',
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _LegendaVoceMappa(
+                                        icona: Opacity(opacity: 0.5, child: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.15), shape: BoxShape.circle, border: Border.all(color: Colors.grey, width: 1)))),
+                                        label: 'Fioritura inattiva',
+                                      ),
+                                      if (_showOsmVegetazione) ...[
+                                        const SizedBox(height: 4),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.65)))), label: 'Bosco / Foresta'),
+                                        const SizedBox(height: 4),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF689F38).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF689F38).withOpacity(0.65)))), label: 'Macchia'),
+                                        const SizedBox(height: 4),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF9CCC65).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF9CCC65).withOpacity(0.65)))), label: 'Prato / Pascolo'),
+                                        const SizedBox(height: 4),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF00897B).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF00897B).withOpacity(0.65)))), label: 'Frutteto'),
+                                        const SizedBox(height: 4),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFFF9A825).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFFF9A825).withOpacity(0.65)))), label: 'Coltura'),
+                                      ],
+                                      const SizedBox(height: 4),
+                                      _LegendaVoceMappa(
+                                        icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1))),
+                                        label: 'Posizione attuale',
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                SizedBox(width: 8),
-                                Text('Raggio volo (3 km)'),
-                              ],
-                            ),
-                          if (_showRaggioVolo) const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.3),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.green,
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text('Fioritura attiva'),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Opacity(
-                                opacity: 0.5,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.withOpacity(0.15),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.grey,
-                                      width: 1,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text('Fioritura inattiva'),
-                            ],
-                          ),
-                          if (_showOsmVegetazione) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF2E7D32)
-                                        .withOpacity(0.22),
-                                    borderRadius: BorderRadius.circular(3),
-                                    border: Border.all(
-                                        color: const Color(0xFF2E7D32)
-                                            .withOpacity(0.65)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text('Bosco / Foresta'),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF689F38)
-                                        .withOpacity(0.22),
-                                    borderRadius: BorderRadius.circular(3),
-                                    border: Border.all(
-                                        color: const Color(0xFF689F38)
-                                            .withOpacity(0.65)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text('Macchia'),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF9CCC65)
-                                        .withOpacity(0.22),
-                                    borderRadius: BorderRadius.circular(3),
-                                    border: Border.all(
-                                        color: const Color(0xFF9CCC65)
-                                            .withOpacity(0.65)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text('Prato / Pascolo'),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF00897B)
-                                        .withOpacity(0.22),
-                                    borderRadius: BorderRadius.circular(3),
-                                    border: Border.all(
-                                        color: const Color(0xFF00897B)
-                                            .withOpacity(0.65)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text('Frutteto'),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF9A825)
-                                        .withOpacity(0.22),
-                                    borderRadius: BorderRadius.circular(3),
-                                    border: Border.all(
-                                        color: const Color(0xFFF9A825)
-                                            .withOpacity(0.65)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text('Coltura'),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text('Posizione attuale'),
-                            ],
-                          ),
-                        ],
-                      ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -1796,5 +1646,23 @@ class _MappaScreenState extends State<MappaScreen> {
     } catch (e) {
       return isoDate;
     }
+  }
+}
+
+class _LegendaVoceMappa extends StatelessWidget {
+  final Widget icona;
+  final String label;
+  const _LegendaVoceMappa({required this.icona, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        icona,
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 11)),
+      ],
+    );
   }
 }

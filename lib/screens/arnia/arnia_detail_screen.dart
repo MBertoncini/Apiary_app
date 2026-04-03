@@ -21,6 +21,11 @@ import '../../services/regina_service.dart';
 import '../../widgets/skeleton_widgets.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/language_service.dart';
+import '../../models/colonia.dart';
+import '../../services/colonia_service.dart';
+import '../../database/dao/colonia_dao.dart';
+import '../colonia/colonia_detail_screen.dart';
+import '../colonia/colonia_form_screen.dart';
 
 class ArniaDetailScreen extends StatefulWidget {
   final int arniaId;
@@ -37,6 +42,8 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   Map<String, dynamic>? _arnia;
   Map<String, dynamic>? _apiario;
   Map<String, dynamic>? _regina;
+  /// Colonia attualmente attiva in questa arnia (null = arnia vuota).
+  Colonia? _coloniaAttiva;
   Map<String, dynamic>? _reginaGenealogia;
   bool _reginaAutoCreata = false;
   List<dynamic> _controlli = [];
@@ -197,14 +204,42 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         );
       }
     } finally {
+      // Carica la colonia attiva (non blocca il caricamento principale)
+      _loadColoniaAttiva();
       setState(() { _isRefreshing = false; });
+    }
+  }
+
+  Future<void> _loadColoniaAttiva() async {
+    // 1) Mostra subito la colonia dalla cache SQLite locale
+    try {
+      final dao = ColoniaDao();
+      final cached = await dao.getAttivaByArnia(widget.arniaId);
+      if (cached != null && mounted) {
+        setState(() { _coloniaAttiva = ColoniaDao.fromRow(cached); });
+      }
+    } catch (e) {
+      debugPrint('Colonia cache non caricata: $e');
+    }
+
+    // 2) Aggiorna in background dal server e persiste il risultato nella cache
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final coloniaService = ColoniaService(apiService);
+      final colonia = await coloniaService.getColoniaAttivaByArnia(widget.arniaId);
+      if (mounted) setState(() { _coloniaAttiva = colonia; });
+    } catch (e) {
+      debugPrint('Colonia attiva non caricata dal server: $e');
     }
   }
 
   void _navigateToControlloCreate() async {
     await Navigator.of(context).pushNamed(
       AppConstants.controlloCreateRoute,
-      arguments: widget.arniaId,
+      arguments: {
+        'arniaId': widget.arniaId,
+        'coloniaId': _coloniaAttiva?.id,
+      },
     );
     _loadArnia();
   }
@@ -214,6 +249,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       AppConstants.controlloEditRoute,
       arguments: {
         'arniaId': widget.arniaId,
+        'coloniaId': _coloniaAttiva?.id,
         'controllo': controllo,
       },
     );
@@ -625,7 +661,100 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
     }
   }
 
-  @override
+  // ── Colonia helpers ───────────────────────────────────────────────────────
+
+  Widget _buildColoniaCard() {
+    if (_coloniaAttiva == null) {
+      return InkWell(
+        onTap: _navigateToNuovaColonia,
+        child: Container(
+          width: double.infinity,
+          color: Colors.orange.shade50,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Arnia vuota — nessuna colonia attiva',
+                  style: TextStyle(fontSize: 13, color: Colors.orange),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _navigateToNuovaColonia,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Insedia colonia'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final colonia = _coloniaAttiva!;
+    return InkWell(
+      onTap: () => _navigateToColoniaDetail(colonia.id),
+      child: Container(
+        width: double.infinity,
+        color: Colors.green.shade50,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            const Icon(Icons.bug_report_rounded, color: Colors.green, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Colonia #${colonia.id} — dal ${colonia.dataInizio}',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  if (colonia.reginaAttiva != null)
+                    Text(
+                      'Regina: ${colonia.reginaAttiva!['razza'] ?? ''} · ${colonia.reginaAttiva!['origine'] ?? ''}',
+                      style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.black38),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToColoniaDetail(int coloniaId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ColoniaDetailScreen(coloniaId: coloniaId),
+      ),
+    ).then((_) => _loadColoniaAttiva());
+  }
+
+  void _navigateToStoriaColonie() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StoriaColonieScreen(arniaId: widget.arniaId),
+      ),
+    );
+  }
+
+  void _navigateToNuovaColonia() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ColoniaFormScreen(arniaId: widget.arniaId),
+      ),
+    );
+    _loadColoniaAttiva();
+  }
+
   Widget build(BuildContext context) {
     Provider.of<LanguageService>(context); // rebuild on language change
     final s = _s;
@@ -657,20 +786,63 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         foregroundColor: foregroundColor,
         iconTheme: IconThemeData(color: foregroundColor),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.swap_horiz_rounded),
-            onPressed: _showCambioTipoSheet,
-            tooltip: s.arniaDetailTooltipType,
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: _editArnia,
-            tooltip: s.arniaDetailTooltipEdit,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _confirmDeleteArnia,
-            tooltip: s.arniaDetailTooltipDelete,
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'tipo') _showCambioTipoSheet();
+              if (value == 'edit') _editArnia();
+              if (value == 'delete') _confirmDeleteArnia();
+              if (value == 'storia_colonie') _navigateToStoriaColonie();
+              if (value == 'nuova_colonia') _navigateToNuovaColonia();
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem<String>(
+                value: 'tipo',
+                child: ListTile(
+                  leading: const Icon(Icons.swap_horiz_rounded),
+                  title: Text(s.arniaDetailTooltipType),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: Text(s.arniaDetailTooltipEdit),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'storia_colonie',
+                child: ListTile(
+                  leading: Icon(Icons.history_rounded),
+                  title: Text('Storia colonie'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'nuova_colonia',
+                child: ListTile(
+                  leading: Icon(Icons.add_circle_outline),
+                  title: Text('Insedia nuova colonia'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text(s.arniaDetailTooltipDelete,
+                      style: const TextStyle(color: Colors.red)),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.qr_code),
@@ -709,6 +881,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             children: [
               const OfflineBanner(),
               if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+              _buildColoniaCard(),
               Expanded(
                 child: TabBarView(
           controller: _tabController,

@@ -248,55 +248,6 @@ class ApiService {
     );
   }
 
-  // Nuclei
-  Future<List<dynamic>> getNucleiByApiario(int apiarioId) async {
-    final response = await get('${ApiConstants.nucleiUrl}?apiario=$apiarioId');
-    if (response is List) return response;
-    if (response is Map && response['results'] is List) return response['results'] as List;
-    return [];
-  }
-
-  Future<Map<String, dynamic>?> getNucleoDetail(int nucleoId) async {
-    try {
-      final r = await get('${ApiConstants.nucleiUrl}$nucleoId/');
-      if (r is Map<String, dynamic>) return r;
-    } catch (_) {}
-    return null;
-  }
-
-  Future<List<dynamic>> getControlliByNucleo(int nucleoId) async {
-    try {
-      final r = await get('${ApiConstants.nucleiUrl}$nucleoId/controlli/');
-      if (r is List) return r;
-      if (r is Map && r['results'] is List) return r['results'] as List;
-    } catch (_) {}
-    return [];
-  }
-
-  Future<dynamic> createControlloNucleo(int nucleoId, Map<String, dynamic> data) async {
-    return await post('${ApiConstants.nucleiUrl}$nucleoId/controlli/', data);
-  }
-
-  Future<dynamic> createNucleo(Map<String, dynamic> data) async {
-    return await post(ApiConstants.nucleiUrl, data);
-  }
-
-  Future<dynamic> convertNucleoToArnia(int nucleoId, {String? dataInstallazione}) async {
-    final url = ApiConstants.replaceParams(
-        ApiConstants.nucleoConvertUrl, {'nucleo_id': nucleoId.toString()});
-    return await post(url, {
-      if (dataInstallazione != null) 'data_installazione': dataInstallazione,
-    });
-  }
-
-  Future<void> deleteNucleo(int nucleoId) async {
-    await get('${ApiConstants.nucleiUrl}$nucleoId/'); // verify exists
-    // use delete verb
-    final headers = await _headers;
-    final url = _buildUrl('${ApiConstants.apiPrefix}/nuclei/$nucleoId/');
-    await http.delete(Uri.parse(url), headers: headers);
-  }
-  
   // Ottieni dettagli di un'arnia specifica
   Future<dynamic> getArnia(int arniaId) async {
     return await get('${ApiConstants.arnieUrl}$arniaId/');
@@ -312,8 +263,57 @@ class ApiService {
     return await put('${ApiConstants.arnieUrl}$arniaId/', data);
   }
   
+  // === METODI PER COLONIE ===
+
+  Future<List<dynamic>> getColonie() async {
+    final response = await get(ApiConstants.colonieUrl);
+    if (response is List) return response;
+    if (response is Map && response['results'] is List) return response['results'] as List;
+    return [];
+  }
+
+  Future<dynamic> getColonia(int coloniaId) async {
+    return await get('${ApiConstants.colonieUrl}$coloniaId/');
+  }
+
+  Future<dynamic> getColoniaAttivaByArnia(int arniaId) async {
+    return await get('${ApiConstants.arnieUrl}$arniaId/colonia_attiva/');
+  }
+
+  Future<List<dynamic>> getStoriaColonieByArnia(int arniaId) async {
+    final response = await get('${ApiConstants.arnieUrl}$arniaId/storia_colonie/');
+    if (response is List) return response;
+    if (response is Map && response['results'] is List) return response['results'] as List;
+    return [];
+  }
+
+  Future<dynamic> createColonia(Map<String, dynamic> data) async {
+    return await post(ApiConstants.colonieUrl, data);
+  }
+
+  Future<dynamic> chiudiColonia(int coloniaId, Map<String, dynamic> data) async {
+    return await post('${ApiConstants.colonieUrl}$coloniaId/chiudi/', data);
+  }
+
+  Future<dynamic> spostaColonia(int coloniaId, Map<String, dynamic> data) async {
+    return await post('${ApiConstants.colonieUrl}$coloniaId/sposta_contenitore/', data);
+  }
+
+  Future<List<dynamic>> getControlliByColonia(int coloniaId, {int? days}) async {
+    var url = '${ApiConstants.colonieUrl}$coloniaId/controlli/';
+    if (days != null) url += '?days=$days';
+    final response = await get(url);
+    if (response is List) return response;
+    if (response is Map && response['results'] is List) return response['results'] as List;
+    return [];
+  }
+
+  Future<dynamic> getReginaByColonia(int coloniaId) async {
+    return await get('${ApiConstants.colonieUrl}$coloniaId/regina/');
+  }
+
   // === METODI PER REGINE ===
-  
+
   // Ottieni tutte le regine
   Future<List<dynamic>> getRegine() async {
     final response = await get(ApiConstants.regineUrl);

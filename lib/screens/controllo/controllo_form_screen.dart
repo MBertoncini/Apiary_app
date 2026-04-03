@@ -18,9 +18,10 @@ import '../../widgets/field_help_icon.dart';
 
 class ControlloArniaScreen extends StatefulWidget {
   final int arniaId;
+  final int? coloniaId;
   final Map<String, dynamic>? controlloEsistente; // Null se è creazione, altrimenti è modifica
-  
-  ControlloArniaScreen({required this.arniaId, this.controlloEsistente});
+
+  ControlloArniaScreen({required this.arniaId, this.coloniaId, this.controlloEsistente});
   
   @override
   _ControlloArniaScreenState createState() => _ControlloArniaScreenState();
@@ -61,6 +62,10 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   Map<String, dynamic>? _arnia;
   Map<String, dynamic>? _apiario;
   late ControlloService _controlloService;
+
+  // Ultimo controllo (solo in modalità creazione)
+  Map<String, dynamic>? _lastControllo;
+  bool _lastControlloExpanded = false;
   
   @override
   void initState() {
@@ -86,6 +91,34 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     // Inizializza i servizi
     final apiService = Provider.of<ApiService>(context, listen: false);
     _controlloService = ControlloService(apiService);
+    // Carica l'ultimo controllo solo quando si crea un nuovo controllo
+    if (widget.controlloEsistente == null) {
+      _loadLastControllo();
+    }
+  }
+
+  Future<void> _loadLastControllo() async {
+    try {
+      final controlli = await _controlloService.getControlliByArnia(widget.arniaId);
+      if (!mounted || controlli.isEmpty) return;
+      controlli.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+      final last = controlli.first;
+      if (!mounted) return;
+      setState(() {
+        _lastControllo = last;
+        // Pre-popola telaini con la config dell'ultimo controllo
+        final raw = last['telaini_config'];
+        if (raw != null && raw.toString().isNotEmpty) {
+          try {
+            final List<dynamic> config = json.decode(raw.toString());
+            _telainiConfig = sortTelaini(List<String>.from(config));
+            _updateTelainiCounters();
+          } catch (_) {}
+        }
+      });
+    } catch (e) {
+      debugPrint('ControlloArniaScreen: impossibile caricare l\'ultimo controllo – $e');
+    }
   }
   
   Future<void> _checkConnectivity() async {
@@ -359,6 +392,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
       // Prepara i dati
       Map<String, dynamic> data = {
         'arnia': widget.arniaId,
+        if (widget.coloniaId != null) 'colonia': widget.coloniaId,
         'data': _dataController.text,
         'telaini_scorte': _telainiScorte,
         'telaini_covata': _telainiCovata,
@@ -401,6 +435,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
           final storageService = Provider.of<StorageService>(context, listen: false);
           final reginaCreata = await ReginaService.maybeAutoCreate(
             arniaId: widget.arniaId,
+            coloniaId: widget.coloniaId,
             presenzaRegina: true,
             dataControllo: _dataController.text,
             apiService: apiService,
@@ -473,21 +508,29 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
       );
     }
     
-    final Color arniaColor = _arnia != null 
+    final Color arniaColor = _arnia != null
         ? Color(int.parse(_arnia!['colore_hex'].replaceAll('#', '0xFF')))
         : Colors.brown;
-    
+    final Color fgColor = arniaColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+
+    final bool isNucleo = (_arnia?['tipo_arnia'] as String?) == 'nucleo';
+    final String arniaLabel = _arnia != null
+        ? '${isNucleo ? 'Nucleo' : 'Arnia'} ${_arnia!['numero'] ?? widget.arniaId}'
+        : 'Arnia ${widget.arniaId}';
+    final String actionLabel = widget.controlloEsistente == null ? 'Nuovo Controllo' : 'Modifica Controllo';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.controlloEsistente == null ? 'Nuovo Controllo' : 'Modifica Controllo'),
+        title: Text('$actionLabel – $arniaLabel'),
         backgroundColor: arniaColor,
+        foregroundColor: fgColor,
         actions: [
           // Indicatore connettività
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Icon(
               _isOnline ? Icons.wifi : Icons.wifi_off,
-              color: _isOnline ? Colors.white : Colors.orange,
+              color: _isOnline ? fgColor : Colors.orange,
             ),
           ),
         ],
@@ -606,9 +649,9 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                   ),
                 ),
               
-              // Il resto del form rimane uguale a prima
-              // ...
-              
+              // Riepilogo ultimo controllo (solo in creazione)
+              _buildLastControlloCard(),
+
               // Sezione Data
               Card(
                 margin: EdgeInsets.only(bottom: 16),
@@ -692,6 +735,20 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           }),
                         ),
                       ),
+                      if (widget.controlloEsistente == null && _lastControllo != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.history, size: 13, color: Colors.blue.shade600),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Pre-caricato dall\'ultimo controllo',
+                                style: TextStyle(fontSize: 12, color: Colors.blue.shade600),
+                              ),
+                            ],
+                          ),
+                        ),
                       Text('Tocca un telaino per cambiare il tipo', style: TextStyle(color: Colors.grey)),
                       const SizedBox(height: 8),
                       
@@ -1023,6 +1080,222 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     );
   }
   
+  // ---------------------------------------------------------------------------
+  // Riepilogo ultimo controllo
+  // ---------------------------------------------------------------------------
+
+  Widget _buildLastControlloCard() {
+    if (widget.controlloEsistente != null || _lastControllo == null) {
+      return const SizedBox.shrink();
+    }
+    final lc = _lastControllo!;
+    final data = lc['data'] as String? ?? '—';
+    final presenzaRegina = lc['presenza_regina'] ?? true;
+    final reginaVista = lc['regina_vista'] ?? false;
+    final String statoRegina = !(presenzaRegina as bool)
+        ? 'Assente'
+        : ((reginaVista as bool) ? 'Vista' : 'Presente');
+    final Color statoReginaColor = !presenzaRegina
+        ? Colors.red
+        : (reginaVista ? Colors.amber.shade700 : Colors.orange);
+    final celleReali = (lc['celle_reali'] as bool?) ?? false;
+    final sciamatura = (lc['sciamatura'] as bool?) ?? false;
+    final problemiSanitari = (lc['problemi_sanitari'] as bool?) ?? false;
+    final note = (lc['note'] as String?)?.isNotEmpty == true ? lc['note'] as String : null;
+
+    // Conta tipi dalla config
+    List<String> prevConfig = List.filled(10, 'vuoto');
+    final rawConfig = lc['telaini_config'];
+    if (rawConfig != null && rawConfig.toString().isNotEmpty) {
+      try {
+        prevConfig = List<String>.from(json.decode(rawConfig.toString()) as List);
+      } catch (_) {}
+    }
+    final int prevCovata  = prevConfig.where((t) => t == 'covata').length;
+    final int prevScorte  = prevConfig.where((t) => t == 'scorte').length;
+    final int prevDiaframma = prevConfig.where((t) => t == 'diaframma').length;
+    final int prevFoglioCereo = prevConfig.where((t) => t == 'foglio_cereo').length;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      color: Colors.blue.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.blue.shade200),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => setState(() => _lastControlloExpanded = !_lastControlloExpanded),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header sempre visibile
+              Row(
+                children: [
+                  Icon(Icons.history, size: 18, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Ultimo controllo: $data',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _lastControlloExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    color: Colors.blue.shade600,
+                    size: 20,
+                  ),
+                ],
+              ),
+              // Mini telaini preview (sempre visibile)
+              const SizedBox(height: 8),
+              _buildMiniTelainiPreview(prevConfig),
+
+              // Dettagli espandibili
+              if (_lastControlloExpanded) ...[
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+                // Telaini counts
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if (prevCovata > 0) _buildMiniChip('Covata $prevCovata', Colors.red),
+                    if (prevScorte > 0) _buildMiniChip('Scorte $prevScorte', Colors.amber.shade700),
+                    if (prevDiaframma > 0) _buildMiniChip('Diaframma $prevDiaframma', Colors.blueGrey),
+                    if (prevFoglioCereo > 0) _buildMiniChip('F.Cereo $prevFoglioCereo', Colors.yellow.shade700),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Regina
+                Row(
+                  children: [
+                    Icon(Icons.star, size: 14, color: statoReginaColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Regina: $statoRegina',
+                      style: TextStyle(fontSize: 12, color: statoReginaColor, fontWeight: FontWeight.w600),
+                    ),
+                    if (celleReali) ...[
+                      const SizedBox(width: 12),
+                      Icon(Icons.change_history, size: 14, color: Colors.orange.shade700),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Celle reali',
+                        style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+                      ),
+                    ],
+                  ],
+                ),
+                // Alert sanitari
+                if (sciamatura || problemiSanitari) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (sciamatura) ...[
+                        Icon(Icons.grain, size: 14, color: Colors.red.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Sciamatura',
+                          style: TextStyle(fontSize: 12, color: Colors.red.shade600),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      if (problemiSanitari) ...[
+                        Icon(Icons.healing, size: 14, color: Colors.purple.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Problemi sanitari',
+                          style: TextStyle(fontSize: 12, color: Colors.purple.shade600),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+                // Note
+                if (note != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.notes, size: 14, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          note,
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniTelainiPreview(List<String> config) {
+    Color _colorForTipo(String tipo) {
+      switch (tipo) {
+        case 'covata':       return Colors.red;
+        case 'scorte':       return Colors.amber;
+        case 'diaframma':    return Colors.black54;
+        case 'foglio_cereo': return Colors.yellow.shade300;
+        case 'nutritore':    return const Color(0xFFE8D4B9);
+        default:             return Colors.grey.shade300;
+      }
+    }
+
+    return SizedBox(
+      height: 32,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(config.length, (i) {
+          final tipo = config[i];
+          final isDiaframma = tipo == 'diaframma';
+          return Container(
+            width: isDiaframma ? 5 : 16,
+            height: 32,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            decoration: BoxDecoration(
+              color: _colorForTipo(tipo),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildMiniChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
   Widget _buildToolButton(String tool, String label, Color color, IconData icon) {
     final isSelected = _currentTool == tool;
     
@@ -1257,10 +1530,12 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
           children: [
             Icon(icon, color: value ? ThemeConstants.primaryColor : Colors.grey),
             SizedBox(width: 16),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: value ? FontWeight.bold : FontWeight.normal,
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: value ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
           ],

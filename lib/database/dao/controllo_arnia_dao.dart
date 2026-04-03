@@ -57,6 +57,44 @@ class ControlloArniaDao {
     return _convertBools(maps.first);
   }
 
+  // ── Query per Colonia (FK primario post-refactor) ─────────────────────────
+
+  Future<List<Map<String, dynamic>>> getByColonia(int coloniaId) async {
+    final maps = await _dbHelper.query(
+      _dbHelper.tableControlli,
+      where: 'colonia_id = ?',
+      whereArgs: [coloniaId],
+      orderBy: 'data DESC',
+    );
+    return maps.map(_convertBools).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getRecentByColonia(int coloniaId, {int days = 30}) async {
+    final date    = DateTime.now().subtract(Duration(days: days));
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final maps = await _dbHelper.query(
+      _dbHelper.tableControlli,
+      where: 'colonia_id = ? AND data >= ?',
+      whereArgs: [coloniaId, dateStr],
+      orderBy: 'data DESC',
+    );
+    return maps.map(_convertBools).toList();
+  }
+
+  Future<Map<String, dynamic>?> getLatestByColonia(int coloniaId) async {
+    final maps = await _dbHelper.query(
+      _dbHelper.tableControlli,
+      where: 'colonia_id = ?',
+      whereArgs: [coloniaId],
+      orderBy: 'data DESC',
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return _convertBools(maps.first);
+  }
+
+  // ── Query legacy per Arnia (mantenuti per compatibilità) ──────────────────
+
   Future<List<Map<String, dynamic>>> getByArnia(int arniaId) async {
     final List<Map<String, dynamic>> maps = await _dbHelper.query(
       _dbHelper.tableControlli,
@@ -68,8 +106,8 @@ class ControlloArniaDao {
   }
 
   Future<List<Map<String, dynamic>>> getRecentByArnia(int arniaId, {int days = 30}) async {
-    final date = DateTime.now().subtract(Duration(days: days));
-    final dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    final date    = DateTime.now().subtract(Duration(days: days));
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final List<Map<String, dynamic>> maps = await _dbHelper.query(
       _dbHelper.tableControlli,
       where: 'arnia = ? AND data >= ?',

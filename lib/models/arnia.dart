@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'colonia.dart';
 
 class Arnia {
   final int id;
@@ -11,6 +12,9 @@ class Arnia {
   final String dataInstallazione;
   final String? note;
   final bool attiva;
+  /// Colonia attualmente attiva in questa arnia (null se vuota).
+  /// Popolata da una chiamata separata a /arnie/{id}/colonia_attiva/.
+  final Colonia? coloniaAttiva;
 
   Arnia({
     required this.id,
@@ -23,6 +27,7 @@ class Arnia {
     required this.dataInstallazione,
     this.note,
     required this.attiva,
+    this.coloniaAttiva,
   });
 
   factory Arnia.fromJson(Map<String, dynamic> json) {
@@ -37,6 +42,7 @@ class Arnia {
       dataInstallazione: json['data_installazione'],
       note: json['note'],
       attiva: json['attiva'] ?? true,
+      // coloniaAttiva non arriva nel payload base dell'arnia
     );
   }
 
@@ -53,5 +59,21 @@ class Arnia {
       'note': note,
       'attiva': attiva,
     };
+  }
+
+  Arnia copyWith({Colonia? coloniaAttiva}) {
+    return Arnia(
+      id: id,
+      apiario: apiario,
+      apiarioNome: apiarioNome,
+      numero: numero,
+      colore: colore,
+      coloreHex: coloreHex,
+      tipoArnia: tipoArnia,
+      dataInstallazione: dataInstallazione,
+      note: note,
+      attiva: attiva,
+      coloniaAttiva: coloniaAttiva ?? this.coloniaAttiva,
+    );
   }
 }

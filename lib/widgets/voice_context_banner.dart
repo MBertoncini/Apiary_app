@@ -1,6 +1,8 @@
 // lib/widgets/voice_context_banner.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../constants/theme_constants.dart';
 
@@ -33,18 +35,67 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
     _loadApiari();
   }
 
+  /// Returns true if the current user can edit [apiario]:
+  /// owner, or group member with role admin/editor.
+  bool _canEdit(dynamic apiario, int currentUserId, List<dynamic> gruppi) {
+    if (apiario['proprietario'] == currentUserId) return true;
+    if (apiario['condiviso_con_gruppo'] != true || apiario['gruppo'] == null) return false;
+
+    final apiarioGruppoId = apiario['gruppo'];
+    for (final g in gruppi) {
+      final gId = g['id'] is String ? int.tryParse(g['id']) : g['id'];
+      if (gId != apiarioGruppoId) continue;
+
+      final creatoreId = g['creatore'] is Map
+          ? g['creatore']['id']
+          : (g['creatore'] is String
+              ? int.tryParse(g['creatore'].toString())
+              : g['creatore']);
+      if (creatoreId == currentUserId) return true;
+
+      final membri = g['membri'];
+      if (membri is List) {
+        for (final m in membri) {
+          final utenteId = m['utente'] is String
+              ? int.tryParse(m['utente'].toString())
+              : m['utente'];
+          if (utenteId == currentUserId) {
+            final ruolo = m['ruolo'] as String?;
+            return ruolo == 'admin' || ruolo == 'editor';
+          }
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+
   Future<void> _loadApiari() async {
-    final data = await _storage.getStoredData('apiari');
+    final currentUserId =
+        Provider.of<AuthService>(context, listen: false).currentUser?.id;
+    final allApiari = await _storage.getStoredData('apiari');
+    final gruppi = await _storage.getStoredData('gruppi');
     if (!mounted) return;
+
+    List<Map<String, dynamic>> filtered;
+    if (currentUserId != null) {
+      filtered = allApiari
+          .cast<Map<String, dynamic>>()
+          .where((a) => _canEdit(a, currentUserId, gruppi))
+          .toList();
+    } else {
+      filtered = allApiari.cast<Map<String, dynamic>>();
+    }
+
     setState(() {
-      _apiari = data.cast<Map<String, dynamic>>();
+      _apiari = filtered;
     });
-    // Auto-select the saved default if available
+
+    // Auto-select the saved default if available and still editable
     final prefs = await SharedPreferences.getInstance();
     final defaultId = prefs.getInt(_prefKeyDefaultApiarioId);
     final defaultNome = prefs.getString(_prefKeyDefaultApiarioNome);
     if (defaultId != null && defaultNome != null && mounted) {
-      // Verify it still exists in the local list
       final exists = _apiari.any((a) => a['id'] == defaultId);
       if (exists) {
         setState(() {
