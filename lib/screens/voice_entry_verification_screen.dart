@@ -14,6 +14,7 @@ import '../constants/theme_constants.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../services/regina_service.dart';
+import '../database/dao/colonia_dao.dart';
 
 class VoiceEntryVerificationScreen extends StatefulWidget {
   final VoiceEntryBatch batch;
@@ -176,6 +177,10 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       if (raw['id'] != null) arnieLookup[key] = raw['id'] as int;
     }
 
+    // Build arniaId → coloniaId lookup from local SQLite colonie cache.
+    final coloniaDao = ColoniaDao();
+    final Map<int, int> colonieLookup = {};
+
     int? resolveArniaId(VoiceEntry entry) {
       if (entry.arniaId != null) return entry.arniaId;
       if (entry.arniaNumero == null) return null;
@@ -186,6 +191,18 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       // Fallback: match by numero alone (single-apiario case).
       for (final raw in cachedArnie) {
         if (raw['numero'] == entry.arniaNumero) return raw['id'] as int?;
+      }
+      return null;
+    }
+
+    /// Restituisce il coloniaId attiva per [arniaId], usando cache in memoria
+    /// per non riqueryare SQLite ad ogni entry.
+    Future<int?> resolveColoniaId(int arniaId) async {
+      if (colonieLookup.containsKey(arniaId)) return colonieLookup[arniaId];
+      final row = await coloniaDao.getAttivaByArnia(arniaId);
+      if (row != null && row['id'] != null) {
+        colonieLookup[arniaId] = row['id'] as int;
+        return colonieLookup[arniaId];
       }
       return null;
     }
@@ -323,9 +340,13 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       }
 
       try {
+        // Risolve la colonia attiva per questa arnia (cache in memoria).
+        final coloniaId = entry.coloniaId ?? await resolveColoniaId(arniaId);
+
         final controlloData = entry.toControlloData();
         controlloData.remove('arnia_id');
         controlloData['arnia'] = arniaId;
+        if (coloniaId != null) controlloData['colonia'] = coloniaId;
         await apiService.post('controlli/', controlloData);
         savedCount++;
         // Elimina il file audio originale ora che il dato è nel DB
@@ -335,6 +356,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
         if (entry.presenzaRegina == true) {
           await ReginaService.maybeAutoCreate(
             arniaId: arniaId,
+            coloniaId: coloniaId,
             presenzaRegina: true,
             dataControllo: DateFormat('yyyy-MM-dd').format(
               entry.data ?? DateTime.now(),

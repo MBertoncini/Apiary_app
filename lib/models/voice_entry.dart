@@ -1,4 +1,5 @@
 // lib/models/voice_entry.dart
+import 'dart:convert';
 import 'package:intl/intl.dart';
 
 /// Model representing structured data extracted from voice input
@@ -7,6 +8,9 @@ class VoiceEntry {
   final String? apiarioNome;
   final int? arniaId;
   final int? arniaNumero;
+  /// ID della colonia attiva nel box al momento della registrazione.
+  /// Valorizzato durante il salvataggio (risolto da ColoniaDao).
+  final int? coloniaId;
   final String? tipoComando;
   final DateTime? data;
   final bool? presenzaRegina;
@@ -46,6 +50,7 @@ class VoiceEntry {
     this.apiarioNome,
     this.arniaId,
     this.arniaNumero,
+    this.coloniaId,
     this.tipoComando,
     this.data,
     this.presenzaRegina,
@@ -74,6 +79,7 @@ class VoiceEntry {
     String? apiarioNome,
     int? arniaId,
     int? arniaNumero,
+    int? coloniaId,
     String? tipoComando,
     DateTime? data,
     bool? presenzaRegina,
@@ -100,6 +106,7 @@ class VoiceEntry {
       apiarioNome: apiarioNome ?? this.apiarioNome,
       arniaId: arniaId ?? this.arniaId,
       arniaNumero: arniaNumero ?? this.arniaNumero,
+      coloniaId: coloniaId ?? this.coloniaId,
       tipoComando: tipoComando ?? this.tipoComando,
       data: data ?? this.data,
       presenzaRegina: presenzaRegina ?? this.presenzaRegina,
@@ -153,6 +160,7 @@ class VoiceEntry {
       apiarioNome: json['apiario_nome'],
       arniaId: json['arnia_id'],
       arniaNumero: json['arnia_numero'],
+      coloniaId: json['colonia_id'],
       tipoComando: json['tipo_comando'],
       data: parseDate(),
       presenzaRegina: json['presenza_regina'],
@@ -185,6 +193,7 @@ class VoiceEntry {
     if (apiarioNome != null) jsonMap['apiario_nome'] = apiarioNome;
     if (arniaId != null) jsonMap['arnia_id'] = arniaId;
     if (arniaNumero != null) jsonMap['arnia_numero'] = arniaNumero;
+    if (coloniaId != null) jsonMap['colonia_id'] = coloniaId;
     if (tipoComando != null) jsonMap['tipo_comando'] = tipoComando;
     if (data != null) jsonMap['data'] = DateFormat('yyyy-MM-dd').format(data!);
     if (presenzaRegina != null) jsonMap['presenza_regina'] = presenzaRegina;
@@ -214,18 +223,16 @@ class VoiceEntry {
     final map = <String, dynamic>{
       'apiario_id': apiarioId,
       'arnia_id': arniaId,
+      if (coloniaId != null) 'colonia': coloniaId,
       'data': DateFormat('yyyy-MM-dd').format(data ?? DateTime.now()),
       'presenza_regina': presenzaRegina ?? false,
       'regina_vista': reginaVista ?? false,
       'uova_fresche': uovaFresche ?? false,
       'celle_reali': celleReali ?? false,
       'numero_celle_reali': numeroCelleReali ?? 0,
-      'telaini_totali': telainiTotali,
       'telaini_covata': telainiCovata ?? 0,
       'telaini_scorte': telainiScorte ?? 0,
-      if (telainiDiaframma != null) 'telaini_diaframma': telainiDiaframma,
-      if (tealiniFoglioCereo != null) 'telaini_foglio_cereo': tealiniFoglioCereo,
-      if (telainiNutritore != null) 'telaini_nutritore': telainiNutritore,
+      'telaini_config': _buildTelainiConfig(),
       'sciamatura': sciamatura ?? false,
       'problemi_sanitari': problemiSanitari ?? false,
       'note': note ?? '',
@@ -234,7 +241,23 @@ class VoiceEntry {
     if (tipoProblema != null) map['tipo_problema'] = tipoProblema;
     return map;
   }
-  
+
+  /// Builds a 10-slot JSON string for `telaini_config` from the individual
+  /// frame counts. This matches the format used by ControlloFormScreen and
+  /// expected by the backend serializer (which has no flat diaframma/foglio_cereo
+  /// fields — only telaini_covata, telaini_scorte, and telaini_config).
+  String _buildTelainiConfig() {
+    final slots = <String>[
+      ...List.filled(telainiCovata ?? 0, 'covata'),
+      ...List.filled(telainiScorte ?? 0, 'scorte'),
+      ...List.filled(telainiDiaframma ?? 0, 'diaframma'),
+      ...List.filled(tealiniFoglioCereo ?? 0, 'foglio_cereo'),
+      ...List.filled(telainiNutritore ?? 0, 'nutritore'),
+    ];
+    while (slots.length < 10) slots.add('vuoto');
+    return jsonEncode(slots.sublist(0, 10));
+  }
+
   // Human-readable representation of the entry
   String toReadableString() {
     List<String> parts = [];

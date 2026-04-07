@@ -727,6 +727,39 @@ class _MappaScreenState extends State<MappaScreen> {
                   ],
                 ),
               ),
+              // Avviso posizione approssimata per gli apiari community
+              if (isCommunity) ...[
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_searching,
+                            size: 16, color: Colors.orange.shade700),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Posizione approssimata',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange.shade800,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               // Notes
               if (apiario['note'] != null && apiario['note'].toString().isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -845,6 +878,41 @@ class _MappaScreenState extends State<MappaScreen> {
     }
   }
 
+  /// Sposta deterministicamente le coordinate di un apiario community
+  /// di ~200-400 m usando l'ID come seme, così la posizione precisa non è esposta.
+  LatLng _fuzzCoordinates(int id, double lat, double lng) {
+    const double maxOffset = 0.0025; // ~280 m in latitudine
+    final int s1 = (id * 1664525 + 1013904223) & 0x7FFFFFFF;
+    final int s2 = (s1 * 1664525 + 1013904223) & 0x7FFFFFFF;
+    final double latOffset = ((s1 % 1000) / 1000.0 - 0.5) * 2.0 * maxOffset;
+    final double lngOffset = ((s2 % 1000) / 1000.0 - 0.5) * 2.0 * maxOffset;
+    return LatLng(lat + latOffset, lng + lngOffset);
+  }
+
+  /// Cerchi arancioni semi-trasparenti che mostrano l'area approssimativa
+  /// degli apiari community (privacy anti-furto).
+  List<CircleMarker> _buildCommunityPrivacyCircles() {
+    final result = <CircleMarker>[];
+    for (final apiario in _apiari) {
+      if (apiario['_community'] != true) continue;
+      try {
+        final id = apiario['id'] as int;
+        final lat = double.parse(apiario['latitudine'].toString());
+        final lng = double.parse(apiario['longitudine'].toString());
+        final fuzzed = _fuzzCoordinates(id, lat, lng);
+        result.add(CircleMarker(
+          point: fuzzed,
+          radius: 500,
+          color: Colors.orange.withOpacity(0.10),
+          borderColor: Colors.orange.shade600.withOpacity(0.55),
+          borderStrokeWidth: 1.5,
+          useRadiusInMeter: true,
+        ));
+      } catch (_) {}
+    }
+    return result;
+  }
+
   /// Genera un colore stabile a partire da una stringa (es. username)
   Color _colorFromString(String s) {
     final hue = (s.codeUnits.fold(0, (a, b) => a + b) * 37) % 360;
@@ -881,11 +949,17 @@ class _MappaScreenState extends State<MappaScreen> {
             ? ValueKey('c_${apiario['id']}')
             : ValueKey('a_${apiario['id']}');
 
+        // Gli apiari community mostrano una posizione sfumata (~280 m di offset
+        // deterministico) per proteggere la privacy dell'apicoltore.
+        final markerPoint = isCommunity
+            ? _fuzzCoordinates(apiario['id'] as int, lat, lng)
+            : LatLng(lat, lng);
+
         result.add(Marker(
           key: markerKey,
           width: 64.0,
           height: 58.0,
-          point: LatLng(lat, lng),
+          point: markerPoint,
           builder: (ctx) => Stack(
             alignment: Alignment.topCenter,
             children: [
@@ -1291,6 +1365,8 @@ class _MappaScreenState extends State<MappaScreen> {
                         },
                       ),
                     ),
+                    // ── Aree approssimate apiari community (privacy anti-furto) ─
+                    CircleLayer(circles: _buildCommunityPrivacyCircles()),
                     // ── APIARI (sopra le fioriture) ────────────────────────────
                     MarkerClusterLayerWidget(
                       options: MarkerClusterLayerOptions(

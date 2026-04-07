@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/colonia.dart';
 import '../database/dao/colonia_dao.dart';
 import 'api_service.dart';
@@ -56,13 +57,25 @@ class ColoniaService {
         {'arnia_id': arniaId.toString()},
       );
       final response = await _apiService.get(url);
-      // Il backend restituisce 404 se l'arnia è vuota → ApiService lancia eccezione
-      // che il catch cattura → fallback alla cache
+      debugPrint('[ColoniaService] risposta server arnia $arniaId: $response');
       final colonia = Colonia.fromJson(response as Map<String, dynamic>);
-      await _dao.insert(ColoniaDao.toRow(colonia));
+      debugPrint('[ColoniaService] fromJson ok, id=${colonia.id} arnia=${colonia.arnia} isAttiva=${colonia.isAttiva}');
+      try {
+        final row = ColoniaDao.toRow(colonia);
+        debugPrint('[ColoniaService] toRow: $row');
+        await _dao.insert(row);
+        debugPrint('[ColoniaService] insert OK per colonia ${colonia.id}');
+      } catch (e, st) {
+        debugPrint('[ColoniaService] ERRORE insert cache: $e\n$st');
+      }
       return colonia;
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[ColoniaService] ERRORE fetch/parse server arnia $arniaId: $e\n$st');
+    }
+    // Fallback: leggi dalla cache locale
+    debugPrint('[ColoniaService] fallback cache per arnia $arniaId');
     final row = await _dao.getAttivaByArnia(arniaId);
+    debugPrint('[ColoniaService] cache result: $row');
     return row != null ? ColoniaDao.fromRow(row) : null;
   }
 

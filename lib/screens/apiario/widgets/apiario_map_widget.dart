@@ -1184,7 +1184,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
   // ── arnie ──────────────────────────────────────────────────────
 
-  List<Widget> _buildArnieWidgets() {
+  List<(double, Widget)> _buildArnieWidgets() {
     return widget.arnie.map((arnia) {
       final id = arnia['id'] as int;
       final pos = _arniaPositions[id] ?? Offset(_originX, _originY);
@@ -1287,13 +1287,13 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         );
       }
 
-      return Positioned(key: ValueKey('arnia_$id'), left: pos.dx, top: pos.dy, child: child);
+      return (pos.dy + _cellSize, Positioned(key: ValueKey('arnia_$id'), left: pos.dx, top: pos.dy, child: child));
     }).toList();
   }
 
   // ── decorazioni (alberi e nuclei) ──────────────────────────────
 
-  List<Widget> _buildDecorWidgets() {
+  List<(double, Widget)> _buildDecorWidgets() {
     return _elements
         .where((e) => e.type != MapElementType.vialetto)
         .map((el) {
@@ -1301,6 +1301,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       final isDragging = _draggingElementId == el.id;
 
       Widget inner;
+      double baseY;
 
       // ── nuclei e cassette piccole ───────────────────────────────
       final isSmallHive = el.type == MapElementType.nucleo ||
@@ -1322,6 +1323,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           default:                        smallTipo = HiveTipo.nucleo_legno;
         }
         final smallCell = _cellSize * (el.type == MapElementType.apidea ? 0.60 : 0.78);
+        baseY = pos.dy + smallCell;
 
         inner = _editMode
             ? _DraggableHive(
@@ -1362,7 +1364,25 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 ),
               );
       } else {
+        // Calcola isOverlapped prima di costruire il widget (serve al painter per l'ombra).
+        // Albero semi-trasparente se un'arnia "davanti" (base più bassa) si sovrappone.
+        // I melari sono sovrapposti dentro il corpo arnia (90px) — non estendono l'altezza.
+        const treeW = 72.0, treeH = 82.0;
+        final treeRect = Rect.fromLTWH(pos.dx, pos.dy, treeW, treeH);
+        final treeBaseY = pos.dy + treeH;
+        baseY = treeBaseY;
+        const arniaH = _cellSize; // altezza visiva reale del corpo arnia
+        final isOverlapped = _arniaPositions.entries.any((arniaEntry) {
+          final arniaPos = arniaEntry.value;
+          // L'arnia è "davanti" se la sua base è più bassa di quella dell'albero
+          if (arniaPos.dy + arniaH <= treeBaseY) return false;
+          return treeRect.overlaps(
+            Rect.fromLTWH(arniaPos.dx, arniaPos.dy, _cellSize, arniaH),
+          );
+        });
+
         // albero
+        final alberoWidget = _AlberoWidget(isDragging: isDragging, isOverlapped: isOverlapped);
         inner = _editMode
             ? GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -1382,34 +1402,10 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 },
                 onPanEnd: (_) => setState(() => _draggingElementId = null),
                 onLongPress: () => _confirmDelete(el.id, 'Rimuovere questo albero?'),
-                child: _AlberoWidget(isDragging: isDragging),
+                child: alberoWidget,
               )
-            : _AlberoWidget(isDragging: false);
+            : alberoWidget;
 
-        // Albero semi-trasparente se un'arnia "davanti" (base più bassa) si sovrappone.
-        // Fix: (1) always-wrapper AnimatedOpacity per animazione simmetrica fade-in/out;
-        //      (2) altezza arnia calcolata con melari reali (14px cadauno) non 1.4×cellSize;
-        //      (3) confronto bottom-Y invece di top-Y per depth ordering corretto.
-        const treeW = 72.0, treeH = 82.0;
-        const melarioH = 14.0; // 13px box + 1px margin bottom
-        final treeRect = Rect.fromLTWH(pos.dx, pos.dy, treeW, treeH);
-        final treeBaseY = pos.dy + treeH;
-        final isOverlapped = _arniaPositions.entries.any((arniaEntry) {
-          final arniaPos = arniaEntry.value;
-          final numMelari = widget.melariData == null
-              ? 0
-              : widget.melariData!
-                  .where((m) =>
-                      m['arnia'] == arniaEntry.key &&
-                      m['stato'] == 'posizionato')
-                  .length;
-          final arniaH = numMelari * melarioH + _cellSize;
-          // L'arnia è "davanti" se la sua base è più bassa di quella dell'albero
-          if (arniaPos.dy + arniaH <= treeBaseY) return false;
-          return treeRect.overlaps(
-            Rect.fromLTWH(arniaPos.dx, arniaPos.dy, _cellSize, arniaH),
-          );
-        });
         inner = AnimatedOpacity(
           opacity: isOverlapped ? 0.42 : 1.0,
           duration: const Duration(milliseconds: 200),
@@ -1417,23 +1413,19 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         );
       }
 
-      return Positioned(key: ValueKey('el_${el.id}'), left: pos.dx, top: pos.dy, child: inner);
+      return (baseY, Positioned(key: ValueKey('el_${el.id}'), left: pos.dx, top: pos.dy, child: inner));
     }).toList();
   }
 
   // ── Y-sorting: alberi + arnie ordinati per profondità ──────────
 
   /// Unisce decor e arnie in un'unica lista ordinata per Y (y-sorting rigoroso).
-  /// Gli elementi con Y minore (più in alto sullo schermo) vengono renderizzati
-  /// prima, dando una prospettiva naturale.
+  /// Ordina per BASE Y (spigolo inferiore) di ogni elemento, non per top,
+  /// così gli elementi più a sud (base più alta) appaiono in fronte.
   List<Widget> _buildYSortedWidgets() {
     final all = [..._buildDecorWidgets(), ..._buildArnieWidgets()];
-    all.sort((a, b) {
-      final ay = (a is Positioned ? a.top : null) ?? 0.0;
-      final by = (b is Positioned ? b.top : null) ?? 0.0;
-      return ay.compareTo(by);
-    });
-    return all;
+    all.sort((a, b) => a.$1.compareTo(b.$1));
+    return all.map((e) => e.$2).toList();
   }
 
   // ── vialetti modulari ──────────────────────────────────────────
@@ -2525,7 +2517,8 @@ class _HivePainter extends CustomPainter {
 
 class _AlberoWidget extends StatelessWidget {
   final bool isDragging;
-  const _AlberoWidget({this.isDragging = false});
+  final bool isOverlapped;
+  const _AlberoWidget({this.isDragging = false, this.isOverlapped = false});
 
   @override
   Widget build(BuildContext context) => AnimatedContainer(
@@ -2533,27 +2526,30 @@ class _AlberoWidget extends StatelessWidget {
     width: 72, height: 82,
     transform: isDragging ? (Matrix4.identity()..scale(1.1)) : Matrix4.identity(),
     transformAlignment: Alignment.center,
-    child: CustomPaint(painter: _AlberoPainter(isDragging: isDragging)),
+    child: CustomPaint(painter: _AlberoPainter(isDragging: isDragging, isOverlapped: isOverlapped)),
   );
 }
 
 class _AlberoPainter extends CustomPainter {
   final bool isDragging;
-  const _AlberoPainter({required this.isDragging});
+  final bool isOverlapped;
+  const _AlberoPainter({required this.isDragging, this.isOverlapped = false});
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2;
 
-    // Ombra a terra
-    canvas.drawOval(
-      Rect.fromCenter(
-          center: Offset(cx, h * .92), width: w * .52, height: h * .08),
-      Paint()
-        ..color = Colors.black.withOpacity(.18)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
-    );
+    // Ombra a terra: nascosta quando l'albero è trasparente per evitare alone sfocato
+    if (!isOverlapped) {
+      canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(cx, h * .92), width: w * .52, height: h * .08),
+        Paint()
+          ..color = Colors.black.withOpacity(.18)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+      );
+    }
 
     // Tronco
     final trunk = RRect.fromLTRBR(
@@ -2612,7 +2608,7 @@ class _AlberoPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_AlberoPainter o) => isDragging != o.isDragging;
+  bool shouldRepaint(_AlberoPainter o) => isDragging != o.isDragging || isOverlapped != o.isOverlapped;
 }
 
 // ════════════════════════════════════════════════════════════════

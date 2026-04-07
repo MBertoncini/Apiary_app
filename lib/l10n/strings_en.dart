@@ -234,6 +234,10 @@ class StringsEn extends AppStrings {
   @override String get apiarioFormVisibOwner => 'Owner only';
   @override String get apiarioFormVisibGroup => 'Group members';
   @override String get apiarioFormVisibAll => 'All users';
+  @override String get apiarioFormVisibAllPrivacyNote =>
+      'Your exact location will not be shown: only an approximate area (~500 m) will appear on the map. '
+      'This lets you share your area without risking theft, while helping other beekeepers discover active beekeeping zones.';
+  @override String get mapaApproxAreaLabel => 'Approximate location';
   @override String get apiarioFormMeteoTitle => 'Weather monitoring';
   @override String get apiarioFormMeteoSubtitle => 'Enable weather condition monitoring';
   @override String get apiarioFormShareTitle => 'Group sharing';

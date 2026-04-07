@@ -191,7 +191,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     _recordedSeconds = _seconds;
     _playerPosition = Duration.zero;
     _playerDuration = Duration.zero;
-    setState(() => _state = _RecState.recorded);
+    await _saveToQueue();
   }
 
   // ── Estensione registrazione ──────────────────────────────────────────────
@@ -246,7 +246,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     _recordedSeconds += _seconds;
     _playerPosition = Duration.zero;
     _playerDuration = Duration.zero;
-    setState(() => _state = _RecState.recorded);
+    await _saveToQueue();
   }
 
   /// Concatena due file AAC-ADTS in-place (il formato ADTS è self-framing,
@@ -1147,47 +1147,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     final buttons = <Widget>[];
 
     switch (_state) {
-      // ── Recorded: salva in sessione (primario) o invia subito ─────
       case _RecState.recorded:
-        buttons.add(ElevatedButton.icon(
-          onPressed: _saveToQueue,
-          icon: const Icon(Icons.add_to_queue, size: 16),
-          label: const Text('Salva nella sessione'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange.shade700,
-            foregroundColor: Colors.white,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            textStyle: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-        ));
-        buttons.add(OutlinedButton.icon(
-          onPressed: _startExtending,
-          icon: const Icon(Icons.mic, size: 16, color: Colors.amber),
-          label: const Text('Aggiungi audio',
-              style: TextStyle(color: Colors.amber)),
-          style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.amber)),
-        ));
-        buttons.add(OutlinedButton.icon(
-          onPressed: _sendToGemini,
-          icon: const Icon(Icons.auto_awesome, size: 16,
-              color: Color(0xFF4285F4)),
-          label: const Text('Invia subito a Gemini',
-              style: TextStyle(color: Color(0xFF4285F4))),
-          style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFF4285F4))),
-        ));
-        buttons.add(OutlinedButton.icon(
-          onPressed: _discardRecording,
-          icon: const Icon(Icons.delete_outline,
-              size: 16, color: Colors.red),
-          label: const Text('Scarta',
-              style: TextStyle(color: Colors.red)),
-          style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.red)),
-        ));
         break;
 
       // ── Error: gestione differenziata in base al tipo di errore ───
@@ -1400,7 +1360,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       case _RecState.error:
         return 'Errore elaborazione';
       case _RecState.recorded:
-        return 'Registrazione pronta – salva o ascolta';
+        return 'Salvataggio in sessione…';
       case _RecState.idle:
         if (_entries.isNotEmpty) return 'Registra la prossima arnia';
         if (_queueCount > 0)

@@ -93,12 +93,12 @@ class ColoniaDao {
     return rows.map(_convertBools).toList();
   }
 
-  /// Restituisce la colonia attiva in un'arnia (is_attiva=1, data_fine NULL).
+  /// Restituisce la colonia attiva in un'arnia (is_attiva=1).
   Future<Map<String, dynamic>?> getAttivaByArnia(int arniaId) async {
     final db = await _dbHelper.database;
     final rows = await db.query(
       _dbHelper.tableColonie,
-      where: 'arnia = ? AND is_attiva = 1 AND data_fine IS NULL',
+      where: 'arnia = ? AND is_attiva = 1',
       whereArgs: [arniaId],
       orderBy: 'data_inizio DESC',
       limit: 1,
@@ -112,7 +112,7 @@ class ColoniaDao {
     final db = await _dbHelper.database;
     final rows = await db.query(
       _dbHelper.tableColonie,
-      where: 'nucleo = ? AND is_attiva = 1 AND data_fine IS NULL',
+      where: 'nucleo = ? AND is_attiva = 1',
       whereArgs: [nucleoId],
       orderBy: 'data_inizio DESC',
       limit: 1,

@@ -238,6 +238,8 @@ abstract class AppStrings {
   String get apiarioFormVisibOwner;
   String get apiarioFormVisibGroup;
   String get apiarioFormVisibAll;
+  String get apiarioFormVisibAllPrivacyNote;
+  String get mapaApproxAreaLabel;
   String get apiarioFormMeteoTitle;
   String get apiarioFormMeteoSubtitle;
   String get apiarioFormShareTitle;

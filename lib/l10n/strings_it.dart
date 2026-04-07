@@ -229,6 +229,10 @@ class StringsIt extends AppStrings {
   @override String get apiarioFormVisibOwner => 'Solo proprietario';
   @override String get apiarioFormVisibGroup => 'Membri del gruppo';
   @override String get apiarioFormVisibAll => 'Tutti gli utenti';
+  @override String get apiarioFormVisibAllPrivacyNote =>
+      'La posizione esatta non verrà mostrata: sulla mappa verrà indicata solo un\'area approssimativa (~500 m). '
+      'Questo ti permette di condividere la zona senza rischiare furti, e aiuta altri apicoltori a scoprire dove è già presente attività apistica.';
+  @override String get mapaApproxAreaLabel => 'Posizione approssimata';
   @override String get apiarioFormMeteoTitle => 'Monitoraggio meteo';
   @override String get apiarioFormMeteoSubtitle => 'Attiva il monitoraggio delle condizioni meteo';
   @override String get apiarioFormShareTitle => 'Condivisione con gruppo';

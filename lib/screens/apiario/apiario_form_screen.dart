@@ -664,6 +664,41 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                       },
                       activeColor: ThemeConstants.primaryColor,
                     ),
+
+                    // Privacy note for public visibility
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOut,
+                      child: _visibilitaMappa == 'pubblico'
+                          ? Container(
+                              margin: const EdgeInsets.only(
+                                  left: 12, right: 12, bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border:
+                                    Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.shield,
+                                      color: Colors.orange.shade700, size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _s.apiarioFormVisibAllPrivacyNote,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.orange.shade800),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 ),
               ),
