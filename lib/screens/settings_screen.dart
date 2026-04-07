@@ -209,8 +209,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveVoiceMode(String mode) async {
+    // Per la modalità premium mostra un bottom sheet informativo prima di
+    // salvare. L'utente può confermare o annullare.
+    if (mode == VoiceSettingsService.modeAudio &&
+        _voiceMode != VoiceSettingsService.modeAudio) {
+      final confirmed = await _showAudioPremiumSheet();
+      if (!confirmed) return;
+    }
     await _voiceSettings.setMode(mode);
     if (mounted) setState(() => _voiceMode = mode);
+  }
+
+  Future<bool> _showAudioPremiumSheet() async {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _PremiumFeatureSheet(
+        title: s.voiceAudioPremiumSheetTitle,
+        body: s.voiceAudioPremiumSheetBody,
+        activateLabel: s.voiceAudioPremiumSheetActivate,
+      ),
+    );
+    return confirmed == true;
   }
 
   Future<void> _clearCache() async {
@@ -900,7 +922,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(height: 28),
 
-          // ── 2. Inserimento vocale (Gemini, tracciato localmente) ─────────
+          // ── 2. Gemini Audio premium (tracciato localmente) ───────────────
           Row(
             children: [
               Icon(Icons.mic_outlined, color: ThemeConstants.primaryColor, size: 15),
@@ -1133,6 +1155,131 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(value, style: ThemeConstants.handwrittenNotes.copyWith(fontSize: 17)),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Premium feature bottom sheet ─────────────────────────────────────────────
+
+class _PremiumFeatureSheet extends StatelessWidget {
+  final String title;
+  final String body;
+  final String activateLabel;
+
+  const _PremiumFeatureSheet({
+    required this.title,
+    required this.body,
+    required this.activateLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Icona + titolo
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome,
+                    color: Color(0xFF4285F4), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Text(title,
+                  style: ThemeConstants.subheadingStyle
+                      .copyWith(fontSize: 17)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Corpo
+          Text(body,
+              style: ThemeConstants.bodyStyle.copyWith(
+                  fontSize: 14,
+                  color: ThemeConstants.textSecondaryColor,
+                  height: 1.5)),
+          const SizedBox(height: 24),
+
+          // Bottoni
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Annulla'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4285F4),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Bzzz! ',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          color: const Color(0xFFFFD600),
+                          shadows: const [
+                            Shadow(
+                              color: Color(0xFFE65100),
+                              offset: Offset(1.5, 1.5),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(activateLabel),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

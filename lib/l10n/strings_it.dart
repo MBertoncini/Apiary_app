@@ -76,22 +76,29 @@ class StringsIt extends AppStrings {
   // Voice input section
   @override String get sectionVoiceInput => 'Inserimento Vocale';
   @override String get voiceInputSubtitle => 'Scegli come vengono catturati i dati vocali.';
-  @override String get voiceModeSttTitle => 'Speech-to-text locale';
+  @override String get voiceModeSttTitle => 'Speech-to-text (gratuito)';
   @override String get voiceModeSttSubtitle =>
-      'Il riconoscimento vocale del dispositivo trascrive il testo; '
-      'Gemini lo struttura in dati. '
-      'Consigliato: funziona anche con connessione lenta.';
-  @override String get voiceModeAudioTitle => 'Registra audio → Gemini multimodale';
+      'Il microfono del dispositivo trascrive il testo; '
+      'i dati vengono estratti localmente senza connessione né API. '
+      'Consigliato per uso quotidiano.';
+  @override String get voiceModeAudioTitle => 'Registra audio — Gemini AI (premium)';
   @override String get voiceModeAudioSubtitle =>
-      'L\'audio viene inviato direttamente a Gemini che '
-      'trascrive e struttura in un unico passaggio. '
-      'Più preciso in ambienti rumorosi. Richiede connessione.';
+      'L\'audio viene analizzato da Gemini in un unico passaggio: '
+      'più preciso in ambienti rumorosi e con terminologia libera. '
+      'Richiede connessione.';
+  @override String get voiceAudioPremiumSheetTitle => 'Funzionalità premium';
+  @override String get voiceAudioPremiumSheetBody =>
+      'La modalità Gemini Audio invia la registrazione a Google Gemini AI '
+      'per una trascrizione e strutturazione intelligente del controllo.\n\n'
+      '🎉 Durante la beta è inclusa gratuitamente per tutti gli utenti.\n\n'
+      'In futuro potrebbe diventare parte di un piano a pagamento.';
+  @override String get voiceAudioPremiumSheetActivate => 'Attiva';
 
   // AI Quota section
   @override String get sectionQuota => 'Quota AI — Uso giornaliero';
   @override String get quotaRefreshTooltip => 'Aggiorna';
   @override String get quotaDataUnavailable => 'Dati non disponibili (offline o errore di rete)';
-  @override String get quotaTranscriptionsToday => 'Trascrizioni oggi';
+  @override String get quotaTranscriptionsToday => 'Registrazioni audio oggi';
   @override String get quotaStatsToday => 'Query statistiche oggi';
 
   // Guide & Tutorial section
@@ -130,7 +137,7 @@ class StringsIt extends AppStrings {
   @override String get quotaResetDaily => 'Reset ogni giorno';
   @override String get quotaResetMidnight => 'Reset a mezzanotte';
   @override String get quotaApiarioAIAssistant => 'ApiarioAI Assistant (Gemini)';
-  @override String get quotaVoiceInput => 'Inserimento Vocale (Gemini)';
+  @override String get quotaVoiceInput => 'Gemini Audio (premium)';
   @override String get quotaStatsNlQuery => 'Statistiche NL Query (Groq)';
   @override String quotaResetInHoursMinutes(int hours, int minutes) =>
       'Reset tra ${hours}h ${minutes}m';

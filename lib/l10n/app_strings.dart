@@ -78,6 +78,9 @@ abstract class AppStrings {
   String get voiceModeSttSubtitle;
   String get voiceModeAudioTitle;
   String get voiceModeAudioSubtitle;
+  String get voiceAudioPremiumSheetTitle;
+  String get voiceAudioPremiumSheetBody;
+  String get voiceAudioPremiumSheetActivate;
 
   // AI Quota section
   String get sectionQuota;

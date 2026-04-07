@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/platform_voice_input_manager.dart';
 import '../services/platform_speech_service.dart';
-import '../services/gemini_data_processor.dart';
+import '../services/regex_data_processor.dart';
 import '../services/gemini_audio_processor.dart';
 import '../services/voice_settings_service.dart';
 import '../services/voice_queue_service.dart';
@@ -32,7 +32,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   bool _showGuide = false;
   late PlatformVoiceInputManager _voiceManager;
   late PlatformSpeechService _speechService;
-  late GeminiDataProcessor _dataProcessor;
+  late RegexDataProcessor _dataProcessor;
   late GeminiAudioProcessor _audioProcessor;
   final VoiceQueueService _queueService = VoiceQueueService();
   final ConnectivityService _connectivityService = ConnectivityService();
@@ -56,8 +56,10 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     // Carica la modalità vocale e applica la chiave personale.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final user = Provider.of<AuthService>(context, listen: false).currentUser;
+      // La modalità STT usa RegexDataProcessor (offline, zero API).
+      // La modalità audio usa GeminiAudioProcessor: applica la chiave
+      // personale se inserita, altrimenti usa la chiave condivisa dell'app.
       if (user != null && user.geminiApiKey.isNotEmpty) {
-        _dataProcessor.setPersonalKey(user.geminiApiKey);
         _audioProcessor.setPersonalKey(user.geminiApiKey);
       }
       final mode = await _voiceSettings.getMode();
@@ -206,7 +208,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
 
   void _initializeServices() {
     _speechService = PlatformSpeechService();
-    _dataProcessor = GeminiDataProcessor();
+    _dataProcessor = RegexDataProcessor();
     _audioProcessor = GeminiAudioProcessor();
     final feedbackService = VoiceFeedbackService();
 
