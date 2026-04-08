@@ -36,7 +36,9 @@
       "Read(//i//**)",
       "Bash(dart analyze:*)",
       "Bash(flutter pub:*)",
-      "Bash(flutter doctor:*)"
+      "Bash(flutter doctor:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(xxd \"C:/Progetti GIT Michele/Apiary_app/assets/models/bee_detector.tflite\")"
     ]
   }
 }
