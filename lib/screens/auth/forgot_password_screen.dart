@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   @override
@@ -55,9 +56,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Password dimenticata'),
+        title: Text(s.forgotPasswordTitle),
         backgroundColor: ThemeConstants.primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -65,14 +68,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: _emailSent ? _buildSuccess() : _buildForm(),
+            child: _emailSent ? _buildSuccess(s) : _buildForm(s),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildForm() {
+  Widget _buildForm(dynamic s) {
     return Form(
       key: _formKey,
       child: Column(
@@ -95,7 +98,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            'Reimposta la password',
+            s.forgotPasswordResetTitle,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -105,7 +108,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Inserisci l\'indirizzo email associato al tuo account. Ti invieremo un link per reimpostare la password.',
+            s.forgotPasswordSubtitle,
             style: TextStyle(
               fontSize: 14,
               color: ThemeConstants.textSecondaryColor,
@@ -129,10 +132,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           TextFormField(
             controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              hintText: 'Inserisci la tua email',
-              prefixIcon: Icon(Icons.email_outlined),
+            decoration: InputDecoration(
+              labelText: s.forgotPasswordFieldEmail,
+              hintText: s.forgotPasswordHintEmail,
+              prefixIcon: const Icon(Icons.email_outlined),
             ),
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
@@ -140,11 +143,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             onFieldSubmitted: (_) => _submit(),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Inserisci la tua email';
+                return s.forgotPasswordValidateEmail;
               }
               final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
               if (!emailRegex.hasMatch(value.trim())) {
-                return 'Inserisci un indirizzo email valido';
+                return s.forgotPasswordValidateEmailFormat;
               }
               return null;
             },
@@ -163,20 +166,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Text('INVIA LINK', style: TextStyle(fontSize: 16)),
+                  : Text(s.forgotPasswordBtnSend, style: const TextStyle(fontSize: 16)),
             ),
           ),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Torna al login'),
+            child: Text(s.forgotPasswordBtnBack),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSuccess() {
+  Widget _buildSuccess(dynamic s) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -192,23 +195,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Email inviata!',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
+        Text(
+          s.forgotPasswordSuccessTitle,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          'Abbiamo inviato le istruzioni per reimpostare la password a:\n${_emailController.text.trim()}\n\nControlla anche la cartella spam.',
+          s.forgotPasswordSuccessBody(_emailController.text.trim()),
           style: TextStyle(fontSize: 14, color: ThemeConstants.textSecondaryColor),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text('TORNA AL LOGIN', style: TextStyle(fontSize: 16)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(s.forgotPasswordBtnBackToLogin, style: const TextStyle(fontSize: 16)),
           ),
         ),
         const SizedBox(height: 16),
@@ -219,7 +222,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               _errorMessage = null;
             });
           },
-          child: const Text('Non ho ricevuto l\'email — riprova'),
+          child: Text(s.forgotPasswordBtnRetry),
         ),
       ],
     );

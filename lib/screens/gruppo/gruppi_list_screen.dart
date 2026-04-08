@@ -5,6 +5,7 @@ import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../models/gruppo.dart';
 import '../../services/gruppo_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../services/notification_service.dart';
@@ -124,29 +125,34 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
     });
 
     try {
+      final s = Provider.of<LanguageService>(context, listen: false).strings;
       if (accept) {
         await _gruppoService.accettaInvito(invito.token);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Invito accettato'),
+            content: Text(s.gruppiInvitoAccettato),
             backgroundColor: ThemeConstants.successColor,
           ),
         );
       } else {
         await _gruppoService.rifiutaInvito(invito.token);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Invito rifiutato'),
+            content: Text(s.gruppiInvitoRifiutato),
           ),
         );
       }
-      
+
       // Ricarica i dati
       _loadData();
     } catch (e) {
+      if (!mounted) return;
+      final s = Provider.of<LanguageService>(context, listen: false).strings;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: ${e.toString()}'),
+          content: Text(s.gruppiInvitoError(e.toString())),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -158,8 +164,9 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
 
   Widget _buildInvitiSection() {
     if (_inviti.isEmpty) {
-      return Container(); // Non mostrare nulla se non ci sono inviti
+      return Container();
     }
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +174,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            'Inviti ricevuti',
+            s.gruppiInvitiRicevuti,
             style: ThemeConstants.subheadingStyle,
           ),
         ),
@@ -201,20 +208,20 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Sei stato invitato da ${invito.invitatoDaUsername} con il ruolo di ${invito.getRuoloPropDisplay()}',
+                      s.gruppiInvitatoDa(invito.invitatoDaUsername, invito.getRuoloPropDisplay()),
                       style: TextStyle(
                         color: ThemeConstants.textSecondaryColor,
                       ),
                     ),
                     Text(
-                      'Data invio: ${DateFormatter.formatDate(invito.dataInvio)}',
+                      s.gruppiDataInvio(DateFormatter.formatDate(invito.dataInvio)),
                       style: TextStyle(
                         color: ThemeConstants.textSecondaryColor,
                         fontSize: 12,
                       ),
                     ),
                     Text(
-                      'Scade il: ${DateFormatter.formatDate(invito.dataScadenza)}',
+                      s.gruppiScadeIl(DateFormatter.formatDate(invito.dataScadenza)),
                       style: TextStyle(
                         color: ThemeConstants.textSecondaryColor,
                         fontSize: 12,
@@ -226,7 +233,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                       children: [
                         OutlinedButton(
                           onPressed: () => _handleInvito(invito, false),
-                          child: Text('RIFIUTA'),
+                          child: Text(s.gruppiBtnRifiuta),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: ThemeConstants.errorColor,
                           ),
@@ -234,7 +241,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                         SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: () => _handleInvito(invito, true),
-                          child: Text('ACCETTA'),
+                          child: Text(s.gruppiBtnAccetta),
                         ),
                       ],
                     ),
@@ -252,6 +259,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
   // Modifica al metodo _buildGruppiList in gruppi_list_screen.dart
 
   Widget _buildGruppiList() {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
       if (_gruppi.isEmpty) {
         return Center(
@@ -265,7 +273,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Non sei membro di nessun gruppo',
+                s.gruppiNoMembro,
                 style: TextStyle(
                   color: ThemeConstants.textSecondaryColor,
                   fontSize: 18,
@@ -274,7 +282,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 icon: Icon(Icons.add),
-                label: Text('Crea un nuovo gruppo'),
+                label: Text(s.gruppiBtnCrea),
                 onPressed: _navigateToCreateGruppo,
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -355,7 +363,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                           ),
                           SizedBox(width: 4),
                           Text(
-                            '${gruppo.getMembriCount()} membri',
+                            s.gruppiMembriCount(gruppo.getMembriCount()),
                             style: TextStyle(
                               color: ThemeConstants.textSecondaryColor,
                             ),
@@ -368,7 +376,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                           ),
                           SizedBox(width: 4),
                           Text(
-                            '${gruppo.getApiariCount()} apiari condivisi',
+                            s.gruppiApiariCondivisi(gruppo.getApiariCount()),
                             style: TextStyle(
                               color: ThemeConstants.textSecondaryColor,
                             ),
@@ -383,7 +391,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
           } catch (e) {
             debugPrint('Errore nella costruzione della card per il gruppo all\'indice $index: $e');
             return ListTile(
-              title: Text('Errore nel caricamento del gruppo'),
+              title: Text(s.gruppiErrLoading),
               subtitle: Text('$e'),
               textColor: ThemeConstants.errorColor,
             );
@@ -403,7 +411,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Errore nel caricamento dei gruppi',
+              s.gruppiErrLoadingGruppi,
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 8),
@@ -415,7 +423,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadData,
-              child: Text('RIPROVA'),
+              child: Text(s.gruppiBtnRiprova),
             ),
           ],
         ),
@@ -425,9 +433,10 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gruppi'),
+        title: Text(s.gruppiTitle),
         actions: [],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.gruppiListRoute),
@@ -456,7 +465,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Text(
-                                  'I tuoi gruppi',
+                                  s.gruppiTuoiGruppi,
                                   style: ThemeConstants.subheadingStyle,
                                 ),
                               ),
@@ -471,7 +480,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreateGruppo,
         child: Icon(Icons.add),
-        tooltip: 'Crea nuovo gruppo',
+        tooltip: s.gruppiFabTooltip,
       ),
     );
   }

@@ -928,4 +928,244 @@ class StringsEn extends AppStrings {
   @override String get dashFabAiAssistant => 'ApiarioAI Assistant';
   @override String get dashFabScanQr => 'Scan QR';
   @override String get dashFabNewApiario => 'New apiary';
+
+  // ── Auth – Login Screen ───────────────────────────────────────────────────
+  @override String get loginSubtitle => 'Sign in to manage your apiaries';
+  @override String get loginFieldUsernameLabel => 'Username or Email';
+  @override String get loginFieldUsernameHint => 'Enter your username or email';
+  @override String get loginFieldUsernameValidate => 'Enter your username or email';
+  @override String get loginFieldPasswordLabel => 'Password';
+  @override String get loginFieldPasswordHint => 'Enter your password';
+  @override String get loginFieldPasswordValidate => 'Enter your password';
+  @override String get loginForgotPassword => 'Forgot your password?';
+  @override String get loginBtnAccedi => 'SIGN IN';
+  @override String get loginOr => 'or';
+  @override String get loginBtnGoogle => 'Continue with Google';
+  @override String get loginBtnRegister => 'Don\'t have an account? Register';
+  @override String get loginErrUserNotFound => 'Username or email not found. Don\'t have an account yet?';
+  @override String get loginErrWrongPassword => 'Incorrect password.';
+  @override String get loginErrWrongCredentials => 'Invalid credentials. Check your username/email and password.';
+  @override String get loginErrGoogleAuth => 'Google sign-in failed. Please try again.';
+  @override String get loginErrGoogleToken => 'Could not obtain Google token. Please try again.';
+  @override String get loginErrNetwork => 'Cannot connect to server. Check your internet connection.';
+  @override String get loginErrTimeout => 'Server is not responding. Please try again in a moment.';
+  @override String get loginErrServer => 'Internal server error. Please try again later.';
+  @override String get loginErrDefault => 'An error occurred. Please try again.';
+  @override String get loginHintForgotPassword => 'Forgot your password?';
+  @override String get loginHintRegister => 'Don\'t have an account? Register now';
+
+  // ── Auth – Register Screen ────────────────────────────────────────────────
+  @override String get registerTitle => 'Register';
+  @override String get registerCreateAccount => 'Create an account';
+  @override String get registerFieldUsername => 'Username';
+  @override String get registerHintUsername => 'Enter a username';
+  @override String get registerValidateUsername => 'Enter a username';
+  @override String get registerFieldEmail => 'Email';
+  @override String get registerHintEmail => 'Enter your email';
+  @override String get registerValidateEmail => 'Enter an email';
+  @override String get registerValidateEmailFormat => 'Enter a valid email';
+  @override String get registerFieldPassword => 'Password';
+  @override String get registerHintPassword => 'Enter a password';
+  @override String get registerValidatePassword => 'Enter a password';
+  @override String get registerValidatePasswordLength => 'Password must be at least 8 characters';
+  @override String get registerFieldConfirmPassword => 'Confirm Password';
+  @override String get registerHintConfirmPassword => 'Confirm your password';
+  @override String get registerValidateConfirmPassword => 'Confirm your password';
+  @override String get registerValidatePasswordMatch => 'Passwords do not match';
+  @override String get registerErrPasswordMismatch => 'Passwords do not match.';
+  @override String get registerErrPrivacyRequired => 'You must accept the Privacy Policy to proceed.';
+  @override String get registerPrivacyText => 'I have read and accept the ';
+  @override String get registerPrivacyLink => 'Privacy Policy';
+  @override String get registerBtnRegister => 'REGISTER';
+  @override String get registerBtnLogin => 'Already have an account? Sign in';
+  @override String get registerSuccessMsg => 'Registration complete. You can now sign in.';
+  @override String get registerErrGeneric => 'Error during registration.';
+  @override String get registerErrNetwork => 'Connection error. Please try again later.';
+
+  // ── Auth – Forgot Password Screen ─────────────────────────────────────────
+  @override String get forgotPasswordTitle => 'Forgot password';
+  @override String get forgotPasswordResetTitle => 'Reset your password';
+  @override String get forgotPasswordSubtitle =>
+      'Enter the email address associated with your account. We\'ll send you a link to reset your password.';
+  @override String get forgotPasswordFieldEmail => 'Email';
+  @override String get forgotPasswordHintEmail => 'Enter your email';
+  @override String get forgotPasswordValidateEmail => 'Enter your email';
+  @override String get forgotPasswordValidateEmailFormat => 'Enter a valid email address';
+  @override String get forgotPasswordBtnSend => 'SEND LINK';
+  @override String get forgotPasswordBtnBack => 'Back to login';
+  @override String get forgotPasswordSuccessTitle => 'Email sent!';
+  @override String forgotPasswordSuccessBody(String email) =>
+      'We\'ve sent password reset instructions to:\n$email\n\nAlso check your spam folder.';
+  @override String get forgotPasswordBtnBackToLogin => 'BACK TO LOGIN';
+  @override String get forgotPasswordBtnRetry => 'I didn\'t receive the email — try again';
+
+  // ── Colonia screens ───────────────────────────────────────────────────────
+  @override String get coloniaDetailTitle => 'Colony';
+  @override String get coloniaDetailNotFound => 'Colony not found';
+  @override String get coloniaDetailTabInfo => 'Info';
+  @override String get coloniaDetailTabControlli => 'Inspections';
+  @override String get coloniaDetailMenuChiudi => 'Close lifecycle';
+  @override String get coloniaDetailLblContenitore => 'Container';
+  @override String get coloniaDetailLblApiario => 'Apiary';
+  @override String get coloniaDetailLblInsediataIl => 'Established on';
+  @override String get coloniaDetailLblChiusaIl => 'Closed on';
+  @override String get coloniaDetailLblMotivoFine => 'Reason for closure';
+  @override String get coloniaDetailSectionRegina => 'Queen';
+  @override String get coloniaDetailLblRazza => 'Breed';
+  @override String get coloniaDetailLblOrigine => 'Origin';
+  @override String get coloniaDetailLblIntrodottaIl => 'Introduced on';
+  @override String get coloniaDetailLblOrigineDa => 'Origin from colony';
+  @override String get coloniaDetailLblConfluitaIn => 'Merged into';
+  @override String get coloniaDetailLblTotaleControlli => 'Total inspections';
+  @override String get coloniaDetailSectionNote => 'Notes';
+  @override String get coloniaDetailNoControlli => 'No inspections recorded';
+  @override String coloniaId(int id) => 'Colony #$id';
+  @override String coloniaOrigineDaId(int id) => 'Colony #$id';
+  @override String coloniaConfluitaInId(int id) => 'Colony #$id';
+  @override String coloniaControlloSubtitle(int scorte, int covata) => 'Stores: $scorte · Brood: $covata';
+  @override String get coloniaControlloSciamatura => ' · ⚠ Swarm';
+
+  // Colonia form
+  @override String get coloniaFormTitle => 'Establish new colony';
+  @override String get coloniaFormLblData => 'Establishment date *';
+  @override String get coloniaFormHintData => 'Format: YYYY-MM-DD';
+  @override String get coloniaFormValidateData => 'Enter the date';
+  @override String get coloniaFormLblNote => 'Notes';
+  @override String get coloniaFormCreatedOk => 'Colony established successfully';
+  @override String get coloniaFormErrorSave => 'Error while saving';
+  @override String coloniaFormError(String e) => 'Error: $e';
+
+  // Colonia chiudi
+  @override String coloniaChiudiTitle(int id) => 'Close Colony #$id';
+  @override String get coloniaChiudiWarning =>
+      'This operation closes the lifecycle of the colony. '
+      'All historical data (inspections, queen, honey supers) will be preserved.';
+  @override String get coloniaChiudiLblStato => 'Reason for closure *';
+  @override String get coloniaChiudiLblData => 'Closure date *';
+  @override String get coloniaChiudiLblMotivo => 'Description (optional)';
+  @override String get coloniaChiudiLblNote => 'Additional notes';
+  @override String get coloniaChiudiValidateStato => 'Select a reason';
+  @override String get coloniaChiudiValidateData => 'Enter the date';
+  @override String get coloniaChiudiBtn => 'Close';
+  @override String get coloniaChiusaOk => 'Lifecycle closed';
+  @override String coloniaChiudiError(String e) => 'Error: $e';
+  @override String get coloniaStatoMorta => 'Colony dead';
+  @override String get coloniaStatoVenduta => 'Transferred / Sold';
+  @override String get coloniaStatoSciamata => 'Swarmed and not recovered';
+  @override String get coloniaStatoUnita => 'Merged with another colony';
+  @override String get coloniaStatoNucleo => 'Reduced to nucleus';
+  @override String get coloniaStatoEliminata => 'Eliminated';
+
+  // Storia colonie
+  @override String get storiaColonieTitle => 'Colony history';
+  @override String get storiaColonieEmpty => 'No historical colonies';
+  @override String storiaColonieItem(int id, String stato) => 'Colony #$id · $stato';
+  @override String storiaColonieDates(String start, String? end) =>
+      'From $start${end != null ? ' to $end' : ''}';
+  @override String get storiaColonieInCorso => ' · ongoing';
+
+  // ── Attrezzatura screens ──────────────────────────────────────────────────
+  @override String get attrezzatureTitle => 'Equipment';
+  @override String get attrezzatureFiltriAvanzatiTooltip => 'Advanced filters';
+  @override String get attrezzatureSincronizzaTooltip => 'Sync';
+  @override String get attrezzaturaSearchHint => 'Search by name, brand, model…';
+  @override String get attrezzaturaCatTutti => 'All';
+  @override String get attrezzaturaCatTutte => 'All';
+  @override String get attrezzaturaCatConsumabili => 'Consumables';
+  @override String get attrezzaturaCatProtezione => 'Protection';
+  @override String get attrezzaturaCatStrumenti => 'Tools';
+  @override String get attrezzaturaCatAltro => 'Other';
+  @override String attrezzaturaQta(int n) => 'Qty: $n';
+  @override String attrezzaturaAcquistatoDate(String d) => 'Purchased: $d';
+  @override String get attrezzaturaNoRegistrata => 'No equipment registered';
+  @override String get attrezzaturaNoFiltri => 'No equipment matches the filters';
+  @override String get attrezzaturaBtnAggiungi => 'Add Equipment';
+  @override String get attrezzaturaBtnRimuoviFiltri => 'Remove filters';
+  @override String get attrezzaturaFiltriAvanzatiTitle => 'Advanced filters';
+  @override String get attrezzaturaFiltriReset => 'Reset';
+  @override String get attrezzaturaFiltriLblStato => 'Status';
+  @override String get attrezzaturaFiltriLblCondizione => 'Condition';
+  @override String get attrezzaturaFiltriLblDataAcquisto => 'Purchase date';
+  @override String get attrezzaturaFiltriLblPrezzo => 'Purchase price (€)';
+  @override String get attrezzaturaFiltriApplica => 'Apply filters';
+  @override String get attrezzaturaFabTooltip => 'New Equipment';
+  @override String get attrezzaturaErrLoading => 'Error loading data';
+
+  @override String get attrezzaturaDetailTitle => 'Equipment Detail';
+  @override String get attrezzaturaDetailTabInfo => 'Info';
+  @override String get attrezzaturaDetailTabSpese => 'Expenses';
+  @override String get attrezzaturaDetailTabManutenzioni => 'Maintenance';
+  @override String get attrezzaturaDetailNonCategorizzato => 'Uncategorized';
+  @override String get attrezzaturaDetailLblCondizione => 'Condition';
+  @override String get attrezzaturaDetailLblDescrizione => 'Description';
+  @override String get attrezzaturaDetailLblMarca => 'Brand';
+  @override String get attrezzaturaDetailLblModello => 'Model';
+  @override String get attrezzaturaDetailLblSerie => 'Serial No.';
+  @override String get attrezzaturaDetailLblQuantita => 'Quantity';
+  @override String get attrezzaturaDetailLblUnitaMisura => 'Unit of measure';
+  @override String get attrezzaturaDetailLblDataAcquisto => 'Purchase date';
+  @override String get attrezzaturaDetailLblPrezzoAcquisto => 'Purchase price';
+  @override String get attrezzaturaDetailLblFornitore => 'Supplier';
+  @override String get attrezzaturaDetailLblGaranzia => 'Warranty until';
+  @override String get attrezzaturaDetailLblPosizione => 'Location';
+  @override String get attrezzaturaDetailLblGruppo => 'Group';
+  @override String get attrezzaturaDetailStatistiche => 'Statistics';
+  @override String get attrezzaturaDetailSpeseTotali => 'Total Expenses';
+  @override String get attrezzaturaDetailNessunaSpesa => 'No expenses recorded';
+  @override String get attrezzaturaDetailBtnAggiungiSpesa => 'Add Expense';
+  @override String get attrezzaturaDetailNessunaManutenzione => 'No maintenance recorded';
+  @override String get attrezzaturaDetailBtnAggiungiManutenzione => 'Add Maintenance';
+  @override String get attrezzaturaDetailInRitardo => ' Overdue';
+  @override String attrezzaturaDetailProgrammata(String d) => 'Scheduled: $d';
+  @override String get attrezzaturaDetailMenuAddSpesaTitle => 'Add Expense';
+  @override String get attrezzaturaDetailMenuAddSpesaSubtitle => 'Record a new expense for this equipment';
+  @override String get attrezzaturaDetailMenuAddManutenzioneTitle => 'Add Maintenance';
+  @override String get attrezzaturaDetailMenuAddManutenzioneSubtitle => 'Schedule or record a maintenance';
+  @override String get attrezzaturaDeleteTitle => 'Delete Equipment';
+  @override String get attrezzaturaDeletedOk => 'Equipment deleted successfully';
+  @override String attrezzaturaDeleteError(String e) => 'Error during deletion: $e';
+  @override String get attrezzaturaDeleteSpesaTitle => 'Delete Expense';
+  @override String get attrezzaturaDeleteSpesaOk => 'Expense deleted successfully';
+  @override String attrezzaturaDeleteSpesaError(String e) => 'Error during deletion: $e';
+  @override String get attrezzaturaDeleteManutenzioneTitle => 'Delete Maintenance';
+  @override String get attrezzaturaDeleteManutenzioneOk => 'Maintenance deleted successfully';
+  @override String attrezzaturaDeleteManutenzioneError(String e) => 'Error during deletion: $e';
+  @override String get attrezzaturaErrDetailLoading => 'Error loading data';
+  @override String get attrezzaturaEliminaSpesaTooltip => 'Delete expense';
+  @override String get attrezzaturaEliminaManutenzioneTooltip => 'Delete maintenance';
+
+  // ── Vendita screens ───────────────────────────────────────────────────────
+  @override String get venditeTitle => 'Sales';
+  @override String get venditeTabVendite => 'Sales';
+  @override String get venditeTabClienti => 'Clients';
+  @override String get venditeOfflineMsg => 'Offline mode — data from last access';
+  @override String get venditeNoVendite => 'No sales recorded';
+  @override String get venditeNoClienti => 'No clients registered';
+  @override String get venditeErrLoading => 'Error loading data';
+  @override String venditeArticoli(int n) => '$n item${n == 1 ? '' : 's'}';
+  @override String venditeClienteVendite(int n) => '$n sale${n == 1 ? '' : 's'}';
+  @override String get venditeTooltipSync => 'Sync';
+  @override String get venditeFabTooltip => 'New sale';
+  @override String get venditeClientiFabTooltip => 'New client';
+
+  // ── Gruppo screens ────────────────────────────────────────────────────────
+  @override String get gruppiTitle => 'Groups';
+  @override String get gruppiFabTooltip => 'Create new group';
+  @override String get gruppiInvitoAccettato => 'Invitation accepted';
+  @override String get gruppiInvitoRifiutato => 'Invitation declined';
+  @override String gruppiInvitoError(String e) => 'Error: $e';
+  @override String get gruppiBtnRifiuta => 'DECLINE';
+  @override String get gruppiBtnAccetta => 'ACCEPT';
+  @override String get gruppiBtnCrea => 'Create a new group';
+  @override String get gruppiErrLoading => 'Error loading group';
+  @override String get gruppiBtnRiprova => 'RETRY';
+  @override String get gruppiTuoiGruppi => 'Your groups';
+  @override String get gruppiInvitiRicevuti => 'Received invitations';
+  @override String get gruppiNoMembro => 'You are not a member of any group';
+  @override String gruppiInvitatoDa(String user, String ruolo) => 'You were invited by $user with the role of $ruolo';
+  @override String gruppiDataInvio(String d) => 'Sent on: $d';
+  @override String gruppiScadeIl(String d) => 'Expires on: $d';
+  @override String gruppiMembriCount(int n) => '$n member${n == 1 ? '' : 's'}';
+  @override String gruppiApiariCondivisi(int n) => '$n shared apiar${n == 1 ? 'y' : 'ies'}';
+  @override String get gruppiErrLoadingGruppi => 'Error loading groups';
 }

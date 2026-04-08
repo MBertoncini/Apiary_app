@@ -964,4 +964,241 @@ abstract class AppStrings {
   String get dashFabAiAssistant;
   String get dashFabScanQr;
   String get dashFabNewApiario;
+
+  // ── Auth – Login Screen ───────────────────────────────────────────────────
+  String get loginSubtitle;
+  String get loginFieldUsernameLabel;
+  String get loginFieldUsernameHint;
+  String get loginFieldUsernameValidate;
+  String get loginFieldPasswordLabel;
+  String get loginFieldPasswordHint;
+  String get loginFieldPasswordValidate;
+  String get loginForgotPassword;
+  String get loginBtnAccedi;
+  String get loginOr;
+  String get loginBtnGoogle;
+  String get loginBtnRegister;
+  String get loginErrUserNotFound;
+  String get loginErrWrongPassword;
+  String get loginErrWrongCredentials;
+  String get loginErrGoogleAuth;
+  String get loginErrGoogleToken;
+  String get loginErrNetwork;
+  String get loginErrTimeout;
+  String get loginErrServer;
+  String get loginErrDefault;
+  String get loginHintForgotPassword;
+  String get loginHintRegister;
+
+  // ── Auth – Register Screen ────────────────────────────────────────────────
+  String get registerTitle;
+  String get registerCreateAccount;
+  String get registerFieldUsername;
+  String get registerHintUsername;
+  String get registerValidateUsername;
+  String get registerFieldEmail;
+  String get registerHintEmail;
+  String get registerValidateEmail;
+  String get registerValidateEmailFormat;
+  String get registerFieldPassword;
+  String get registerHintPassword;
+  String get registerValidatePassword;
+  String get registerValidatePasswordLength;
+  String get registerFieldConfirmPassword;
+  String get registerHintConfirmPassword;
+  String get registerValidateConfirmPassword;
+  String get registerValidatePasswordMatch;
+  String get registerErrPasswordMismatch;
+  String get registerErrPrivacyRequired;
+  String get registerPrivacyText;
+  String get registerPrivacyLink;
+  String get registerBtnRegister;
+  String get registerBtnLogin;
+  String get registerSuccessMsg;
+  String get registerErrGeneric;
+  String get registerErrNetwork;
+
+  // ── Auth – Forgot Password Screen ─────────────────────────────────────────
+  String get forgotPasswordTitle;
+  String get forgotPasswordResetTitle;
+  String get forgotPasswordSubtitle;
+  String get forgotPasswordFieldEmail;
+  String get forgotPasswordHintEmail;
+  String get forgotPasswordValidateEmail;
+  String get forgotPasswordValidateEmailFormat;
+  String get forgotPasswordBtnSend;
+  String get forgotPasswordBtnBack;
+  String get forgotPasswordSuccessTitle;
+  String forgotPasswordSuccessBody(String email);
+  String get forgotPasswordBtnBackToLogin;
+  String get forgotPasswordBtnRetry;
+
+  // ── Colonia screens ───────────────────────────────────────────────────────
+  String get coloniaDetailTitle;
+  String get coloniaDetailNotFound;
+  String get coloniaDetailTabInfo;
+  String get coloniaDetailTabControlli;
+  String get coloniaDetailMenuChiudi;
+  String get coloniaDetailLblContenitore;
+  String get coloniaDetailLblApiario;
+  String get coloniaDetailLblInsediataIl;
+  String get coloniaDetailLblChiusaIl;
+  String get coloniaDetailLblMotivoFine;
+  String get coloniaDetailSectionRegina;
+  String get coloniaDetailLblRazza;
+  String get coloniaDetailLblOrigine;
+  String get coloniaDetailLblIntrodottaIl;
+  String get coloniaDetailLblOrigineDa;
+  String get coloniaDetailLblConfluitaIn;
+  String get coloniaDetailLblTotaleControlli;
+  String get coloniaDetailSectionNote;
+  String get coloniaDetailNoControlli;
+  String coloniaId(int id);
+  String coloniaOrigineDaId(int id);
+  String coloniaConfluitaInId(int id);
+  String coloniaControlloSubtitle(int scorte, int covata);
+  String get coloniaControlloSciamatura;
+
+  // Colonia form
+  String get coloniaFormTitle;
+  String get coloniaFormLblData;
+  String get coloniaFormHintData;
+  String get coloniaFormValidateData;
+  String get coloniaFormLblNote;
+  String get coloniaFormCreatedOk;
+  String get coloniaFormErrorSave;
+  String coloniaFormError(String e);
+
+  // Colonia chiudi
+  String coloniaChiudiTitle(int id);
+  String get coloniaChiudiWarning;
+  String get coloniaChiudiLblStato;
+  String get coloniaChiudiLblData;
+  String get coloniaChiudiLblMotivo;
+  String get coloniaChiudiLblNote;
+  String get coloniaChiudiValidateStato;
+  String get coloniaChiudiValidateData;
+  String get coloniaChiudiBtn;
+  String get coloniaChiusaOk;
+  String coloniaChiudiError(String e);
+  String get coloniaStatoMorta;
+  String get coloniaStatoVenduta;
+  String get coloniaStatoSciamata;
+  String get coloniaStatoUnita;
+  String get coloniaStatoNucleo;
+  String get coloniaStatoEliminata;
+
+  // Storia colonie
+  String get storiaColonieTitle;
+  String get storiaColonieEmpty;
+  String storiaColonieItem(int id, String stato);
+  String storiaColonieDates(String start, String? end);
+  String get storiaColonieInCorso;
+
+  // ── Attrezzatura screens ──────────────────────────────────────────────────
+  // List
+  String get attrezzatureTitle;
+  String get attrezzatureFiltriAvanzatiTooltip;
+  String get attrezzatureSincronizzaTooltip;
+  String get attrezzaturaSearchHint;
+  String get attrezzaturaCatTutti;
+  String get attrezzaturaCatTutte;
+  String get attrezzaturaCatConsumabili;
+  String get attrezzaturaCatProtezione;
+  String get attrezzaturaCatStrumenti;
+  String get attrezzaturaCatAltro;
+  String attrezzaturaQta(int n);
+  String attrezzaturaAcquistatoDate(String d);
+  String get attrezzaturaNoRegistrata;
+  String get attrezzaturaNoFiltri;
+  String get attrezzaturaBtnAggiungi;
+  String get attrezzaturaBtnRimuoviFiltri;
+  String get attrezzaturaFiltriAvanzatiTitle;
+  String get attrezzaturaFiltriReset;
+  String get attrezzaturaFiltriLblStato;
+  String get attrezzaturaFiltriLblCondizione;
+  String get attrezzaturaFiltriLblDataAcquisto;
+  String get attrezzaturaFiltriLblPrezzo;
+  String get attrezzaturaFiltriApplica;
+  String get attrezzaturaFabTooltip;
+  String get attrezzaturaErrLoading;
+
+  // Detail
+  String get attrezzaturaDetailTitle;
+  String get attrezzaturaDetailTabInfo;
+  String get attrezzaturaDetailTabSpese;
+  String get attrezzaturaDetailTabManutenzioni;
+  String get attrezzaturaDetailNonCategorizzato;
+  String get attrezzaturaDetailLblCondizione;
+  String get attrezzaturaDetailLblDescrizione;
+  String get attrezzaturaDetailLblMarca;
+  String get attrezzaturaDetailLblModello;
+  String get attrezzaturaDetailLblSerie;
+  String get attrezzaturaDetailLblQuantita;
+  String get attrezzaturaDetailLblUnitaMisura;
+  String get attrezzaturaDetailLblDataAcquisto;
+  String get attrezzaturaDetailLblPrezzoAcquisto;
+  String get attrezzaturaDetailLblFornitore;
+  String get attrezzaturaDetailLblGaranzia;
+  String get attrezzaturaDetailLblPosizione;
+  String get attrezzaturaDetailLblGruppo;
+  String get attrezzaturaDetailStatistiche;
+  String get attrezzaturaDetailSpeseTotali;
+  String get attrezzaturaDetailNessunaSpesa;
+  String get attrezzaturaDetailBtnAggiungiSpesa;
+  String get attrezzaturaDetailNessunaManutenzione;
+  String get attrezzaturaDetailBtnAggiungiManutenzione;
+  String get attrezzaturaDetailInRitardo;
+  String attrezzaturaDetailProgrammata(String d);
+  String get attrezzaturaDetailMenuAddSpesaTitle;
+  String get attrezzaturaDetailMenuAddSpesaSubtitle;
+  String get attrezzaturaDetailMenuAddManutenzioneTitle;
+  String get attrezzaturaDetailMenuAddManutenzioneSubtitle;
+  String get attrezzaturaDeleteTitle;
+  String get attrezzaturaDeletedOk;
+  String attrezzaturaDeleteError(String e);
+  String get attrezzaturaDeleteSpesaTitle;
+  String get attrezzaturaDeleteSpesaOk;
+  String attrezzaturaDeleteSpesaError(String e);
+  String get attrezzaturaDeleteManutenzioneTitle;
+  String get attrezzaturaDeleteManutenzioneOk;
+  String attrezzaturaDeleteManutenzioneError(String e);
+  String get attrezzaturaErrDetailLoading;
+  String get attrezzaturaEliminaSpesaTooltip;
+  String get attrezzaturaEliminaManutenzioneTooltip;
+
+  // ── Vendita screens ───────────────────────────────────────────────────────
+  String get venditeTitle;
+  String get venditeTabVendite;
+  String get venditeTabClienti;
+  String get venditeOfflineMsg;
+  String get venditeNoVendite;
+  String get venditeNoClienti;
+  String get venditeErrLoading;
+  String venditeArticoli(int n);
+  String venditeClienteVendite(int n);
+  String get venditeTooltipSync;
+  String get venditeFabTooltip;
+  String get venditeClientiFabTooltip;
+
+  // ── Gruppo screens ────────────────────────────────────────────────────────
+  String get gruppiTitle;
+  String get gruppiFabTooltip;
+  String get gruppiInvitoAccettato;
+  String get gruppiInvitoRifiutato;
+  String gruppiInvitoError(String e);
+  String get gruppiBtnRifiuta;
+  String get gruppiBtnAccetta;
+  String get gruppiBtnCrea;
+  String get gruppiErrLoading;
+  String get gruppiBtnRiprova;
+  String get gruppiTuoiGruppi;
+  String get gruppiInvitiRicevuti;
+  String get gruppiNoMembro;
+  String gruppiInvitatoDa(String user, String ruolo);
+  String gruppiDataInvio(String d);
+  String gruppiScadeIl(String d);
+  String gruppiMembriCount(int n);
+  String gruppiApiariCondivisi(int n);
+  String get gruppiErrLoadingGruppi;
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
+import '../../services/language_service.dart';
 import '../privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -37,25 +39,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() {
-        _errorMessage = 'Le password non corrispondono.';
+        _errorMessage = s.registerErrPasswordMismatch;
       });
       return;
     }
 
     if (!_privacyAccepted) {
       setState(() {
-        _errorMessage = 'Devi accettare l\'Informativa sulla Privacy per procedere.';
+        _errorMessage = s.registerErrPrivacyRequired;
       });
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}/api/v1/register/'),
@@ -67,21 +71,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'password2': _confirmPasswordController.text,
         }),
       );
-      
+
       final data = json.decode(utf8.decode(response.bodyBytes));
-      
+
       if (response.statusCode == 201) {
-        // Registrazione avvenuta con successo, reindirizza al login
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Registrazione completata. Ora puoi effettuare il login.'),
+            content: Text(s.registerSuccessMsg),
             backgroundColor: ThemeConstants.successColor,
           ),
         );
         Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
       } else {
-        // Errore di registrazione
-        String errorMsg = 'Errore durante la registrazione.';
+        String errorMsg = s.registerErrGeneric;
         if (data is Map) {
           if (data.containsKey('username')) {
             final v = data['username'];
@@ -99,14 +102,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             errorMsg = data['detail'].toString();
           }
         }
-        
+
         setState(() {
           _errorMessage = errorMsg;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore di connessione. Riprova più tardi.';
+        _errorMessage = s.registerErrNetwork;
       });
     } finally {
       setState(() {
@@ -117,21 +120,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Registrazione'),
+        title: Text(s.registerTitle),
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Crea un account',
+                    s.registerCreateAccount,
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -140,12 +145,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Messaggio di errore
                   if (_errorMessage.isNotEmpty)
                     Container(
-                      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                      margin: EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         color: ThemeConstants.errorColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -158,18 +163,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: TextStyle(color: ThemeConstants.errorColor),
                       ),
                     ),
-                  
+
                   // Username
                   TextFormField(
                     controller: _usernameController,
                     decoration: InputDecoration(
-                      labelText: 'Username',
-                      hintText: 'Inserisci un username',
-                      prefixIcon: Icon(Icons.person),
+                      labelText: s.registerFieldUsername,
+                      hintText: s.registerHintUsername,
+                      prefixIcon: const Icon(Icons.person),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Inserisci un username';
+                        return s.registerValidateUsername;
                       }
                       return null;
                     },
@@ -177,22 +182,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Email
                   TextFormField(
                     controller: _emailController,
                     decoration: InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'Inserisci la tua email',
-                      prefixIcon: Icon(Icons.email),
+                      labelText: s.registerFieldEmail,
+                      hintText: s.registerHintEmail,
+                      prefixIcon: const Icon(Icons.email),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Inserisci una email';
+                        return s.registerValidateEmail;
                       }
                       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Inserisci una email valida';
+                        return s.registerValidateEmailFormat;
                       }
                       return null;
                     },
@@ -200,14 +205,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Password
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
-                      labelText: 'Password',
-                      hintText: 'Inserisci una password',
-                      prefixIcon: Icon(Icons.lock),
+                      labelText: s.registerFieldPassword,
+                      hintText: s.registerHintPassword,
+                      prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility : Icons.visibility_off,
@@ -222,10 +227,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscurePassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Inserisci una password';
+                        return s.registerValidatePassword;
                       }
                       if (value.length < 8) {
-                        return 'La password deve contenere almeno 8 caratteri';
+                        return s.registerValidatePasswordLength;
                       }
                       return null;
                     },
@@ -233,14 +238,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Conferma Password
                   TextFormField(
                     controller: _confirmPasswordController,
                     decoration: InputDecoration(
-                      labelText: 'Conferma Password',
-                      hintText: 'Conferma la tua password',
-                      prefixIcon: Icon(Icons.lock_outline),
+                      labelText: s.registerFieldConfirmPassword,
+                      hintText: s.registerHintConfirmPassword,
+                      prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
@@ -255,10 +260,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscureConfirmPassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Conferma la tua password';
+                        return s.registerValidateConfirmPassword;
                       }
                       if (value != _passwordController.text) {
-                        return 'Le password non corrispondono';
+                        return s.registerValidatePasswordMatch;
                       }
                       return null;
                     },
@@ -285,7 +290,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Wrap(
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              const Text('Ho letto e accetto l\'', style: TextStyle(fontSize: 14)),
+                              Text(s.registerPrivacyText, style: const TextStyle(fontSize: 14)),
                               GestureDetector(
                                 onTap: () => Navigator.push(
                                   context,
@@ -293,7 +298,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       builder: (_) => const PrivacyPolicyScreen()),
                                 ),
                                 child: Text(
-                                  'Informativa sulla Privacy',
+                                  s.registerPrivacyLink,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: ThemeConstants.primaryColor,
@@ -313,9 +318,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ElevatedButton(
                     onPressed: _isLoading ? null : _register,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: _isLoading
-                          ? SizedBox(
+                          ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
@@ -324,19 +329,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             )
                           : Text(
-                              'REGISTRATI',
-                              style: TextStyle(fontSize: 16),
+                              s.registerBtnRegister,
+                              style: const TextStyle(fontSize: 16),
                             ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Link login
                   TextButton(
-                    onPressed: _isLoading ? null : () {
-                      Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
-                    },
-                    child: Text('Hai già un account? Accedi'),
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            Navigator.of(context).pushReplacementNamed(AppConstants.loginRoute);
+                          },
+                    child: Text(s.registerBtnLogin),
                   ),
                 ],
               ),

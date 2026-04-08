@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/colonia.dart';
 import '../../services/api_service.dart';
 import '../../services/colonia_service.dart';
+import '../../services/language_service.dart';
 
 /// Form per insediare una nuova colonia in un'arnia.
 class ColoniaFormScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _ColoniaFormScreenState extends State<ColoniaFormScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
       final api = Provider.of<ApiService>(context, listen: false);
       final service = ColoniaService(api);
@@ -48,18 +50,18 @@ class _ColoniaFormScreenState extends State<ColoniaFormScreen> {
       );
       if (colonia != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Colonia insediata con successo')),
+          SnackBar(content: Text(s.coloniaFormCreatedOk)),
         );
         Navigator.of(context).pop(colonia);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Errore durante il salvataggio')),
+          SnackBar(content: Text(s.coloniaFormErrorSave)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
+          SnackBar(content: Text(s.coloniaFormError(e.toString()))),
         );
       }
     } finally {
@@ -69,9 +71,11 @@ class _ColoniaFormScreenState extends State<ColoniaFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Insedia nuova colonia'),
+        title: Text(s.coloniaFormTitle),
         actions: [
           if (_isLoading)
             const Center(
@@ -87,7 +91,7 @@ class _ColoniaFormScreenState extends State<ColoniaFormScreen> {
             TextButton.icon(
               onPressed: _submit,
               icon: const Icon(Icons.check, color: Colors.white),
-              label: const Text('Salva', style: TextStyle(color: Colors.white)),
+              label: Text(s.btnSave, style: const TextStyle(color: Colors.white)),
             ),
         ],
       ),
@@ -96,13 +100,12 @@ class _ColoniaFormScreenState extends State<ColoniaFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Data inizio
             TextFormField(
               controller: _dataCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Data insediamento *',
-                prefixIcon: Icon(Icons.calendar_today_outlined),
-                helperText: 'Formato: AAAA-MM-GG',
+              decoration: InputDecoration(
+                labelText: s.coloniaFormLblData,
+                prefixIcon: const Icon(Icons.calendar_today_outlined),
+                helperText: s.coloniaFormHintData,
               ),
               readOnly: true,
               onTap: () async {
@@ -117,16 +120,15 @@ class _ColoniaFormScreenState extends State<ColoniaFormScreen> {
                 }
               },
               validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Inserire la data' : null,
+                  (v == null || v.isEmpty) ? s.coloniaFormValidateData : null,
             ),
             const SizedBox(height: 16),
 
-            // Note
             TextFormField(
               controller: _noteCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                prefixIcon: Icon(Icons.notes_outlined),
+              decoration: InputDecoration(
+                labelText: s.coloniaFormLblNote,
+                prefixIcon: const Icon(Icons.notes_outlined),
               ),
               maxLines: 3,
             ),
@@ -156,13 +158,13 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
   bool _isLoading    = false;
   String _stato      = 'morta';
 
-  static const _statoOptions = [
-    ('morta',     'Colonia morta'),
-    ('venduta',   'Ceduta / Venduta'),
-    ('sciamata',  'Sciamata e non recuperata'),
-    ('unita',     'Unita ad altra colonia'),
-    ('nucleo',    'Ridotta a nucleo'),
-    ('eliminata', 'Eliminata'),
+  static const _statoKeys = [
+    'morta',
+    'venduta',
+    'sciamata',
+    'unita',
+    'nucleo',
+    'eliminata',
   ];
 
   @override
@@ -182,6 +184,7 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
       final api = Provider.of<ApiService>(context, listen: false);
       final service = ColoniaService(api);
@@ -194,14 +197,14 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
       );
       if (updated != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ciclo di vita chiuso')),
+          SnackBar(content: Text(s.coloniaChiusaOk)),
         );
         Navigator.of(context).pop(updated);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
+          SnackBar(content: Text(s.coloniaChiudiError(e.toString()))),
         );
       }
     } finally {
@@ -209,11 +212,27 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
     }
   }
 
+  List<DropdownMenuItem<String>> _buildStatoItems(dynamic s) {
+    final labels = {
+      'morta':     s.coloniaStatoMorta,
+      'venduta':   s.coloniaStatoVenduta,
+      'sciamata':  s.coloniaStatoSciamata,
+      'unita':     s.coloniaStatoUnita,
+      'nucleo':    s.coloniaStatoNucleo,
+      'eliminata': s.coloniaStatoEliminata,
+    };
+    return _statoKeys
+        .map((k) => DropdownMenuItem(value: k, child: Text(labels[k] ?? k)))
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chiudi Colonia #${widget.colonia.id}'),
+        title: Text(s.coloniaChiudiTitle(widget.colonia.id)),
         backgroundColor: Colors.red.shade700,
         foregroundColor: Colors.white,
         actions: [
@@ -221,7 +240,7 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
             TextButton.icon(
               onPressed: _submit,
               icon: const Icon(Icons.stop_circle_outlined, color: Colors.white),
-              label: const Text('Chiudi', style: TextStyle(color: Colors.white)),
+              label: Text(s.coloniaChiudiBtn, style: const TextStyle(color: Colors.white)),
             ),
         ],
       ),
@@ -241,8 +260,7 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Questa operazione chiude il ciclo di vita della colonia. '
-                        'Tutti i dati storici (controlli, regina, melari) vengono conservati.',
+                        s.coloniaChiudiWarning,
                         style: TextStyle(color: Colors.red.shade800, fontSize: 13),
                       ),
                     ),
@@ -255,24 +273,22 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
             // Stato (motivo)
             DropdownButtonFormField<String>(
               value: _stato,
-              decoration: const InputDecoration(
-                labelText: 'Motivo di fine *',
-                prefixIcon: Icon(Icons.category_outlined),
+              decoration: InputDecoration(
+                labelText: s.coloniaChiudiLblStato,
+                prefixIcon: const Icon(Icons.category_outlined),
               ),
-              items: _statoOptions
-                  .map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2)))
-                  .toList(),
+              items: _buildStatoItems(s),
               onChanged: (v) => setState(() => _stato = v ?? _stato),
-              validator: (v) => v == null ? 'Selezionare un motivo' : null,
+              validator: (v) => v == null ? s.coloniaChiudiValidateStato : null,
             ),
             const SizedBox(height: 16),
 
             // Data fine
             TextFormField(
               controller: _dataCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Data di fine *',
-                prefixIcon: Icon(Icons.event_busy_outlined),
+              decoration: InputDecoration(
+                labelText: s.coloniaChiudiLblData,
+                prefixIcon: const Icon(Icons.event_busy_outlined),
               ),
               readOnly: true,
               onTap: () async {
@@ -287,16 +303,16 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
                 }
               },
               validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Inserire la data' : null,
+                  (v == null || v.isEmpty) ? s.coloniaChiudiValidateData : null,
             ),
             const SizedBox(height: 16),
 
             // Motivo (testo libero)
             TextFormField(
               controller: _motivoCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Descrizione (opzionale)',
-                prefixIcon: Icon(Icons.info_outline),
+              decoration: InputDecoration(
+                labelText: s.coloniaChiudiLblMotivo,
+                prefixIcon: const Icon(Icons.info_outline),
               ),
               maxLines: 2,
             ),
@@ -305,9 +321,9 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
             // Note
             TextFormField(
               controller: _noteCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Note aggiuntive',
-                prefixIcon: Icon(Icons.notes_outlined),
+              decoration: InputDecoration(
+                labelText: s.coloniaChiudiLblNote,
+                prefixIcon: const Icon(Icons.notes_outlined),
               ),
               maxLines: 3,
             ),

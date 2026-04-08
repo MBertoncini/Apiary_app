@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/language_service.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -110,26 +111,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String _errorMessage() {
+  String _errorMessage(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     switch (_errorCode) {
-      case 'user_not_found':
-        return 'Username o email non trovati. Non hai ancora un account?';
-      case 'wrong_password':
-        return 'Password errata.';
-      case 'wrong_credentials':
-        return 'Credenziali non valide. Controlla username/email e password.';
-      case 'google_auth_error':
-        return 'Accesso con Google fallito. Riprova.';
-      case 'google_token_error':
-        return 'Impossibile ottenere il token Google. Riprova.';
-      case 'network_error':
-        return 'Impossibile connettersi al server. Controlla la connessione internet.';
-      case 'timeout_error':
-        return 'Il server non risponde. Riprova tra qualche istante.';
-      case 'server_error':
-        return 'Errore interno del server. Riprova più tardi.';
-      default:
-        return _errorCode ?? 'Si è verificato un errore. Riprova.';
+      case 'user_not_found':    return s.loginErrUserNotFound;
+      case 'wrong_password':    return s.loginErrWrongPassword;
+      case 'wrong_credentials': return s.loginErrWrongCredentials;
+      case 'google_auth_error': return s.loginErrGoogleAuth;
+      case 'google_token_error':return s.loginErrGoogleToken;
+      case 'network_error':     return s.loginErrNetwork;
+      case 'timeout_error':     return s.loginErrTimeout;
+      case 'server_error':      return s.loginErrServer;
+      default:                  return _errorCode ?? s.loginErrDefault;
     }
   }
 
@@ -143,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context);
     final isLoading = auth.isLoading;
+    final s = Provider.of<LanguageService>(context).strings;
 
     return Scaffold(
       body: SafeArea(
@@ -180,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
 
                   Text(
-                    'Accedi per gestire i tuoi apiari',
+                    s.loginSubtitle,
                     style: TextStyle(
                       fontSize: 16,
                       color: ThemeConstants.textSecondaryColor,
@@ -190,20 +184,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
 
                   // Box errore contestuale
-                  if (_errorCode != null) _buildErrorBox(),
+                  if (_errorCode != null) _buildErrorBox(s),
 
                   // Username o Email
                   TextFormField(
                     controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Username o Email',
-                      hintText: 'Inserisci il tuo username o email',
-                      prefixIcon: Icon(Icons.person),
+                    decoration: InputDecoration(
+                      labelText: s.loginFieldUsernameLabel,
+                      hintText: s.loginFieldUsernameHint,
+                      prefixIcon: const Icon(Icons.person),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Inserisci il tuo username o email';
+                        return s.loginFieldUsernameValidate;
                       }
                       return null;
                     },
@@ -216,8 +210,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
-                      labelText: 'Password',
-                      hintText: 'Inserisci la tua password',
+                      labelText: s.loginFieldPasswordLabel,
+                      hintText: s.loginFieldPasswordHint,
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -233,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscurePassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Inserisci la tua password';
+                        return s.loginFieldPasswordValidate;
                       }
                       return null;
                     },
@@ -250,9 +244,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? null
                           : () => Navigator.of(context)
                               .pushNamed(AppConstants.forgotPasswordRoute),
-                      child: const Text(
-                        'Hai dimenticato la password?',
-                        style: TextStyle(fontSize: 13),
+                      child: Text(
+                        s.loginForgotPassword,
+                        style: const TextStyle(fontSize: 13),
                       ),
                     ),
                   ),
@@ -273,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : const Text('ACCEDI', style: TextStyle(fontSize: 16)),
+                          : Text(s.loginBtnAccedi, style: const TextStyle(fontSize: 16)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -286,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
-                          'oppure',
+                          s.loginOr,
                           style: TextStyle(
                             color: ThemeConstants.textSecondaryColor,
                             fontSize: 13,
@@ -319,9 +313,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               const Icon(Icons.g_mobiledata, size: 24),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
-                          'Continua con Google',
-                          style: TextStyle(fontSize: 15, color: Colors.black87),
+                        Text(
+                          s.loginBtnGoogle,
+                          style: const TextStyle(fontSize: 15, color: Colors.black87),
                         ),
                       ],
                     ),
@@ -334,7 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? null
                         : () => Navigator.of(context)
                             .pushNamed(AppConstants.registerRoute),
-                    child: const Text('Non hai un account? Registrati'),
+                    child: Text(s.loginBtnRegister),
                   ),
                 ],
               ),
@@ -345,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildErrorBox() {
+  Widget _buildErrorBox(dynamic s) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       margin: const EdgeInsets.only(bottom: 16),
@@ -367,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _errorMessage(),
+                  _errorMessage(context),
                   style: TextStyle(
                       color: ThemeConstants.errorColor, fontSize: 14),
                 ),
@@ -391,8 +385,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   onPressed: () => Navigator.of(context)
                       .pushNamed(AppConstants.forgotPasswordRoute),
-                  child: const Text('Hai dimenticato la password?',
-                      style: TextStyle(fontSize: 13)),
+                  child: Text(s.loginHintForgotPassword,
+                      style: const TextStyle(fontSize: 13)),
                 ),
               ],
             ),
@@ -413,8 +407,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   onPressed: () => Navigator.of(context)
                       .pushNamed(AppConstants.registerRoute),
-                  child: const Text('Non hai un account? Registrati ora',
-                      style: TextStyle(fontSize: 13)),
+                  child: Text(s.loginHintRegister,
+                      style: const TextStyle(fontSize: 13)),
                 ),
               ],
             ),

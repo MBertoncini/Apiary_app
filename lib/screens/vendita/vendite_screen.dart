@@ -5,6 +5,7 @@ import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/offline_banner.dart';
@@ -107,7 +108,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
       } else {
         setState(() { _isLoading = false; _isRefreshing = false; });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
+          SnackBar(content: Text(Provider.of<LanguageService>(context, listen: false).strings.venditeOfflineMsg)),
         );
       }
     }
@@ -135,13 +136,13 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
       child: Row(
         children: [
           ChoiceChip(
-            label: Text('Tutti'),
+            label: Text(Provider.of<LanguageService>(context, listen: false).strings.labelAll),
             selected: _filtroGruppoId == null,
             onSelected: (_) => setState(() { _filtroGruppoId = null; }),
           ),
-          SizedBox(width: 6),
+          const SizedBox(width: 6),
           ChoiceChip(
-            label: Text('Personali'),
+            label: Text(Provider.of<LanguageService>(context, listen: false).strings.labelPersonal),
             selected: _filtroGruppoId == -1,
             onSelected: (_) => setState(() { _filtroGruppoId = -1; }),
           ),
@@ -186,14 +187,16 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Vendite'),
+        title: Text(s.venditeTitle),
         bottom: TabBar(
           controller: _tabController,
-          tabs: [Tab(text: 'Vendite'), Tab(text: 'Clienti')],
+          tabs: [Tab(text: s.venditeTabVendite), Tab(text: s.venditeTabClienti)],
         ),
-        actions: [],
+        actions: const [],
       ),
       drawer: AppDrawer(currentRoute: AppConstants.venditeRoute),
       body: Column(
@@ -205,8 +208,8 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
                 ? const SkeletonListView()
                 : _errorMessage != null
                     ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text(_errorMessage!), SizedBox(height: 8),
-                        ElevatedButton(onPressed: _loadData, child: Text('Riprova')),
+                        Text(_errorMessage!), const SizedBox(height: 8),
+                        ElevatedButton(onPressed: _loadData, child: Text(s.btnRetry)),
                       ]))
                     : TabBarView(
                         controller: _tabController,
@@ -216,7 +219,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
+        tooltip: _tabController.index == 0 ? s.venditeFabTooltip : s.venditeClientiFabTooltip,
         onPressed: () {
           if (_tabController.index == 0) {
             Navigator.pushNamed(context, AppConstants.venditaCreateRoute).then((_) => _loadData());
@@ -224,6 +227,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
             Navigator.pushNamed(context, AppConstants.clienteCreateRoute).then((_) => _loadData());
           }
         },
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -260,7 +264,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
           ),
         ),
         if (filtered.isEmpty)
-          Expanded(child: Center(child: Text('Nessuna vendita registrata', style: TextStyle(fontSize: 16))))
+          Expanded(child: Center(child: Text(Provider.of<LanguageService>(context, listen: false).strings.venditeNoVendite, style: const TextStyle(fontSize: 16))))
         else
           Expanded(
             child: RefreshIndicator(
@@ -290,7 +294,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
                                   Text(v.displayName,
                                       style: TextStyle(fontWeight: FontWeight.bold)),
                                   SizedBox(height: 2),
-                                  Text('${v.data}  ·  ${v.dettagli.length} articoli',
+                                  Text('${v.data}  ·  ${Provider.of<LanguageService>(context, listen: false).strings.venditeArticoli(v.dettagli.length)}',
                                       style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                                   if (v.gruppoNome != null)
                                     Padding(
@@ -340,7 +344,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
       children: [
         _buildGruppoFilterBar(),
         if (filtered.isEmpty)
-          Expanded(child: Center(child: Text('Nessun cliente registrato', style: TextStyle(fontSize: 16))))
+          Expanded(child: Center(child: Text(Provider.of<LanguageService>(context, listen: false).strings.venditeNoClienti, style: const TextStyle(fontSize: 16))))
         else
           Expanded(
             child: RefreshIndicator(
@@ -374,7 +378,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
                             ),
                         ],
                       ),
-                      trailing: Text('${c.venditeCount ?? 0} vendite'),
+                      trailing: Text(Provider.of<LanguageService>(context, listen: false).strings.venditeClienteVendite(c.venditeCount ?? 0)),
                       onTap: () => Navigator.pushNamed(
                         context, AppConstants.clienteCreateRoute, arguments: c.id,
                       ).then((_) => _loadData()),

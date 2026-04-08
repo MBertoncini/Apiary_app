@@ -9,6 +9,7 @@ import '../../models/spesa_attrezzatura.dart';
 import '../../models/manutenzione.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
 
@@ -78,8 +79,9 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
         _isRefreshing = false;
       });
     } catch (e) {
+      final s = Provider.of<LanguageService>(context, listen: false).strings;
       setState(() {
-        _errorMessage = 'Errore durante il caricamento: $e';
+        _errorMessage = '${s.attrezzaturaErrDetailLoading}: $e';
         _isRefreshing = false;
       });
     }
@@ -87,24 +89,26 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_attrezzatura?.nome ?? 'Dettaglio Attrezzatura'),
+        title: Text(_attrezzatura?.nome ?? s.attrezzaturaDetailTitle),
         bottom: _attrezzatura != null
             ? TabBar(
                 controller: _tabController,
                 tabs: [
-                  Tab(text: 'Info'),
-                  Tab(text: 'Spese'),
-                  Tab(text: 'Manutenzioni'),
+                  Tab(text: s.attrezzaturaDetailTabInfo),
+                  Tab(text: s.attrezzaturaDetailTabSpese),
+                  Tab(text: s.attrezzaturaDetailTabManutenzioni),
                 ],
               )
             : null,
         actions: [
           if (_attrezzatura != null) ...[
             IconButton(
-              icon: Icon(Icons.edit),
-              tooltip: 'Modifica',
+              icon: const Icon(Icons.edit),
+              tooltip: s.btnEdit,
               onPressed: () {
                 Navigator.pushNamed(
                   context,
@@ -114,8 +118,8 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
               },
             ),
             IconButton(
-              icon: Icon(Icons.delete),
-              tooltip: 'Elimina',
+              icon: const Icon(Icons.delete),
+              tooltip: s.btnDelete,
               onPressed: _confirmDelete,
             ),
           ],
@@ -146,16 +150,17 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
       floatingActionButton: _attrezzatura != null
           ? FloatingActionButton(
               onPressed: _showAddOptions,
-              child: Icon(Icons.add),
-              tooltip: 'Aggiungi',
+              tooltip: s.btnAdd,
+              child: const Icon(Icons.add),
             )
           : null,
     );
   }
 
   Widget _buildInfoTab() {
-    if (_attrezzatura == null) return SizedBox();
+    if (_attrezzatura == null) return const SizedBox();
 
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '€');
     final formatDate = DateFormat('dd/MM/yyyy');
 
@@ -195,7 +200,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                                 style: Theme.of(context).textTheme.titleLarge,
                               ),
                               Text(
-                                _attrezzatura!.categoriaNome ?? 'Non categorizzato',
+                                _attrezzatura!.categoriaNome ?? s.attrezzaturaDetailNonCategorizzato,
                                 style: TextStyle(color: Colors.grey[600]),
                               ),
                             ],
@@ -219,37 +224,37 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                     ),
                     Divider(height: 32),
                     if (_attrezzatura!.condizione != null)
-                      _buildInfoRow(Icons.star, 'Condizione', _attrezzatura!.getCondizioneDisplay()),
+                      _buildInfoRow(Icons.star, s.attrezzaturaDetailLblCondizione, _attrezzatura!.getCondizioneDisplay()),
                     if (_attrezzatura!.descrizione != null && _attrezzatura!.descrizione!.isNotEmpty)
-                      _buildInfoRow(Icons.description, 'Descrizione', _attrezzatura!.descrizione!),
+                      _buildInfoRow(Icons.description, s.attrezzaturaDetailLblDescrizione, _attrezzatura!.descrizione!),
                     if (_attrezzatura!.marca != null && _attrezzatura!.marca!.isNotEmpty)
-                      _buildInfoRow(Icons.branding_watermark, 'Marca', _attrezzatura!.marca!),
+                      _buildInfoRow(Icons.branding_watermark, s.attrezzaturaDetailLblMarca, _attrezzatura!.marca!),
                     if (_attrezzatura!.modello != null && _attrezzatura!.modello!.isNotEmpty)
-                      _buildInfoRow(Icons.model_training, 'Modello', _attrezzatura!.modello!),
+                      _buildInfoRow(Icons.model_training, s.attrezzaturaDetailLblModello, _attrezzatura!.modello!),
                     if (_attrezzatura!.numeroSerie != null && _attrezzatura!.numeroSerie!.isNotEmpty)
-                      _buildInfoRow(Icons.qr_code, 'N. Serie', _attrezzatura!.numeroSerie!),
-                    _buildInfoRow(Icons.inventory_2, 'Quantità', '${_attrezzatura!.quantita}'),
+                      _buildInfoRow(Icons.qr_code, s.attrezzaturaDetailLblSerie, _attrezzatura!.numeroSerie!),
+                    _buildInfoRow(Icons.inventory_2, s.attrezzaturaDetailLblQuantita, '${_attrezzatura!.quantita}'),
                     if (_attrezzatura!.unitaMisura != null && _attrezzatura!.unitaMisura!.isNotEmpty)
-                      _buildInfoRow(Icons.straighten, 'Unità Misura', _attrezzatura!.unitaMisura!),
+                      _buildInfoRow(Icons.straighten, s.attrezzaturaDetailLblUnitaMisura, _attrezzatura!.unitaMisura!),
                     if (_attrezzatura!.dataAcquisto != null)
-                      _buildInfoRow(Icons.calendar_today, 'Data Acquisto',
+                      _buildInfoRow(Icons.calendar_today, s.attrezzaturaDetailLblDataAcquisto,
                           formatDate.format(_attrezzatura!.dataAcquisto!)),
                     if (_attrezzatura!.prezzoAcquisto != null && _attrezzatura!.prezzoAcquisto! > 0)
-                      _buildInfoRow(Icons.euro, 'Prezzo Acquisto',
+                      _buildInfoRow(Icons.euro, s.attrezzaturaDetailLblPrezzoAcquisto,
                           formatCurrency.format(_attrezzatura!.prezzoAcquisto)),
                     if (_attrezzatura!.fornitore != null && _attrezzatura!.fornitore!.isNotEmpty)
-                      _buildInfoRow(Icons.store, 'Fornitore', _attrezzatura!.fornitore!),
+                      _buildInfoRow(Icons.store, s.attrezzaturaDetailLblFornitore, _attrezzatura!.fornitore!),
                     if (_attrezzatura!.garanziaFinoA != null)
-                      _buildInfoRow(Icons.verified_user, 'Garanzia fino a',
+                      _buildInfoRow(Icons.verified_user, s.attrezzaturaDetailLblGaranzia,
                           formatDate.format(_attrezzatura!.garanziaFinoA!)),
                     if (_attrezzatura!.posizione != null && _attrezzatura!.posizione!.isNotEmpty)
-                      _buildInfoRow(Icons.location_on, 'Posizione', _attrezzatura!.posizione!),
+                      _buildInfoRow(Icons.location_on, s.attrezzaturaDetailLblPosizione, _attrezzatura!.posizione!),
                     if (_attrezzatura!.apiarioNome != null)
-                      _buildInfoRow(Icons.hive, 'Apiario', _attrezzatura!.apiarioNome!),
+                      _buildInfoRow(Icons.hive, s.labelApiario, _attrezzatura!.apiarioNome!),
                     if (_attrezzatura!.condivisoConGruppo && _attrezzatura!.gruppoNome != null)
-                      _buildInfoRow(Icons.group, 'Gruppo', _attrezzatura!.gruppoNome!),
+                      _buildInfoRow(Icons.group, s.attrezzaturaDetailLblGruppo, _attrezzatura!.gruppoNome!),
                     if (_attrezzatura!.note != null && _attrezzatura!.note!.isNotEmpty)
-                      _buildInfoRow(Icons.note, 'Note', _attrezzatura!.note!),
+                      _buildInfoRow(Icons.note, s.labelNotes, _attrezzatura!.note!),
                   ],
                 ),
               ),
@@ -265,7 +270,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Statistiche',
+                      s.attrezzaturaDetailStatistiche,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 16),
@@ -273,16 +278,16 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                       children: [
                         Expanded(
                           child: _buildStatCard(
-                            'Spese Totali',
+                            s.attrezzaturaDetailSpeseTotali,
                             formatCurrency.format(_getTotalSpese()),
                             Icons.payments,
                             Colors.orange,
                           ),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: _buildStatCard(
-                            'Manutenzioni',
+                            s.attrezzaturaDetailTabManutenzioni,
                             '${_manutenzioni.length}',
                             Icons.build,
                             Colors.blue,
@@ -301,6 +306,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   }
 
   Widget _buildSpeseTab() {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '€');
     final formatDate = DateFormat('dd/MM/yyyy');
 
@@ -312,13 +318,13 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
             Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Nessuna spesa registrata',
+              s.attrezzaturaDetailNessunaSpesa,
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              icon: Icon(Icons.add),
-              label: Text('Aggiungi Spesa'),
+              icon: const Icon(Icons.add),
+              label: Text(s.attrezzaturaDetailBtnAggiungiSpesa),
               onPressed: () => _navigateToSpesaForm(),
             ),
           ],
@@ -354,8 +360,8 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete, color: Colors.red, size: 20),
-                    tooltip: 'Elimina spesa',
+                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                    tooltip: Provider.of<LanguageService>(context, listen: false).strings.attrezzaturaEliminaSpesaTooltip,
                     onPressed: () => _confirmDeleteSpesa(spesa),
                   ),
                 ],
@@ -368,6 +374,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   }
 
   Widget _buildManutenzioniTab() {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '€');
     final formatDate = DateFormat('dd/MM/yyyy');
 
@@ -379,13 +386,13 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
             Icon(Icons.build, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Nessuna manutenzione registrata',
+              s.attrezzaturaDetailNessunaManutenzione,
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              icon: Icon(Icons.add),
-              label: Text('Aggiungi Manutenzione'),
+              icon: const Icon(Icons.add),
+              label: Text(s.attrezzaturaDetailBtnAggiungiManutenzione),
               onPressed: () => _navigateToManutenzioneForm(),
             ),
           ],
@@ -434,13 +441,13 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                       if (isInRitardo) ...[
                         SizedBox(width: 8),
                         Icon(Icons.warning, size: 16, color: Colors.red),
-                        Text(' In ritardo', style: TextStyle(color: Colors.red, fontSize: 12)),
+                        Text(Provider.of<LanguageService>(context, listen: false).strings.attrezzaturaDetailInRitardo, style: const TextStyle(color: Colors.red, fontSize: 12)),
                       ],
                     ],
                   ),
                   Text(
-                    'Programmata: ${formatDate.format(manutenzione.dataProgrammata)}',
-                    style: TextStyle(fontSize: 12),
+                    Provider.of<LanguageService>(context, listen: false).strings.attrezzaturaDetailProgrammata(formatDate.format(manutenzione.dataProgrammata)),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ],
               ),
@@ -456,8 +463,8 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                       ),
                     ),
                   IconButton(
-                    icon: Icon(Icons.delete, color: Colors.red, size: 20),
-                    tooltip: 'Elimina manutenzione',
+                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                    tooltip: Provider.of<LanguageService>(context, listen: false).strings.attrezzaturaEliminaManutenzioneTooltip,
                     onPressed: () => _confirmDeleteManutenzione(manutenzione),
                   ),
                 ],
@@ -558,29 +565,30 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   }
 
   void _showAddOptions() {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
-      builder: (context) {
+      builder: (ctx) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.receipt, color: Colors.orange),
-                title: Text('Aggiungi Spesa'),
-                subtitle: Text('Registra una nuova spesa per questa attrezzatura'),
+                leading: const Icon(Icons.receipt, color: Colors.orange),
+                title: Text(s.attrezzaturaDetailMenuAddSpesaTitle),
+                subtitle: Text(s.attrezzaturaDetailMenuAddSpesaSubtitle),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(ctx);
                   _navigateToSpesaForm();
                 },
               ),
               ListTile(
-                leading: Icon(Icons.build, color: Colors.blue),
-                title: Text('Aggiungi Manutenzione'),
-                subtitle: Text('Programma o registra una manutenzione'),
+                leading: const Icon(Icons.build, color: Colors.blue),
+                title: Text(s.attrezzaturaDetailMenuAddManutenzioneTitle),
+                subtitle: Text(s.attrezzaturaDetailMenuAddManutenzioneSubtitle),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(ctx);
                   _navigateToManutenzioneForm();
                 },
               ),
@@ -618,26 +626,27 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   }
 
   void _confirmDelete() {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Elimina Attrezzatura'),
+      builder: (ctx) => AlertDialog(
+        title: Text(s.attrezzaturaDeleteTitle),
         content: Text(
           'Sei sicuro di voler eliminare "${_attrezzatura?.nome}"?\n\n'
           'Verranno eliminate anche tutte le spese e manutenzioni associate.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annulla'),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               await _deleteAttrezzatura();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: Text(s.btnDelete),
           ),
         ],
       ),
@@ -645,58 +654,62 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   }
 
   Future<void> _deleteAttrezzatura() async {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final service = AttrezzaturaService(apiService);
 
       await service.deleteAttrezzatura(widget.attrezzaturaId);
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Attrezzatura eliminata con successo')),
+        SnackBar(content: Text(s.attrezzaturaDeletedOk)),
       );
 
       Navigator.pop(context, true);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+        SnackBar(content: Text(s.attrezzaturaDeleteError(e.toString()))),
       );
     }
   }
 
   void _confirmDeleteSpesa(SpesaAttrezzatura spesa) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Elimina Spesa'),
-        content: Text(
-          'Sei sicuro di voler eliminare la spesa "${spesa.descrizione}"?',
-        ),
+      builder: (ctx) => AlertDialog(
+        title: Text(s.attrezzaturaDeleteSpesaTitle),
+        content: Text('Sei sicuro di voler eliminare la spesa "${spesa.descrizione}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annulla'),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               try {
                 final apiService = Provider.of<ApiService>(this.context, listen: false);
                 final service = AttrezzaturaService(apiService);
                 await service.deleteSpesaAttrezzatura(spesa.id);
 
+                if (!mounted) return;
                 ScaffoldMessenger.of(this.context).showSnackBar(
-                  SnackBar(content: Text('Spesa eliminata con successo')),
+                  SnackBar(content: Text(s.attrezzaturaDeleteSpesaOk)),
                 );
 
                 _loadData();
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(this.context).showSnackBar(
-                  SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+                  SnackBar(content: Text(s.attrezzaturaDeleteSpesaError(e.toString()))),
                 );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: Text(s.btnDelete),
           ),
         ],
       ),
@@ -704,39 +717,40 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
   }
 
   void _confirmDeleteManutenzione(Manutenzione manutenzione) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Elimina Manutenzione'),
-        content: Text(
-          'Sei sicuro di voler eliminare la manutenzione "${manutenzione.getTipoDisplay()}"?',
-        ),
+      builder: (ctx) => AlertDialog(
+        title: Text(s.attrezzaturaDeleteManutenzioneTitle),
+        content: Text('Sei sicuro di voler eliminare la manutenzione "${manutenzione.getTipoDisplay()}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annulla'),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               try {
                 final apiService = Provider.of<ApiService>(this.context, listen: false);
                 final service = AttrezzaturaService(apiService);
                 await service.deleteManutenzione(manutenzione.id);
 
+                if (!mounted) return;
                 ScaffoldMessenger.of(this.context).showSnackBar(
-                  SnackBar(content: Text('Manutenzione eliminata con successo')),
+                  SnackBar(content: Text(s.attrezzaturaDeleteManutenzioneOk)),
                 );
 
                 _loadData();
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(this.context).showSnackBar(
-                  SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+                  SnackBar(content: Text(s.attrezzaturaDeleteManutenzioneError(e.toString()))),
                 );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: Text(s.btnDelete),
           ),
         ],
       ),

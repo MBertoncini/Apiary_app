@@ -7,6 +7,7 @@ import '../../constants/theme_constants.dart';
 import '../../models/attrezzatura.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/offline_banner.dart';
@@ -175,7 +176,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
     } catch (e) {
       debugPrint('API attrezzature: $e');
       if (_attrezzature.isEmpty) {
-        _errorMessage = 'Errore durante il caricamento: $e';
+        _errorMessage = '${Provider.of<LanguageService>(context, listen: false).strings.attrezzaturaErrLoading}: $e';
       }
     }
     if (mounted) setState(() { _isRefreshing = false; });
@@ -230,13 +231,26 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
   // Build
   // -----------------------------------------------------------------------
 
+  String _catLabel(SmartCategoria cat, dynamic s) {
+    switch (cat) {
+      case SmartCategoria.apiario:     return labelApiario ?? 'Apiario';
+      case SmartCategoria.consumabile: return s.attrezzaturaCatConsumabili;
+      case SmartCategoria.protezione:  return s.attrezzaturaCatProtezione;
+      case SmartCategoria.strumento:   return s.attrezzaturaCatStrumenti;
+      case SmartCategoria.altro:       return s.attrezzaturaCatAltro;
+    }
+  }
+
+  String? get labelApiario => null; // resolved via LanguageService in build
+
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
+    final s = Provider.of<LanguageService>(context).strings;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Attrezzature'),
+        title: Text(s.attrezzatureTitle),
         actions: [
           // Advanced filters button with badge
           Stack(
@@ -244,7 +258,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.tune),
-                tooltip: 'Filtri avanzati',
+                tooltip: s.attrezzatureFiltriAvanzatiTooltip,
                 onPressed: _showAdvancedFilters,
               ),
               if (_activeAdvancedFilters > 0)
@@ -269,7 +283,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.sync),
-            tooltip: 'Sincronizza',
+            tooltip: s.attrezzatureSincronizzaTooltip,
             onPressed: _loadData,
           ),
         ],
@@ -286,7 +300,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Cerca per nome, marca, modello…',
+                hintText: s.attrezzaturaSearchHint,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -302,7 +316,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
           ),
 
           // Category chip row
-          _buildCategoryChips(),
+          _buildCategoryChips(s),
 
           // List
           Expanded(
@@ -315,7 +329,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                         errorMessage: _errorMessage!,
                         onRetry: _loadData,
                       )
-                    : _buildList(filtered),
+                    : _buildList(filtered, s),
           ),
         ],
       ),
@@ -323,22 +337,22 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
         onPressed: () => Navigator.pushNamed(
           context, AppConstants.attrezzaturaCreateRoute,
         ).then((_) => _loadData()),
-        tooltip: 'Nuova Attrezzatura',
+        tooltip: s.attrezzaturaFabTooltip,
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildCategoryChips() {
+  Widget _buildCategoryChips(dynamic s) {
     return SizedBox(
       height: 48,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         children: [
-          _categoryChip(null, Icons.apps, 'Tutti', Colors.grey),
+          _categoryChip(null, Icons.apps, s.attrezzaturaCatTutti, Colors.grey),
           ...SmartCategoria.values.map(
-            (c) => _categoryChip(c, c.icon, c.label, c.color),
+            (c) => _categoryChip(c, c.icon, _catLabel(c, s), c.color),
           ),
         ],
       ),
@@ -361,7 +375,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
     );
   }
 
-  Widget _buildList(List<Attrezzatura> filtered) {
+  Widget _buildList(List<Attrezzatura> filtered, dynamic s) {
     if (filtered.isEmpty) {
       return Center(
         child: Column(
@@ -371,8 +385,8 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
             const SizedBox(height: 16),
             Text(
               _attrezzature.isEmpty
-                  ? 'Nessuna attrezzatura registrata'
-                  : 'Nessuna attrezzatura corrisponde ai filtri',
+                  ? s.attrezzaturaNoRegistrata
+                  : s.attrezzaturaNoFiltri,
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
@@ -380,7 +394,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
             if (_attrezzature.isEmpty)
               ElevatedButton.icon(
                 icon: const Icon(Icons.add),
-                label: const Text('Aggiungi Attrezzatura'),
+                label: Text(s.attrezzaturaBtnAggiungi),
                 onPressed: () => Navigator.pushNamed(
                   context, AppConstants.attrezzaturaCreateRoute,
                 ).then((_) => _loadData()),
@@ -388,7 +402,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
             else
               TextButton.icon(
                 icon: const Icon(Icons.filter_list_off),
-                label: const Text('Rimuovi filtri'),
+                label: Text(s.attrezzaturaBtnRimuoviFiltri),
                 onPressed: _resetAllFilters,
               ),
           ],
@@ -430,12 +444,15 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          cat.label,
+                          _catLabel(cat, Provider.of<LanguageService>(context, listen: false).strings),
                           style: TextStyle(fontSize: 11, color: cat.color, fontWeight: FontWeight.w600),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text('Qtà: ${a.quantita}', style: const TextStyle(fontSize: 12)),
+                      Text(
+                        Provider.of<LanguageService>(context, listen: false).strings.attrezzaturaQta(a.quantita),
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                   if (a.marca != null || a.modello != null)
@@ -447,7 +464,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                     ),
                   if (a.dataAcquisto != null)
                     Text(
-                      'Acquistato: ${fmtDate.format(a.dataAcquisto!)}',
+                      Provider.of<LanguageService>(context, listen: false).strings.attrezzaturaAcquistatoDate(fmtDate.format(a.dataAcquisto!)),
                       style: const TextStyle(fontSize: 11),
                     ),
                 ],
@@ -514,6 +531,8 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
 
     final fmtDate = DateFormat('dd/MM/yyyy');
 
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+
     await showModalBottomSheet(
       context: context,
       useSafeArea: true,
@@ -535,7 +554,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Filtri avanzati',
+                    Text(s.attrezzaturaFiltriAvanzatiTitle,
                         style: Theme.of(ctx).textTheme.titleLarge),
                     TextButton(
                       onPressed: () {
@@ -548,7 +567,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                           prezzoACtrl.clear();
                         });
                       },
-                      child: const Text('Reset'),
+                      child: Text(s.attrezzaturaFiltriReset),
                     ),
                   ],
                 ),
@@ -557,18 +576,18 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                 // Stato
                 DropdownButtonFormField<String>(
                   value: tempStato,
-                  decoration: const InputDecoration(
-                    labelText: 'Stato',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: s.attrezzaturaFiltriLblStato,
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
-                  hint: const Text('Tutti'),
+                  hint: Text(s.attrezzaturaCatTutti),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('Tutti')),
+                    DropdownMenuItem(value: null, child: Text(s.attrezzaturaCatTutti)),
                     ...Attrezzatura.statiDisponibili.map(
-                      (s) => DropdownMenuItem(
-                        value: s,
-                        child: Text(s.replaceAll('_', ' ').capitalize()),
+                      (st) => DropdownMenuItem(
+                        value: st,
+                        child: Text(st.replaceAll('_', ' ').capitalize()),
                       ),
                     ),
                   ],
@@ -579,14 +598,14 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                 // Condizione
                 DropdownButtonFormField<String>(
                   value: tempCondizione,
-                  decoration: const InputDecoration(
-                    labelText: 'Condizione',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: s.attrezzaturaFiltriLblCondizione,
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
-                  hint: const Text('Tutte'),
+                  hint: Text(s.attrezzaturaCatTutte),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('Tutte')),
+                    DropdownMenuItem(value: null, child: Text(s.attrezzaturaCatTutte)),
                     ...Attrezzatura.condizioniDisponibili.map(
                       (c) => DropdownMenuItem(
                         value: c,
@@ -599,7 +618,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                 const SizedBox(height: 12),
 
                 // Date range
-                Text('Data acquisto', style: Theme.of(ctx).textTheme.labelLarge),
+                Text(s.attrezzaturaFiltriLblDataAcquisto, style: Theme.of(ctx).textTheme.labelLarge),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -650,7 +669,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                 const SizedBox(height: 12),
 
                 // Price range
-                Text('Prezzo acquisto (€)', style: Theme.of(ctx).textTheme.labelLarge),
+                Text(s.attrezzaturaFiltriLblPrezzo, style: Theme.of(ctx).textTheme.labelLarge),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -697,7 +716,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                       });
                       Navigator.pop(ctx);
                     },
-                    child: const Text('Applica filtri'),
+                    child: Text(s.attrezzaturaFiltriApplica),
                   ),
                 ),
               ],

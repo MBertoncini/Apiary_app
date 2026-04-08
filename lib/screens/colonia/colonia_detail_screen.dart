@@ -4,6 +4,7 @@ import '../../models/colonia.dart';
 import '../../services/api_service.dart';
 import '../../services/colonia_service.dart';
 import '../../services/controllo_service.dart';
+import '../../services/language_service.dart';
 import '../../models/controllo_arnia.dart';
 import '../../widgets/skeleton_widgets.dart';
 import 'colonia_form_screen.dart';
@@ -66,9 +67,11 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Colonia')),
+        appBar: AppBar(title: Text(s.coloniaDetailTitle)),
         body: const SingleChildScrollView(
           child: Column(
             children: [SkeletonDetailHeader(), SizedBox(height: 8), SkeletonDetailHeader()],
@@ -79,8 +82,8 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
 
     if (_colonia == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Colonia')),
-        body: const Center(child: Text('Colonia non trovata')),
+        appBar: AppBar(title: Text(s.coloniaDetailTitle)),
+        body: Center(child: Text(s.coloniaDetailNotFound)),
       );
     }
 
@@ -89,7 +92,7 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Colonia #${c.id}'),
+        title: Text(s.coloniaId(c.id)),
         actions: [
           if (c.isAttiva)
             PopupMenuButton<String>(
@@ -97,11 +100,11 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                 if (v == 'chiudi') _navigateToChiudiColonia();
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'chiudi',
                   child: ListTile(
-                    leading: Icon(Icons.stop_circle_outlined, color: Colors.red),
-                    title: Text('Chiudi ciclo di vita'),
+                    leading: const Icon(Icons.stop_circle_outlined, color: Colors.red),
+                    title: Text(s.coloniaDetailMenuChiudi),
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                   ),
@@ -111,9 +114,9 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Info'),
-            Tab(text: 'Controlli'),
+          tabs: [
+            Tab(text: s.coloniaDetailTabInfo),
+            Tab(text: s.coloniaDetailTabControlli),
           ],
         ),
       ),
@@ -152,47 +155,46 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                 ),
                 const SizedBox(height: 16),
 
-                // Contenitore
-                _infoRow(Icons.home_outlined, 'Contenitore', c.contenitoreLabel),
-                _infoRow(Icons.location_on_outlined, 'Apiario', c.apiarioNome),
-                _infoRow(Icons.calendar_today_outlined, 'Insediata il', c.dataInizio),
+                _infoRow(Icons.home_outlined, s.coloniaDetailLblContenitore, c.contenitoreLabel),
+                _infoRow(Icons.location_on_outlined, s.coloniaDetailLblApiario, c.apiarioNome),
+                _infoRow(Icons.calendar_today_outlined, s.coloniaDetailLblInsediataIl, c.dataInizio),
                 if (c.dataFine != null)
-                  _infoRow(Icons.event_busy_outlined, 'Chiusa il', c.dataFine!),
+                  _infoRow(Icons.event_busy_outlined, s.coloniaDetailLblChiusaIl, c.dataFine!),
                 if (c.motivoFine != null && c.motivoFine!.isNotEmpty)
-                  _infoRow(Icons.info_outline, 'Motivo fine', c.motivoFine!),
+                  _infoRow(Icons.info_outline, s.coloniaDetailLblMotivoFine, c.motivoFine!),
 
                 const Divider(height: 32),
 
                 // Regina attiva
                 if (c.reginaAttiva != null) ...[
-                  Text('Regina', style: Theme.of(context).textTheme.titleSmall),
+                  Text(s.coloniaDetailSectionRegina, style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
-                  _infoRow(Icons.emoji_nature_outlined, 'Razza',
+                  _infoRow(Icons.emoji_nature_outlined, s.coloniaDetailLblRazza,
                       c.reginaAttiva!['razza'] ?? '—'),
-                  _infoRow(Icons.info_outline, 'Origine',
+                  _infoRow(Icons.info_outline, s.coloniaDetailLblOrigine,
                       c.reginaAttiva!['origine'] ?? '—'),
-                  _infoRow(Icons.calendar_today_outlined, 'Introdotta il',
+                  _infoRow(Icons.calendar_today_outlined, s.coloniaDetailLblIntrodottaIl,
                       c.reginaAttiva!['data_introduzione'] ?? '—'),
                   const Divider(height: 32),
                 ],
 
                 // Genealogia colonia
                 if (c.coloniaOrigineId != null)
-                  _infoRow(Icons.account_tree_outlined, 'Origine da colonia',
-                      'Colonia #${c.coloniaOrigineId}'),
+                  _infoRow(Icons.account_tree_outlined, s.coloniaDetailLblOrigineDa,
+                      s.coloniaOrigineDaId(c.coloniaOrigineId!)),
                 if (c.coloniaSuccessoreId != null)
-                  _infoRow(Icons.call_merge_rounded, 'Confluita in',
-                      'Colonia #${c.coloniaSuccessoreId}'),
+                  _infoRow(Icons.call_merge_rounded, s.coloniaDetailLblConfluitaIn,
+                      s.coloniaConfluitaInId(c.coloniaSuccessoreId!)),
 
                 // Contatore controlli
                 if (c.nControlli != null)
-                  _infoRow(Icons.checklist_outlined, 'Totale controlli',
+                  _infoRow(Icons.checklist_outlined, s.coloniaDetailLblTotaleControlli,
                       '${c.nControlli}'),
 
                 // Note
                 if (c.note != null && c.note!.isNotEmpty) ...[
                   const Divider(height: 32),
-                  Text('Note', style: Theme.of(context).textTheme.titleSmall),
+                  Text(s.coloniaDetailSectionNote, style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   Text(c.note!, style: const TextStyle(color: Colors.black87)),
                 ],
@@ -202,7 +204,7 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
 
           // ── Tab Controlli ──────────────────────────────────────────────
           _controlli.isEmpty
-              ? const Center(child: Text('Nessun controllo registrato'))
+              ? Center(child: Text(s.coloniaDetailNoControlli))
               : ListView.builder(
                   itemCount: _controlli.length,
                   itemBuilder: (ctx, i) {
@@ -219,8 +221,8 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                       ),
                       title: Text(ctrl.data),
                       subtitle: Text(
-                        'Scorte: ${ctrl.telainiScorte} · Covata: ${ctrl.telainiCovata}'
-                        '${ctrl.sciamatura ? ' · ⚠ Sciamatura' : ''}',
+                        s.coloniaControlloSubtitle(ctrl.telainiScorte, ctrl.telainiCovata) +
+                        (ctrl.sciamatura ? s.coloniaControlloSciamatura : ''),
                       ),
                       trailing: ctrl.presenzaRegina
                           ? const Icon(Icons.emoji_nature, color: Colors.amber, size: 16)
@@ -301,12 +303,14 @@ class _StoriaColonieScreenState extends State<StoriaColonieScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Storia colonie')),
+      appBar: AppBar(title: Text(s.storiaColonieTitle)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _colonie.isEmpty
-              ? const Center(child: Text('Nessuna colonia storica'))
+              ? Center(child: Text(s.storiaColonieEmpty))
               : ListView.builder(
                   itemCount: _colonie.length,
                   itemBuilder: (ctx, i) {
@@ -321,11 +325,11 @@ class _StoriaColonieScreenState extends State<StoriaColonieScreen> {
                           color: isAttiva ? Colors.green : Colors.grey,
                         ),
                       ),
-                      title: Text('Colonia #${c.id} · ${c.statoLabel}'),
-                      subtitle: Text(
-                        'Dal ${c.dataInizio}'
-                        '${c.dataFine != null ? ' al ${c.dataFine}' : ' · in corso'}',
-                      ),
+                      title: Text(s.storiaColonieItem(c.id, c.statoLabel)),
+                      subtitle: Text(s.storiaColonieDates(
+                        c.dataInizio,
+                        c.dataFine,
+                      )),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
