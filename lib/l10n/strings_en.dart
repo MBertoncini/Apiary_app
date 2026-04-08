@@ -618,6 +618,9 @@ class StringsEn extends AppStrings {
   @override String get reginaListIntrodotta => 'Introduced';
   @override String get reginaListMarcata => 'Marked';
   @override String get reginaListDetailError => 'Queen detail unavailable';
+  @override String get reginaListOfflineTooltip => 'Offline mode - Data loaded from cache';
+  @override String get reginaListEmptyTitle => 'No queens found';
+  @override String get reginaListEmptySubtitle => 'Add queens from individual hive screens.';
 
   // Detail
   @override String get reginaDetailTitle => 'Queen Detail';
@@ -642,6 +645,36 @@ class StringsEn extends AppStrings {
   @override String get reginaDetailStatusNonAttiva => 'Inactive';
   @override String reginaDetailParentela(String parentela, String data) => '$parentela: $data';
   @override String reginaDetailError(String e) => 'Error: $e';
+  @override String get reginaDetailTabDettagli => 'Details';
+  @override String get reginaDetailTabGenealogia => 'Genealogy';
+  @override String get reginaDetailSectionGeneral => 'General Information';
+  @override String get reginaDetailSectionMarcatura => 'Marking';
+  @override String get reginaDetailLblDataNascita => 'Birth date';
+  @override String get reginaDetailLblSelezionata => 'Selected';
+  @override String reginaDetailLblEta(String age) => 'Age: $age';
+  @override String get reginaDetailAlberoGenealogia => 'Family Tree';
+  @override String reginaDetailAlberoSubtitle(String arniaId) =>
+      'Lineage of the queen in hive $arniaId';
+  @override String get reginaDetailNoGenealogia => 'No genealogical data available';
+  @override String get reginaDetailGenealogiaNonDisp => 'Genealogy data unavailable';
+  @override String get reginaDetailReginaAttuale => 'Current Queen';
+  @override String reginaDetailFiglie(int n) => 'Daughters ($n)';
+  @override String get reginaDetailStoriaArnie => 'History in hives';
+  @override String get reginaDetailInfoAggiuntive => 'Additional Information';
+  @override String reginaDetailChipIntrodotta(String date) => 'Introduced: $date';
+  @override String reginaDetailChipNata(String date) => 'Born: $date';
+  @override String reginaDetailDeleteMsg(String arniaId) =>
+      'Are you sure you want to delete the queen of hive $arniaId?\n\n'
+      'This action cannot be undone.';
+  @override String reginaDetailAgeAnni(int n) => '$n ${n == 1 ? 'year' : 'years'}';
+  @override String reginaDetailAgeMesi(int n) => '$n ${n == 1 ? 'month' : 'months'}';
+  @override String reginaDetailAgeGiorni(int n) => '$n ${n == 1 ? 'day' : 'days'}';
+  @override String get reginaDetailColoreBianco => 'White (years ending in 1, 6)';
+  @override String get reginaDetailColoreGiallo => 'Yellow (years ending in 2, 7)';
+  @override String get reginaDetailColoreRosso => 'Red (years ending in 3, 8)';
+  @override String get reginaDetailColoreVerde => 'Green (years ending in 4, 9)';
+  @override String get reginaDetailColoreBlu => 'Blue (years ending in 5, 0)';
+  @override String get reginaDetailColoreNonMarcata => 'Unmarked';
 
   // Form
   @override String get reginaFormTitleNew => 'Add Queen';
@@ -657,6 +690,13 @@ class StringsEn extends AppStrings {
   @override String get reginaFormHintNessunaRegina => 'None (founder queen)';
   @override String get reginaFormBtnSave => 'SAVE QUEEN';
   @override String reginaFormError(String e) => 'Error: $e';
+  @override String get reginaFormHintDataNascitaVuota => 'Not specified';
+  @override String get reginaFormValutazioniTitle => 'Ratings (optional)';
+  @override String get reginaFormValutazioniHint => 'Tap the stars to assign a score from 1 to 5.';
+  @override String get reginaFormLblReginaMadre => 'Mother queen (optional)';
+  @override String get reginaFormLblNote => 'Notes (optional)';
+  @override String get reginaFormCreatedOk => 'Queen added successfully';
+  @override String get reginaFormUpdatedOk => 'Queen updated successfully';
 
   // ── Melario / Smielatura screens ──────────────────────────────────────────
   @override String get melariTitle => 'Honey Supers & Production';
@@ -700,6 +740,66 @@ class StringsEn extends AppStrings {
       '$telaini frames · Position $posizione · $tipo';
   @override String get melariSmielBtn => 'Extract';
   @override String get melariQeLabel => 'QE';
+  // Melari screen extra
+  @override String get melariTabAlveari => 'Hives';
+  @override String get melariTabSmielature => 'Extractions';
+  @override String get melariSummaryTotale => 'Total';
+  @override String get melariSummarySmielature => 'Extractions';
+  @override String get melariSummaryTipi => 'Types';
+  @override String get melariSummaryInvasettato => 'Jarred';
+  @override String get melariSummaryRaccolto => 'Harvested';
+  @override String get melariHiveLegendNido => 'Brood';
+  @override String get melariHiveLegendPosizionato => 'Placed';
+  @override String get melariHiveLegendInSmielatura => 'In extraction';
+  @override String get melariHiveLblNido => '🐝 BROOD';
+  @override String get melariNoMelari => 'no supers';
+  @override String melariCountMelari(int n) => '$n super${n == 1 ? '' : 's'}';
+  @override String melariArniaNumLabel(int n) => 'Hive #$n';
+  @override String melariFaviLabel(int n) => '🍯 $n frames';
+  @override String melariPosTipoLabel(int pos, String tipo) => 'Pos. $pos · $tipo';
+  @override String melariTelainiLabel(int n) => '$n frames';
+  @override String melariPesoStimatoLabel(String peso) => 'Est. weight: $peso kg';
+  @override String get melariRemoveMelarioMsg => 'Confirm removing this super?';
+  @override String melariDeleteMelarioMsg(int id) => 'Delete super #$id?';
+  @override String get melariDeleteMelarioOk => 'Super deleted';
+  @override String get melariConfirmBtn => 'Confirm';
+  // Melario form
+  @override String get melarioFormTitle => 'New Super';
+  @override String get melarioFormSectionId => 'Identification & Traceability';
+  @override String get melarioFormSectionProd => 'Production Data';
+  @override String get melarioFormLblTipo => 'Super Type';
+  @override String get melarioFormLblStatoFavi => 'Frame Condition';
+  @override String get melarioFormLblNumTelaini => 'Number of Frames';
+  @override String get melarioFormLblPosizione => 'Position (from brood box)';
+  @override String get melarioFormLblEscludiRegina => 'Queen Excluder';
+  @override String get melarioFormSubEscludiRegina => 'Place a queen excluder to prevent brood';
+  @override String get melarioFormLblNote => 'Additional notes';
+  @override String get melarioFormHintNote => 'Observations, ongoing bloom...';
+  @override String get melarioFormBtnAdd => 'Add Super';
+  @override String get melarioFormFaviCostruiti => 'Already built';
+  @override String get melarioFormFaviCerei => 'Wax foundation';
+  @override String get melarioFormLblDataPos => 'Placement date';
+  @override String get melarioFormHintSelectApiario => 'Select an apiary first';
+  @override String get melarioFormNoArnie => 'No hives available';
+  @override String get melarioFormValidateArnia => 'Select a hive';
+  @override String melarioFormLoadError(String e) => 'Loading error: $e';
+  @override String melarioFormArnieLoadError(String e) => 'Hive loading error: $e';
+  @override String get melarioFormCreatedOk => 'Super added successfully';
+  // Smielatura form extra
+  @override String get smielaturaFormLblMelariDisp => 'Available supers';
+  @override String get smielaturaFormValidateNumero => 'Enter a valid number';
+  @override String get smielaturaFormBtnCreate => 'REGISTER';
+  @override String get smielaturaFormBtnUpdate => 'UPDATE';
+  @override String get smielaturaFormCreatedOk => 'Extraction registered';
+  @override String get smielaturaFormUpdatedOk => 'Extraction updated';
+  // Smielatura detail
+  @override String get smielaturaDetailTitle => 'Extraction Detail';
+  @override String get smielaturaDetailDeleteMsg => 'Are you sure you want to delete this extraction?';
+  @override String get smielaturaDetailDeletedOk => 'Extraction deleted';
+  @override String get smielaturaDetailNotFound => 'Extraction not found';
+  @override String smielaturaDetailMelariCount(int n) => '$n super${n == 1 ? '' : 's'}';
+  @override String get smielaturaDetailMelariAssociati => 'Associated supers';
+  @override String get smielaturaDetailLblMelari => 'Supers';
 
   // Smielatura form
   @override String get smielaturaFormTitleNew => 'New Extraction';
@@ -716,6 +816,18 @@ class StringsEn extends AppStrings {
   @override String smielaturaFormError(String e) => 'Error loading data: $e';
   @override String get smielaturaFormOfflineMsg =>
       'Offline mode — data updated at last access';
+  // Invasettamento form
+  @override String get invasettamentoFormTitleNew => 'New Jarring';
+  @override String get invasettamentoFormTitleEdit => 'Edit Jarring';
+  @override String get invasettamentoFormLblSmielatura => 'Extraction *';
+  @override String get invasettamentoFormValidateSmielatura => 'Select an extraction';
+  @override String get invasettamentoFormCreatedOk => 'Jarring registered';
+  @override String get invasettamentoFormUpdatedOk => 'Jarring updated';
+  @override String get invasettamentoFormLblFormato => 'Jar format *';
+  @override String get invasettamentoFormLblNumVasetti => 'Number of jars *';
+  @override String get invasettamentoFormValidateNumVasetti => 'Enter a whole number';
+  @override String invasettamentoFormLblTotale(String kg) => 'Total: $kg kg';
+  @override String get invasettamentoFormLblLotto => 'Batch';
 
   // ── Controllo form ────────────────────────────────────────────────────────
   @override String get controlloFormDialogTitle => 'Hive Inspection';

@@ -1,7 +1,7 @@
 class AppConstants {
   // Info applicazione
   static const String appName = "Apiary";
-  static const String appVersion = "1.0.1+4";
+  static const String appVersion = "1.0.1+8";
   
   // Chiavi Storage
   static const String tokenKey = "auth_token";

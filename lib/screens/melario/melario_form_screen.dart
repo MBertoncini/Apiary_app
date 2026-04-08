@@ -4,6 +4,8 @@ import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 
 class MelarioFormScreen extends StatefulWidget {
   final int? preselectedApiarioId;
@@ -23,6 +25,8 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late ApiService _apiService;
   late StorageService _storageService;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   List<Map<String, dynamic>> _apiari = [];
   List<Map<String, dynamic>> _arnie = [];
@@ -86,7 +90,7 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
         setState(() => _isLoadingData = false);
         if (_apiari.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore nel caricamento: $e')),
+            SnackBar(content: Text(_s.melarioFormLoadError(e.toString()))),
           );
         }
         // If apiario was preselected, still try to load arnie from cache
@@ -131,7 +135,7 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
     } catch (e) {
       if (mounted && _arnie.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore caricamento arnie: $e')),
+          SnackBar(content: Text(_s.melarioFormArnieLoadError(e.toString()))),
         );
       }
     }
@@ -141,7 +145,7 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedArniaId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seleziona un\'arnia')),
+        SnackBar(content: Text(_s.melarioFormValidateArnia)),
       );
       return;
     }
@@ -163,14 +167,14 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
       if (mounted) {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Melario aggiunto con successo')),
+          SnackBar(content: Text(_s.melarioFormCreatedOk)),
         );
       }
     } catch (e) {
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
+          SnackBar(content: Text(_s.melarioFormLoadError(e.toString()))),
         );
       }
     }
@@ -178,9 +182,11 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuovo Melario'),
+        title: Text(s.melarioFormTitle),
         actions: [
           _isSaving
               ? const Padding(
@@ -194,7 +200,7 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
                 )
               : IconButton(
                   icon: const Icon(Icons.check),
-                  tooltip: 'Salva',
+                  tooltip: s.btnSave,
                   onPressed: _save,
                 ),
         ],
@@ -207,32 +213,32 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _buildCard(
-                    'Identificazione e Tracciabilità',
+                    s.melarioFormSectionId,
                     Icons.inventory_2,
                     [
-                      _buildApiarioDropdown(),
+                      _buildApiarioDropdown(s),
                       const SizedBox(height: 12),
-                      _buildArniaDropdown(),
+                      _buildArniaDropdown(s),
                       const SizedBox(height: 16),
-                      _buildLabel('Tipo Melario'),
+                      _buildLabel(s.melarioFormLblTipo),
                       const SizedBox(height: 6),
-                      _buildTipoMelarioSelector(),
+                      _buildTipoMelarioSelector(s),
                       const SizedBox(height: 16),
-                      _buildLabel('Stato dei Favi'),
+                      _buildLabel(s.melarioFormLblStatoFavi),
                       const SizedBox(height: 6),
-                      _buildStatoFaviSelector(),
+                      _buildStatoFaviSelector(s),
                     ],
                   ),
                   const SizedBox(height: 12),
                   _buildCard(
-                    'Dati di Produzione',
+                    s.melarioFormSectionProd,
                     Icons.local_drink,
                     [
-                      _buildDataPicker(),
+                      _buildDataPicker(s),
                       const Divider(height: 24),
                       _buildStepper(
                         icon: Icons.view_week,
-                        label: 'Numero Telaini',
+                        label: s.melarioFormLblNumTelaini,
                         value: _numeroTelaini,
                         min: 1,
                         max: 12,
@@ -245,7 +251,7 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
                       const SizedBox(height: 8),
                       _buildStepper(
                         icon: Icons.layers,
-                        label: 'Posizione (dal nido)',
+                        label: s.melarioFormLblPosizione,
                         value: _posizione,
                         min: 1,
                         max: 5,
@@ -257,9 +263,8 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         secondary: const Icon(Icons.block),
-                        title: const Text('Escludi Regina'),
-                        subtitle: const Text(
-                            'Posiziona un escludiregina per evitare covata'),
+                        title: Text(s.melarioFormLblEscludiRegina),
+                        subtitle: Text(s.melarioFormSubEscludiRegina),
                         value: _escludiRegina,
                         onChanged: (v) => setState(() => _escludiRegina = v),
                       ),
@@ -267,10 +272,10 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
                       TextFormField(
                         controller: _noteController,
                         maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Note aggiuntive',
-                          border: OutlineInputBorder(),
-                          hintText: 'Osservazioni, fioritura in corso...',
+                        decoration: InputDecoration(
+                          labelText: s.melarioFormLblNote,
+                          border: const OutlineInputBorder(),
+                          hintText: s.melarioFormHintNote,
                         ),
                       ),
                     ],
@@ -279,7 +284,7 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
                   ElevatedButton.icon(
                     onPressed: _isSaving ? null : _save,
                     icon: const Icon(Icons.save),
-                    label: const Text('Aggiungi Melario'),
+                    label: Text(s.melarioFormBtnAdd),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48)),
                   ),
@@ -316,15 +321,15 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
         style: TextStyle(fontSize: 13, color: Colors.grey[600]));
   }
 
-  Widget _buildApiarioDropdown() {
+  Widget _buildApiarioDropdown(AppStrings s) {
     return DropdownButtonFormField<int>(
       value: _selectedApiarioId,
-      decoration: const InputDecoration(
-          labelText: 'Apiario *', border: OutlineInputBorder()),
+      decoration: InputDecoration(
+          labelText: '${s.labelApiario} *', border: const OutlineInputBorder()),
       items: _apiari
           .map((a) => DropdownMenuItem<int>(
                 value: a['id'] as int,
-                child: Text(a['nome']?.toString() ?? 'Apiario ${a["id"]}'),
+                child: Text(a['nome']?.toString() ?? '${s.labelApiario} ${a["id"]}'),
               ))
           .toList(),
       onChanged: (id) {
@@ -335,36 +340,36 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
         });
         if (id != null) _loadArnie(id);
       },
-      validator: (v) => v == null ? 'Seleziona un apiario' : null,
+      validator: (v) => v == null ? s.smielaturaFormSelectApiarioMsg : null,
     );
   }
 
-  Widget _buildArniaDropdown() {
+  Widget _buildArniaDropdown(AppStrings s) {
     return DropdownButtonFormField<int>(
       value: _selectedArniaId,
       decoration: InputDecoration(
-        labelText: 'Arnia *',
+        labelText: '${s.labelArnia} *',
         border: const OutlineInputBorder(),
         hintText: _selectedApiarioId == null
-            ? 'Seleziona prima un apiario'
+            ? s.melarioFormHintSelectApiario
             : _arnie.isEmpty
-                ? 'Nessuna arnia disponibile'
+                ? s.melarioFormNoArnie
                 : null,
       ),
       items: _arnie
           .map((a) => DropdownMenuItem<int>(
                 value: a['id'] as int,
-                child: Text('Arnia ${a["numero"] ?? a["id"]}'),
+                child: Text('${s.labelArnia} ${a["numero"] ?? a["id"]}'),
               ))
           .toList(),
       onChanged: _selectedApiarioId == null
           ? null
           : (id) => setState(() => _selectedArniaId = id),
-      validator: (v) => v == null ? 'Seleziona un\'arnia' : null,
+      validator: (v) => v == null ? s.melarioFormValidateArnia : null,
     );
   }
 
-  Widget _buildTipoMelarioSelector() {
+  Widget _buildTipoMelarioSelector(AppStrings s) {
     return SegmentedButton<String>(
       segments: const [
         ButtonSegment(
@@ -381,35 +386,35 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
             icon: Icon(Icons.view_module, size: 16)),
       ],
       selected: {_tipoMelario},
-      onSelectionChanged: (s) => setState(() => _tipoMelario = s.first),
+      onSelectionChanged: (sel) => setState(() => _tipoMelario = sel.first),
     );
   }
 
-  Widget _buildStatoFaviSelector() {
+  Widget _buildStatoFaviSelector(AppStrings s) {
     return SegmentedButton<String>(
-      segments: const [
+      segments: [
         ButtonSegment(
             value: 'costruiti',
-            label: Text('Già costruiti'),
-            icon: Icon(Icons.check_circle_outline, size: 16)),
+            label: Text(s.melarioFormFaviCostruiti),
+            icon: const Icon(Icons.check_circle_outline, size: 16)),
         ButtonSegment(
             value: 'fogli_cerei',
-            label: Text('Fogli cerei'),
-            icon: Icon(Icons.radio_button_unchecked, size: 16)),
+            label: Text(s.melarioFormFaviCerei),
+            icon: const Icon(Icons.radio_button_unchecked, size: 16)),
       ],
       selected: {_statoFavi},
-      onSelectionChanged: (s) => setState(() => _statoFavi = s.first),
+      onSelectionChanged: (sel) => setState(() => _statoFavi = sel.first),
     );
   }
 
-  Widget _buildDataPicker() {
+  Widget _buildDataPicker(AppStrings s) {
     final d = _dataPosizionamento;
     final formatted =
         '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.calendar_today),
-      title: const Text('Data posizionamento'),
+      title: Text(s.melarioFormLblDataPos),
       subtitle: Text(formatted,
           style:
               const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),

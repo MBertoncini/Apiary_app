@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 
 class ReginaFormScreen extends StatefulWidget {
@@ -60,13 +61,6 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
     {'id': 'altro',     'label': 'Altro'},
   ];
 
-  static const List<Map<String, String>> _origineOptions = [
-    {'id': 'acquistata',  'label': 'Acquistata'},
-    {'id': 'allevata',    'label': 'Allevata'},
-    {'id': 'sciamatura',  'label': 'Sciamatura Naturale'},
-    {'id': 'emergenza',   'label': 'Celle di Emergenza'},
-    {'id': 'sconosciuta', 'label': 'Sconosciuta'},
-  ];
 
   static const List<Map<String, String>> _coloriMarcatura = [
     {'id': 'bianco', 'label': 'Bianco (anni 1,6)'},
@@ -162,6 +156,7 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
     setState(() => _isLoading = true);
 
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
       final data = <String, dynamic>{
         'arnia': widget.arniaId,
@@ -189,13 +184,13 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.reginaId != null ? 'Regina modificata con successo' : 'Regina aggiunta con successo')),
+        SnackBar(content: Text(widget.reginaId != null ? s.reginaFormUpdatedOk : s.reginaFormCreatedOk)),
       );
       Navigator.of(context).pop(true); // true = reload caller
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore: $e')),
+        SnackBar(content: Text(s.reginaFormError(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -248,8 +243,19 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+
+    final origineItems = [
+      {'id': 'acquistata',  'label': s.arniaDetailOrigineAcquistata},
+      {'id': 'allevata',    'label': s.arniaDetailOrigineAllevata},
+      {'id': 'sciamatura',  'label': s.arniaDetailOrigineSciamatura},
+      {'id': 'emergenza',   'label': s.arniaDetailOrigineEmergenza},
+      {'id': 'sconosciuta', 'label': s.arniaDetailOrigineSconosciuta},
+    ];
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.reginaId != null ? 'Modifica Regina' : 'Aggiungi Regina')),
+      appBar: AppBar(title: Text(widget.reginaId != null ? s.reginaFormTitleEdit : s.reginaFormTitleNew)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -261,9 +267,9 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                   children: [
                     // Razza
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Razza',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: s.reginaFormLblRazza,
+                        border: const OutlineInputBorder(),
                       ),
                       value: _razza,
                       items: _razzeOptions
@@ -275,12 +281,12 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
                     // Origine
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Origine',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: s.reginaFormLblOrigine,
+                        border: const OutlineInputBorder(),
                       ),
                       value: _origine,
-                      items: _origineOptions
+                      items: origineItems
                           .map((o) => DropdownMenuItem(value: o['id'], child: Text(o['label']!)))
                           .toList(),
                       onChanged: (v) => setState(() => _origine = v!),
@@ -291,9 +297,9 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                     InkWell(
                       onTap: () => _pickDate(isNascita: false),
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Data introduzione',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: s.reginaFormLblDataIntroduzione,
+                          border: const OutlineInputBorder(),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -310,16 +316,16 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                     InkWell(
                       onTap: () => _pickDate(isNascita: true),
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Data nascita (opzionale)',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: s.reginaFormLblDataNascita,
+                          border: const OutlineInputBorder(),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(_dataNascita != null
                                 ? _dateFormat.format(_dataNascita!)
-                                : 'Non specificata'),
+                                : s.reginaFormHintDataNascitaVuota),
                             Row(children: [
                               if (_dataNascita != null)
                                 GestureDetector(
@@ -337,7 +343,7 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
                     // Marcata toggle
                     SwitchListTile(
-                      title: const Text('Marcata'),
+                      title: Text(s.reginaFormMarcataTitle),
                       value: _marcata,
                       onChanged: (v) => setState(() => _marcata = v),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -350,9 +356,9 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                     if (_marcata) ...[
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Colore marcatura',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: s.reginaFormLblColoreMarcatura,
+                          border: const OutlineInputBorder(),
                         ),
                         value: _coloreMarcatura == 'non_marcata' ? 'bianco' : _coloreMarcatura,
                         items: _coloriMarcatura
@@ -365,7 +371,7 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
                     // Fecondata toggle
                     SwitchListTile(
-                      title: const Text('Fecondata'),
+                      title: Text(s.reginaFormFecondataTitle),
                       value: _fecondata,
                       onChanged: (v) => setState(() => _fecondata = v),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -378,7 +384,7 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
                     // Selezionata toggle
                     SwitchListTile(
-                      title: const Text('Selezionata per allevamento'),
+                      title: Text(s.reginaFormSelezionataTitle),
                       value: _selezionata,
                       onChanged: (v) => setState(() => _selezionata = v),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -390,36 +396,36 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                     const SizedBox(height: 16),
 
                     // Valutazioni
-                    const Text(
-                      'Valutazioni (opzionale)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    Text(
+                      s.reginaFormValutazioniTitle,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Tocca le stelle per assegnare un punteggio da 1 a 5.',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    Text(
+                      s.reginaFormValutazioniHint,
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
                     ),
                     const SizedBox(height: 12),
                     _buildStarInput(
-                      'Docilità',
+                      s.arniaDetailRatingDocilita,
                       _docilita,
                       (v) => setState(() => _docilita = v == 0 ? null : v),
                       Colors.green,
                     ),
                     _buildStarInput(
-                      'Produttività',
+                      s.arniaDetailRatingProduttivita,
                       _produttivita,
                       (v) => setState(() => _produttivita = v == 0 ? null : v),
                       Colors.amber,
                     ),
                     _buildStarInput(
-                      'Resistenza malattie',
+                      s.arniaDetailRatingResistenza,
                       _resistenzaMalattie,
                       (v) => setState(() => _resistenzaMalattie = v == 0 ? null : v),
                       Colors.blue,
                     ),
                     _buildStarInput(
-                      'Tendenza sciamatura (1=bassa, 5=alta)',
+                      s.arniaDetailRatingTendenzaSciamatura,
                       _tendenzaSciamatura,
                       (v) => setState(() => _tendenzaSciamatura = v == 0 ? null : v),
                       Colors.orange,
@@ -429,19 +435,19 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                     // Regina madre (genealogia)
                     if (_regineDisponibili.isNotEmpty) ...[
                       DropdownButtonFormField<int?>(
-                        decoration: const InputDecoration(
-                          labelText: 'Regina madre (opzionale)',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: s.reginaFormLblReginaMadre,
+                          border: const OutlineInputBorder(),
                         ),
                         value: _reginaMadreId,
                         items: [
-                          const DropdownMenuItem<int?>(
+                          DropdownMenuItem<int?>(
                             value: null,
-                            child: Text('Nessuna (regina fondatrice)'),
+                            child: Text(s.reginaFormHintNessunaRegina),
                           ),
                           ..._regineDisponibili.map((r) {
                             final label =
-                                'Arnia ${r['arnia_numero'] ?? '?'} – ${r['razza'] ?? ''}';
+                                '${s.labelArnia} ${r['arnia_numero'] ?? '?'} – ${r['razza'] ?? ''}';
                             return DropdownMenuItem<int?>(
                               value: r['id'] as int?,
                               child: Text(label),
@@ -455,9 +461,9 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
                     // Note
                     TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'Note (opzionale)',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: s.reginaFormLblNote,
+                        border: const OutlineInputBorder(),
                       ),
                       maxLines: 3,
                       initialValue: _note,
@@ -467,9 +473,9 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
                     ElevatedButton(
                       onPressed: _save,
-                      child: const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Text('SALVA REGINA', style: TextStyle(fontSize: 16)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(s.reginaFormBtnSave, style: const TextStyle(fontSize: 16)),
                       ),
                     ),
                   ],

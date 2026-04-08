@@ -6,6 +6,8 @@ import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 
@@ -21,6 +23,8 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
   bool _isRefreshing = true;
   String? _errorMessage;
   late ApiService _apiService;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -44,11 +48,11 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Conferma eliminazione'),
-        content: Text('Sei sicuro di voler eliminare questa smielatura?'),
+        title: Text(_s.melariDeleteInvasettTitle),
+        content: Text(_s.smielaturaDetailDeleteMsg),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('ANNULLA')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('ELIMINA')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(_s.dialogCancelBtn)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(_s.btnDeleteCaps)),
         ],
       ),
     );
@@ -56,8 +60,8 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
       setState(() { _isRefreshing = true; });
       try {
         await _apiService.delete('${ApiConstants.produzioniUrl}${widget.smielaturaId}/');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Smielatura eliminata')));
-        Navigator.pop(context, true);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaDetailDeletedOk)));
+        if (mounted) Navigator.pop(context, true);
       } catch (e) {
         setState(() { _errorMessage = 'Errore: $e'; _isRefreshing = false; });
       }
@@ -66,9 +70,11 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dettaglio Smielatura'),
+        title: Text(s.smielaturaDetailTitle),
         actions: [
           IconButton(
             icon: Icon(Icons.edit),
@@ -88,7 +94,7 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
                 : _errorMessage != null
                     ? ErrorDisplayWidget(errorMessage: _errorMessage!, onRetry: _loadSmielatura)
                     : _smielatura == null
-                        ? const Center(child: Text('Smielatura non trovata'))
+                        ? Center(child: Text(s.smielaturaDetailNotFound))
                         : _buildContent(),
           ),
         ],
@@ -97,50 +103,51 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
   }
 
   Widget _buildContent() {
-    final s = _smielatura!;
-    final melariIds = s['melari'] as List? ?? [];
+    final loc = _s;
+    final data = _smielatura!;
+    final melariIds = data['melari'] as List? ?? [];
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Main info card
           Card(
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
                     child: Text(
-                      '${s['quantita_miele']} kg',
+                      '${data['quantita_miele']} kg',
                       style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: ThemeConstants.primaryColor),
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Center(
-                    child: Text(s['tipo_miele'] ?? '', style: TextStyle(fontSize: 18, color: Colors.grey[700])),
+                    child: Text(data['tipo_miele'] ?? '', style: TextStyle(fontSize: 18, color: Colors.grey[700])),
                   ),
-                  SizedBox(height: 16),
-                  _buildInfoRow('Data', s['data'] ?? ''),
-                  _buildInfoRow('Apiario', s['apiario_nome'] ?? ''),
-                  _buildInfoRow('Melari', '${melariIds.length} melari'),
-                  if (s['note'] != null && s['note'].toString().isNotEmpty)
-                    _buildInfoRow('Note', s['note']),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(loc.labelDate, data['data'] ?? ''),
+                  _buildInfoRow(loc.labelApiario, data['apiario_nome'] ?? ''),
+                  _buildInfoRow(loc.smielaturaDetailLblMelari, loc.smielaturaDetailMelariCount(melariIds.length)),
+                  if (data['note'] != null && data['note'].toString().isNotEmpty)
+                    _buildInfoRow(loc.labelNotes, data['note']),
                 ],
               ),
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           // Melari list
           if (melariIds.isNotEmpty) ...[
-            Text('Melari associati', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
+            Text(loc.smielaturaDetailMelariAssociati, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             ...melariIds.map((id) => Card(
               child: ListTile(
-                leading: Icon(Icons.view_module, color: Colors.amber),
-                title: Text('Melario #$id'),
+                leading: const Icon(Icons.view_module, color: Colors.amber),
+                title: Text(loc.melariMelarioId(id as int)),
               ),
             )),
           ],

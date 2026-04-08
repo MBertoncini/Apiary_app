@@ -6,6 +6,8 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 
 class SmielaturaFormScreen extends StatefulWidget {
   final dynamic initialData; // null for new, Map for edit, int for apiarioId pre-selection
@@ -18,6 +20,8 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late ApiService _apiService;
   late StorageService _storageService;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
   bool _isLoading = false;
   bool _isLoadingData = true;
 
@@ -102,10 +106,10 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
           e.toString().contains('SocketException') ||
           e.toString().contains('Failed host lookup');
       if (_apiari.isEmpty && _melari.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore caricamento dati: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaFormError(e.toString()))));
       } else if (isNetworkError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')),
+          SnackBar(content: Text(_s.smielaturaFormOfflineMsg)),
         );
       }
     }
@@ -123,7 +127,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedApiarioId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Seleziona un apiario')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaFormSelectApiarioMsg)));
       return;
     }
 
@@ -165,11 +169,11 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
         }
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isEditing ? 'Smielatura aggiornata' : 'Smielatura registrata')),
+        SnackBar(content: Text(_isEditing ? _s.smielaturaFormUpdatedOk : _s.smielaturaFormCreatedOk)),
       );
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaFormError(e.toString()))));
     } finally {
       setState(() { _isLoading = false; });
     }
@@ -187,12 +191,14 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'Modifica Smielatura' : 'Nuova Smielatura')),
+      appBar: AppBar(title: Text(_isEditing ? s.smielaturaFormTitleEdit : s.smielaturaFormTitleNew)),
       body: _isLoadingData
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -201,56 +207,56 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                     // Apiario dropdown
                     DropdownButtonFormField<int>(
                       value: _selectedApiarioId,
-                      decoration: InputDecoration(labelText: 'Apiario *', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.smielaturaFormLblApiario, border: const OutlineInputBorder()),
                       items: _apiari.map((a) => DropdownMenuItem<int>(value: a['id'], child: Text(a['nome']))).toList(),
                       onChanged: (val) => setState(() {
                         _selectedApiarioId = val;
                         _selectedMelariIds.clear();
                       }),
-                      validator: (val) => val == null ? 'Seleziona un apiario' : null,
+                      validator: (val) => val == null ? s.smielaturaFormSelectApiarioMsg : null,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
                     // Date picker
                     InkWell(
                       onTap: _selectDate,
                       child: InputDecorator(
-                        decoration: InputDecoration(labelText: 'Data *', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
+                        decoration: InputDecoration(labelText: s.smielaturaFormLblData, border: const OutlineInputBorder(), suffixIcon: const Icon(Icons.calendar_today)),
                         child: Text('${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}'),
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
                     // Tipo miele
                     TextFormField(
                       controller: _tipoMieleController,
-                      decoration: InputDecoration(labelText: 'Tipo miele *', border: OutlineInputBorder()),
-                      validator: (val) => val == null || val.isEmpty ? 'Campo obbligatorio' : null,
+                      decoration: InputDecoration(labelText: s.smielaturaFormLblTipoMiele, border: const OutlineInputBorder()),
+                      validator: (val) => val == null || val.isEmpty ? s.trattamentoFormValidateCampoObbligatorio : null,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
                     // Quantita
                     TextFormField(
                       controller: _quantitaController,
-                      decoration: InputDecoration(labelText: 'Quantità miele (kg) *', border: OutlineInputBorder()),
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: s.smielaturaFormLblQuantita, border: const OutlineInputBorder()),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (val) {
-                        if (val == null || val.isEmpty) return 'Campo obbligatorio';
-                        if (double.tryParse(val) == null) return 'Inserisci un numero valido';
+                        if (val == null || val.isEmpty) return s.trattamentoFormValidateCampoObbligatorio;
+                        if (double.tryParse(val) == null) return s.smielaturaFormValidateNumero;
                         return null;
                       },
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
                     // Melari checkboxes
                     if (_filteredMelari.isNotEmpty) ...[
-                      Text('Melari disponibili', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 8),
+                      Text(s.smielaturaFormLblMelariDisp, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
                       ..._filteredMelari.map((m) {
                         final id = m['id'] as int;
                         return CheckboxListTile(
-                          title: Text('Melario #$id - Arnia ${m['arnia_numero']}'),
-                          subtitle: Text('Stato: ${m['stato']}'),
+                          title: Text(s.smielaturaFormMelarioItem(id, m['arnia_numero']?.toString() ?? '')),
+                          subtitle: Text(s.smielaturaFormMelarioStato(m['stato']?.toString() ?? '')),
                           value: _selectedMelariIds.contains(id),
                           onChanged: (checked) {
                             setState(() {
@@ -260,24 +266,24 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                           },
                         );
                       }),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                     ],
 
                     // Note
                     TextFormField(
                       controller: _noteController,
-                      decoration: InputDecoration(labelText: 'Note', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.smielaturaFormLblNote, border: const OutlineInputBorder()),
                       maxLines: 3,
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
                     // Submit
                     ElevatedButton(
                       onPressed: _isLoading ? null : _submit,
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
                       child: _isLoading
-                          ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(_isEditing ? 'AGGIORNA' : 'REGISTRA'),
-                      style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 16)),
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(_isEditing ? s.smielaturaFormBtnUpdate : s.smielaturaFormBtnCreate),
                     ),
                   ],
                 ),

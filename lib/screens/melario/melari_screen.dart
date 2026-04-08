@@ -10,6 +10,8 @@ import '../../models/invasettamento.dart';
 import '../../models/arnia.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/offline_banner.dart';
 
 class MelariScreen extends StatefulWidget {
@@ -20,6 +22,8 @@ class MelariScreen extends StatefulWidget {
 class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late ApiService _apiService;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   List<Melario> _melari = [];
   List<Map<String, dynamic>> _smielature = [];
@@ -103,14 +107,16 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Melari e Produzioni'),
+        title: Text(s.melariTitle),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(icon: Icon(Icons.hive, size: 18), text: 'Alveari'),
-            Tab(text: 'Smielature'),
+            Tab(icon: Icon(Icons.hive, size: 18), text: s.melariTabAlveari),
+            Tab(text: s.melariTabSmielature),
           ],
         ),
         actions: [],
@@ -130,7 +136,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                           children: [
                             Text(_errorMessage!, textAlign: TextAlign.center),
                             SizedBox(height: 8),
-                            ElevatedButton(onPressed: _refreshAll, child: Text('Riprova')),
+                            ElevatedButton(onPressed: _refreshAll, child: Text(s.btnRetry)),
                           ],
                         ),
                       )
@@ -154,7 +160,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       if (currentTab == 0) {
         return FloatingActionButton(
           child: Icon(Icons.add),
-          tooltip: 'Aggiungi melario',
+          tooltip: _s.melariTooltipAdd,
           onPressed: () {
             Navigator.pushNamed(context, AppConstants.melarioCreateRoute)
                 .then((result) { if (result == true) _refreshAll(); });
@@ -163,7 +169,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       } else {
         return FloatingActionButton.extended(
           icon: Icon(Icons.add),
-          label: Text('Nuova smielatura'),
+          label: Text(_s.melariBtnNuovaSmielatura),
           onPressed: () {
             Navigator.pushNamed(context, AppConstants.smielaturaCreateRoute)
                 .then((_) => _refreshAll());
@@ -200,13 +206,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       child: Row(
         children: [
           ChoiceChip(
-            label: Text('Tutti'),
+            label: Text(_s.melariTabTutti),
             selected: _filtroGruppo == null,
             onSelected: (_) => setState(() { _filtroGruppo = null; }),
           ),
           SizedBox(width: 6),
           ChoiceChip(
-            label: Text('Personali'),
+            label: Text(_s.melariTabPersonali),
             selected: _filtroGruppo == '',
             onSelected: (_) => setState(() { _filtroGruppo = ''; }),
           ),
@@ -243,17 +249,17 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       return Column(children: [
         _buildGruppoFilterBar(),
         Expanded(child: Center(
-          child: Text('Nessuna smielatura registrata', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+          child: Text(_s.melariNoSmielature, textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
         )),
       ]);
     }
 
     double totalKg = 0;
     final Map<String, double> byTipo = {};
-    for (final s in filtered) {
-      final qty = double.tryParse(s['quantita_miele']?.toString() ?? '0') ?? 0;
+    for (final sm in filtered) {
+      final qty = double.tryParse(sm['quantita_miele']?.toString() ?? '0') ?? 0;
       totalKg += qty;
-      final tipo = s['tipo_miele']?.toString() ?? 'Altro';
+      final tipo = sm['tipo_miele']?.toString() ?? 'Altro';
       byTipo[tipo] = (byTipo[tipo] ?? 0) + qty;
     }
 
@@ -276,15 +282,15 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                     Row(children: [
                       Icon(Icons.local_drink, color: Colors.amber.shade700),
                       SizedBox(width: 8),
-                      Text('Riepilogo Produzioni', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(_s.melariRiepilogoProd, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ]),
                     SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildSummaryItem('Totale', '${totalKg.toStringAsFixed(1)} kg'),
-                        _buildSummaryItem('Smielature', '${filtered.length}'),
-                        _buildSummaryItem('Tipi', '${byTipo.length}'),
+                        _buildSummaryItem(_s.melariSummaryTotale, '${totalKg.toStringAsFixed(1)} kg'),
+                        _buildSummaryItem(_s.melariSummarySmielature, '${filtered.length}'),
+                        _buildSummaryItem(_s.melariSummaryTipi, '${byTipo.length}'),
                       ],
                     ),
                     if (byTipo.isNotEmpty) ...[
@@ -307,18 +313,18 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             ),
             SizedBox(height: 16),
             ...List.generate(filtered.length, (i) {
-              final s = filtered[i];
-              final melariCount = (s['melari'] as List?)?.length ?? s['melari_count'] ?? 0;
-              final gruppoNome = s['apiario_gruppo_nome'] as String?;
+              final sm = filtered[i];
+              final melariCount = (sm['melari'] as List?)?.length ?? sm['melari_count'] ?? 0;
+              final gruppoNome = sm['apiario_gruppo_nome'] as String?;
               return Card(
                 margin: EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: Icon(Icons.local_drink, color: Colors.amber),
-                  title: Text('${s['tipo_miele']} - ${s['quantita_miele']} kg'),
+                  title: Text(_s.melariSmielaturaItem(sm['tipo_miele']?.toString() ?? '', sm['quantita_miele']?.toString() ?? '0')),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${s['data']} - ${s['apiario_nome']} - $melariCount melari'),
+                      Text(_s.melariSmielaturaSubtitle(sm['data']?.toString() ?? '', sm['apiario_nome']?.toString() ?? '', melariCount)),
                       if (gruppoNome != null)
                         Row(children: [
                           Icon(Icons.group, size: 11, color: ThemeConstants.primaryColor),
@@ -329,7 +335,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                   ),
                   trailing: Icon(Icons.chevron_right),
                   onTap: () {
-                    Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: s['id'])
+                    Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: sm['id'])
                         .then((_) => _refreshAll());
                   },
                 ),
@@ -360,8 +366,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       ),
       child: ListTile(
         leading: Text('🍯', style: TextStyle(fontSize: 24)),
-        title: Text('Cantina del miele', style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('Maturatori · Stoccaggio · Invasettamento'),
+        title: Text(_s.melariCantinaTitolo, style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(_s.melariCantinaSubtitle),
         trailing: Icon(Icons.chevron_right, color: Colors.amber.shade700),
         onTap: () => Navigator.pushNamed(context, AppConstants.cantinaRoute).then((_) => _refreshAll()),
       ),
@@ -379,7 +385,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       return Column(children: [
         _buildGruppoFilterBar(),
         Expanded(child: Center(
-          child: Text('Nessun invasettamento registrato', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+          child: Text(_s.melariNoInvasettamento, textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
         )),
       ]);
     }
@@ -417,15 +423,15 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                     children: [
                       Icon(Icons.inventory_2, color: Colors.teal.shade700),
                       SizedBox(width: 8),
-                      Text('Riepilogo Invasettamento', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(_s.melariRiepilogoInvasettamento, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildSummaryItemColored('Invasettato', '${totalKgInvasettati.toStringAsFixed(1)} kg', Colors.teal),
-                      _buildSummaryItemColored('Raccolto', '${totalKgSmielati.toStringAsFixed(1)} kg', Colors.amber.shade800),
+                      _buildSummaryItemColored(_s.melariSummaryInvasettato, '${totalKgInvasettati.toStringAsFixed(1)} kg', Colors.teal),
+                      _buildSummaryItemColored(_s.melariSummaryRaccolto, '${totalKgSmielati.toStringAsFixed(1)} kg', Colors.amber.shade800),
                     ],
                   ),
                   if (vasettiPerFormato.isNotEmpty) ...[
@@ -436,8 +442,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Vasetti ${e.key}g', style: TextStyle(fontWeight: FontWeight.w500)),
-                          Text('${e.value} vasetti'),
+                          Text(_s.melariVasettiLabel(e.key.toString()), style: TextStyle(fontWeight: FontWeight.w500)),
+                          Text('${e.value} ${_s.melariVasetti}'),
                         ],
                       ),
                     )),
@@ -455,11 +461,11 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               margin: EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: Icon(Icons.inventory_2, color: Colors.teal),
-                title: Text('${inv.tipoMiele} - ${inv.formatoVasetto}g x${inv.numeroVasetti}'),
+                title: Text(_s.melariInvasettamentoItem(inv.tipoMiele, inv.formatoVasetto.toString(), inv.numeroVasetti)),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${inv.data} - ${inv.kgTotali?.toStringAsFixed(2) ?? 0} kg${inv.lotto != null ? ' - Lotto: ${inv.lotto}' : ''}'),
+                    Text(_s.melariInvasettamentoSubtitle(inv.data, inv.kgTotali?.toStringAsFixed(2) ?? '0', inv.lotto)),
                     if (inv.apiarioGruppoNome != null)
                       Row(children: [
                         Icon(Icons.group, size: 11, color: ThemeConstants.primaryColor),
@@ -470,8 +476,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 ),
                 trailing: PopupMenuButton(
                   itemBuilder: (context) => [
-                    PopupMenuItem(value: 'edit', child: Text('Modifica')),
-                    PopupMenuItem(value: 'delete', child: Text('Elimina')),
+                    PopupMenuItem(value: 'edit', child: Text(_s.melariMenuEdit)),
+                    PopupMenuItem(value: 'delete', child: Text(_s.melariMenuDelete)),
                   ],
                   onSelected: (value) async {
                     if (value == 'edit') {
@@ -489,21 +495,21 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: Text('Conferma eliminazione'),
-                          content: Text('Eliminare questo invasettamento?'),
+                          title: Text(_s.melariDeleteInvasettTitle),
+                          content: Text(_s.melariDeleteInvasettMsg),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('ANNULLA')),
-                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('ELIMINA')),
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_s.dialogCancelBtn)),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(_s.btnDeleteCaps)),
                           ],
                         ),
                       );
                       if (confirmed == true) {
                         try {
                           await _apiService.delete('${ApiConstants.invasettamentiUrl}${inv.id}/');
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invasettamento eliminato')));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteInvasettOk)));
                           _refreshAll();
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteInvasettError(e.toString()))));
                         }
                       }
                     }
@@ -562,7 +568,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     final allApiarioIds = apiarioNomi.keys.toList()..sort();
 
     if (allApiarioIds.isEmpty) {
-      return Center(child: Text('Nessun dato disponibile'));
+      return Center(child: Text(_s.melariNoData));
     }
 
     final totPosizionati  = _melari.where((m) => m.stato == 'posizionato').length;
@@ -752,9 +758,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('🍯 ${m.numeroTelaini} favi',
+                Text(_s.melariFaviLabel(m.numeroTelaini),
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textColor)),
-                Text('Pos. ${m.posizione} · $tipoLabel',
+                Text(_s.melariPosTipoLabel(m.posizione, tipoLabel),
                     style: TextStyle(fontSize: 9, color: textColor.withOpacity(0.75))),
               ],
             ),
@@ -821,7 +827,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '🐝 NIDO',
+            _s.melariHiveLblNido,
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w700,
@@ -868,8 +874,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.add, size: 14, color: Color(0xFFF5A623)),
-            const Text(' Melario',
-                style: TextStyle(fontSize: 11, color: Color(0xFFF5A623), fontWeight: FontWeight.w600)),
+            Text(' ${_s.melariMelarioLabel}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFFF5A623), fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -887,14 +893,12 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 4),
-            Text('Arnia #$numero',
+            Text(_s.melariArniaNumLabel(numero),
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           ],
         ),
         Text(
-          melariCount == 0
-              ? 'nessun melario'
-              : '$melariCount melari${melariCount == 1 ? 'o' : 'i'}',
+          melariCount == 0 ? _s.melariNoMelari : _s.melariCountMelari(melariCount),
           style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
         ),
       ],
@@ -912,7 +916,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             child: Column(children: [
               Text('$posizionati',
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFF5A623))),
-              Text('Posizionati', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              Text(_s.melariPosizionati, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
             ]),
           ),
         )),
@@ -925,7 +929,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             child: Column(children: [
               Text('$inSmielatura',
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFF7A00))),
-              Text('In smielatura', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              Text(_s.melariInSmielatura, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
             ]),
           ),
         )),
@@ -937,9 +941,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     return Wrap(
       spacing: 12, runSpacing: 4,
       children: [
-        _legendItem(const Color(0xFF7A4E2A), 'Nido'),
-        _legendItem(const Color(0xFFF5A623), 'Posizionato'),
-        _legendItem(const Color(0xFFFF7A00), 'In smielatura'),
+        _legendItem(const Color(0xFF7A4E2A), _s.melariHiveLegendNido),
+        _legendItem(const Color(0xFFF5A623), _s.melariHiveLegendPosizionato),
+        _legendItem(const Color(0xFFFF7A00), _s.melariHiveLegendInSmielatura),
       ],
     );
   }
@@ -971,18 +975,18 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Melario #${m.id}',
+            Text(_s.melariMelarioId(m.id),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('${m.numeroTelaini} telaini · Posizione ${m.posizione} · ${_tipoLabel(m.tipoMelario)}'),
+            Text(_s.melariTelainiPosizione(m.numeroTelaini, m.posizione, _tipoLabel(m.tipoMelario))),
             if (m.pesoStimato != null)
-              Text('Peso stimato: ${m.pesoStimato!.toStringAsFixed(1)} kg',
+              Text(_s.melariPesoStimatoLabel(m.pesoStimato!.toStringAsFixed(1)),
                   style: const TextStyle(fontWeight: FontWeight.w500)),
             const SizedBox(height: 12),
             if (m.stato == 'posizionato')
               ListTile(
                 leading: const Icon(Icons.remove_circle_outline, color: Colors.blue),
-                title: const Text('Rimuovi melario'),
+                title: Text(_s.melariRemoveMelarioTitle),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showRemoveDialogFromView(m);
@@ -990,7 +994,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Elimina melario'),
+              title: Text(_s.melariEliminaMelarioTitle),
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmDeleteFromView(m);
@@ -1015,25 +1019,25 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Rimuovi melario'),
+        title: Text(_s.melariRemoveMelarioDialogTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Confermi di voler rimuovere questo melario?'),
+            Text(_s.melariRemoveMelarioMsg),
             const SizedBox(height: 16),
             TextField(
               controller: pesoCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Peso stimato (kg)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: _s.melariLblPesoStimato,
+                border: const OutlineInputBorder(),
                 suffixText: 'kg',
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_s.dialogCancelBtn)),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -1049,10 +1053,10 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 );
                 _refreshAll();
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteInvasettError(e.toString()))));
               }
             },
-            child: const Text('Conferma'),
+            child: Text(_s.melariConfirmBtn),
           ),
         ],
       ),
@@ -1063,23 +1067,23 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Elimina melario'),
-        content: Text('Eliminare il melario #${m.id}?'),
+        title: Text(_s.melariEliminaMelarioTitle),
+        content: Text(_s.melariDeleteMelarioMsg(m.id)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_s.dialogCancelBtn)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.pop(ctx);
               try {
                 await _apiService.delete('${ApiConstants.melariUrl}${m.id}/');
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Melario eliminato')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteMelarioOk)));
                 _refreshAll();
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteInvasettError(e.toString()))));
               }
             },
-            child: const Text('Elimina'),
+            child: Text(_s.btnDelete),
           ),
         ],
       ),

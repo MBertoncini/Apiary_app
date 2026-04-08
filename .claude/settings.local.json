@@ -35,7 +35,8 @@
       "Bash(dir I:)",
       "Read(//i//**)",
       "Bash(dart analyze:*)",
-      "Bash(flutter pub:*)"
+      "Bash(flutter pub:*)",
+      "Bash(flutter doctor:*)"
     ]
   }
 }

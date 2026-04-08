@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
+import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/regina.dart';
 import '../../widgets/error_widget.dart';
@@ -120,25 +122,30 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     }
   }
 
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
+
     if (!_cacheChecked) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Dettaglio Regina')),
+        appBar: AppBar(title: Text(s.reginaDetailTitle)),
         body: const SizedBox.shrink(),
       );
     }
 
     if (_isRefreshing && _regina == null && _errorMessage == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Dettaglio Regina')),
+        appBar: AppBar(title: Text(s.reginaDetailTitle)),
         body: const SingleChildScrollView(child: SkeletonDetailHeader()),
       );
     }
 
     if (_errorMessage != null && _regina == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Dettaglio Regina')),
+        appBar: AppBar(title: Text(s.reginaDetailTitle)),
         body: ErrorDisplayWidget(
           errorMessage: _errorMessage!,
           onRetry: _loadData,
@@ -148,26 +155,26 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
     if (_regina == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Dettaglio Regina')),
-        body: const Center(child: Text('Nessun dato trovato per questa regina')),
+        appBar: AppBar(title: Text(s.reginaDetailTitle)),
+        body: Center(child: Text(s.reginaDetailNotFound)),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Regina - Arnia ${_regina!.arniaNumero ?? _regina!.arniaId}'),
+        title: Text(s.reginaDetailTitleArnia((_regina!.arniaNumero ?? _regina!.arniaId).toString())),
         actions: [
           IconButton(
-            icon: Icon(Icons.delete),
-            tooltip: 'Elimina regina',
+            icon: const Icon(Icons.delete),
+            tooltip: s.reginaDetailTooltipDelete,
             onPressed: _confirmDeleteRegina,
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Dettagli'),
-            Tab(text: 'Genealogia'),
+            Tab(text: s.reginaDetailTabDettagli),
+            Tab(text: s.reginaDetailTabGenealogia),
           ],
         ),
       ),
@@ -190,33 +197,34 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   // ==================== TAB DETTAGLI ====================
   Widget _buildDettagliTab() {
+    final s = _s;
     final regina = _regina!;
 
     return RefreshIndicator(
       onRefresh: _loadData,
       child: SingleChildScrollView(
-        physics: AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildReginaHeader(regina),
+            _buildReginaHeader(s, regina),
             const SizedBox(height: 24),
-            _buildInfoSection('Informazioni Generali', [
-              _buildInfoRow('Arnia', 'Arnia ${regina.arniaNumero ?? regina.arniaId}'),
-              _buildInfoRow('Razza', _getRazzaDisplay(regina.razza)),
-              _buildInfoRow('Origine', _getOrigineDisplay(regina.origine)),
+            _buildInfoSection(s.reginaDetailSectionGeneral, [
+              _buildInfoRow(s.labelArnia, '${s.labelArnia} ${regina.arniaNumero ?? regina.arniaId}'),
+              _buildInfoRow(s.reginaListRazza, _getRazzaDisplay(s, regina.razza)),
+              _buildInfoRow(s.reginaListOrigine, _getOrigineDisplay(s, regina.origine)),
               if (regina.dataNascita != null)
-                _buildInfoRow('Data nascita', regina.dataNascita!),
-              _buildInfoRow('Data introduzione', regina.dataInserimento),
-              _buildInfoRow('Fecondata', regina.fecondata ? 'Si' : 'No'),
-              _buildInfoRow('Selezionata', regina.selezionata ? 'Si' : 'No'),
+                _buildInfoRow(s.reginaDetailLblDataNascita, regina.dataNascita!),
+              _buildInfoRow(s.reginaFormLblDataIntroduzione, regina.dataInserimento),
+              _buildInfoRow(s.reginaFormFecondataTitle, regina.fecondata ? s.labelYes : s.labelNo),
+              _buildInfoRow(s.reginaDetailLblSelezionata, regina.selezionata ? s.labelYes : s.labelNo),
             ]),
             const SizedBox(height: 16),
-            _buildInfoSection('Marcatura', [
-              _buildInfoRow('Marcata', regina.marcata ? 'Si' : 'No'),
+            _buildInfoSection(s.reginaDetailSectionMarcatura, [
+              _buildInfoRow(s.reginaFormMarcataTitle, regina.marcata ? s.labelYes : s.labelNo),
               if (regina.marcata && regina.colore != null && regina.colore != 'non_marcata')
-                _buildInfoRow('Colore marcatura', _getColoreMarcaturaDisplay(regina.colore!)),
+                _buildInfoRow(s.reginaFormLblColoreMarcatura, _getColoreMarcaturaDisplay(s, regina.colore!)),
               if (regina.codiceMarcatura != null && regina.codiceMarcatura!.isNotEmpty)
                 _buildInfoRow('Codice marcatura', regina.codiceMarcatura!),
             ]),
@@ -225,20 +233,20 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                 regina.resistenzaMalattie != null ||
                 regina.tendenzaSciamatura != null) ...[
               const SizedBox(height: 16),
-              _buildRatingSection('Valutazioni', [
+              _buildRatingSection(s.arniaDetailLblValutazioni, [
                 if (regina.docilita != null)
-                  _buildRatingRow('Docilita', regina.docilita!),
+                  _buildRatingRow(s.arniaDetailRatingDocilita, regina.docilita!),
                 if (regina.produttivita != null)
-                  _buildRatingRow('Produttivita', regina.produttivita!),
+                  _buildRatingRow(s.arniaDetailRatingProduttivita, regina.produttivita!),
                 if (regina.resistenzaMalattie != null)
-                  _buildRatingRow('Resistenza malattie', regina.resistenzaMalattie!),
+                  _buildRatingRow(s.arniaDetailRatingResistenza, regina.resistenzaMalattie!),
                 if (regina.tendenzaSciamatura != null)
-                  _buildRatingRow('Tendenza sciamatura', regina.tendenzaSciamatura!),
+                  _buildRatingRow(s.arniaDetailRatingTendenzaSciamatura, regina.tendenzaSciamatura!),
               ]),
             ],
             if (regina.note != null && regina.note!.isNotEmpty) ...[
               const SizedBox(height: 16),
-              _buildInfoSection('Note', [
+              _buildInfoSection(s.labelNotes, [
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Text(regina.note!),
@@ -250,13 +258,13 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  icon: Icon(Icons.edit),
-                  label: Text('Modifica'),
+                  icon: const Icon(Icons.edit),
+                  label: Text(s.reginaDetailBtnEdit),
                   onPressed: _editRegina,
                 ),
                 ElevatedButton.icon(
-                  icon: Icon(Icons.swap_horiz),
-                  label: Text('Sostituisci'),
+                  icon: const Icon(Icons.swap_horiz),
+                  label: Text(s.reginaDetailBtnReplace),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     foregroundColor: Colors.white,
@@ -273,6 +281,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   // ==================== TAB GENEALOGIA ====================
   Widget _buildGenealogiaTab() {
+    final s = _s;
+
     if (_isLoadingGenealogia) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -285,13 +295,13 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             Icon(Icons.account_tree_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              _genealogiaError!,
+              s.reginaDetailGenealogiaNonDisp,
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             TextButton.icon(
-              icon: Icon(Icons.refresh),
-              label: Text('Riprova'),
+              icon: const Icon(Icons.refresh),
+              label: Text(s.reginaDetailBtnRetry),
               onPressed: _loadGenealogia,
             ),
           ],
@@ -307,7 +317,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             Icon(Icons.account_tree_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Nessun dato genealogico disponibile',
+              s.reginaDetailNoGenealogia,
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ],
@@ -318,8 +328,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     return RefreshIndicator(
       onRefresh: _loadGenealogia,
       child: SingleChildScrollView(
-        physics: AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -330,15 +340,15 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Icon(Icons.account_tree, color: Colors.deepPurple, size: 32),
-                    SizedBox(width: 12),
+                    const Icon(Icons.account_tree, color: Colors.deepPurple, size: 32),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Albero Genealogico',
-                            style: TextStyle(
+                            s.reginaDetailAlberoGenealogia,
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.deepPurple,
@@ -346,7 +356,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Lignaggio della regina dell\'arnia ${_regina!.arniaNumero ?? _regina!.arniaId}',
+                            s.reginaDetailAlberoSubtitle((_regina!.arniaNumero ?? _regina!.arniaId).toString()),
                             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                           ),
                         ],
@@ -360,7 +370,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
             // Regina attuale
             _buildGenealogiaReginaCard(
-              'Regina Attuale',
+              s.reginaDetailReginaAttuale,
               _genealogia!,
               Colors.amber,
               Icons.star,
@@ -371,7 +381,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             if (_genealogia!['madre'] != null) ...[
               _buildGenealogiaConnector(),
               _buildGenealogiaReginaCard(
-                'Madre',
+                s.arniaDetailLblMadre,
                 _genealogia!['madre'],
                 Colors.pink,
                 Icons.favorite,
@@ -382,13 +392,13 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             if (_genealogia!['figlie'] != null &&
                 (_genealogia!['figlie'] as List).isNotEmpty) ...[
               const SizedBox(height: 24),
-              Divider(),
+              const Divider(),
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: Text(
-                  'Figlie (${(_genealogia!['figlie'] as List).length})',
-                  style: TextStyle(
+                  s.reginaDetailFiglie((_genealogia!['figlie'] as List).length),
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.teal,
@@ -400,7 +410,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _buildGenealogiaReginaCard(
-                    'Figlia',
+                    s.arniaDetailLblFiglie,
                     figlia,
                     Colors.teal,
                     Icons.child_care,
@@ -413,13 +423,13 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             if (_genealogia!['storia_arnia'] != null &&
                 (_genealogia!['storia_arnia'] as List).isNotEmpty) ...[
               const SizedBox(height: 24),
-              Divider(),
+              const Divider(),
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: Text(
-                  'Storia nelle arnie',
-                  style: TextStyle(
+                  s.reginaDetailStoriaArnie,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.blueGrey,
@@ -446,7 +456,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                             Icon(Icons.home, size: 18, color: Colors.blueGrey),
                             const SizedBox(width: 8),
                             Text(
-                              'Arnia $arniaNum',
+                              '${s.labelArnia} $arniaNum',
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             const Spacer(),
@@ -457,16 +467,16 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                                   color: Colors.green.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text('Attuale', style: TextStyle(fontSize: 11, color: Colors.green[700])),
+                                child: Text(s.reginaDetailStatusAttuale, style: TextStyle(fontSize: 11, color: Colors.green[700])),
                               ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text('Dal: $inizio', style: const TextStyle(fontSize: 13)),
+                        Text('${s.reginaDetailLblDal}: $inizio', style: const TextStyle(fontSize: 13)),
                         if (fine != null)
-                          Text('Al: $fine', style: const TextStyle(fontSize: 13)),
+                          Text('${s.reginaDetailLblAl}: $fine', style: const TextStyle(fontSize: 13)),
                         if (motivo != null && motivo.toString().isNotEmpty)
-                          Text('Motivo: $motivo', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                          Text('${s.reginaDetailLblMotivoCambio}: $motivo', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                         if (nota != null && nota.toString().isNotEmpty)
                           Text(nota.toString(), style: TextStyle(fontSize: 13, color: Colors.grey[700], fontStyle: FontStyle.italic)),
                       ],
@@ -564,21 +574,21 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                     ),
                     if (attiva == true)
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.green.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('Attiva', style: TextStyle(fontSize: 11, color: Colors.green[700])),
+                        child: Text(_s.reginaDetailStatusAttiva, style: TextStyle(fontSize: 11, color: Colors.green[700])),
                       ),
                     if (attiva == false)
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.grey.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('Non attiva', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                        child: Text(_s.reginaDetailStatusNonAttiva, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                       ),
                     if (id != null && !isCurrentQueen)
                       Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
@@ -592,23 +602,23 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                   runSpacing: 6,
                   children: [
                     if (razza.isNotEmpty)
-                      _buildChip(_getRazzaDisplay(razza), Icons.bug_report, Colors.brown),
+                      _buildChip(_getRazzaDisplay(_s, razza), Icons.bug_report, Colors.brown),
                     if (origine.isNotEmpty)
-                      _buildChip(_getOrigineDisplay(origine), Icons.source, Colors.blue),
+                      _buildChip(_getOrigineDisplay(_s, origine), Icons.source, Colors.blue),
                     if (dataIntro != null)
-                      _buildChip('Introdotta: $dataIntro', Icons.calendar_today, Colors.teal),
+                      _buildChip(_s.reginaDetailChipIntrodotta(dataIntro), Icons.calendar_today, Colors.teal),
                     if (dataNascita != null)
-                      _buildChip('Nata: $dataNascita', Icons.cake, Colors.pink),
+                      _buildChip(_s.reginaDetailChipNata(dataNascita), Icons.cake, Colors.pink),
                     if (marcata == true)
                       _buildChip(
-                        'Marcata${coloreMarcatura != null && coloreMarcatura != "non_marcata" ? " ($coloreMarcatura)" : ""}',
+                        '${_s.reginaFormMarcataTitle}${coloreMarcatura != null && coloreMarcatura != "non_marcata" ? " ($coloreMarcatura)" : ""}',
                         Icons.colorize,
                         _getMarkerColor(coloreMarcatura),
                       ),
                     if (fecondata == true)
-                      _buildChip('Fecondata', Icons.favorite, Colors.red),
+                      _buildChip(_s.reginaFormFecondataTitle, Icons.favorite, Colors.red),
                     if (selezionata == true)
-                      _buildChip('Selezionata', Icons.verified, Colors.green),
+                      _buildChip(_s.reginaDetailLblSelezionata, Icons.verified, Colors.green),
                   ],
                 ),
 
@@ -699,15 +709,16 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
     if (extraKeys.isEmpty) return [];
 
+    final s = _s;
     List<Widget> widgets = [
       const SizedBox(height: 24),
-      Divider(),
+      const Divider(),
       const SizedBox(height: 8),
       Padding(
         padding: const EdgeInsets.only(left: 8),
         child: Text(
-          'Informazioni Aggiuntive',
-          style: TextStyle(
+          s.reginaDetailInfoAggiuntive,
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.blueGrey,
@@ -800,7 +811,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   }
 
   // ==================== WIDGETS COMUNI ====================
-  Widget _buildReginaHeader(Regina regina) {
+  Widget _buildReginaHeader(AppStrings s, Regina regina) {
     Color reginaColor;
 
     switch (regina.colore) {
@@ -844,18 +855,18 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Regina dell\'arnia ${regina.arniaNumero ?? regina.arniaId}',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    s.reginaListItemTitle((regina.arniaNumero ?? regina.arniaId).toString()),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _getRazzaDisplay(regina.razza),
-                    style: TextStyle(fontSize: 16),
+                    _getRazzaDisplay(s, regina.razza),
+                    style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 4),
                   if (regina.dataNascita != null)
                     Text(
-                      'Eta: ${_calculateAge(regina.dataNascita!)}',
+                      s.reginaDetailLblEta(_calculateAge(s, regina.dataNascita!)),
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                 ],
@@ -961,81 +972,53 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     );
   }
 
-  String _getRazzaDisplay(String razza) {
+  String _getRazzaDisplay(AppStrings s, String razza) {
     switch (razza) {
-      case 'ligustica':
-        return 'Italiana (Ligustica)';
-      case 'carnica':
-        return 'Carnica';
-      case 'buckfast':
-        return 'Buckfast';
-      case 'caucasica':
-        return 'Caucasica';
-      case 'sicula':
-        return 'Siciliana';
-      case 'ibrida':
-        return 'Ibrida';
-      case 'altro':
-        return 'Altro';
-      default:
-        return razza.isNotEmpty ? razza : 'N/D';
+      case 'ligustica':  return 'Apis mellifera ligustica';
+      case 'carnica':    return 'Apis mellifera carnica';
+      case 'buckfast':   return 'Buckfast';
+      case 'caucasica':  return 'Apis mellifera caucasica';
+      case 'sicula':     return 'Apis mellifera sicula';
+      default:           return razza.isNotEmpty ? razza : s.labelNa;
     }
   }
 
-  String _getOrigineDisplay(String origine) {
+  String _getOrigineDisplay(AppStrings s, String origine) {
     switch (origine) {
-      case 'acquistata':
-        return 'Acquistata';
-      case 'allevata':
-        return 'Allevata';
-      case 'sciamatura':
-        return 'Sciamatura Naturale';
-      case 'emergenza':
-        return 'Celle di Emergenza';
-      case 'sconosciuta':
-        return 'Sconosciuta';
-      default:
-        return origine.isNotEmpty ? origine : 'N/D';
+      case 'acquistata':  return s.arniaDetailOrigineAcquistata;
+      case 'allevata':    return s.arniaDetailOrigineAllevata;
+      case 'sciamatura':  return s.arniaDetailOrigineSciamatura;
+      case 'emergenza':   return s.arniaDetailOrigineEmergenza;
+      case 'sconosciuta': return s.arniaDetailOrigineSconosciuta;
+      default:            return origine.isNotEmpty ? origine : s.labelNa;
     }
   }
 
-  String _getColoreMarcaturaDisplay(String colore) {
+  String _getColoreMarcaturaDisplay(AppStrings s, String colore) {
     switch (colore) {
-      case 'bianco':
-        return 'Bianco (anni terminanti in 1,6)';
-      case 'giallo':
-        return 'Giallo (anni terminanti in 2,7)';
-      case 'rosso':
-        return 'Rosso (anni terminanti in 3,8)';
-      case 'verde':
-        return 'Verde (anni terminanti in 4,9)';
-      case 'blu':
-        return 'Blu (anni terminanti in 5,0)';
-      case 'non_marcata':
-        return 'Non Marcata';
-      default:
-        return colore;
+      case 'bianco':      return s.reginaDetailColoreBianco;
+      case 'giallo':      return s.reginaDetailColoreGiallo;
+      case 'rosso':       return s.reginaDetailColoreRosso;
+      case 'verde':       return s.reginaDetailColoreVerde;
+      case 'blu':         return s.reginaDetailColoreBlu;
+      case 'non_marcata': return s.reginaDetailColoreNonMarcata;
+      default:            return colore;
     }
   }
 
-  String _calculateAge(String birthDateString) {
+  String _calculateAge(AppStrings s, String birthDateString) {
     try {
       final birthDate = DateTime.parse(birthDateString);
       final now = DateTime.now();
-
       final difference = now.difference(birthDate);
       final years = (difference.inDays / 365).floor();
       final months = ((difference.inDays % 365) / 30).floor();
 
-      if (years > 0) {
-        return '$years ${years == 1 ? 'anno' : 'anni'}';
-      } else if (months > 0) {
-        return '$months ${months == 1 ? 'mese' : 'mesi'}';
-      } else {
-        return '${difference.inDays} ${difference.inDays == 1 ? 'giorno' : 'giorni'}';
-      }
-    } catch (e) {
-      return 'N/D';
+      if (years > 0) return s.reginaDetailAgeAnni(years);
+      if (months > 0) return s.reginaDetailAgeMesi(months);
+      return s.reginaDetailAgeGiorni(difference.inDays);
+    } catch (_) {
+      return s.labelNa;
     }
   }
 
@@ -1060,17 +1043,18 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Future<void> _showSostituisciDialog() async {
     if (_regina == null) return;
+    final s = _s;
     final fmt = DateFormat('yyyy-MM-dd');
     String motivoFine = 'sostituzione';
     DateTime dataFine = DateTime.now();
     bool isLoading = false;
 
-    const motiviOptions = [
-      {'id': 'sostituzione', 'label': 'Sostituzione programmata'},
-      {'id': 'morte', 'label': 'Morte naturale'},
-      {'id': 'sciamatura', 'label': 'Sciamatura'},
-      {'id': 'problema_sanitario', 'label': 'Problema sanitario'},
-      {'id': 'altro', 'label': 'Altro'},
+    final motiviOptions = [
+      {'id': 'sostituzione',      'label': s.arniaDetailChangeMotivoSostituzione},
+      {'id': 'morte',             'label': s.arniaDetailChangeMotivoMorte},
+      {'id': 'sciamatura',        'label': s.arniaDetailChangeMotivoSciamatura},
+      {'id': 'problema_sanitario','label': s.arniaDetailChangeMotivoProblemaSanitario},
+      {'id': 'altro',             'label': s.arniaDetailChangeMotivoAltro},
     ];
 
     await showModalBottomSheet(
@@ -1090,17 +1074,17 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Sostituisci Regina',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(s.reginaDetailReplaceTitle,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
-                'La regina attuale verrà rimossa. Potrai subito aggiungerne una nuova.',
+                s.arniaDetailReplaceReginaMsg,
                 style: TextStyle(color: Colors.grey[600], fontSize: 13),
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                    labelText: 'Motivo', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                    labelText: s.reginaDetailLblMotivo, border: const OutlineInputBorder()),
                 value: motivoFine,
                 items: motiviOptions
                     .map((m) => DropdownMenuItem(
@@ -1120,8 +1104,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                   if (picked != null) setSheetState(() => dataFine = picked);
                 },
                 child: InputDecorator(
-                  decoration: const InputDecoration(
-                      labelText: 'Data rimozione', border: OutlineInputBorder()),
+                  decoration: InputDecoration(
+                      labelText: s.reginaDetailLblDataRimozione, border: const OutlineInputBorder()),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1147,7 +1131,6 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                           );
                           if (!mounted) return;
                           Navigator.of(ctx).pop();
-                          // Navigate to add new queen, then pop this screen
                           await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) =>
@@ -1159,7 +1142,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                         } catch (e) {
                           setSheetState(() => isLoading = false);
                           ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Errore: $e')));
+                              SnackBar(content: Text(s.reginaDetailError(e.toString()))));
                         }
                       },
                 child: Padding(
@@ -1170,14 +1153,14 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                           width: 20,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2))
-                      : const Text('CONFERMA SOSTITUZIONE',
-                          style: TextStyle(fontSize: 16)),
+                      : Text(s.reginaDetailReplaceBtn,
+                          style: const TextStyle(fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Annulla'),
+                child: Text(s.dialogCancelBtn),
               ),
             ],
           ),
@@ -1187,18 +1170,16 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   }
 
   void _confirmDeleteRegina() {
+    final s = _s;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Elimina Regina'),
-        content: Text(
-          'Sei sicuro di voler eliminare la regina dell\'arnia ${_regina!.arniaNumero ?? _regina!.arniaId}?\n\n'
-          'Questa azione non può essere annullata.',
-        ),
+        title: Text(s.reginaDetailDeleteTitle),
+        content: Text(s.reginaDetailDeleteMsg((_regina!.arniaNumero ?? _regina!.arniaId).toString())),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annulla'),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1206,7 +1187,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               await _deleteRegina();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: Text('Elimina'),
+            child: Text(s.btnDelete),
           ),
         ],
       ),
@@ -1214,17 +1195,16 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   }
 
   Future<void> _deleteRegina() async {
+    final s = _s;
     try {
       await _apiService.delete('${ApiConstants.regineUrl}${widget.reginaId}/');
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Regina eliminata con successo')),
+        SnackBar(content: Text(s.reginaDetailDeletedOk)),
       );
-
       Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+        SnackBar(content: Text(s.reginaDetailDeleteError(e.toString()))),
       );
     }
   }

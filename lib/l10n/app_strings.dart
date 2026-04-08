@@ -648,6 +648,40 @@ abstract class AppStrings {
   String reginaDetailParentela(String parentela, String data);
   String reginaDetailError(String e);
 
+  // List extra
+  String get reginaListOfflineTooltip;
+  String get reginaListEmptyTitle;
+  String get reginaListEmptySubtitle;
+
+  // Detail extra
+  String get reginaDetailTabDettagli;
+  String get reginaDetailTabGenealogia;
+  String get reginaDetailSectionGeneral;
+  String get reginaDetailSectionMarcatura;
+  String get reginaDetailLblDataNascita;
+  String get reginaDetailLblSelezionata;
+  String reginaDetailLblEta(String age);
+  String get reginaDetailAlberoGenealogia;
+  String reginaDetailAlberoSubtitle(String arniaId);
+  String get reginaDetailNoGenealogia;
+  String get reginaDetailGenealogiaNonDisp;
+  String get reginaDetailReginaAttuale;
+  String reginaDetailFiglie(int n);
+  String get reginaDetailStoriaArnie;
+  String get reginaDetailInfoAggiuntive;
+  String reginaDetailChipIntrodotta(String date);
+  String reginaDetailChipNata(String date);
+  String reginaDetailDeleteMsg(String arniaId);
+  String reginaDetailAgeAnni(int n);
+  String reginaDetailAgeMesi(int n);
+  String reginaDetailAgeGiorni(int n);
+  String get reginaDetailColoreBianco;
+  String get reginaDetailColoreGiallo;
+  String get reginaDetailColoreRosso;
+  String get reginaDetailColoreVerde;
+  String get reginaDetailColoreBlu;
+  String get reginaDetailColoreNonMarcata;
+
   // Form
   String get reginaFormTitleNew;
   String get reginaFormTitleEdit;
@@ -662,6 +696,13 @@ abstract class AppStrings {
   String get reginaFormHintNessunaRegina;
   String get reginaFormBtnSave;
   String reginaFormError(String e);
+  String get reginaFormHintDataNascitaVuota;
+  String get reginaFormValutazioniTitle;
+  String get reginaFormValutazioniHint;
+  String get reginaFormLblReginaMadre;
+  String get reginaFormLblNote;
+  String get reginaFormCreatedOk;
+  String get reginaFormUpdatedOk;
 
   // ── Melario / Smielatura screens ──────────────────────────────────────────
   String get melariTitle;
@@ -702,6 +743,52 @@ abstract class AppStrings {
   String get melariSmielBtn;
   String get melariQeLabel;
 
+  // Melari screen extra
+  String get melariTabAlveari;
+  String get melariTabSmielature;
+  String get melariSummaryTotale;
+  String get melariSummarySmielature;
+  String get melariSummaryTipi;
+  String get melariSummaryInvasettato;
+  String get melariSummaryRaccolto;
+  String get melariHiveLegendNido;
+  String get melariHiveLegendPosizionato;
+  String get melariHiveLegendInSmielatura;
+  String get melariHiveLblNido;
+  String get melariNoMelari;
+  String melariCountMelari(int n);
+  String melariArniaNumLabel(int n);
+  String melariFaviLabel(int n);
+  String melariPosTipoLabel(int pos, String tipo);
+  String melariTelainiLabel(int n);
+  String melariPesoStimatoLabel(String peso);
+  String get melariRemoveMelarioMsg;
+  String melariDeleteMelarioMsg(int id);
+  String get melariDeleteMelarioOk;
+  String get melariConfirmBtn;
+  // Melario form
+  String get melarioFormTitle;
+  String get melarioFormSectionId;
+  String get melarioFormSectionProd;
+  String get melarioFormLblTipo;
+  String get melarioFormLblStatoFavi;
+  String get melarioFormLblNumTelaini;
+  String get melarioFormLblPosizione;
+  String get melarioFormLblEscludiRegina;
+  String get melarioFormSubEscludiRegina;
+  String get melarioFormLblNote;
+  String get melarioFormHintNote;
+  String get melarioFormBtnAdd;
+  String get melarioFormFaviCostruiti;
+  String get melarioFormFaviCerei;
+  String get melarioFormLblDataPos;
+  String get melarioFormHintSelectApiario;
+  String get melarioFormNoArnie;
+  String get melarioFormValidateArnia;
+  String melarioFormLoadError(String e);
+  String melarioFormArnieLoadError(String e);
+  String get melarioFormCreatedOk;
+
   // Smielatura form
   String get smielaturaFormTitleNew;
   String get smielaturaFormTitleEdit;
@@ -715,6 +802,33 @@ abstract class AppStrings {
   String get smielaturaFormSelectApiarioMsg;
   String smielaturaFormError(String e);
   String get smielaturaFormOfflineMsg;
+  String get smielaturaFormLblMelariDisp;
+  String get smielaturaFormValidateNumero;
+  String get smielaturaFormBtnCreate;
+  String get smielaturaFormBtnUpdate;
+  String get smielaturaFormCreatedOk;
+  String get smielaturaFormUpdatedOk;
+  // Smielatura detail
+  String get smielaturaDetailTitle;
+  String get smielaturaDetailDeleteMsg;
+  String get smielaturaDetailDeletedOk;
+  String get smielaturaDetailNotFound;
+  String smielaturaDetailMelariCount(int n);
+  String get smielaturaDetailMelariAssociati;
+  String get smielaturaDetailLblMelari;
+
+  // ── Invasettamento form ───────────────────────────────────────────────────
+  String get invasettamentoFormTitleNew;
+  String get invasettamentoFormTitleEdit;
+  String get invasettamentoFormLblSmielatura;
+  String get invasettamentoFormValidateSmielatura;
+  String get invasettamentoFormCreatedOk;
+  String get invasettamentoFormUpdatedOk;
+  String get invasettamentoFormLblFormato;
+  String get invasettamentoFormLblNumVasetti;
+  String get invasettamentoFormValidateNumVasetti;
+  String invasettamentoFormLblTotale(String kg);
+  String get invasettamentoFormLblLotto;
 
   // ── Controllo form ────────────────────────────────────────────────────────
   String get controlloFormDialogTitle;

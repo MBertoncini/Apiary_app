@@ -592,6 +592,10 @@ class StringsIt extends AppStrings {
   @override String get reginaListIntrodotta => 'Introdotta';
   @override String get reginaListMarcata => 'Marcata';
   @override String get reginaListDetailError => 'Dettaglio regina non disponibile';
+  @override String get reginaListOfflineTooltip => 'Modalità offline - Dati caricati dalla cache';
+  @override String get reginaListEmptyTitle => 'Nessuna regina trovata';
+  @override String get reginaListEmptySubtitle => 'Aggiungi regine dalle schede delle singole arnie.';
+  // Detail
   @override String get reginaDetailTitle => 'Dettaglio Regina';
   @override String get reginaDetailNotFound => 'Nessun dato trovato per questa regina';
   @override String reginaDetailTitleArnia(String arniaId) => 'Regina - Arnia $arniaId';
@@ -614,6 +618,37 @@ class StringsIt extends AppStrings {
   @override String get reginaDetailStatusNonAttiva => 'Non attiva';
   @override String reginaDetailParentela(String parentela, String data) => '$parentela: $data';
   @override String reginaDetailError(String e) => 'Errore: $e';
+  @override String get reginaDetailTabDettagli => 'Dettagli';
+  @override String get reginaDetailTabGenealogia => 'Genealogia';
+  @override String get reginaDetailSectionGeneral => 'Informazioni Generali';
+  @override String get reginaDetailSectionMarcatura => 'Marcatura';
+  @override String get reginaDetailLblDataNascita => 'Data nascita';
+  @override String get reginaDetailLblSelezionata => 'Selezionata';
+  @override String reginaDetailLblEta(String age) => 'Età: $age';
+  @override String get reginaDetailAlberoGenealogia => 'Albero Genealogico';
+  @override String reginaDetailAlberoSubtitle(String arniaId) =>
+      'Lignaggio della regina dell\'arnia $arniaId';
+  @override String get reginaDetailNoGenealogia => 'Nessun dato genealogico disponibile';
+  @override String get reginaDetailGenealogiaNonDisp => 'Dati genealogia non disponibili';
+  @override String get reginaDetailReginaAttuale => 'Regina Attuale';
+  @override String reginaDetailFiglie(int n) => 'Figlie ($n)';
+  @override String get reginaDetailStoriaArnie => 'Storia nelle arnie';
+  @override String get reginaDetailInfoAggiuntive => 'Informazioni Aggiuntive';
+  @override String reginaDetailChipIntrodotta(String date) => 'Introdotta: $date';
+  @override String reginaDetailChipNata(String date) => 'Nata: $date';
+  @override String reginaDetailDeleteMsg(String arniaId) =>
+      'Sei sicuro di voler eliminare la regina dell\'arnia $arniaId?\n\n'
+      'Questa azione non può essere annullata.';
+  @override String reginaDetailAgeAnni(int n) => '$n ${n == 1 ? 'anno' : 'anni'}';
+  @override String reginaDetailAgeMesi(int n) => '$n ${n == 1 ? 'mese' : 'mesi'}';
+  @override String reginaDetailAgeGiorni(int n) => '$n ${n == 1 ? 'giorno' : 'giorni'}';
+  @override String get reginaDetailColoreBianco => 'Bianco (anni terminanti in 1,6)';
+  @override String get reginaDetailColoreGiallo => 'Giallo (anni terminanti in 2,7)';
+  @override String get reginaDetailColoreRosso => 'Rosso (anni terminanti in 3,8)';
+  @override String get reginaDetailColoreVerde => 'Verde (anni terminanti in 4,9)';
+  @override String get reginaDetailColoreBlu => 'Blu (anni terminanti in 5,0)';
+  @override String get reginaDetailColoreNonMarcata => 'Non Marcata';
+  // Form
   @override String get reginaFormTitleNew => 'Aggiungi Regina';
   @override String get reginaFormTitleEdit => 'Modifica Regina';
   @override String get reginaFormLblRazza => 'Razza';
@@ -627,6 +662,13 @@ class StringsIt extends AppStrings {
   @override String get reginaFormHintNessunaRegina => 'Nessuna (regina fondatrice)';
   @override String get reginaFormBtnSave => 'SALVA REGINA';
   @override String reginaFormError(String e) => 'Errore: $e';
+  @override String get reginaFormHintDataNascitaVuota => 'Non specificata';
+  @override String get reginaFormValutazioniTitle => 'Valutazioni (opzionale)';
+  @override String get reginaFormValutazioniHint => 'Tocca le stelle per assegnare un punteggio da 1 a 5.';
+  @override String get reginaFormLblReginaMadre => 'Regina madre (opzionale)';
+  @override String get reginaFormLblNote => 'Note (opzionale)';
+  @override String get reginaFormCreatedOk => 'Regina aggiunta con successo';
+  @override String get reginaFormUpdatedOk => 'Regina modificata con successo';
 
   // ── Melario / Smielatura screens ──────────────────────────────────────────
   @override String get melariTitle => 'Melari e Produzioni';
@@ -668,6 +710,67 @@ class StringsIt extends AppStrings {
       '$telaini telaini · Posizione $posizione · $tipo';
   @override String get melariSmielBtn => 'Smiel.';
   @override String get melariQeLabel => 'QE';
+  // Melari screen extra
+  @override String get melariTabAlveari => 'Alveari';
+  @override String get melariTabSmielature => 'Smielature';
+  @override String get melariSummaryTotale => 'Totale';
+  @override String get melariSummarySmielature => 'Smielature';
+  @override String get melariSummaryTipi => 'Tipi';
+  @override String get melariSummaryInvasettato => 'Invasettato';
+  @override String get melariSummaryRaccolto => 'Raccolto';
+  @override String get melariHiveLegendNido => 'Nido';
+  @override String get melariHiveLegendPosizionato => 'Posizionato';
+  @override String get melariHiveLegendInSmielatura => 'In smielatura';
+  @override String get melariHiveLblNido => '🐝 NIDO';
+  @override String get melariNoMelari => 'nessun melario';
+  @override String melariCountMelari(int n) => '$n melar${n == 1 ? 'io' : 'i'}';
+  @override String melariArniaNumLabel(int n) => 'Arnia #$n';
+  @override String melariFaviLabel(int n) => '🍯 $n favi';
+  @override String melariPosTipoLabel(int pos, String tipo) => 'Pos. $pos · $tipo';
+  @override String melariTelainiLabel(int n) => '$n telaini';
+  @override String melariPesoStimatoLabel(String peso) => 'Peso stimato: $peso kg';
+  @override String get melariRemoveMelarioMsg => 'Confermi di voler rimuovere questo melario?';
+  @override String melariDeleteMelarioMsg(int id) => 'Eliminare il melario #$id?';
+  @override String get melariDeleteMelarioOk => 'Melario eliminato';
+  @override String get melariConfirmBtn => 'Conferma';
+  // Melario form
+  @override String get melarioFormTitle => 'Nuovo Melario';
+  @override String get melarioFormSectionId => 'Identificazione e Tracciabilità';
+  @override String get melarioFormSectionProd => 'Dati di Produzione';
+  @override String get melarioFormLblTipo => 'Tipo Melario';
+  @override String get melarioFormLblStatoFavi => 'Stato dei Favi';
+  @override String get melarioFormLblNumTelaini => 'Numero Telaini';
+  @override String get melarioFormLblPosizione => 'Posizione (dal nido)';
+  @override String get melarioFormLblEscludiRegina => 'Escludi Regina';
+  @override String get melarioFormSubEscludiRegina => 'Posiziona un escludiregina per evitare covata';
+  @override String get melarioFormLblNote => 'Note aggiuntive';
+  @override String get melarioFormHintNote => 'Osservazioni, fioritura in corso...';
+  @override String get melarioFormBtnAdd => 'Aggiungi Melario';
+  @override String get melarioFormFaviCostruiti => 'Già costruiti';
+  @override String get melarioFormFaviCerei => 'Fogli cerei';
+  @override String get melarioFormLblDataPos => 'Data posizionamento';
+  @override String get melarioFormHintSelectApiario => 'Seleziona prima un apiario';
+  @override String get melarioFormNoArnie => 'Nessuna arnia disponibile';
+  @override String get melarioFormValidateArnia => 'Seleziona un\'arnia';
+  @override String melarioFormLoadError(String e) => 'Errore nel caricamento: $e';
+  @override String melarioFormArnieLoadError(String e) => 'Errore caricamento arnie: $e';
+  @override String get melarioFormCreatedOk => 'Melario aggiunto con successo';
+  // Smielatura form extra
+  @override String get smielaturaFormLblMelariDisp => 'Melari disponibili';
+  @override String get smielaturaFormValidateNumero => 'Inserisci un numero valido';
+  @override String get smielaturaFormBtnCreate => 'REGISTRA';
+  @override String get smielaturaFormBtnUpdate => 'AGGIORNA';
+  @override String get smielaturaFormCreatedOk => 'Smielatura registrata';
+  @override String get smielaturaFormUpdatedOk => 'Smielatura aggiornata';
+  // Smielatura detail
+  @override String get smielaturaDetailTitle => 'Dettaglio Smielatura';
+  @override String get smielaturaDetailDeleteMsg => 'Sei sicuro di voler eliminare questa smielatura?';
+  @override String get smielaturaDetailDeletedOk => 'Smielatura eliminata';
+  @override String get smielaturaDetailNotFound => 'Smielatura non trovata';
+  @override String smielaturaDetailMelariCount(int n) => '$n melar${n == 1 ? 'io' : 'i'}';
+  @override String get smielaturaDetailMelariAssociati => 'Melari associati';
+  @override String get smielaturaDetailLblMelari => 'Melari';
+
   @override String get smielaturaFormTitleNew => 'Nuova Smielatura';
   @override String get smielaturaFormTitleEdit => 'Modifica Smielatura';
   @override String get smielaturaFormLblApiario => 'Apiario *';
@@ -680,6 +783,18 @@ class StringsIt extends AppStrings {
   @override String get smielaturaFormSelectApiarioMsg => 'Seleziona un apiario';
   @override String smielaturaFormError(String e) => 'Errore caricamento dati: $e';
   @override String get smielaturaFormOfflineMsg => 'Modalità offline — dati aggiornati all\'ultimo accesso';
+  // Invasettamento form
+  @override String get invasettamentoFormTitleNew => 'Nuovo Invasettamento';
+  @override String get invasettamentoFormTitleEdit => 'Modifica Invasettamento';
+  @override String get invasettamentoFormLblSmielatura => 'Smielatura *';
+  @override String get invasettamentoFormValidateSmielatura => 'Seleziona una smielatura';
+  @override String get invasettamentoFormCreatedOk => 'Invasettamento registrato';
+  @override String get invasettamentoFormUpdatedOk => 'Invasettamento aggiornato';
+  @override String get invasettamentoFormLblFormato => 'Formato vasetto *';
+  @override String get invasettamentoFormLblNumVasetti => 'Numero vasetti *';
+  @override String get invasettamentoFormValidateNumVasetti => 'Inserisci un numero intero';
+  @override String invasettamentoFormLblTotale(String kg) => 'Totale: $kg kg';
+  @override String get invasettamentoFormLblLotto => 'Lotto';
 
   // ── Controllo form ────────────────────────────────────────────────────────
   @override String get controlloFormDialogTitle => 'Controllo Arnia';

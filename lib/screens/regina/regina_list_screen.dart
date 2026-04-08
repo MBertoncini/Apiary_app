@@ -3,9 +3,11 @@ import '../../widgets/drawer_widget.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/regina.dart';
 import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/skeleton_widgets.dart';
 import '../../widgets/offline_banner.dart';
@@ -66,20 +68,23 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
     if (mounted) setState(() { _isRefreshing = false; });
   }
 
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            Text('Le mie Regine'),
+            Text(s.reginaListTitle),
             if (_isOffline)
               Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: Tooltip(
-                  message: 'Modalità offline - Dati caricati dalla cache',
-                  child:
-                      Icon(Icons.offline_bolt, size: 18, color: Colors.amber),
+                  message: s.reginaListOfflineTooltip,
+                  child: Icon(Icons.offline_bolt, size: 18, color: Colors.amber),
                 ),
               ),
           ],
@@ -87,7 +92,7 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.sync),
-            tooltip: 'Sincronizza dati',
+            tooltip: s.reginaListSyncTooltip,
             onPressed: _loadData,
           ),
         ],
@@ -117,7 +122,7 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Nessuna regina trovata',
+                            s.reginaListEmptyTitle,
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey[600],
@@ -125,15 +130,14 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Aggiungi regine dalle schede delle singole arnie.',
+                            s.reginaListEmptySubtitle,
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey[600]),
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                           ),
                           const SizedBox(height: 24),
                           TextButton.icon(
                             icon: Icon(Icons.refresh),
-                            label: Text('Riprova a caricare'),
+                            label: Text(s.reginaListBtnRetry),
                             onPressed: _loadData,
                           ),
                         ],
@@ -163,19 +167,20 @@ class ReginaListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         leading: _buildLeadingIcon(),
-        title: Text('Regina dell\'arnia ${regina.arniaNumero ?? regina.arniaId}'),
+        title: Text(s.reginaListItemTitle((regina.arniaNumero ?? regina.arniaId).toString())),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Razza: ${_getRazzaDisplay(regina.razza)}'),
-            Text('Origine: ${_getOrigineDisplay(regina.origine)}'),
-            Text('Introdotta: ${regina.dataInserimento}'),
+            Text('${s.reginaListRazza}: ${_getRazzaDisplay(s, regina.razza)}'),
+            Text('${s.reginaListOrigine}: ${_getOrigineDisplay(s, regina.origine)}'),
+            Text('${s.reginaListIntrodotta}: ${regina.dataInserimento}'),
             if (regina.marcata)
-              Text('Marcata: ${regina.colore ?? "Si"}'),
+              Text('${s.reginaListMarcata}: ${regina.colore ?? s.labelYes}'),
           ],
         ),
         isThreeLine: true,
@@ -188,7 +193,7 @@ class ReginaListItem extends StatelessWidget {
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Dettaglio regina non disponibile')),
+              SnackBar(content: Text(s.reginaListDetailError)),
             );
           }
         },
@@ -231,41 +236,25 @@ class ReginaListItem extends StatelessWidget {
     );
   }
 
-  String _getRazzaDisplay(String razza) {
+  String _getRazzaDisplay(AppStrings s, String razza) {
     switch (razza) {
-      case 'ligustica':
-        return 'Apis mellifera ligustica (Italiana)';
-      case 'carnica':
-        return 'Apis mellifera carnica (Carnica)';
-      case 'buckfast':
-        return 'Buckfast';
-      case 'caucasica':
-        return 'Apis mellifera caucasica';
-      case 'sicula':
-        return 'Apis mellifera sicula (Siciliana)';
-      case 'ibrida':
-        return 'Ibrida';
-      case 'altro':
-        return 'Altro';
-      default:
-        return razza;
+      case 'ligustica':  return 'Apis mellifera ligustica';
+      case 'carnica':    return 'Apis mellifera carnica';
+      case 'buckfast':   return 'Buckfast';
+      case 'caucasica':  return 'Apis mellifera caucasica';
+      case 'sicula':     return 'Apis mellifera sicula';
+      default:           return razza.isNotEmpty ? razza : s.labelNa;
     }
   }
 
-  String _getOrigineDisplay(String origine) {
+  String _getOrigineDisplay(AppStrings s, String origine) {
     switch (origine) {
-      case 'acquistata':
-        return 'Acquistata';
-      case 'allevata':
-        return 'Allevata';
-      case 'sciamatura':
-        return 'Sciamatura Naturale';
-      case 'emergenza':
-        return 'Celle di Emergenza';
-      case 'sconosciuta':
-        return 'Sconosciuta';
-      default:
-        return origine;
+      case 'acquistata':  return s.arniaDetailOrigineAcquistata;
+      case 'allevata':    return s.arniaDetailOrigineAllevata;
+      case 'sciamatura':  return s.arniaDetailOrigineSciamatura;
+      case 'emergenza':   return s.arniaDetailOrigineEmergenza;
+      case 'sconosciuta': return s.arniaDetailOrigineSconosciuta;
+      default:            return origine.isNotEmpty ? origine : s.labelNa;
     }
   }
 
