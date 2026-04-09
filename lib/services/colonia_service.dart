@@ -49,8 +49,26 @@ class ColoniaService {
   }
 
   /// Restituisce la colonia attiva di un'arnia.
-  /// Tenta prima il server, poi la cache locale.
-  Future<Colonia?> getColoniaAttivaByArnia(int arniaId) async {
+  /// Cache-first con TTL di 5 minuti: interroga il server solo se la cache
+  /// è assente, scaduta o [forceRefresh] è true.
+  Future<Colonia?> getColoniaAttivaByArnia(
+    int arniaId, {
+    bool forceRefresh = false,
+  }) async {
+    const cacheTtlMs = 5 * 60 * 1000; // 5 minuti
+
+    // 1) Leggi dalla cache locale
+    final cached = await _dao.getAttivaByArnia(arniaId);
+    if (!forceRefresh && cached != null) {
+      final lastUpdated = cached['last_updated'] as int?;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (lastUpdated != null && (now - lastUpdated) < cacheTtlMs) {
+        debugPrint('[ColoniaService] cache fresca per arnia $arniaId, skip server');
+        return ColoniaDao.fromRow(cached);
+      }
+    }
+
+    // 2) Cache assente o scaduta: recupera dal server
     try {
       final url = ApiConstants.replaceParams(
         ApiConstants.arniaColoniaAttivaUrl,
@@ -72,11 +90,10 @@ class ColoniaService {
     } catch (e, st) {
       debugPrint('[ColoniaService] ERRORE fetch/parse server arnia $arniaId: $e\n$st');
     }
-    // Fallback: leggi dalla cache locale
-    debugPrint('[ColoniaService] fallback cache per arnia $arniaId');
-    final row = await _dao.getAttivaByArnia(arniaId);
-    debugPrint('[ColoniaService] cache result: $row');
-    return row != null ? ColoniaDao.fromRow(row) : null;
+
+    // Fallback: usa la cache anche se scaduta
+    debugPrint('[ColoniaService] fallback cache scaduta per arnia $arniaId');
+    return cached != null ? ColoniaDao.fromRow(cached) : null;
   }
 
   /// Restituisce la storia delle colonie di un'arnia.
