@@ -6,6 +6,8 @@ import '../../models/gruppo.dart';
 import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
 
@@ -35,6 +37,8 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
   int? _selectedPagatoDaId;
   bool _isSaldoPagamento = false;
   int? _selectedDestinatarioId;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -112,7 +116,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il caricamento del pagamento: $e';
+        _errorMessage = _s.pagamentoDetailErrLoading(e.toString());
         _isInitLoading = false;
       });
     }
@@ -213,19 +217,19 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
       if (widget.pagamentoId != null) {
         await pagamentoService.updatePagamento(widget.pagamentoId!, data);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pagamento aggiornato con successo')),
+          SnackBar(content: Text(_s.pagamentoFormUpdatedOk)),
         );
       } else {
         await pagamentoService.createPagamento(data);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pagamento creato con successo')),
+          SnackBar(content: Text(_s.pagamentoFormCreatedOk)),
         );
       }
 
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il salvataggio del pagamento: $e';
+        _errorMessage = _s.pagamentoFormErrSave(e.toString());
         _isLoading = false;
       });
     }
@@ -234,10 +238,12 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
   @override
   Widget build(BuildContext context) {
     final formatDate = DateFormat('dd/MM/yyyy');
+    Provider.of<LanguageService>(context);
+    final s = _s;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.pagamentoId != null ? 'Modifica Pagamento' : 'Nuovo Pagamento'),
+        title: Text(widget.pagamentoId != null ? s.pagamentoFormTitleEdit : s.pagamentoFormTitleNew),
       ),
       body: _isInitLoading
           ? LoadingWidget()
@@ -269,17 +275,17 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                         TextFormField(
                           controller: _importoController,
                           decoration: InputDecoration(
-                            labelText: 'Importo (\u20AC)',
+                            labelText: s.pagamentoFormLabelImporto,
                             prefixIcon: Icon(Icons.euro),
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.numberWithOptions(decimal: true),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Inserisci l\'importo';
+                              return s.pagamentoFormValidImportoRequired;
                             }
                             if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                              return 'Inserisci un importo valido';
+                              return s.pagamentoFormValidImportoInvalid;
                             }
                             return null;
                           },
@@ -291,7 +297,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                           onTap: () => _selectDate(context),
                           child: InputDecorator(
                             decoration: InputDecoration(
-                              labelText: 'Data',
+                              labelText: s.labelDate,
                               prefixIcon: Icon(Icons.calendar_today),
                               border: OutlineInputBorder(),
                             ),
@@ -304,13 +310,13 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                         TextFormField(
                           controller: _descrizioneController,
                           decoration: InputDecoration(
-                            labelText: 'Descrizione',
+                            labelText: s.pagamentoDetailLabelDescrizione,
                             prefixIcon: Icon(Icons.description),
                             border: OutlineInputBorder(),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Inserisci una descrizione';
+                              return s.pagamentoFormValidDescRequired;
                             }
                             return null;
                           },
@@ -323,7 +329,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                           DropdownButtonFormField<Gruppo>(
                             value: _selectedGruppo,
                             decoration: InputDecoration(
-                              labelText: 'Gruppo (opzionale)',
+                              labelText: s.pagamentoFormLabelGruppo,
                               prefixIcon: Icon(Icons.group),
                               border: OutlineInputBorder(),
                               contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 16),
@@ -331,7 +337,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                             items: [
                               DropdownMenuItem<Gruppo>(
                                 value: null,
-                                child: Text('Nessun gruppo'),
+                                child: Text(s.pagamentoFormNoGruppo),
                               ),
                               ..._gruppi.map((gruppo) => DropdownMenuItem<Gruppo>(
                                 value: gruppo,
@@ -356,14 +362,14 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                           DropdownButtonFormField<int?>(
                             value: _selectedPagatoDaId,
                             decoration: InputDecoration(
-                              labelText: 'Chi ha pagato?',
-                              hintText: '— io stesso —',
+                              labelText: s.pagamentoFormLabelChiPaga,
+                              hintText: s.pagamentoFormIoStesso,
                               prefixIcon: Icon(Icons.payments),
                               border: OutlineInputBorder(),
-                              helperText: 'Indica il membro che ha effettivamente sostenuto la spesa',
+                              helperText: s.pagamentoFormHelperChiPaga,
                             ),
                             items: [
-                              DropdownMenuItem<int?>(value: null, child: Text('— io stesso —')),
+                              DropdownMenuItem<int?>(value: null, child: Text(s.pagamentoFormIoStesso)),
                               ..._membriGruppo.map((m) => DropdownMenuItem<int?>(
                                 value: m['id'] as int,
                                 child: Text(m['username'] as String),
@@ -380,9 +386,9 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                               _isSaldoPagamento = val;
                               if (!val) _selectedDestinatarioId = null;
                             }),
-                            title: Text('Pagamento di saldo'),
+                            title: Text(s.pagamentoFormSaldoTitle),
                             subtitle: Text(
-                              'Denaro trasferito direttamente tra due membri per saldare il bilancio',
+                              s.pagamentoFormSaldoSubtitle,
                               style: TextStyle(fontSize: 12),
                             ),
                             secondary: Icon(Icons.swap_horiz, color: Colors.blue),
@@ -395,10 +401,10 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                             DropdownButtonFormField<int?>(
                               value: _selectedDestinatarioId,
                               decoration: InputDecoration(
-                                labelText: 'A chi? (destinatario)',
+                                labelText: s.pagamentoFormLabelDestinatario,
                                 prefixIcon: Icon(Icons.person_pin, color: Colors.blue),
                                 border: OutlineInputBorder(),
-                                helperText: 'Membro che riceve il denaro',
+                                helperText: s.pagamentoFormHelperDestinatario,
                               ),
                               items: _membriGruppo
                                   .where((m) => m['id'] != _selectedPagatoDaId)
@@ -409,7 +415,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                                   .toList(),
                               validator: (val) {
                                 if (_isSaldoPagamento && val == null) {
-                                  return 'Seleziona il destinatario';
+                                  return s.pagamentoFormValidDestinatarioRequired;
                                 }
                                 return null;
                               },
@@ -430,7 +436,7 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                             child: _isLoading
                                 ? CircularProgressIndicator(color: Colors.white)
                                 : Text(
-                                    widget.pagamentoId != null ? 'AGGIORNA' : 'SALVA',
+                                    widget.pagamentoId != null ? s.controlloFormBtnAggiorna : s.controlloFormBtnSalva,
                                     style: TextStyle(fontSize: 16),
                                   ),
                           ),

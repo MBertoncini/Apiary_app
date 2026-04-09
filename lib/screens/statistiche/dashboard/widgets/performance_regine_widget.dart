@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class PerformanceRegineWidget extends StatefulWidget {
@@ -14,6 +17,8 @@ class _PerformanceRegineWidgetState extends State<PerformanceRegineWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -35,7 +40,7 @@ class _PerformanceRegineWidgetState extends State<PerformanceRegineWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.star, color: Color(0xFFD4A017)),
-      title: 'Performance Regine',
+      title: _s.dashboardTitlePerformanceRegine,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -47,7 +52,7 @@ class _PerformanceRegineWidgetState extends State<PerformanceRegineWidget> {
   Widget _buildContent() {
     final regine = _data!['regine'] as List;
     if (regine.isEmpty) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessuna regina con valutazione')));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardPerformanceNoRegine)));
     }
 
     return Table(
@@ -61,7 +66,7 @@ class _PerformanceRegineWidgetState extends State<PerformanceRegineWidget> {
       children: [
         TableRow(
           decoration: const BoxDecoration(color: Color(0xFF1A1A2E)),
-          children: ['Regina', 'Prod.', 'Doc.', 'Resist.', 'Sc.']
+          children: [_s.dashboardPerformanceHdrRegina, _s.dashboardPerformanceHdrProd, _s.dashboardPerformanceHdrDoc, _s.dashboardPerformanceHdrResist, _s.dashboardPerformanceHdrSc]
               .map((h) => Padding(
                     padding: const EdgeInsets.all(6),
                     child: Text(h, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center),

@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import '../../../services/statistiche_service.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 
 /// Bottom sheet per esportare dati in Excel o PDF.
 /// Uso:
@@ -33,15 +36,18 @@ class _ExportBottomSheetState extends State<ExportBottomSheet> {
   bool _loadingExcel = false;
   bool _loadingPdf = false;
   String? _message;
+  bool _messageIsError = false;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   Future<void> _esportaExcel() async {
     setState(() { _loadingExcel = true; _message = null; });
     try {
       final bytes = await widget.service.exportExcel(widget.titolo, widget.colonne, widget.righe);
       if (bytes.isNotEmpty) await _salvaFile(bytes, '${widget.titolo}.xlsx');
-      setState(() { _message = 'File Excel salvato'; _loadingExcel = false; });
+      setState(() { _message = _s.exportExcelSalvato; _messageIsError = false; _loadingExcel = false; });
     } catch (e) {
-      setState(() { _message = 'Errore export Excel: $e'; _loadingExcel = false; });
+      setState(() { _message = _s.exportErrExcel(e.toString()); _messageIsError = true; _loadingExcel = false; });
     }
   }
 
@@ -50,9 +56,9 @@ class _ExportBottomSheetState extends State<ExportBottomSheet> {
     try {
       final bytes = await widget.service.exportPdf(widget.titolo, widget.colonne, widget.righe);
       if (bytes.isNotEmpty) await _salvaFile(bytes, '${widget.titolo}.pdf');
-      setState(() { _message = 'File PDF salvato'; _loadingPdf = false; });
+      setState(() { _message = _s.exportPdfSalvato; _messageIsError = false; _loadingPdf = false; });
     } catch (e) {
-      setState(() { _message = 'Errore export PDF: $e'; _loadingPdf = false; });
+      setState(() { _message = _s.exportErrPdf(e.toString()); _messageIsError = true; _loadingPdf = false; });
     }
   }
 
@@ -64,12 +70,14 @@ class _ExportBottomSheetState extends State<ExportBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Esporta dati', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(s.exportTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(widget.titolo, style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 20),
@@ -78,7 +86,7 @@ class _ExportBottomSheetState extends State<ExportBottomSheet> {
               Expanded(
                 child: OutlinedButton.icon(
                   icon: _loadingExcel ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.table_chart),
-                  label: const Text('Excel'),
+                  label: Text(s.exportExcel),
                   onPressed: _loadingExcel || _loadingPdf ? null : _esportaExcel,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -91,7 +99,7 @@ class _ExportBottomSheetState extends State<ExportBottomSheet> {
               Expanded(
                 child: OutlinedButton.icon(
                   icon: _loadingPdf ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.picture_as_pdf),
-                  label: const Text('PDF'),
+                  label: Text(s.exportPdf),
                   onPressed: _loadingExcel || _loadingPdf ? null : _esportaPdf,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -104,7 +112,7 @@ class _ExportBottomSheetState extends State<ExportBottomSheet> {
           ),
           if (_message != null) ...[
             const SizedBox(height: 12),
-            Text(_message!, style: TextStyle(color: _message!.startsWith('Errore') ? Colors.red : Colors.green)),
+            Text(_message!, style: TextStyle(color: _messageIsError ? Colors.red : Colors.green)),
           ],
           const SizedBox(height: 8),
         ],

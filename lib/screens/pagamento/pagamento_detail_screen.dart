@@ -7,7 +7,8 @@ import '../../constants/theme_constants.dart';
 import '../../models/pagamento.dart';
 import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
 
@@ -24,6 +25,8 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
   Pagamento? _pagamento;
   bool _isRefreshing = true;
   String? _errorMessage;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
   
   @override
   void initState() {
@@ -49,26 +52,27 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il caricamento del pagamento: $e';
+        _errorMessage = _s.pagamentoDetailErrLoading(e.toString());
         _isRefreshing = false;
       });
     }
   }
   
   Future<void> _deletePagamento() async {
+    final s = _s;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Conferma eliminazione'),
-        content: Text('Sei sicuro di voler eliminare questo pagamento?'),
+        title: Text(s.dialogConfirmDeleteTitle),
+        content: Text(s.pagamentoDetailDeleteMsg),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('ANNULLA'),
+            child: Text(s.dialogCancelBtn),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('ELIMINA'),
+            child: Text(s.dialogConfirmDeleteBtn),
           ),
         ],
       ),
@@ -87,18 +91,18 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
         
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Pagamento eliminato con successo')),
+            SnackBar(content: Text(_s.pagamentoDetailDeletedOk)),
           );
           Navigator.pop(context, true);
         } else {
           setState(() {
-            _errorMessage = 'Errore durante l\'eliminazione del pagamento';
+            _errorMessage = _s.pagamentoDetailErrDelete;
             _isRefreshing = false;
           });
         }
       } catch (e) {
         setState(() {
-          _errorMessage = 'Errore durante l\'eliminazione del pagamento: $e';
+          _errorMessage = '${_s.pagamentoDetailErrDelete}: $e';
           _isRefreshing = false;
         });
       }
@@ -110,9 +114,11 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
     final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '€');
     final formatDate = DateFormat('dd/MM/yyyy');
     
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dettaglio Pagamento'),
+        title: Text(s.pagamentoDetailTitle),
         actions: [
           IconButton(
             icon: Icon(Icons.edit),
@@ -142,7 +148,7 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
                         onRetry: _loadPagamento,
                       )
                     : _pagamento == null
-                        ? const Center(child: Text('Pagamento non trovato'))
+                        ? Center(child: Text(s.pagamentoDetailNotFound))
                         : SingleChildScrollView(
                       padding: EdgeInsets.all(16),
                       child: Column(
@@ -165,11 +171,11 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  _buildInfoRow('Descrizione', _pagamento!.descrizione),
-                                  _buildInfoRow('Data', formatDate.format(DateTime.parse(_pagamento!.data))),
-                                  _buildInfoRow('Utente', _pagamento!.utenteUsername),
+                                  _buildInfoRow(s.pagamentoDetailLabelDescrizione, _pagamento!.descrizione),
+                                  _buildInfoRow(s.labelDate, formatDate.format(DateTime.parse(_pagamento!.data))),
+                                  _buildInfoRow(s.pagamentoDetailLabelUtente, _pagamento!.utenteUsername),
                                   if (_pagamento!.gruppo != null)
-                                    _buildInfoRow('Gruppo', _pagamento!.gruppoNome ?? 'Gruppo ${_pagamento!.gruppo}'),
+                                    _buildInfoRow(s.pagamentoDetailLabelGruppo, _pagamento!.gruppoNome ?? '${s.pagamentoDetailLabelGruppo} ${_pagamento!.gruppo}'),
                                 ],
                               ),
                             ),

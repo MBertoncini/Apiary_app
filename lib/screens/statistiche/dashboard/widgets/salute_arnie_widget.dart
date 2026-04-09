@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class SaluteArnieWidget extends StatefulWidget {
@@ -15,6 +18,8 @@ class _SaluteArnieWidgetState extends State<SaluteArnieWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -36,7 +41,7 @@ class _SaluteArnieWidgetState extends State<SaluteArnieWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.hive, color: Color(0xFFD4A017)),
-      title: 'Salute degli Alveari',
+      title: _s.dashboardTitleSaluteArnie,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -52,7 +57,7 @@ class _SaluteArnieWidgetState extends State<SaluteArnieWidget> {
     final totale = (_data!['totale'] as num).toInt();
 
     if (totale == 0) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessuna arnia trovata')));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardSaluteNoArnie)));
     }
 
     return Row(
@@ -80,15 +85,15 @@ class _SaluteArnieWidgetState extends State<SaluteArnieWidget> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _LegendItem(color: Colors.green, label: 'Ottima', valore: ottima),
-              _LegendItem(color: Colors.orange, label: 'Attenzione', valore: attenzione),
-              _LegendItem(color: Colors.red, label: 'Critica', valore: critica),
+              _LegendItem(color: Colors.green, label: _s.dashboardSaluteOttima, valore: ottima),
+              _LegendItem(color: Colors.orange, label: _s.dashboardSaluteAttenzione, valore: attenzione),
+              _LegendItem(color: Colors.red, label: _s.dashboardSaluteCritica, valore: critica),
               const Divider(),
-              Text('Totale: $totale arnie', style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(_s.dashboardSaluteTotale(totale), style: const TextStyle(fontWeight: FontWeight.w600)),
               if ((_data!['arnie_critiche'] as List).isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'Critiche: ${(_data!['arnie_critiche'] as List).map((a) => 'Arnia #${a['numero']}').join(', ')}',
+                  _s.dashboardSaluteCritiche((_data!['arnie_critiche'] as List).map((a) => 'Arnia #${a['numero']}').join(', ')),
                   style: const TextStyle(fontSize: 12, color: Colors.red),
                 ),
               ],

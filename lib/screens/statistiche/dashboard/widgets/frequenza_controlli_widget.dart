@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class FrequenzaControlliWidget extends StatefulWidget {
@@ -14,6 +17,8 @@ class _FrequenzaControlliWidgetState extends State<FrequenzaControlliWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -35,7 +40,7 @@ class _FrequenzaControlliWidgetState extends State<FrequenzaControlliWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.calendar_today, color: Color(0xFFD4A017)),
-      title: 'Frequenza Controlli',
+      title: _s.dashboardTitleFrequenzaControlli,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -62,8 +67,8 @@ class _FrequenzaControlliWidgetState extends State<FrequenzaControlliWidget> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Media giorni tra controlli', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    Text('${media} giorni', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    Text(_s.dashboardFrequenzaMedia, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(_s.dashboardFrequenzaGiorni((media as num).toInt()), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -71,7 +76,7 @@ class _FrequenzaControlliWidgetState extends State<FrequenzaControlliWidget> {
           ),
         const SizedBox(height: 12),
         if (arnie.isNotEmpty) ...[
-          const Text('Dettaglio per arnia:', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(_s.dashboardFrequenzaDettaglio, style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           ...arnie.take(8).map((a) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),

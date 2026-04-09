@@ -20,6 +20,8 @@ import '../models/voice_entry.dart';
 import '../widgets/audio_input_widget.dart';
 import '../widgets/drawer_widget.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
+import '../l10n/app_strings.dart';
 
 class VoiceCommandScreen extends StatefulWidget {
   @override
@@ -41,6 +43,8 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   int _pendingQueueCount = 0;
   bool _isOnline = true;
   String _voiceMode = VoiceSettingsService.modeStt;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   // Contesto sessione corrente
   int? _contextApiarioId;
@@ -118,10 +122,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          '${transcriptions.length} trascrizioni recuperate dalla sessione precedente. '
-          'Premi la coda per elaborarle.',
-        ),
+        content: Text(_s.voiceCommandDraftRestored(transcriptions.length)),
         backgroundColor: Colors.orange,
         duration: const Duration(seconds: 6),
       ),
@@ -135,23 +136,21 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     if (entries.isEmpty) return;
     if (!mounted) return;
 
+    final s = _s;
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Dati non salvati trovati'),
-        content: Text(
-          'Sono presenti ${entries.length} schede di controllo elaborate da Gemini '
-          'che non sono state salvate. Vuoi riprenderle?',
-        ),
+        title: Text(s.voiceCommandUnsavedTitle),
+        content: Text(s.voiceCommandUnsavedMsg(entries.length)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('SCARTA'),
+            child: Text(s.voiceCommandBtnScarta),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('RIPRENDI'),
+            child: Text(s.voiceCommandBtnRiprendi),
           ),
         ],
       ),
@@ -174,7 +173,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
             Navigator.of(context).pop();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Dati recuperati e salvati (${results.length} record)'),
+                content: Text(_s.voiceCommandRecoveredSaved(results.length)),
                 backgroundColor: Colors.green,
               ),
             );

@@ -788,6 +788,9 @@ class StringsEn extends AppStrings {
   // Smielatura form extra
   @override String get smielaturaFormLblMelariDisp => 'Available supers';
   @override String get smielaturaFormValidateNumero => 'Enter a valid number';
+  @override String get smielaturaFormValidateQuantitaMax => 'Quantity cannot exceed 99999.99 kg';
+  @override String get smielaturaFormSelectMelarioMsg => 'Select at least one super';
+  @override String get smielaturaFormNoMelariDisp => 'No supers in "in extraction" state for this apiary';
   @override String get smielaturaFormBtnCreate => 'REGISTER';
   @override String get smielaturaFormBtnUpdate => 'UPDATE';
   @override String get smielaturaFormCreatedOk => 'Extraction registered';
@@ -1168,4 +1171,731 @@ class StringsEn extends AppStrings {
   @override String gruppiMembriCount(int n) => '$n member${n == 1 ? '' : 's'}';
   @override String gruppiApiariCondivisi(int n) => '$n shared apiar${n == 1 ? 'y' : 'ies'}';
   @override String get gruppiErrLoadingGruppi => 'Error loading groups';
+
+  // ── Attrezzatura form ─────────────────────────────────────────────────────
+  @override String get attrezzaturaFormTitleNew => 'New Equipment';
+  @override String get attrezzaturaFormTitleEdit => 'Edit Equipment';
+  @override String get attrezzaturaFormLblNome => 'Name *';
+  @override String get attrezzaturaFormValidateNome => 'Enter the equipment name';
+  @override String get attrezzaturaFormLblMarca => 'Brand';
+  @override String get attrezzaturaFormLblModello => 'Model';
+  @override String get attrezzaturaFormLblQuantita => 'Quantity *';
+  @override String get attrezzaturaFormValidateQuantita => 'Enter the quantity';
+  @override String get attrezzaturaFormValidateNumero => 'Enter a valid number';
+  @override String get attrezzaturaFormLblStato => 'Status';
+  @override String get attrezzaturaFormLblCondizione => 'Condition';
+  @override String get attrezzaturaFormLblDataAcquisto => 'Purchase Date';
+  @override String get attrezzaturaFormLblPrezzoAcquisto => 'Purchase Price (€)';
+  @override String get attrezzaturaFormHelperPrezzo => 'If you enter a price, a payment will be created automatically';
+  @override String get attrezzaturaFormValidateImporto => 'Enter a valid amount';
+  @override String get attrezzaturaFormLblFornitore => 'Supplier';
+  @override String get attrezzaturaFormSectionCondivisione => 'Sharing';
+  @override String get attrezzaturaFormLblCondividi => 'Share with group';
+  @override String get attrezzaturaFormSubCondividi => 'Expenses will be shared with group members';
+  @override String get attrezzaturaFormLblChiHaPagato => 'Who paid?';
+  @override String get attrezzaturaFormHintIoStesso => '— myself —';
+  @override String get attrezzaturaFormHelperChiPaga => 'Indicate the group member who actually paid the expense';
+  @override String get attrezzaturaFormLblNote => 'Notes';
+  @override String get attrezzaturaFormInfoPagamento => 'If you enter a purchase price, a payment will be created automatically.';
+  @override String get attrezzaturaFormBtnSalva => 'SAVE';
+  @override String get attrezzaturaFormBtnAggiorna => 'UPDATE';
+  @override String get attrezzaturaFormCreatedOk => 'Equipment created successfully';
+  @override String get attrezzaturaFormUpdatedOk => 'Equipment updated successfully';
+  @override String get attrezzaturaFormPagamentoAuto => 'Payment registered automatically';
+  @override String attrezzaturaFormLoadError(String e) => 'Error loading data: $e';
+  @override String attrezzaturaFormSaveError(String e) => 'Error saving data: $e';
+  @override String get attrezzaturaStatoDisponibile => 'Available';
+  @override String get attrezzaturaStatoInUso => 'In Use';
+  @override String get attrezzaturaStatoManutenzione => 'Under Maintenance';
+  @override String get attrezzaturaStatoDismesso => 'Decommissioned';
+  @override String get attrezzaturaStatoPrestato => 'Loaned';
+  @override String get attrezzaturaCondizioneNuovo => 'New';
+  @override String get attrezzaturaCondizioneOttimo => 'Excellent';
+  @override String get attrezzaturaCondizioneBuono => 'Good';
+  @override String get attrezzaturaCondizioneDiscreto => 'Fair';
+  @override String get attrezzaturaCondizioneUsurato => 'Worn';
+  @override String get attrezzaturaCondizioneDaRiparare => 'Needs Repair';
+
+  // ── Manutenzione form ─────────────────────────────────────────────────────
+  @override String get manutenzioneFormTitle => 'New Maintenance';
+  @override String get manutenzioneFormLblAttrezzatura => 'Equipment';
+  @override String get manutenzioneFormLblTipo => 'Maintenance Type *';
+  @override String get manutenzioneFormHintDescrizione => 'E.g.: Replace worn parts, General cleaning...';
+  @override String get manutenzioneFormValidateDescrizione => 'Enter a description';
+  @override String get manutenzioneFormLblDataProgrammata => 'Scheduled Date *';
+  @override String get manutenzioneFormHintSelezionaData => 'Select date';
+  @override String get manutenzioneFormLblDataEsecuzione => 'Execution Date';
+  @override String get manutenzioneFormLblDataEsecuzioneReq => 'Execution Date *';
+  @override String get manutenzioneFormLblCosto => 'Cost (€)';
+  @override String get manutenzioneFormHelperCosto => 'If you enter a cost, a payment will be created automatically';
+  @override String get manutenzioneFormLblEseguitoDa => 'Performed by';
+  @override String get manutenzioneFormHintEseguitoDa => 'Name of who performed the maintenance';
+  @override String get manutenzioneFormLblProssimaManutenzione => 'Next Maintenance';
+  @override String get manutenzioneFormHintNonProgrammata => 'Not scheduled';
+  @override String get manutenzioneFormLblNote => 'Notes (optional)';
+  @override String get manutenzioneFormInfoPagamento => 'A payment and an expense will be created automatically for this maintenance.';
+  @override String get manutenzioneFormInfoCondivisa => 'This maintenance will be shared with the group.';
+  @override String get manutenzioneFormBtnProgramma => 'SCHEDULE MAINTENANCE';
+  @override String get manutenzioneFormBtnRegistra => 'RECORD MAINTENANCE';
+  @override String get manutenzioneFormCreatedOk => 'Maintenance recorded successfully';
+  @override String get manutenzioneFormValidateDataProgrammata => 'Select the scheduled date';
+  @override String get manutenzioneFormValidateDataEsecuzione => 'Select the execution date';
+  @override String get manutenzioneFormTipoOrdinaria => 'Routine Maintenance';
+  @override String get manutenzioneFormTipoStraordinaria => 'Extraordinary Maintenance';
+  @override String get manutenzioneFormTipoRiparazione => 'Repair';
+  @override String get manutenzioneFormTipoPulizia => 'Cleaning';
+  @override String get manutenzioneFormTipoRevisione => 'Overhaul';
+  @override String get manutenzioneFormTipoSostituzioneParti => 'Parts Replacement';
+  @override String get manutenzioneFormStatoProgrammata => 'Scheduled';
+  @override String get manutenzioneFormStatoInCorso => 'In Progress';
+  @override String get manutenzioneFormStatoCompletata => 'Completed';
+  @override String get manutenzioneFormStatoAnnullata => 'Cancelled';
+
+  // ── Spesa attrezzatura form ───────────────────────────────────────────────
+  @override String get spesaAttrezzaturaFormTitle => 'New Expense';
+  @override String get spesaAttrezzaturaFormLblTipo => 'Expense Type *';
+  @override String get spesaAttrezzaturaFormLblImporto => 'Amount (€) *';
+  @override String get spesaAttrezzaturaFormValidateImporto => 'Enter the amount';
+  @override String get spesaAttrezzaturaFormLblData => 'Date';
+  @override String get spesaAttrezzaturaFormLblFornitore => 'Supplier';
+  @override String get spesaAttrezzaturaFormHintFornitore => 'E.g.: Supplier name';
+  @override String get spesaAttrezzaturaFormLblNumFattura => 'Invoice Number';
+  @override String get spesaAttrezzaturaFormHintNumFattura => 'E.g.: INV-2024-001';
+  @override String get spesaAttrezzaturaFormInfoPagamento => 'A payment will be created automatically for this expense.';
+  @override String get spesaAttrezzaturaFormInfoCondivisa => 'This expense will be shared with the group.';
+  @override String get spesaAttrezzaturaFormBtnSave => 'RECORD EXPENSE';
+  @override String get spesaAttrezzaturaFormCreatedOk => 'Expense recorded and payment created automatically';
+  @override String get spesaAttrezzaturaFormTipoAcquisto => 'Purchase';
+  @override String get spesaAttrezzaturaFormTipoManutenzione => 'Maintenance';
+  @override String get spesaAttrezzaturaFormTipoRiparazione => 'Repair';
+  @override String get spesaAttrezzaturaFormTipoAccessori => 'Accessories';
+  @override String get spesaAttrezzaturaFormTipoConsumabili => 'Consumables';
+  @override String get spesaAttrezzaturaFormTipoAltro => 'Other';
+
+  // ── Vendita form / detail ─────────────────────────────────────────────────
+  @override String get venditaFormTitleNew => 'New Sale';
+  @override String get venditaFormTitleEdit => 'Edit Sale';
+  @override String get venditaFormLblAcquirente => 'Buyer';
+  @override String get venditaFormBtnUsaClienteReg => 'Use registered client';
+  @override String get venditaFormBtnNomeLibero => 'Free name';
+  @override String get venditaFormLblClienteReg => 'Registered client';
+  @override String get venditaFormHintNessuno => '— none —';
+  @override String get venditaFormLblAcquirenteNome => 'Buyer name *';
+  @override String get venditaFormValidateNome => 'Enter the name';
+  @override String get venditaFormValidateAcquirente => 'Enter the buyer\'s name';
+  @override String get venditaFormLblData => 'Date *';
+  @override String get venditaFormSectionCanale => 'Sales channel';
+  @override String get venditaFormSectionPagamento => 'Payment method';
+  @override String get venditaFormSectionArticoli => 'Items';
+  @override String get venditaFormBtnAddArticolo => 'Add item';
+  @override String venditaFormTotale(String amount) => 'Total: $amount €';
+  @override String get venditaFormLblCondividi => 'Share with group';
+  @override String get venditaFormHintSoloPersonale => '— personal only —';
+  @override String get venditaFormCreatedOk => 'Sale recorded';
+  @override String get venditaFormUpdatedOk => 'Sale updated';
+  @override String venditaFormArticoloLabel(int n) => 'Item $n';
+  @override String get venditaFormLblTipoMiele => 'Honey type *';
+  @override String get venditaFormValidateRequired => 'Required';
+  @override String get venditaFormLblFormatoVasetto => 'Jar format';
+  @override String get venditaFormLblQty => 'Qty *';
+  @override String get venditaFormLblPrezzo => 'Price € *';
+  @override String venditaFormSubtotale(String amount) => 'Subtotal: $amount €';
+  @override String get venditaCanaleMercatino => 'Market';
+  @override String get venditaCanaleNegozio => 'Shop';
+  @override String get venditaCanalePrivato => 'Private';
+  @override String get venditaCanaleOnline => 'Online';
+  @override String get venditaCanaleAltro => 'Other';
+  @override String get venditaPagamentoContanti => 'Cash';
+  @override String get venditaPagamentoBonifico => 'Bank transfer';
+  @override String get venditaPagamentoCarta => 'Card';
+  @override String get venditaPagamentoAltro => 'Other';
+  @override String get venditaCatMiele => 'Honey';
+  @override String get venditaCatPropoli => 'Propolis';
+  @override String get venditaCatCera => 'Wax';
+  @override String get venditaCatPolline => 'Pollen';
+  @override String get venditaCatPappaReale => 'Royal jelly';
+  @override String get venditaCatNucleo => 'Nucleus';
+  @override String get venditaCatRegina => 'Queen';
+  @override String get venditaCatAltro => 'Other';
+  @override String get venditaDetailTitle => 'Sale Detail';
+  @override String get venditaDetailNotFound => 'Sale not found';
+  @override String get venditaDetailOfflineMsg => 'Offline mode — data from last access';
+  @override String get venditaDetailDeleteTitle => 'Confirm deletion';
+  @override String get venditaDetailDeleteMsg => 'Delete this sale?';
+  @override String get venditaDetailDeletedOk => 'Sale deleted';
+  @override String get venditaDetailLblData => 'Date';
+  @override String get venditaDetailLblAcquirente => 'Buyer';
+  @override String get venditaDetailLblCanale => 'Channel';
+  @override String get venditaDetailLblPagamento => 'Payment';
+  @override String get venditaDetailSectionArticoli => 'Items';
+
+  // ── Cliente form ──────────────────────────────────────────────────────────
+  @override String get clienteFormTitleNew => 'New Client';
+  @override String get clienteFormTitleEdit => 'Edit Client';
+  @override String get clienteFormDeleteTitle => 'Confirm deletion';
+  @override String get clienteFormDeleteMsg => 'Delete this client?';
+  @override String get clienteFormDeletedOk => 'Client deleted';
+  @override String get clienteFormLblNome => 'Name *';
+  @override String get clienteFormLblTelefono => 'Phone';
+  @override String get clienteFormLblEmail => 'Email';
+  @override String get clienteFormLblIndirizzo => 'Address';
+  @override String get clienteFormLblNote => 'Notes';
+  @override String get clienteFormLblCondividi => 'Share with group';
+  @override String get clienteFormHintSoloPersonale => '— personal only —';
+  @override String get clienteFormBtnCreate => 'CREATE CLIENT';
+  @override String get clienteFormBtnUpdate => 'UPDATE';
+  @override String get clienteFormCreatedOk => 'Client created';
+  @override String get clienteFormUpdatedOk => 'Client updated';
+
+  // ── Gruppo form ───────────────────────────────────────────────────────────
+  @override String get gruppoFormTitleNew => 'New Group';
+  @override String get gruppoFormTitleEdit => 'Edit Group';
+  @override String get gruppoFormCreatedOk => 'Group created successfully';
+  @override String get gruppoFormUpdatedOk => 'Group updated successfully';
+  @override String get gruppoFormSectionInfo => 'Group information';
+  @override String get gruppoFormSubtitleNew => 'Create a new group to collaborate with other beekeepers. You can invite members and share apiaries.';
+  @override String get gruppoFormSubtitleEdit => 'Edit the existing group\'s information.';
+  @override String get gruppoFormLblNome => 'Group name *';
+  @override String get gruppoFormHintNome => 'E.g. Tuscany Beekeeping';
+  @override String get gruppoFormHintDescrizione => 'E.g. Group for managing apiaries in Tuscany';
+  @override String get gruppoFormBtnCrea => 'CREATE GROUP';
+  @override String get gruppoFormBtnSalva => 'SAVE CHANGES';
+
+  // ── Gruppo invito screen ──────────────────────────────────────────────────
+  @override String get gruppoInvitoTitle => 'Invite to group';
+  @override String get gruppoInvitoNotFound => 'Group not found';
+  @override String gruppoInvitoHeader(String nome) => 'Invite to group: $nome';
+  @override String get gruppoInvitoSubtitle => 'Enter the email address of the person you want to invite.';
+  @override String get gruppoInvitoLblEmail => 'Email *';
+  @override String get gruppoInvitoHintEmail => 'Enter email address';
+  @override String get gruppoInvitoLblRuolo => 'New member\'s role:';
+  @override String get gruppoInvitoRuoloAdmin => 'Administrator';
+  @override String get gruppoInvitoRuoloAdminDesc => 'Can manage members, invitations and edit the group';
+  @override String get gruppoInvitoRuoloEditor => 'Editor';
+  @override String get gruppoInvitoRuoloEditorDesc => 'Can edit data but not manage members';
+  @override String get gruppoInvitoRuoloViewer => 'Viewer';
+  @override String get gruppoInvitoRuoloViewerDesc => 'Can only view data without editing';
+  @override String get gruppoInvitoBtnSend => 'SEND INVITATION';
+  @override String get gruppoInvitoInfo => 'The invitation will be valid for 7 days. The person must have an account to accept it.';
+  @override String get gruppoInvitoSentOk => 'Invitation sent successfully';
+
+  // ── Gruppo detail screen ──────────────────────────────────────────────────
+  @override String get gruppoDetailDefaultTitle => 'Group Detail';
+  @override String get gruppoDetailNotFound => 'Group not found';
+  @override String get gruppoDetailTabMembri => 'Members';
+  @override String get gruppoDetailTabApiari => 'Apiaries';
+  @override String get gruppoDetailTabInviti => 'Invitations';
+  @override String get gruppoDetailTooltipInvita => 'Invite member';
+  @override String get gruppoDetailTooltipModifica => 'Edit group';
+  @override String get gruppoDetailBtnElimina => 'DELETE GROUP';
+  @override String get gruppoDetailBtnLascia => 'LEAVE GROUP';
+  @override String get gruppoDetailNoMembri => 'No members found';
+  @override String get gruppoDetailRuoloAdmin => 'Administrator';
+  @override String get gruppoDetailRuoloEditor => 'Editor';
+  @override String get gruppoDetailRuoloViewer => 'Viewer';
+  @override String get gruppoDetailRuoloCreatore => 'Creator';
+  @override String get gruppoDetailCambiaRuoloTitle => 'Change role';
+  @override String get gruppoDetailRuoloAdminDesc => 'Can manage members and invitations';
+  @override String get gruppoDetailRuoloEditorDesc => 'Can edit data';
+  @override String get gruppoDetailRuoloViewerDesc => 'Read only';
+  @override String get gruppoDetailRuoloUpdated => 'Role updated';
+  @override String get gruppoDetailRimuoviTitle => 'Remove member';
+  @override String gruppoDetailRimuoviMsg(String username) => 'Are you sure you want to remove $username from the group?';
+  @override String get gruppoDetailRimuoviBtnConfirm => 'REMOVE';
+  @override String gruppoDetailRimosso(String username) => '$username removed from group';
+  @override String get gruppoDetailEliminaTitle => 'Delete group';
+  @override String get gruppoDetailEliminaMsg => 'Are you sure you want to delete this group? This action cannot be undone.';
+  @override String get gruppoDetailEliminato => 'Group deleted';
+  @override String get gruppoDetailLasciaTitle => 'Leave group';
+  @override String gruppoDetailLasciaMsg(String nome) => 'Are you sure you want to leave the group "$nome"?';
+  @override String get gruppoDetailLasciaBtnConfirm => 'LEAVE';
+  @override String get gruppoDetailLasciato => 'You left the group';
+  @override String get gruppoDetailNoApiariCondivisi => 'No apiaries shared with this group';
+  @override String get gruppoDetailNoInviti => 'No pending invitations';
+  @override String get gruppoDetailBtnInvitaMembro => 'Invite member';
+  @override String get gruppoDetailInvitoRuoloLbl => 'Role:';
+  @override String get gruppoDetailInvitoScadeLbl => 'Expires:';
+  @override String get gruppoDetailTooltipAnnullaInvito => 'Cancel invitation';
+  @override String get gruppoDetailAnnullaInvitoTitle => 'Cancel invitation';
+  @override String gruppoDetailAnnullaInvitoMsg(String email) => 'Cancel the invitation for $email?';
+  @override String get gruppoDetailAnnullaBtnConfirm => 'CANCEL INVITATION';
+  @override String get gruppoDetailInvitoAnnullato => 'Invitation cancelled';
+  @override String get gruppoDetailApiarioProprietario => 'Owner:';
+  @override String get gruppoDetailApiarioNoPos => 'Location not specified';
+  @override String get gruppoDetailImpossibileTrovareProf => 'Could not find your profile in the group';
+  @override String get gruppoDetailImmagineAggiornata => 'Group image updated';
+  @override String get gruppoDetailDataLoadError => 'Error loading data';
+  @override String get gruppoDetailPopupCambiaRuolo => 'Change role';
+  @override String get gruppoDetailPopupRimuovi => 'Remove from group';
+  @override String get gruppoDetailMembroNonValido => 'Invalid member';
+
+  // ── Cantina screen ──
+  @override String get cantinaTitle => 'Cellar 🍯';
+  @override String get cantinaBtnNuovoMaturatore => 'New ripening tank';
+  @override String get cantinaInMaturazione => 'Ripening';
+  @override String get cantinaStoccati => 'Stored';
+  @override String get cantinaVasetti => 'Jars';
+  @override String get cantinaSectionMaturatori => '🥛 Ripening tanks';
+  @override String cantinaAttiviLabel(int n) => '$n active';
+  @override String get cantinaNoMaturatori => 'No active ripening tanks.\nAdd one after honey extraction.';
+  @override String get cantinaSectionStoccaggio => '🪣 Storage';
+  @override String cantinaContenitoriLabel(int n) => '$n containers';
+  @override String get cantinaNoContenitori => 'No containers with honey.\nTransfer from a ripening tank.';
+  @override String get cantinaSectionInvasettato => '🫙 Jarred';
+  @override String cantinaVasettiLabel(int n) => '$n jars';
+  @override String get cantinaNoVasetti => 'No jars recorded.\nJar honey from a container.';
+  @override String cantinaDeleteMaturatoreMsg(String nome) => 'Delete ripening tank "$nome"?';
+  @override String cantinaDeleteContenitoreMsg(String nome) => 'Delete container "$nome"?';
+  @override String get cantinaVenditaErrVasetti => 'Sale saved but error updating jars';
+
+  // ── Aggiungi maturatore sheet ──
+  @override String get aggiungiMaturatoreTitleNew => 'New Ripening Tank';
+  @override String get aggiungiMaturatoreTitleEdit => 'Edit Ripening Tank';
+  @override String get aggiungiMaturatoreHintNome => 'Name (e.g. 200L tank)';
+  @override String get aggiungiMaturatoreLblTipoMiele => 'Honey type';
+  @override String get aggiungiMaturatoreLblCapacita => 'Capacity (kg)';
+  @override String get aggiungiMaturatoreLblKgAttuali => 'Current kg';
+  @override String get aggiungiMaturatoreLblGiorniMaturazione => 'Ripening days';
+  @override String get aggiungiMaturatoreHelperGiorni => 'Auto from honey type';
+  @override String get aggiungiMaturatoreLblDataInizio => 'Start date';
+
+  // ── Trasferisci sheet ──
+  @override String trasferisciTitle(String nome) => 'Transfer from "$nome"';
+  @override String trasferisciErrSupera(String tot, String disp) => 'Total (${tot}kg) exceeds available (${disp}kg)';
+  @override String get trasferisciNoContenitori => 'No containers added';
+  @override String get trasferisciBtnAggiungiContenitore => 'Add container';
+  @override String get trasferisciBtnConferma => 'Confirm transfer';
+  @override String get trasferisciLblTipo => 'Type';
+  @override String get trasferisciLblKg => 'Kg';
+  @override String trasferisciKgAssegnati(String tot, String disp) => '$tot / $disp kg assigned';
+  @override String trasferisciKgDisponibili(String n) => '$n kg available';
+
+  // ── Invasetta sheet ──
+  @override String invasettaTitle(String nome) => 'Jar honey from "$nome"';
+  @override String get invasettaLblFormato => 'Jar size';
+  @override String get invasettaLblNumeroVasetti => 'Number of jars:';
+  @override String get invasettaBtnMax => 'Max';
+  @override String invasettaKgUsati(int n, int formato, String kg) => '$n × ${formato}g = $kg kg used';
+  @override String invasettaRimangono(String kg) => 'Remaining: $kg kg';
+  @override String get invasettaLblLotto => 'Batch (optional)';
+  @override String invasettaBtnConferma(int n) => 'Jar $n jar${n == 1 ? "" : "s"}';
+
+  // ── Maturatore card ──
+  @override String get maturatoreCardBtnTrasferisci => 'Transfer to containers';
+  @override String get maturatoreCardProntoOggi => 'Ready today';
+  @override String maturatoreCardProntoTra(int n) => 'Ready in $n day${n == 1 ? "" : "s"}';
+  @override String get maturatoreCardBtnTrasferisciOra => 'Transfer now';
+  @override String get maturatoreCardStatoPronto => '✅ Ready';
+
+  // ── Contenitore card ──
+  @override String get contenitoreCardBtnInvasetta => '🫙 Jar';
+
+  // ── Lotto vasetti section ──
+  @override String lottoVasettiCount(int n) => '$n jar${n == 1 ? "" : "s"}';
+  @override String lottoVasettiDisponibili(int n) => '$n avail.';
+  @override String lottoVasettiiBtnVendi(int n) => 'Sell $n jar${n == 1 ? "" : "s"}';
+
+  // ── Controllo form ──
+  @override String get controlloFormTitleNew => 'New Inspection';
+  @override String get controlloFormTitleEdit => 'Edit Inspection';
+  @override String get controlloFormTitleLoading => 'Hive Inspection';
+  @override String controlloFormArniaLabel(int numero) => 'Hive $numero';
+  @override String controlloFormNucleoLabel(int numero) => 'Nuc $numero';
+  @override String get controlloFormBtnSalva => 'SAVE';
+  @override String get controlloFormBtnAggiorna => 'UPDATE';
+  @override String get controlloFormSectionData => 'Inspection Date';
+  @override String get controlloFormLblData => 'Date';
+  @override String get controlloFormSectionTelaini => 'Frame Configuration';
+  @override String get controlloFormTelainiCovata => 'Brood';
+  @override String get controlloFormTelainiScorte => 'Honey';
+  @override String get controlloFormTelainiFoglioCereo => 'Wax';
+  @override String get controlloFormTelainiDiaframma => 'Divider';
+  @override String get controlloFormTelainiNutritore => 'Feeder';
+  @override String get controlloFormTelainiVuoto => 'Empty';
+  @override String get controlloFormAutoOrdina => 'Auto-sort';
+  @override String get controlloFormPreCaricato => 'Pre-loaded from last inspection';
+  @override String get controlloFormToccaTelaino => 'Tap a frame to change its type';
+  @override String get controlloFormSectionRegina => 'Queen';
+  @override String get controlloFormLblStatoRegina => 'Queen status';
+  @override String get controlloFormReginaAssente => 'Absent';
+  @override String get controlloFormReginaPresente => 'Present';
+  @override String get controlloFormReginaVista => 'Seen';
+  @override String get controlloFormUovaFresche => 'Fresh eggs';
+  @override String get controlloFormUovaFrescheDesc => 'Fresh eggs have been seen';
+  @override String get controlloFormCelleReali => 'Queen cells';
+  @override String get controlloFormCelleRealiDesc => 'Queen cells are present';
+  @override String get controlloFormLblNumeroCelleReali => 'Number of queen cells';
+  @override String get controlloFormReginaSostituita => 'Queen replaced';
+  @override String get controlloFormReginaSostituitaDesc => 'The queen was replaced during this inspection';
+  @override String get controlloFormReginaColorata => 'Queen marked';
+  @override String get controlloFormReginaColorataDesc => 'The queen was marked/painted during this inspection';
+  @override String get controlloFormColoreRegina => 'Marking colour';
+  @override String get controlloFormSectionSciamatura => 'Swarming';
+  @override String get controlloFormSciamatura => 'Swarm detected';
+  @override String get controlloFormSciamaturaCodice => 'The colony has swarmed';
+  @override String get controlloFormNoteSciamatura => 'Swarm notes';
+  @override String get controlloFormSectionProblemi => 'Health Issues';
+  @override String get controlloFormProblemi => 'Health issues detected';
+  @override String get controlloFormProblemiDesc => 'Health issues have been detected';
+  @override String get controlloFormDettagliProblemi => 'Health issue details';
+  @override String get controlloFormValidateProblemi => 'Please describe the health issues';
+  @override String get controlloFormSectionNote => 'General Notes';
+  @override String get controlloFormLblNote => 'Notes';
+  @override String get controlloFormHintNote => 'Enter any additional notes...';
+  @override String get controlloFormOfflineMsg => 'You are offline. Changes will be saved locally and synced when you go back online.';
+  @override String get controlloFormSavedOk => 'Inspection recorded successfully';
+  @override String get controlloFormSavedOffline => 'Inspection saved locally. It will sync when you go back online';
+  @override String get controlloFormUpdatedOk => 'Inspection updated successfully';
+  @override String get controlloFormUpdatedOffline => 'Update saved locally. It will sync when you go back online';
+  @override String get controlloFormErrGeneric => 'An error occurred. Please try again.';
+  @override String get controlloFormErrCaricoArnia => 'Unable to load hive data. Check your connection.';
+  @override String get controlloFormSyncOk => 'Data synced successfully';
+  @override String get controlloFormReginaAutoCreata => 'Queen detected: basic record created automatically. Open it to complete the details.';
+  @override String controlloFormLastControllo(String data) => 'Last inspection: $data';
+  @override String controlloFormReginaLabel(String stato) => 'Queen: $stato';
+  @override String controlloFormCovataCount(int n) => 'Brood $n';
+  @override String controlloFormScorteCount(int n) => 'Honey $n';
+  @override String controlloFormDiaframmaCount(int n) => 'Divider $n';
+  @override String controlloFormFoglioCereoCount(int n) => 'Wax $n';
+
+  // ── Pagamenti screen ──
+  @override String get pagamentiTitle => 'Payment Management';
+  @override String get pagamentiTabPagamenti => 'Payments';
+  @override String get pagamentiTabBilancio => 'Balance';
+  @override String get pagamentiTooltipSync => 'Sync data';
+  @override String get pagamentiTooltipNuovoPagamento => 'New Payment';
+  @override String pagamentiErrLoading(String e) => 'Error loading data: $e';
+  @override String get pagamentiEmptyTitle => 'No payments recorded';
+  @override String get pagamentiRegistraPagamento => 'Record Payment';
+  @override String get pagamentiLinkRapidi => 'Quick Links';
+  @override String get pagamentiLinkAttrezzature => 'Equipment Management';
+  @override String get pagamentiAttrezzatureHint => 'Equipment expenses are automatically recorded in payments';
+  @override String get pagamentiTooltipSaldo => 'Balance payment';
+  @override String get pagamentiTooltipAttrezzatura => 'Equipment expense';
+  @override String get pagamentiBilancioEmptyTitle => 'No balance available';
+  @override String get pagamentiBilancioEmptyHint => 'To calculate the balance, group members need assigned shares and recorded payments.';
+  @override String pagamentiBilancioTotale(String amount) => 'Group total expenses: $amount';
+  @override String get pagamentiTooltipGestisci => 'Manage shares';
+  @override String get pagamentiQuoteLabel => 'Shares';
+  @override String get pagamentiTrasferimentiNecessari => 'Required transfers';
+  @override String get pagamentiQuoteGruppo => 'Group shares';
+  @override String get pagamentiGestisci => 'Manage';
+  @override String get pagamentoPagato => 'Paid';
+  @override String get pagamentoDovuto => 'Owed';
+  @override String get pagamentoSaldo => 'Balance';
+  @override String get pagamentiTooltipRegistraSaldo => 'Record balance payment';
+  @override String pagamentiSaldoDesc(String da, String a) => 'Balance payment: $da → $a';
+
+  // ── Pagamento detail screen ──
+  @override String get pagamentoDetailTitle => 'Payment Detail';
+  @override String get pagamentoDetailNotFound => 'Payment not found';
+  @override String pagamentoDetailErrLoading(String e) => 'Error loading payment: $e';
+  @override String get pagamentoDetailDeleteMsg => 'Are you sure you want to delete this payment?';
+  @override String get pagamentoDetailDeletedOk => 'Payment deleted successfully';
+  @override String get pagamentoDetailErrDelete => 'Error deleting payment';
+  @override String get pagamentoDetailLabelDescrizione => 'Description';
+  @override String get pagamentoDetailLabelUtente => 'User';
+  @override String get pagamentoDetailLabelGruppo => 'Group';
+
+  // ── Pagamento form screen ──
+  @override String get pagamentoFormTitleNew => 'New Payment';
+  @override String get pagamentoFormTitleEdit => 'Edit Payment';
+  @override String get pagamentoFormUpdatedOk => 'Payment updated successfully';
+  @override String get pagamentoFormCreatedOk => 'Payment created successfully';
+  @override String pagamentoFormErrSave(String e) => 'Error saving payment: $e';
+  @override String get pagamentoFormLabelImporto => 'Amount (€)';
+  @override String get pagamentoFormValidImportoRequired => 'Enter the amount';
+  @override String get pagamentoFormValidImportoInvalid => 'Enter a valid amount';
+  @override String get pagamentoFormValidDescRequired => 'Enter a description';
+  @override String get pagamentoFormLabelGruppo => 'Group (optional)';
+  @override String get pagamentoFormNoGruppo => 'No group';
+  @override String get pagamentoFormLabelChiPaga => 'Who paid?';
+  @override String get pagamentoFormIoStesso => '— myself —';
+  @override String get pagamentoFormHelperChiPaga => 'Indicate the member who actually covered the expense';
+  @override String get pagamentoFormSaldoTitle => 'Balance payment';
+  @override String get pagamentoFormSaldoSubtitle => 'Money transferred directly between two members to settle the balance';
+  @override String get pagamentoFormLabelDestinatario => 'To whom? (recipient)';
+  @override String get pagamentoFormHelperDestinatario => 'Member receiving the money';
+  @override String get pagamentoFormValidDestinatarioRequired => 'Select the recipient';
+
+  // ── Quote screen ──
+  @override String get quoteTitle => 'Share Management';
+  @override String quoteErrLoading(String e) => 'Error loading shares: $e';
+  @override String get quoteUpdatedOk => 'Share updated successfully';
+  @override String quoteErrUpdate(String e) => 'Error updating share: $e';
+  @override String get quoteEditTitle => 'Edit share';
+  @override String quoteEditMsg(String username) => 'Edit the percentage for $username';
+  @override String get quoteLabelPercentuale => 'Percentage';
+  @override String get quoteValidPercRequired => 'Enter a percentage';
+  @override String get quoteValidPercInvalid => 'Enter a valid percentage';
+  @override String get quoteDeleteMsg => 'Are you sure you want to delete this share?';
+  @override String get quoteDeletedOk => 'Share deleted successfully';
+  @override String get quoteErrDelete => 'Error deleting share';
+  @override String quoteErrDeleteE(String e) => 'Error deleting share: $e';
+  @override String get quoteAddNoGruppo => 'Select a group before adding a share';
+  @override String get quoteAddedOk => 'Share added successfully';
+  @override String quoteErrAdd(String e) => 'Error adding share: $e';
+  @override String get quoteAddTitle => 'Add share';
+  @override String get quoteLabelIdUtente => 'User ID';
+  @override String get quoteValidIdRequired => 'Enter the user ID';
+  @override String get quoteValidIdInvalid => 'Invalid user ID';
+  @override String get quoteValidPercRange => 'Percentage must be between 0 and 100';
+  @override String get quoteLabelFiltroGruppo => 'Filter by group';
+  @override String get quoteTuttiGruppi => 'All groups';
+  @override String get quoteTooltipAdd => 'Add Share';
+  @override String get quoteEmptyTitle => 'No shares found';
+
+  // ── Statistiche screen ──
+  @override String get statisticheTitle => 'Statistics';
+  @override String get statisticheTabDashboard => 'Dashboard';
+  @override String get statisticheTabAnalisi => 'Analysis';
+  @override String get statisticheTabChiediAI => 'Ask AI';
+
+  // ── Dashboard card base ──
+  @override String get dashboardErrCaricamento => 'Error loading data';
+
+  // ── Dashboard widget titles ──
+  @override String get dashboardTitleProduzione => 'Honey Production per Year';
+  @override String get dashboardTitleSaluteArnie => 'Hive Health';
+  @override String get dashboardTitleRegineStats => 'Queens — Statistics';
+  @override String get dashboardTitleFrequenzaControlli => 'Inspection Frequency';
+  @override String get dashboardTitleFioritureVicine => 'Nearby Blooms';
+  @override String get dashboardTitleAttrezzature => 'Equipment Summary';
+  @override String get dashboardTitleProduzionePerTipo => 'Production by Honey Type';
+  @override String get dashboardTitleTrattamenti => 'Treatments Over Time';
+  @override String get dashboardTitleAndamentoScorte => 'Store Trends';
+  @override String get dashboardTitlePerformanceRegine => 'Queen Performance';
+  @override String get dashboardTitleQuoteGruppo => 'Group Shares';
+  @override String dashboardTitleBilancio(int anno) => 'Balance $anno';
+
+  // ── Salute arnie widget ──
+  @override String get dashboardSaluteNoArnie => 'No hives found';
+  @override String get dashboardSaluteOttima => 'Excellent';
+  @override String get dashboardSaluteAttenzione => 'Attention';
+  @override String get dashboardSaluteCritica => 'Critical';
+  @override String dashboardSaluteTotale(int n) => 'Total: $n hives';
+  @override String dashboardSaluteCritiche(String list) => 'Critical: $list';
+
+  // ── Regine statistiche widget ──
+  @override String get dashboardRegineAttive => 'Active queens';
+  @override String get dashboardRegineSostituzioni => 'Replacements';
+  @override String get dashboardRegineVitaMedia => 'Avg lifespan';
+  @override String dashboardRegineVitaMesiStr(String durata) => '$durata months';
+  @override String get dashboardRegineMotiviSostituzione => 'Replacement reasons:';
+
+  // ── Performance regine widget ──
+  @override String get dashboardPerformanceNoRegine => 'No queens with ratings';
+  @override String get dashboardPerformanceHdrRegina => 'Queen';
+  @override String get dashboardPerformanceHdrProd => 'Prod.';
+  @override String get dashboardPerformanceHdrDoc => 'Doc.';
+  @override String get dashboardPerformanceHdrResist => 'Resist.';
+  @override String get dashboardPerformanceHdrSc => 'Sw.';
+
+  // ── Bilancio widget ──
+  @override String get dashboardBilancioSaldoAnnuale => 'Annual balance: ';
+  @override String get dashboardBilancioEntrate => 'Income';
+  @override String get dashboardBilancioUscite => 'Expenses';
+
+  // ── Frequenza controlli widget ──
+  @override String get dashboardFrequenzaMedia => 'Avg days between inspections';
+  @override String dashboardFrequenzaGiorni(int n) => '$n days';
+  @override String get dashboardFrequenzaDettaglio => 'Detail by hive:';
+
+  // ── Fioriture vicine widget ──
+  @override String get dashboardFioritureNessuna => 'No blooms within 5 km radius';
+
+  // ── Attrezzature widget ──
+  @override String get dashboardAttrezzatureNessuna => 'No equipment recorded';
+  @override String get dashboardAttrezzatureCategoria => 'Category';
+  @override String get dashboardAttrezzatureNumero => 'No.';
+  @override String get dashboardAttrezzatureValore => 'Value';
+  @override String get dashboardAttrezzatureInventario => 'Total inventory';
+
+  // ── Varroa trend widget ──
+  @override String get dashboardVarroaNessuno => 'No treatments in the period';
+
+  // ── Andamento scorte widget ──
+  @override String get dashboardScorteNessuno => 'No store data available';
+
+  // ── Produzione tipo widget ──
+  @override String get dashboardProdTipoNessuno => 'No extractions recorded';
+  @override String dashboardProdTipoTotale(String kg) => 'Total: $kg kg';
+
+  // ── Quote gruppo widget ──
+  @override String get dashboardQuoteGruppoSoloCoord => 'Visible to group coordinators only';
+
+  // ── NL Query tab ──
+  @override String get nlQuerySuggerite => 'Suggested questions:';
+  @override String get nlQuerySuggerimento1 => 'Which hives haven\'t been inspected in 30 days?';
+  @override String get nlQuerySuggerimento2 => 'When did I produce the most honey?';
+  @override String get nlQuerySuggerimento3 => 'Which queens have the highest rating?';
+  @override String get nlQuerySuggerimento4 => 'How many inspections have I done this year?';
+  @override String get nlQuerySuggerimento5 => 'What is my balance this year?';
+  @override String get nlQuerySuggerimento6 => 'Which treatments have I done?';
+  @override String get nlQueryPensando => 'AI is thinking…';
+  @override String get nlQueryRispostaAI => 'AI Response';
+  @override String nlQueryRisultati(int n) => '$n results';
+  @override String get nlQueryErrLento => 'The AI server is slow, try again in a moment';
+  @override String get nlQueryErrRifiuto => 'I cannot answer this question';
+  @override String get nlQueryErrGenerico => 'Error: please try again';
+  @override String get nlQueryInputHint => 'Ask a question about your data…';
+
+  // ── Risultato query widget ──
+  @override String nlQueryRighe(int n) => '$n rows';
+  @override String get risultatoNessunDato => 'No data available';
+  @override String get risultatoNessunRisultato => 'No results';
+
+  // ── Export bottom sheet ──
+  @override String get exportTitle => 'Export data';
+  @override String get exportExcel => 'Excel';
+  @override String get exportPdf => 'PDF';
+  @override String get exportExcelSalvato => 'Excel file saved';
+  @override String exportErrExcel(String e) => 'Excel export error: $e';
+  @override String get exportPdfSalvato => 'PDF file saved';
+  @override String exportErrPdf(String e) => 'PDF export error: $e';
+
+  // ── Query builder tab ──
+  @override String get queryBuilderEseguiAnalisi => 'Run analysis';
+  @override String get queryBuilderAvanti => 'Next';
+  @override String get queryBuilderIndietro => 'Back';
+  @override String get queryBuilderStepAnalizzare => 'What to analyse?';
+  @override String get queryBuilderStepFiltri => 'Filters and aggregation';
+  @override String get queryBuilderStepRisultati => 'Results';
+  @override String get queryBuilderEntitaControlli => 'Hive inspections';
+  @override String get queryBuilderEntitaSmielature => 'Extractions';
+  @override String get queryBuilderEntitaRegine => 'Queens';
+  @override String get queryBuilderEntitaVendite => 'Sales';
+  @override String get queryBuilderEntitaSpese => 'Expenses';
+  @override String get queryBuilderEntitaFioriture => 'Blooms';
+  @override String get queryBuilderEntitaArnie => 'Hives';
+  @override String get queryBuilderDataDa => 'Date from';
+  @override String get queryBuilderDataA => 'Date to';
+  @override String get queryBuilderAggregazione => 'Aggregation';
+  @override String get queryBuilderAggCount => 'Count';
+  @override String get queryBuilderAggSum => 'Sum';
+  @override String get queryBuilderAggAvg => 'Average';
+  @override String get queryBuilderAggNone => 'None (table)';
+  @override String get queryBuilderRaggruppaPer => 'Group by';
+  @override String get queryBuilderRaggruppaMese => 'Month';
+  @override String get queryBuilderRagruppaAnno => 'Year';
+  @override String queryBuilderErrore(String e) => 'Error: $e';
+  @override String get queryBuilderRunFirst => 'Run the analysis to see results';
+  @override String get queryBuilderVizBarre => 'Bars';
+  @override String get queryBuilderVizLinea => 'Line';
+  @override String get queryBuilderVizTabella => 'Table';
+
+  // ── Voice transcript review screen ──
+  @override String voiceReviewTitleCount(int n) => 'Review ($n)';
+  @override String get voiceReviewBtnDeleteAll => 'Delete all';
+  @override String get voiceReviewDeleteAllTitle => 'Delete all?';
+  @override String get voiceReviewDeleteAllMsg => 'All transcriptions will be removed from the list.';
+  @override String get voiceReviewDeleteItemTitle => 'Delete transcription?';
+  @override String get voiceReviewInfoBanner => 'Drag ≡ to reorder, then merge adjacent entries.';
+  @override String get voiceReviewEmpty => 'No transcriptions remaining.';
+  @override String get voiceReviewEmptyHint => 'Press "Keep in queue" to exit or go back.';
+  @override String get voiceReviewBtnKeepQueue => 'Keep in queue';
+  @override String get voiceReviewBtnSendAI => 'Send for processing';
+  @override String get voiceReviewProcessing => 'Processing…';
+  @override String get voiceReviewMerging => 'Merging…';
+  @override String get voiceReviewMergeWith => 'Merge with next ↓';
+  @override String get voiceReviewTooltipEdit => 'Edit';
+  @override String get voiceReviewTooltipSave => 'Save';
+  @override String get voiceReviewTooltipDelete => 'Delete';
+
+  // ── Voice entry verification screen ──
+  @override String get voiceVerifTitle => 'Verify voice data';
+  @override String get voiceVerifTooltipRemove => 'Remove recording';
+  @override String get voiceVerifSaving => 'Saving...';
+  @override String get voiceVerifDeleteTitle => 'Delete record';
+  @override String voiceVerifDeleteMsg(String label) => 'Do you want to delete the $label record?\n\nThis cannot be undone.';
+  @override String get voiceVerifScheda => 'this record';
+  @override String get voiceVerifNewArnieTitolo => 'New hives detected';
+  @override String voiceVerifNewArnieMsg(String list) => 'The following hives are not in the database:\n\n$list\n\nDo you want to create them in the selected apiary and save the inspections?';
+  @override String get voiceVerifCreateSave => 'CREATE AND SAVE';
+  @override String get voiceVerifErrCreazArnieTitolo => 'Hive creation error';
+  @override String voiceVerifSavedOk(int n) => 'Data saved successfully ($n records)';
+  @override String voiceVerifPartialSaved(int saved, int remaining) => 'Saved $saved records. $remaining not saved:\n';
+  @override String get voiceVerifNoSaved => 'No records saved:\n';
+  @override String voiceVerifInvalidSkipped(String arnia) => 'Hive $arnia: invalid data, skipped.';
+  @override String voiceVerifNotFoundCache(String arnia) => 'Hive $arnia: not found in cache. Refresh the hive list and try again.';
+  @override String get voiceVerifEmptyTitle => 'No data to verify';
+  @override String get voiceVerifEmptySubtitle => 'Go back and record new inspections';
+  @override String get voiceVerifBtnGoBack => 'Go back';
+  @override String voiceVerifRecordOf(int current, int total) => 'Record $current of $total';
+  @override String get voiceVerifSectionPosizione => 'Location';
+  @override String get voiceVerifSectionRegistrazione => 'Original recording';
+  @override String get voiceVerifAudioLabel => 'Original audio — tap to listen';
+  @override String get voiceVerifSectionGenerali => 'General information';
+  @override String get voiceVerifLblTipo => 'Type';
+  @override String get voiceVerifSectionRegina => 'Queen';
+  @override String get voiceVerifSectionTelaini => 'Frames';
+  @override String get voiceVerifLblTotale => 'Total';
+  @override String get voiceVerifLblForzaFamiglia => 'Colony strength';
+  @override String get voiceVerifSectionProblemi => 'Problems';
+  @override String get voiceVerifLblProblemiSanitari => 'Health issues';
+  @override String get voiceVerifLblTipoProblema => 'Problem type';
+  @override String get voiceVerifSectionColorazione => 'Queen marking';
+  @override String get voiceVerifLblReginaColorata => 'Marked/colored queen';
+  @override String get voiceVerifLblColoreRegina => 'Marking color';
+  @override String get voiceVerifSectionNote => 'Notes';
+  @override String get voiceVerifLblNoteAggiuntive => 'Additional notes';
+  @override String get voiceVerifTooltipPrecedente => 'Previous';
+  @override String get voiceVerifTooltipSuccessivo => 'Next';
+  @override String get voiceVerifBtnSaveAll => 'SAVE ALL';
+  @override String get voiceVerifTooltipPausa => 'Pause';
+  @override String get voiceVerifTooltipRiproduci => 'Play';
+  @override String get voiceVerifTooltipStop => 'Stop';
+
+  // ── Voice command screen ──
+  @override String get voiceCommandTitle => 'Voice entry';
+  @override String get voiceCommandTooltipMenu => 'Menu';
+  @override String get voiceCommandTooltipQueue => 'Process offline queue';
+  @override String get voiceCommandTooltipHideGuide => 'Hide guide';
+  @override String get voiceCommandTooltipShowTutorial => 'Review tutorial';
+  @override String voiceCommandDraftRestored(int n) => '$n transcriptions recovered from the previous session. Press the queue to process them.';
+  @override String get voiceCommandUnsavedTitle => 'Unsaved data found';
+  @override String voiceCommandUnsavedMsg(int n) => 'There are $n inspection records processed by Gemini that were not saved. Do you want to resume them?';
+  @override String get voiceCommandBtnScarta => 'DISCARD';
+  @override String get voiceCommandBtnRiprendi => 'RESUME';
+  @override String voiceCommandRecoveredSaved(int n) => 'Data recovered and saved ($n records)';
+  @override String get voiceCommandNoTranscription => 'No transcription to save';
+  @override String voiceCommandSavedToQueue(int n) => 'Transcription saved to queue ($n pending)';
+  @override String get voiceCommandNoValidEntry => 'No valid entries extracted from the queue';
+  @override String get voiceCommandNoValidData => 'No valid data extracted. Check the transcriptions and try again.';
+  @override String voiceCommandQueueSaved(int n) => 'Data from queue saved ($n records)';
+  @override String voiceCommandSavedWithRemaining(int saved, int remaining) => 'Data saved ($saved records). $remaining transcriptions in queue.';
+  @override String voiceCommandSavedOk(int n) => 'Data saved successfully ($n records)';
+  @override String get voiceCommandBtnSaveLater => 'Save for later';
+  @override String get voiceCommandGuideTitle => 'How voice entry works';
+  @override String get voiceCommandGuideStep1Title => 'Select apiary';
+  @override String get voiceCommandGuideStep1Desc => 'Tap the banner at the top to select the apiary. Then just say the hive number.';
+  @override String get voiceCommandGuideStep2Title => 'Start speaking';
+  @override String get voiceCommandGuideStep2Desc => 'Press the microphone button and speak clearly';
+  @override String get voiceCommandGuideStep3Title => 'Verify and save';
+  @override String get voiceCommandGuideStep3Desc => 'Check the data recognized by Gemini before saving';
+  @override String get voiceCommandGuideOffline => 'Without connection: use "Save for later" and resume when online.';
+  @override String get voiceCommandGuideExamplesTitle => 'Examples:';
+  @override String get voiceCommandGuideKeywordsTitle => 'Multiple mode keywords:';
+  @override String get voiceCommandGuideKeyNextCmd => '"next" / "ok" / "go" / "continue" → records next hive';
+  @override String get voiceCommandGuideKeyStopCmd => '"stop" / "done" / "enough" / "finished" → ends batch and goes to review';
+
+  // ── Voice tutorial sheet ──
+  @override String get voiceTutorialTitle => 'Voice entry';
+  @override String get voiceTutorialSubtitle => 'How to record an inspection hands-free';
+  @override String get voiceTutorialStep1Title => 'Select the apiary';
+  @override String get voiceTutorialStep1Body => 'Tap the orange banner at the top and choose the apiary you are working on. From then on, just say the hive number — no need to repeat it every time.';
+  @override String get voiceTutorialStep2Title => 'Speak clearly';
+  @override String get voiceTutorialStep2Body => 'Press the microphone button and describe the inspection as you would to a colleague. No precise syntax needed: the AI understands natural language.';
+  @override String get voiceTutorialStep3Title => 'Gemini interprets the text';
+  @override String get voiceTutorialStep3Body => 'The recognized text is sent to Gemini AI, which automatically extracts: hive number, frames, queen status, health issues and more.';
+  @override String get voiceTutorialStep4Title => 'Verify and save';
+  @override String get voiceTutorialStep4Body => 'Check the interpreted data on the verification screen, correct any errors and press Save.';
+  @override String get voiceTutorialExamplesTitle => 'Example phrases';
+  @override String get voiceTutorialMultiTitle => 'Multiple mode (several hives in sequence)';
+  @override String get voiceTutorialMultiNextKeyword => '"next" / "ok" / "go" / "continue"';
+  @override String get voiceTutorialMultiNextDesc => 'records the next hive';
+  @override String get voiceTutorialMultiStopKeyword => '"stop" / "done" / "enough" / "finished"';
+  @override String get voiceTutorialMultiStopDesc => 'ends the batch and goes to review';
+  @override String get voiceTutorialOfflineMsg => 'Without connection use "Save for later": transcriptions are queued and you can process them as soon as you are back online.';
+  @override String get voiceTutorialBtnStart => 'Start recording';
 }

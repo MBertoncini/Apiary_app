@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../../../services/language_service.dart';
 import '../../../../../widgets/skeleton_widgets.dart';
 
 /// Wrapper riutilizzabile per tutti i widget del dashboard.
@@ -55,21 +57,24 @@ class DashboardCardBase extends StatelessWidget {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Errore caricamento dati',
-                        style: TextStyle(color: Colors.red[700]),
-                      ),
-                      TextButton(
-                        onPressed: onRetry,
-                        child: const Text('Riprova'),
-                      ),
-                    ],
-                  ),
+                  child: Builder(builder: (context) {
+                    final s = Provider.of<LanguageService>(context, listen: false).strings;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red),
+                        const SizedBox(height: 8),
+                        Text(
+                          s.dashboardErrCaricamento,
+                          style: TextStyle(color: Colors.red[700]),
+                        ),
+                        TextButton(
+                          onPressed: onRetry,
+                          child: Text(s.btnRetry),
+                        ),
+                      ],
+                    );
+                  }),
                 ),
               )
             else

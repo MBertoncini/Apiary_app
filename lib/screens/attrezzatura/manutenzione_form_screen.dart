@@ -6,7 +6,9 @@ import '../../models/manutenzione.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/notification_service.dart';
+import '../../l10n/app_strings.dart';
 
 class ManutenzioneFormScreen extends StatefulWidget {
   final int attrezzaturaId;
@@ -41,17 +43,18 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
 
   List<Map<String, dynamic>> _membriGruppo = [];
   int? _selectedPagatoDaId;
+  DateTime? _prossimaManutenzione;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
     super.initState();
-    _dataProgrammata = DateTime.now().add(Duration(days: 7)); // Default: tra una settimana
+    _dataProgrammata = DateTime.now().add(Duration(days: 7));
     if (widget.condivisoConGruppo && widget.gruppoId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadMembriGruppo(widget.gruppoId!));
     }
   }
-
-  DateTime? _prossimaManutenzione;
 
   Future<void> _loadMembriGruppo(int gruppoId) async {
     try {
@@ -115,17 +118,13 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
       return;
     }
 
-    // Validazione date
+    final s = _s;
     if (_selectedStato == 'programmata' && _dataProgrammata == null) {
-      setState(() {
-        _errorMessage = 'Seleziona la data programmata';
-      });
+      setState(() { _errorMessage = s.manutenzioneFormValidateDataProgrammata; });
       return;
     }
     if (_selectedStato == 'completata' && _dataEsecuzione == null) {
-      setState(() {
-        _errorMessage = 'Seleziona la data di esecuzione';
-      });
+      setState(() { _errorMessage = s.manutenzioneFormValidateDataEsecuzione; });
       return;
     }
 
@@ -165,8 +164,6 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
         'note': _noteController.text.isNotEmpty ? _noteController.text : null,
       };
 
-      // Crea la manutenzione - questo creerà automaticamente SpesaAttrezzatura e Pagamento
-      // se costo > 0
       await service.createManutenzione(
         data,
         userId: auth.currentUser!.id,
@@ -175,7 +172,6 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
         pagatoDaId: _selectedPagatoDaId,
       );
 
-      // Notifica 1 giorno prima della manutenzione programmata
       if (_selectedStato == 'programmata' && _dataProgrammata != null) {
         final notifId =
             'manut_${widget.attrezzaturaId}_${_dataProgrammata!.millisecondsSinceEpoch}'
@@ -188,34 +184,55 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
         );
       }
 
-      String message = 'Manutenzione registrata con successo';
+      String message = s.manutenzioneFormCreatedOk;
       if (costo != null && costo > 0) {
-        message += '\nPagamento registrato automaticamente';
+        message += '\n${s.attrezzaturaFormPagamentoAuto}';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: Duration(seconds: 3),
-        ),
+        SnackBar(content: Text(message), duration: Duration(seconds: 3)),
       );
 
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il salvataggio: $e';
+        _errorMessage = _s.attrezzaturaFormSaveError(e.toString());
         _isLoading = false;
       });
     }
   }
 
+  String _getTipoDisplayName(String tipo, AppStrings s) {
+    switch (tipo) {
+      case 'ordinaria':         return s.manutenzioneFormTipoOrdinaria;
+      case 'straordinaria':     return s.manutenzioneFormTipoStraordinaria;
+      case 'riparazione':       return s.manutenzioneFormTipoRiparazione;
+      case 'pulizia':           return s.manutenzioneFormTipoPulizia;
+      case 'revisione':         return s.manutenzioneFormTipoRevisione;
+      case 'sostituzione_parti': return s.manutenzioneFormTipoSostituzioneParti;
+      default:                  return tipo;
+    }
+  }
+
+  String _getStatoDisplayName(String stato, AppStrings s) {
+    switch (stato) {
+      case 'programmata': return s.manutenzioneFormStatoProgrammata;
+      case 'in_corso':    return s.manutenzioneFormStatoInCorso;
+      case 'completata':  return s.manutenzioneFormStatoCompletata;
+      case 'annullata':   return s.manutenzioneFormStatoAnnullata;
+      default:            return stato;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     final formatDate = DateFormat('dd/MM/yyyy');
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Nuova Manutenzione'),
+        title: Text(s.manutenzioneFormTitle),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
@@ -229,7 +246,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                 Card(
                   child: ListTile(
                     leading: Icon(Icons.build, color: Colors.blue),
-                    title: Text('Attrezzatura'),
+                    title: Text(s.manutenzioneFormLblAttrezzatura),
                     subtitle: Text(widget.attrezzaturaNome!),
                   ),
                 ),
@@ -249,10 +266,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                         Icon(Icons.error, color: Colors.red),
                         SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(color: Colors.red),
-                          ),
+                          child: Text(_errorMessage!, style: TextStyle(color: Colors.red)),
                         ),
                       ],
                     ),
@@ -263,14 +277,14 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               DropdownButtonFormField<String>(
                 value: _selectedTipo,
                 decoration: InputDecoration(
-                  labelText: 'Tipo Manutenzione *',
+                  labelText: s.manutenzioneFormLblTipo,
                   prefixIcon: Icon(Icons.category),
                   border: OutlineInputBorder(),
                 ),
                 items: Manutenzione.tipiManutenzione.map((tipo) {
                   return DropdownMenuItem(
                     value: tipo,
-                    child: Text(_getTipoDisplayName(tipo)),
+                    child: Text(_getTipoDisplayName(tipo, s)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -283,22 +297,21 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               DropdownButtonFormField<String>(
                 value: _selectedStato,
                 decoration: InputDecoration(
-                  labelText: 'Stato *',
+                  labelText: s.attrezzaturaFormLblStato,
                   prefixIcon: Icon(Icons.info),
                   border: OutlineInputBorder(),
                 ),
                 items: Manutenzione.statiManutenzione
-                    .where((s) => s != 'annullata') // Non mostrare annullata in creazione
+                    .where((st) => st != 'annullata')
                     .map((stato) {
                   return DropdownMenuItem(
                     value: stato,
-                    child: Text(_getStatoDisplayName(stato)),
+                    child: Text(_getStatoDisplayName(stato, s)),
                   );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedStato = value!;
-                    // Reset date in base allo stato
                     if (value == 'completata' && _dataEsecuzione == null) {
                       _dataEsecuzione = DateTime.now();
                     }
@@ -307,18 +320,18 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Descrizione (required in Django)
+              // Descrizione
               TextFormField(
                 controller: _descrizioneController,
                 decoration: InputDecoration(
-                  labelText: 'Descrizione *',
+                  labelText: s.attrezzaturaDetailLblDescrizione + ' *',
                   prefixIcon: Icon(Icons.description),
                   border: OutlineInputBorder(),
-                  hintText: 'Es: Sostituzione parti usurate, Pulizia generale...',
+                  hintText: s.manutenzioneFormHintDescrizione,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Inserisci una descrizione';
+                    return s.manutenzioneFormValidateDescrizione;
                   }
                   return null;
                 },
@@ -326,25 +339,25 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Data programmata (required in Django)
+              // Data programmata
               InkWell(
                 onTap: () => _selectDataProgrammata(context),
                 child: InputDecorator(
                   decoration: InputDecoration(
-                    labelText: 'Data Programmata *',
+                    labelText: s.manutenzioneFormLblDataProgrammata,
                     prefixIcon: Icon(Icons.event),
                     border: OutlineInputBorder(),
                   ),
                   child: Text(
                     _dataProgrammata != null
                         ? formatDate.format(_dataProgrammata!)
-                        : 'Seleziona data',
+                        : s.manutenzioneFormHintSelezionaData,
                   ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Data esecuzione (se stato = completata o in_corso)
+              // Data esecuzione
               if (_selectedStato == 'completata' || _selectedStato == 'in_corso')
                 Padding(
                   padding: EdgeInsets.only(bottom: 16),
@@ -353,15 +366,15 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                     child: InputDecorator(
                       decoration: InputDecoration(
                         labelText: _selectedStato == 'completata'
-                            ? 'Data Esecuzione *'
-                            : 'Data Esecuzione',
+                            ? s.manutenzioneFormLblDataEsecuzioneReq
+                            : s.manutenzioneFormLblDataEsecuzione,
                         prefixIcon: Icon(Icons.check_circle),
                         border: OutlineInputBorder(),
                       ),
                       child: Text(
                         _dataEsecuzione != null
                             ? formatDate.format(_dataEsecuzione!)
-                            : 'Seleziona data',
+                            : s.manutenzioneFormHintSelezionaData,
                       ),
                     ),
                   ),
@@ -371,20 +384,21 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               TextFormField(
                 controller: _costoController,
                 decoration: InputDecoration(
-                  labelText: 'Costo (€)',
+                  labelText: s.manutenzioneFormLblCosto,
                   prefixIcon: Icon(Icons.euro),
                   border: OutlineInputBorder(),
-                  helperText: 'Se inserisci un costo, verrà creato automaticamente un pagamento',
+                  helperText: s.manutenzioneFormHelperCosto,
                 ),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 validator: (value) {
                   if (value != null && value.isNotEmpty) {
                     if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                      return 'Inserisci un importo valido';
+                      return s.attrezzaturaFormValidateImporto;
                     }
                   }
                   return null;
                 },
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 16),
 
@@ -392,10 +406,10 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               TextFormField(
                 controller: _eseguitoDaController,
                 decoration: InputDecoration(
-                  labelText: 'Eseguito da',
+                  labelText: s.manutenzioneFormLblEseguitoDa,
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
-                  hintText: 'Nome di chi ha eseguito la manutenzione',
+                  hintText: s.manutenzioneFormHintEseguitoDa,
                 ),
               ),
               const SizedBox(height: 16),
@@ -415,7 +429,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                 },
                 child: InputDecorator(
                   decoration: InputDecoration(
-                    labelText: 'Prossima Manutenzione',
+                    labelText: s.manutenzioneFormLblProssimaManutenzione,
                     prefixIcon: Icon(Icons.event_repeat),
                     border: OutlineInputBorder(),
                     suffixIcon: _prossimaManutenzione != null
@@ -428,7 +442,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                   child: Text(
                     _prossimaManutenzione != null
                         ? formatDate.format(_prossimaManutenzione!)
-                        : 'Non programmata',
+                        : s.manutenzioneFormHintNonProgrammata,
                   ),
                 ),
               ),
@@ -438,7 +452,7 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               TextFormField(
                 controller: _noteController,
                 decoration: InputDecoration(
-                  labelText: 'Note (opzionale)',
+                  labelText: s.manutenzioneFormLblNote,
                   prefixIcon: Icon(Icons.note),
                   border: OutlineInputBorder(),
                 ),
@@ -446,19 +460,19 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Chi ha pagato (solo se condiviso con gruppo e ci sono membri)
+              // Chi ha pagato
               if (widget.condivisoConGruppo && _membriGruppo.isNotEmpty) ...[
                 DropdownButtonFormField<int?>(
                   value: _selectedPagatoDaId,
                   decoration: InputDecoration(
-                    labelText: 'Chi ha pagato?',
-                    hintText: '— io stesso —',
+                    labelText: s.attrezzaturaFormLblChiHaPagato,
+                    hintText: s.attrezzaturaFormHintIoStesso,
                     prefixIcon: Icon(Icons.payments),
                     border: OutlineInputBorder(),
-                    helperText: 'Indica il membro del gruppo che ha effettivamente sostenuto la spesa',
+                    helperText: s.attrezzaturaFormHelperChiPaga,
                   ),
                   items: [
-                    DropdownMenuItem<int?>(value: null, child: Text('— io stesso —')),
+                    DropdownMenuItem<int?>(value: null, child: Text(s.attrezzaturaFormHintIoStesso)),
                     ..._membriGruppo.map((m) => DropdownMenuItem<int?>(
                       value: m['id'] as int,
                       child: Text(m['username'] as String),
@@ -480,10 +494,8 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                         Icon(Icons.info, color: Colors.blue),
                         SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            'Verrà creato automaticamente un pagamento e una spesa per questa manutenzione.',
-                            style: TextStyle(color: Colors.blue[800]),
-                          ),
+                          child: Text(s.manutenzioneFormInfoPagamento,
+                              style: TextStyle(color: Colors.blue[800])),
                         ),
                       ],
                     ),
@@ -502,10 +514,8 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                           Icon(Icons.group, color: Colors.green),
                           SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Questa manutenzione sarà condivisa con il gruppo.',
-                              style: TextStyle(color: Colors.green[800]),
-                            ),
+                            child: Text(s.manutenzioneFormInfoCondivisa,
+                                style: TextStyle(color: Colors.green[800])),
                           ),
                         ],
                       ),
@@ -525,8 +535,8 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
                       ? CircularProgressIndicator(color: Colors.white)
                       : Text(
                           _selectedStato == 'programmata'
-                              ? 'PROGRAMMA MANUTENZIONE'
-                              : 'REGISTRA MANUTENZIONE',
+                              ? s.manutenzioneFormBtnProgramma
+                              : s.manutenzioneFormBtnRegistra,
                           style: TextStyle(fontSize: 16),
                         ),
                 ),
@@ -536,39 +546,5 @@ class _ManutenzioneFormScreenState extends State<ManutenzioneFormScreen> {
         ),
       ),
     );
-  }
-
-  String _getTipoDisplayName(String tipo) {
-    switch (tipo) {
-      case 'ordinaria':
-        return 'Manutenzione Ordinaria';
-      case 'straordinaria':
-        return 'Manutenzione Straordinaria';
-      case 'riparazione':
-        return 'Riparazione';
-      case 'pulizia':
-        return 'Pulizia';
-      case 'revisione':
-        return 'Revisione';
-      case 'sostituzione_parti':
-        return 'Sostituzione Parti';
-      default:
-        return tipo;
-    }
-  }
-
-  String _getStatoDisplayName(String stato) {
-    switch (stato) {
-      case 'programmata':
-        return 'Programmata';
-      case 'in_corso':
-        return 'In Corso';
-      case 'completata':
-        return 'Completata';
-      case 'annullata':
-        return 'Annullata';
-      default:
-        return stato;
-    }
   }
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../models/invasettamento.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 
 class LottoVasettiSection extends StatefulWidget {
   final String tipoMiele;
@@ -39,6 +42,7 @@ class _LottoVasettiSectionState extends State<LottoVasettiSection> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = Provider.of<LanguageService>(context, listen: false).strings;
     final byFormato = _vasettiPerFormato;
     final totalVasetti = byFormato.values.fold(0, (s, v) => s + v);
 
@@ -60,7 +64,7 @@ class _LottoVasettiSectionState extends State<LottoVasettiSection> {
               ),
               const SizedBox(width: 8),
               Text(
-                '$totalVasetti vasetti',
+                strings.lottoVasettiCount(totalVasetti),
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
@@ -88,7 +92,7 @@ class _LottoVasettiSectionState extends State<LottoVasettiSection> {
               child: ElevatedButton.icon(
                 onPressed: _onVendi,
                 icon: const Icon(Icons.shopping_cart, size: 16),
-                label: Text('Vendi $_totalSelected vasett${_totalSelected == 1 ? "o" : "i"}'),
+                label: Text(strings.lottoVasettiiBtnVendi(_totalSelected)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
@@ -145,6 +149,7 @@ class _VasettoGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = Provider.of<LanguageService>(context, listen: false).strings;
     final isSelected = selected > 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -160,7 +165,7 @@ class _VasettoGroup extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('🫙 ${formatoG}g', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          Text('$disponibili disp.', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+          Text(strings.lottoVasettiDisponibili(disponibili), style: TextStyle(fontSize: 10, color: Colors.grey[600])),
           const SizedBox(height: 6),
           Row(
             mainAxisSize: MainAxisSize.min,

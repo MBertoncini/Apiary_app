@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class FioritureVicineWidget extends StatefulWidget {
@@ -14,6 +17,8 @@ class _FioritureVicineWidgetState extends State<FioritureVicineWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -35,7 +40,7 @@ class _FioritureVicineWidgetState extends State<FioritureVicineWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.eco, color: Color(0xFFD4A017)),
-      title: 'Fioriture Vicine',
+      title: _s.dashboardTitleFioritureVicine,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -47,7 +52,7 @@ class _FioritureVicineWidgetState extends State<FioritureVicineWidget> {
   Widget _buildContent() {
     final fioriture = _data!['fioriture'] as List;
     if (fioriture.isEmpty) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessuna fioritura nel raggio di 5 km')));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardFioritureNessuna)));
     }
 
     return Column(

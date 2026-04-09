@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class VarroaTrendWidget extends StatefulWidget {
@@ -15,6 +18,8 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -36,7 +41,7 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.bug_report, color: Color(0xFFD4A017)),
-      title: 'Trattamenti Sanitari nel Tempo',
+      title: _s.dashboardTitleTrattamenti,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -50,7 +55,7 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
     final serie = _data!['serie'] as List;
 
     if (mesi.isEmpty || serie.isEmpty) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessun trattamento nel periodo')));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardVarroaNessuno)));
     }
 
     final colors = [Colors.red, Colors.blue, Colors.green, Colors.orange, Colors.purple];

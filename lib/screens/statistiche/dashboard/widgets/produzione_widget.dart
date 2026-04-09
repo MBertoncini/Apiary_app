@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class ProduzioneAnnualeWidget extends StatefulWidget {
@@ -15,6 +18,8 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -36,7 +41,7 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.water_drop, color: Color(0xFFD4A017)),
-      title: 'Produzione Miele per Anno',
+      title: _s.dashboardTitleProduzione,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -50,7 +55,7 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
     final kgList = List<double>.from((_data!['kg'] as List).map((v) => (v as num).toDouble()));
 
     if (anni.isEmpty) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessuna smielatura registrata')));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardProdTipoNessuno)));
     }
 
     final maxY = kgList.reduce((a, b) => a > b ? a : b) * 1.2;

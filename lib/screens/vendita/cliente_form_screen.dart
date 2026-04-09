@@ -4,7 +4,9 @@ import '../../constants/api_constants.dart';
 import '../../models/gruppo.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
+import '../../l10n/app_strings.dart';
 
 class ClienteFormScreen extends StatefulWidget {
   final int? clienteId;
@@ -30,6 +32,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
   int? _selectedGruppoId;
 
   bool get _isEditing => widget.clienteId != null;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -75,7 +79,6 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
   Future<void> _loadCliente() async {
     setState(() { _isLoadingData = true; });
 
-    // Try cache first for instant display
     final cached = await _storageService.getStoredData('clienti');
     final cachedMap = cached.cast<Map<String, dynamic>>().firstWhere(
       (c) => c['id'] == widget.clienteId,
@@ -86,13 +89,13 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       setState(() { _isLoadingData = false; });
     }
 
-    // Fetch from server for fresh data
     try {
       final data = await _apiService.get('${ApiConstants.clientiUrl}${widget.clienteId}/');
       if (mounted) _populateFromJson(data);
     } catch (e) {
       if (mounted && cachedMap.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.msgErrorGeneric(e.toString()))));
       }
     }
 
@@ -112,20 +115,21 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       'gruppo': _selectedGruppoId,
     };
 
+    final s = _s;
     try {
       if (_isEditing) {
         await _apiService.put('${ApiConstants.clientiUrl}${widget.clienteId}/', data);
       } else {
         await _apiService.post(ApiConstants.clientiUrl, data);
       }
-      // Invalidate clienti cache so next load refreshes
       await _storageService.saveData('clienti', []);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isEditing ? 'Cliente aggiornato' : 'Cliente creato')),
+        SnackBar(content: Text(_isEditing ? s.clienteFormUpdatedOk : s.clienteFormCreatedOk)),
       );
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.msgErrorGeneric(e.toString()))));
     } finally {
       setState(() { _isLoading = false; });
     }
@@ -133,35 +137,39 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
 
   Future<void> _deleteCliente() async {
     if (!_isEditing) return;
+    final s = _s;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Conferma eliminazione'),
-        content: Text('Eliminare questo cliente?'),
+        title: Text(s.clienteFormDeleteTitle),
+        content: Text(s.clienteFormDeleteMsg),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('ANNULLA')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('ELIMINA')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(s.dialogCancelBtn)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(s.btnDeleteCaps)),
         ],
       ),
     );
     if (confirmed == true) {
       try {
         await _apiService.delete('${ApiConstants.clientiUrl}${widget.clienteId}/');
-        // Invalidate clienti cache
         await _storageService.saveData('clienti', []);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cliente eliminato')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.clienteFormDeletedOk)));
         Navigator.pop(context, true);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.msgErrorGeneric(e.toString()))));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Modifica Cliente' : 'Nuovo Cliente'),
+        title: Text(_isEditing ? s.clienteFormTitleEdit : s.clienteFormTitleNew),
         actions: [
           if (_isEditing)
             IconButton(icon: Icon(Icons.delete), onPressed: _deleteCliente),
@@ -178,31 +186,31 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                   children: [
                     TextFormField(
                       controller: _nomeController,
-                      decoration: InputDecoration(labelText: 'Nome *', border: OutlineInputBorder()),
-                      validator: (val) => val == null || val.isEmpty ? 'Campo obbligatorio' : null,
+                      decoration: InputDecoration(labelText: s.clienteFormLblNome, border: OutlineInputBorder()),
+                      validator: (val) => val == null || val.isEmpty ? s.trattamentoFormValidateCampoObbligatorio : null,
                     ),
                     SizedBox(height: 16),
                     TextFormField(
                       controller: _telefonoController,
-                      decoration: InputDecoration(labelText: 'Telefono', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.clienteFormLblTelefono, border: OutlineInputBorder()),
                       keyboardType: TextInputType.phone,
                     ),
                     SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
-                      decoration: InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.clienteFormLblEmail, border: OutlineInputBorder()),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     SizedBox(height: 16),
                     TextFormField(
                       controller: _indirizzoController,
-                      decoration: InputDecoration(labelText: 'Indirizzo', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.clienteFormLblIndirizzo, border: OutlineInputBorder()),
                       maxLines: 2,
                     ),
                     SizedBox(height: 16),
                     TextFormField(
                       controller: _noteController,
-                      decoration: InputDecoration(labelText: 'Note', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.clienteFormLblNote, border: OutlineInputBorder()),
                       maxLines: 3,
                     ),
                     if (_gruppi.isNotEmpty) ...[
@@ -210,13 +218,13 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                       DropdownButtonFormField<int?>(
                         value: _selectedGruppoId,
                         decoration: InputDecoration(
-                          labelText: 'Condividi con gruppo',
-                          hintText: '— solo personale —',
+                          labelText: s.clienteFormLblCondividi,
+                          hintText: s.clienteFormHintSoloPersonale,
                           prefixIcon: Icon(Icons.group),
                           border: OutlineInputBorder(),
                         ),
                         items: [
-                          DropdownMenuItem<int?>(value: null, child: Text('— solo personale —')),
+                          DropdownMenuItem<int?>(value: null, child: Text(s.clienteFormHintSoloPersonale)),
                           ..._gruppi.map((g) => DropdownMenuItem<int?>(value: g.id, child: Text(g.nome))),
                         ],
                         onChanged: (val) => setState(() { _selectedGruppoId = val; }),
@@ -227,7 +235,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                       onPressed: _isLoading ? null : _submit,
                       child: _isLoading
                           ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(_isEditing ? 'AGGIORNA' : 'CREA CLIENTE'),
+                          : Text(_isEditing ? s.clienteFormBtnUpdate : s.clienteFormBtnCreate),
                       style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 16)),
                     ),
                   ],

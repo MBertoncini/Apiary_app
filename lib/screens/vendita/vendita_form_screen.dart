@@ -4,43 +4,11 @@ import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/cliente.dart';
 import '../../models/gruppo.dart';
-
-// ────────────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────────────
-
-const _canaleOptions = {
-  'mercatino': 'Mercatino',
-  'negozio':   'Negozio',
-  'privato':   'Privato',
-  'online':    'Online',
-  'altro':     'Altro',
-};
-
-const _pagamentoOptions = {
-  'contanti': 'Contanti',
-  'bonifico': 'Bonifico',
-  'carta':    'Carta',
-  'altro':    'Altro',
-};
-
-const _categorieOptions = [
-  'miele', 'propoli', 'cera', 'polline', 'pappa_reale', 'nucleo', 'regina', 'altro',
-];
-
-const _categorieLabels = {
-  'miele':       'Miele',
-  'propoli':     'Propoli',
-  'cera':        'Cera',
-  'polline':     'Polline',
-  'pappa_reale': 'Pappa reale',
-  'nucleo':      'Nucleo',
-  'regina':      'Regina',
-  'altro':       'Altro',
-};
 
 // ────────────────────────────────────────────────────────────────────
 // Dettaglio helper
@@ -72,8 +40,6 @@ class _DettaglioItem {
 
 class VenditaFormScreen extends StatefulWidget {
   final int? venditaId;
-  /// Pre-popola i dettagli con vasetti dalla Cantina.
-  /// Ogni elemento: {'tipo_miele': String, 'formato_vasetto': int, 'quantita': int}
   final List<Map<String, dynamic>>? prefillMiele;
   VenditaFormScreen({this.venditaId, this.prefillMiele});
 
@@ -88,26 +54,55 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
   bool _isLoading = false;
   bool _isLoadingData = true;
 
-  // Acquirente
   List<Cliente> _clienti = [];
   int? _selectedClienteId;
-  bool _clienteLibero = false;         // true = free text, false = dropdown
+  bool _clienteLibero = false;
   final _acquirenteNomeController = TextEditingController();
 
-  // Gruppo
   List<Gruppo> _gruppi = [];
   int? _selectedGruppoId;
 
-  // Sale metadata
   DateTime _selectedDate = DateTime.now();
   String _selectedCanale   = 'privato';
   String _selectedPagamento = 'contanti';
   final _noteController = TextEditingController();
 
-  // Dettagli
   List<_DettaglioItem> _dettagli = [_DettaglioItem()];
 
   bool get _isEditing => widget.venditaId != null;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
+  // ── Categorie ────────────────────────────────────────────────────
+  List<String> get _categorieOptions => [
+    'miele', 'propoli', 'cera', 'polline', 'pappa_reale', 'nucleo', 'regina', 'altro',
+  ];
+
+  Map<String, String> _categorieLabels(AppStrings s) => {
+    'miele':       s.venditaCatMiele,
+    'propoli':     s.venditaCatPropoli,
+    'cera':        s.venditaCatCera,
+    'polline':     s.venditaCatPolline,
+    'pappa_reale': s.venditaCatPappaReale,
+    'nucleo':      s.venditaCatNucleo,
+    'regina':      s.venditaCatRegina,
+    'altro':       s.venditaCatAltro,
+  };
+
+  Map<String, String> _canaleOptions(AppStrings s) => {
+    'mercatino': s.venditaCanaleMercatino,
+    'negozio':   s.venditaCanaleNegozio,
+    'privato':   s.venditaCanalePrivato,
+    'online':    s.venditaCanaleOnline,
+    'altro':     s.venditaCanaleAltro,
+  };
+
+  Map<String, String> _pagamentoOptions(AppStrings s) => {
+    'contanti': s.venditaPagamentoContanti,
+    'bonifico': s.venditaPagamentoBonifico,
+    'carta':    s.venditaPagamentoCarta,
+    'altro':    s.venditaPagamentoAltro,
+  };
 
   @override
   void initState() {
@@ -115,7 +110,6 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService   = ApiService(authService);
     _storageService = Provider.of<StorageService>(context, listen: false);
-    // Pre-popola dettagli da Cantina se arrivano vasetti pre-selezionati
     if (widget.prefillMiele != null && widget.prefillMiele!.isNotEmpty) {
       _dettagli = widget.prefillMiele!.map((item) {
         final d = _DettaglioItem();
@@ -136,8 +130,6 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
     for (final d in _dettagli) d.dispose();
     super.dispose();
   }
-
-  // ── Data loading ────────────────────────────────────────────────
 
   Future<void> _loadInitialData() async {
     final cachedClienti = await _storageService.getStoredData('clienti');
@@ -213,11 +205,7 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
     }
   }
 
-  // ── Computed ────────────────────────────────────────────────────
-
   double get _totale => _dettagli.fold(0, (sum, d) => sum + d.subtotale);
-
-  // ── Actions ─────────────────────────────────────────────────────
 
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
@@ -231,10 +219,11 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final s = _s;
 
     if (_clienteLibero && _acquirenteNomeController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Inserisci il nome dell\'acquirente')));
+        SnackBar(content: Text(s.venditaFormValidateAcquirente)));
       return;
     }
 
@@ -278,21 +267,22 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
 
       await _storageService.saveData('vendite', []);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isEditing ? 'Vendita aggiornata' : 'Vendita registrata')));
+        SnackBar(content: Text(_isEditing ? s.venditaFormUpdatedOk : s.venditaFormCreatedOk)));
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.msgErrorGeneric(e.toString()))));
     } finally {
       setState(() { _isLoading = false; });
     }
   }
 
-  // ── Build ────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'Modifica Vendita' : 'Nuova Vendita')),
+      appBar: AppBar(title: Text(_isEditing ? s.venditaFormTitleEdit : s.venditaFormTitleNew)),
       body: _isLoadingData
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -302,25 +292,25 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildAcquirenteSection(),
+                    _buildAcquirenteSection(s),
                     SizedBox(height: 16),
-                    _buildDatePicker(),
+                    _buildDatePicker(s),
                     SizedBox(height: 20),
-                    _buildChipSection('Canale di vendita', _canaleOptions, _selectedCanale,
+                    _buildChipSection(s.venditaFormSectionCanale, _canaleOptions(s), _selectedCanale,
                         (val) => setState(() { _selectedCanale = val; }),
                         ThemeConstants.primaryColor),
                     SizedBox(height: 16),
-                    _buildChipSection('Metodo di pagamento', _pagamentoOptions, _selectedPagamento,
+                    _buildChipSection(s.venditaFormSectionPagamento, _pagamentoOptions(s), _selectedPagamento,
                         (val) => setState(() { _selectedPagamento = val; }),
                         Colors.green.shade700),
                     SizedBox(height: 20),
-                    Text('Articoli', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(s.venditaFormSectionArticoli, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     SizedBox(height: 8),
-                    ...List.generate(_dettagli.length, (i) => _buildDettaglioCard(i)),
+                    ...List.generate(_dettagli.length, (i) => _buildDettaglioCard(i, s)),
                     SizedBox(height: 8),
                     OutlinedButton.icon(
                       icon: Icon(Icons.add),
-                      label: Text('Aggiungi articolo'),
+                      label: Text(s.venditaFormBtnAddArticolo),
                       onPressed: () => setState(() { _dettagli.add(_DettaglioItem()); }),
                     ),
                     SizedBox(height: 16),
@@ -328,14 +318,14 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
                       color: Colors.amber.shade50,
                       child: Padding(
                         padding: EdgeInsets.all(16),
-                        child: Text('Totale: ${_totale.toStringAsFixed(2)} €',
+                        child: Text(s.venditaFormTotale(_totale.toStringAsFixed(2)),
                             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     SizedBox(height: 16),
                     TextFormField(
                       controller: _noteController,
-                      decoration: InputDecoration(labelText: 'Note', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.labelNotes, border: OutlineInputBorder()),
                       maxLines: 3,
                     ),
                     if (_gruppi.isNotEmpty) ...[
@@ -343,13 +333,13 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
                       DropdownButtonFormField<int?>(
                         value: _selectedGruppoId,
                         decoration: InputDecoration(
-                          labelText: 'Condividi con gruppo',
-                          hintText: '— solo personale —',
+                          labelText: s.venditaFormLblCondividi,
+                          hintText: s.venditaFormHintSoloPersonale,
                           prefixIcon: Icon(Icons.group),
                           border: OutlineInputBorder(),
                         ),
                         items: [
-                          DropdownMenuItem<int?>(value: null, child: Text('— solo personale —')),
+                          DropdownMenuItem<int?>(value: null, child: Text(s.venditaFormHintSoloPersonale)),
                           ..._gruppi.map((g) => DropdownMenuItem<int?>(value: g.id, child: Text(g.nome))),
                         ],
                         onChanged: (val) => setState(() { _selectedGruppoId = val; }),
@@ -361,7 +351,7 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
                       style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 16)),
                       child: _isLoading
                           ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(_isEditing ? 'AGGIORNA' : 'REGISTRA'),
+                          : Text(_isEditing ? s.attrezzaturaFormBtnAggiorna : s.venditaFormCreatedOk.toUpperCase()),
                     ),
                   ],
                 ),
@@ -370,19 +360,17 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
     );
   }
 
-  // ── Section builders ─────────────────────────────────────────────
-
-  Widget _buildAcquirenteSection() {
+  Widget _buildAcquirenteSection(AppStrings s) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text('Acquirente', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            Text(s.venditaFormLblAcquirente, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
             Spacer(),
             TextButton.icon(
               icon: Icon(_clienteLibero ? Icons.person_search : Icons.edit_note, size: 18),
-              label: Text(_clienteLibero ? 'Usa cliente registrato' : 'Nome libero',
+              label: Text(_clienteLibero ? s.venditaFormBtnUsaClienteReg : s.venditaFormBtnNomeLibero,
                   style: TextStyle(fontSize: 13)),
               onPressed: () => setState(() {
                 _clienteLibero = !_clienteLibero;
@@ -397,12 +385,12 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
           DropdownButtonFormField<int?>(
             value: _selectedClienteId,
             decoration: InputDecoration(
-              labelText: 'Cliente registrato',
-              hintText: '— nessuno (vendita anonima) —',
+              labelText: s.venditaFormLblClienteReg,
+              hintText: s.venditaFormHintNessuno,
               border: OutlineInputBorder(),
             ),
             items: [
-              DropdownMenuItem<int?>(value: null, child: Text('— nessuno —')),
+              DropdownMenuItem<int?>(value: null, child: Text(s.venditaFormHintNessuno)),
               ..._clienti.map((c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.nome))),
             ],
             onChanged: (val) => setState(() { _selectedClienteId = val; }),
@@ -411,22 +399,22 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
           TextFormField(
             controller: _acquirenteNomeController,
             decoration: InputDecoration(
-              labelText: 'Nome acquirente *',
+              labelText: s.venditaFormLblAcquirenteNome,
               border: OutlineInputBorder(),
             ),
             validator: (val) => _clienteLibero && (val == null || val.isEmpty)
-                ? 'Inserisci il nome' : null,
+                ? s.venditaFormValidateNome : null,
           ),
       ],
     );
   }
 
-  Widget _buildDatePicker() {
+  Widget _buildDatePicker(AppStrings s) {
     return InkWell(
       onTap: _selectDate,
       child: InputDecorator(
         decoration: InputDecoration(
-          labelText: 'Data *',
+          labelText: s.venditaFormLblData,
           border: OutlineInputBorder(),
           suffixIcon: Icon(Icons.calendar_today),
         ),
@@ -465,8 +453,9 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
     );
   }
 
-  Widget _buildDettaglioCard(int index) {
+  Widget _buildDettaglioCard(int index, AppStrings s) {
     final d = _dettagli[index];
+    final cats = _categorieLabels(s);
     return Card(
       margin: EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -476,7 +465,7 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
           children: [
             Row(
               children: [
-                Expanded(child: Text('Articolo ${index + 1}',
+                Expanded(child: Text(s.venditaFormArticoloLabel(index + 1),
                     style: TextStyle(fontWeight: FontWeight.bold))),
                 if (_dettagli.length > 1)
                   IconButton(
@@ -489,12 +478,11 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
               ],
             ),
             SizedBox(height: 8),
-            // Categoria chips
             Wrap(
               spacing: 6,
               runSpacing: 4,
               children: _categorieOptions.map((cat) => ChoiceChip(
-                label: Text(_categorieLabels[cat]!),
+                label: Text(cats[cat]!),
                 selected: d.categoria == cat,
                 visualDensity: VisualDensity.compact,
                 selectedColor: ThemeConstants.primaryColor.withOpacity(0.25),
@@ -502,23 +490,22 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
               )).toList(),
             ),
             SizedBox(height: 10),
-            // Tipo miele + formato (only for miele)
             if (d.categoria == 'miele') ...[
               TextFormField(
                 controller: d.tipoMieleController,
                 decoration: InputDecoration(
-                  labelText: 'Tipo miele *',
+                  labelText: s.venditaFormLblTipoMiele,
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
                 validator: (val) => d.categoria == 'miele' && (val == null || val.isEmpty)
-                    ? 'Obbligatorio' : null,
+                    ? s.venditaFormValidateRequired : null,
               ),
               SizedBox(height: 8),
               DropdownButtonFormField<int>(
                 value: d.formatoVasetto ?? 500,
                 decoration: InputDecoration(
-                  labelText: 'Formato vasetto',
+                  labelText: s.venditaFormLblFormatoVasetto,
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
@@ -531,20 +518,19 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
               ),
               SizedBox(height: 8),
             ],
-            // Qty + price
             Row(
               children: [
                 Expanded(
                   child: TextFormField(
                     controller: d.quantitaController,
                     decoration: InputDecoration(
-                      labelText: 'Qty *',
+                      labelText: s.venditaFormLblQty,
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
-                    validator: (val) => val == null || val.isEmpty ? 'Obbligatorio' : null,
+                    validator: (val) => val == null || val.isEmpty ? s.venditaFormValidateRequired : null,
                   ),
                 ),
                 SizedBox(width: 8),
@@ -552,13 +538,13 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
                   child: TextFormField(
                     controller: d.prezzoController,
                     decoration: InputDecoration(
-                      labelText: 'Prezzo € *',
+                      labelText: s.venditaFormLblPrezzo,
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
                     keyboardType: TextInputType.numberWithOptions(decimal: true),
                     onChanged: (_) => setState(() {}),
-                    validator: (val) => val == null || val.isEmpty ? 'Obbligatorio' : null,
+                    validator: (val) => val == null || val.isEmpty ? s.venditaFormValidateRequired : null,
                   ),
                 ),
               ],
@@ -566,7 +552,7 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
             SizedBox(height: 4),
             Align(
               alignment: Alignment.centerRight,
-              child: Text('Subtotale: ${d.subtotale.toStringAsFixed(2)} €',
+              child: Text(s.venditaFormSubtotale(d.subtotale.toStringAsFixed(2)),
                   style: TextStyle(color: Colors.grey[600])),
             ),
           ],

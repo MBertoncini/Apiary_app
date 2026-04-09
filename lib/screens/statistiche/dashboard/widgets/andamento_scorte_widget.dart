@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class AndamentoScorteWidget extends StatefulWidget {
@@ -34,11 +37,13 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
 
   static const _colors = [Color(0xFFD4A017), Colors.blue, Colors.green, Colors.red, Colors.purple];
 
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
   @override
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.trending_up, color: Color(0xFFD4A017)),
-      title: 'Andamento Scorte',
+      title: _s.dashboardTitleAndamentoScorte,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -50,7 +55,7 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
   Widget _buildChart() {
     final arnie = _data!['arnie'] as List;
     if (arnie.isEmpty) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessun dato scorte disponibile')));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardScorteNessuno)));
     }
 
     final lines = arnie.take(5).toList().asMap().entries.map((entry) {

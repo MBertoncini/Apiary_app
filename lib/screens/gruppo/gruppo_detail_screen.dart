@@ -8,8 +8,10 @@ import '../../constants/theme_constants.dart';
 import '../../models/gruppo.dart';
 import '../../services/gruppo_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../utils/date_formatters.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
@@ -39,6 +41,8 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
   int _currentIndex = 0;
   bool _isAdmin = false;
   bool _isCreator = false;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -173,7 +177,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore nel caricamento dei dati: ${e.toString()}';
+        _errorMessage = _s.gruppoDetailDataLoadError;
         _isLoading = false;
         _isRefreshing = false;
       });
@@ -205,15 +209,15 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
         apiariCountFromApi: _gruppo!.apiariCountFromApi,
       ));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Immagine gruppo aggiornata'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_s.gruppoDetailImmagineAggiornata),
           backgroundColor: ThemeConstants.successColor,
         ));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Errore nel caricamento: $e'),
+          content: Text(_s.msgErrorGeneric(e.toString())),
           backgroundColor: ThemeConstants.errorColor,
         ));
       }
@@ -238,7 +242,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     if (id == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('ID apiario non valido'),
+          content: Text(_s.gruppoDetailDataLoadError),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -280,27 +284,27 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              title: Text('Cambia ruolo'),
+              title: Text(_s.gruppoDetailCambiaRuoloTitle),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   RadioListTile<String>(
-                    title: Text('Amministratore'),
-                    subtitle: Text('Può gestire membri e inviti'),
+                    title: Text(_s.gruppoDetailRuoloAdmin),
+                    subtitle: Text(_s.gruppoDetailRuoloAdminDesc),
                     value: 'admin',
                     groupValue: tempRole,
                     onChanged: (v) => setDialogState(() => tempRole = v!),
                   ),
                   RadioListTile<String>(
-                    title: Text('Editor'),
-                    subtitle: Text('Può modificare dati'),
+                    title: Text(_s.gruppoDetailRuoloEditor),
+                    subtitle: Text(_s.gruppoDetailRuoloEditorDesc),
                     value: 'editor',
                     groupValue: tempRole,
                     onChanged: (v) => setDialogState(() => tempRole = v!),
                   ),
                   RadioListTile<String>(
-                    title: Text('Visualizzatore'),
-                    subtitle: Text('Solo lettura'),
+                    title: Text(_s.gruppoDetailRuoloViewer),
+                    subtitle: Text(_s.gruppoDetailRuoloViewerDesc),
                     value: 'viewer',
                     groupValue: tempRole,
                     onChanged: (v) => setDialogState(() => tempRole = v!),
@@ -310,11 +314,11 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text('ANNULLA'),
+                  child: Text(_s.dialogCancelBtn),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(ctx, tempRole),
-                  child: Text('SALVA'),
+                  child: Text(_s.gruppoFormBtnSalva),
                 ),
               ],
             );
@@ -330,13 +334,13 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
       await _gruppoService.updateMembroRuolo(
           widget.gruppoId, membroId, selectedRole);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ruolo aggiornato')),
+        SnackBar(content: Text(_s.gruppoDetailRuoloUpdated)),
       );
       _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: ${e.toString()}'),
+          content: Text(_s.msgErrorGeneric(e.toString())),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -353,19 +357,18 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('Rimuovi membro'),
-            content:
-                Text('Sei sicuro di voler rimuovere $username dal gruppo?'),
+            title: Text(_s.gruppoDetailRimuoviTitle),
+            content: Text(_s.gruppoDetailRimuoviMsg(username)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text('ANNULLA'),
+                child: Text(_s.dialogCancelBtn),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: TextButton.styleFrom(
                     foregroundColor: ThemeConstants.errorColor),
-                child: Text('RIMUOVI'),
+                child: Text(_s.gruppoDetailRimuoviBtnConfirm),
               ),
             ],
           ),
@@ -378,13 +381,13 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     try {
       await _gruppoService.removeMembro(widget.gruppoId, membroId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$username rimosso dal gruppo')),
+        SnackBar(content: Text(_s.gruppoDetailRimosso(username))),
       );
       _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: ${e.toString()}'),
+          content: Text(_s.msgErrorGeneric(e.toString())),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -400,19 +403,18 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('Elimina gruppo'),
-            content: Text(
-                'Sei sicuro di voler eliminare questo gruppo? Questa azione non può essere annullata.'),
+            title: Text(_s.gruppoDetailEliminaTitle),
+            content: Text(_s.gruppoDetailEliminaMsg),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text('ANNULLA'),
+                child: Text(_s.dialogCancelBtn),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: TextButton.styleFrom(
                     foregroundColor: ThemeConstants.errorColor),
-                child: Text('ELIMINA'),
+                child: Text(_s.btnDeleteCaps),
               ),
             ],
           ),
@@ -425,14 +427,14 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     try {
       await _gruppoService.deleteGruppo(widget.gruppoId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gruppo eliminato')),
+        SnackBar(content: Text(_s.gruppoDetailEliminato)),
       );
       Navigator.of(context)
           .pushReplacementNamed(AppConstants.gruppiListRoute);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: ${e.toString()}'),
+          content: Text(_s.msgErrorGeneric(e.toString())),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -448,19 +450,18 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('Lascia gruppo'),
-            content: Text(
-                'Sei sicuro di voler lasciare il gruppo "${_gruppo!.nome}"?'),
+            title: Text(_s.gruppoDetailLasciaTitle),
+            content: Text(_s.gruppoDetailLasciaMsg(_gruppo!.nome)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text('ANNULLA'),
+                child: Text(_s.dialogCancelBtn),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: TextButton.styleFrom(
                     foregroundColor: ThemeConstants.errorColor),
-                child: Text('LASCIA'),
+                child: Text(_s.gruppoDetailLasciaBtnConfirm),
               ),
             ],
           ),
@@ -502,7 +503,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     if (membroId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Impossibile trovare il tuo profilo nel gruppo'),
+          content: Text(_s.gruppoDetailImpossibileTrovareProf),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -513,14 +514,14 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     try {
       await _gruppoService.removeMembro(widget.gruppoId, membroId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hai lasciato il gruppo')),
+        SnackBar(content: Text(_s.gruppoDetailLasciato)),
       );
       Navigator.of(context)
           .pushReplacementNamed(AppConstants.gruppiListRoute);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: ${e.toString()}'),
+          content: Text(_s.msgErrorGeneric(e.toString())),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -536,18 +537,18 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('Annulla invito'),
-            content: Text('Annullare l\'invito per ${invito.email}?'),
+            title: Text(_s.gruppoDetailAnnullaInvitoTitle),
+            content: Text(_s.gruppoDetailAnnullaInvitoMsg(invito.email)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text('NO'),
+                child: Text(_s.dialogCancelBtn),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: TextButton.styleFrom(
                     foregroundColor: ThemeConstants.errorColor),
-                child: Text('ANNULLA INVITO'),
+                child: Text(_s.gruppoDetailAnnullaBtnConfirm),
               ),
             ],
           ),
@@ -559,13 +560,13 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     try {
       await _gruppoService.annullaInvito(widget.gruppoId, invito.id);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invito annullato')),
+        SnackBar(content: Text(_s.gruppoDetailInvitoAnnullato)),
       );
       _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: ${e.toString()}'),
+          content: Text(_s.msgErrorGeneric(e.toString())),
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
@@ -578,10 +579,12 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     final List<Tab> tabs = [
-      Tab(icon: Icon(Icons.people), text: 'Membri'),
-      Tab(icon: Icon(Icons.hive), text: 'Apiari'),
-      if (_isAdmin) Tab(icon: Icon(Icons.mail_outline), text: 'Inviti'),
+      Tab(icon: Icon(Icons.people), text: s.gruppoDetailTabMembri),
+      Tab(icon: Icon(Icons.hive), text: s.gruppoDetailTabApiari),
+      if (_isAdmin) Tab(icon: Icon(Icons.mail_outline), text: s.gruppoDetailTabInviti),
     ];
 
     final List<Widget> tabViews = [
@@ -639,7 +642,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
               ),
             ),
             const SizedBox(width: 10),
-            Text(_gruppo?.nome ?? 'Dettaglio Gruppo'),
+            Text(_gruppo?.nome ?? s.gruppoDetailDefaultTitle),
           ],
         ),
         actions: [
@@ -647,13 +650,13 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
             IconButton(
               icon: Icon(Icons.person_add),
               onPressed: _navigateToInvita,
-              tooltip: 'Invita membro',
+              tooltip: s.gruppoDetailTooltipInvita,
             ),
           if (_isAdmin || _isCreator)
             IconButton(
               icon: Icon(Icons.edit),
               onPressed: _navigateToEditGruppo,
-              tooltip: 'Modifica gruppo',
+              tooltip: s.gruppoDetailTooltipModifica,
             ),
         ],
         bottom: _gruppo == null || _errorMessage != null
@@ -681,7 +684,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                         onRetry: _loadData,
                       )
                     : _gruppo == null
-                        ? Center(child: Text('Gruppo non trovato'))
+                        ? Center(child: Text(s.gruppoDetailNotFound))
                         : IndexedStack(
                             index: _currentIndex,
                             children: tabViews,
@@ -699,7 +702,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                     ? ElevatedButton.icon(
                         onPressed: _showDeleteGruppoDialog,
                         icon: Icon(Icons.delete_forever),
-                        label: Text('ELIMINA GRUPPO'),
+                        label: Text(s.gruppoDetailBtnElimina),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ThemeConstants.errorColor,
                           foregroundColor: Colors.white,
@@ -708,7 +711,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                     : OutlinedButton.icon(
                         onPressed: _showLeaveGroupDialog,
                         icon: Icon(Icons.exit_to_app),
-                        label: Text('LASCIA GRUPPO'),
+                        label: Text(s.gruppoDetailBtnLascia),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: ThemeConstants.errorColor,
                           side: BorderSide(color: ThemeConstants.errorColor),
@@ -727,7 +730,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     if (_gruppo == null) return Container();
 
     if (_gruppo!.membri.isEmpty) {
-      return Center(child: Text('Nessun membro trovato'));
+      return Center(child: Text(_s.gruppoDetailNoMembri));
     }
 
     return ListView.builder(
@@ -750,7 +753,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
           membroImmagine = membro.immagineProfilo;
         } else if (membro is Map<String, dynamic>) {
           username =
-              membro['username'] ?? membro['utente_username'] ?? 'Sconosciuto';
+              membro['username'] ?? membro['utente_username'] ?? _s.gruppoDetailMembroNonValido;
           ruolo = membro['ruolo'] ?? 'viewer';
           membroImmagine = membro['immagine_profilo'] as String?;
           final rawId = membro['id'];
@@ -769,8 +772,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
           }
         } else {
           return ListTile(
-            title: Text('Membro non valido'),
-            subtitle: Text('Errore nel formato dei dati'),
+            title: Text(_s.gruppoDetailMembroNonValido),
           );
         }
 
@@ -818,7 +820,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'Creatore',
+                    _s.gruppoDetailRuoloCreatore,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -846,7 +848,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                         children: [
                           Icon(Icons.edit, size: 18),
                           SizedBox(width: 8),
-                          Text('Cambia ruolo'),
+                          Text(_s.gruppoDetailPopupCambiaRuolo),
                         ],
                       ),
                     ),
@@ -859,7 +861,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                               color: ThemeConstants.errorColor),
                           SizedBox(width: 8),
                           Text(
-                            'Rimuovi dal gruppo',
+                            _s.gruppoDetailPopupRimuovi,
                             style:
                                 TextStyle(color: ThemeConstants.errorColor),
                           ),
@@ -877,11 +879,11 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
   String _getRuoloDisplay(String ruolo) {
     switch (ruolo) {
       case 'admin':
-        return 'Amministratore';
+        return _s.gruppoDetailRuoloAdmin;
       case 'editor':
-        return 'Editor';
+        return _s.gruppoDetailRuoloEditor;
       case 'viewer':
-        return 'Visualizzatore';
+        return _s.gruppoDetailRuoloViewer;
       default:
         return ruolo;
     }
@@ -902,7 +904,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                 color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
             const SizedBox(height: 16),
             Text(
-              'Nessun apiario condiviso con questo gruppo',
+              _s.gruppoDetailNoApiariCondivisi,
               style: TextStyle(
                   color: ThemeConstants.textSecondaryColor, fontSize: 18),
               textAlign: TextAlign.center,
@@ -919,9 +921,9 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
         if (apiario is! Map<String, dynamic>) {
           return SizedBox.shrink();
         }
-        final nome = apiario['nome'] ?? 'Apiario senza nome';
+        final nome = apiario['nome'] ?? _s.gruppoDetailDefaultTitle;
         final posizione =
-            apiario['posizione'] ?? 'Posizione non specificata';
+            apiario['posizione'] ?? _s.gruppoDetailApiarioNoPos;
         final proprietarioNome =
             apiario['proprietario_username'] ?? 'N/D';
         final apiarioId = apiario['id'];
@@ -967,7 +969,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                           color: ThemeConstants.textSecondaryColor),
                       SizedBox(width: 4),
                       Text(
-                        'Proprietario: $proprietarioNome',
+                        '${_s.gruppoDetailApiarioProprietario}: $proprietarioNome',
                         style: TextStyle(
                             color: ThemeConstants.textSecondaryColor,
                             fontSize: 12),
@@ -998,14 +1000,14 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                 color: ThemeConstants.textSecondaryColor.withOpacity(0.5)),
             const SizedBox(height: 16),
             Text(
-              'Nessun invito in sospeso',
+              _s.gruppoDetailNoInviti,
               style: TextStyle(
                   color: ThemeConstants.textSecondaryColor, fontSize: 18),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: Icon(Icons.person_add),
-              label: Text('Invita membro'),
+              label: Text(_s.gruppoDetailBtnInvitaMembro),
               onPressed: _navigateToInvita,
             ),
           ],
@@ -1033,9 +1035,9 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Ruolo: ${invito.getRuoloPropDisplay()}'),
+                    Text('${_s.gruppoDetailInvitoRuoloLbl}: ${invito.getRuoloPropDisplay()}'),
                     Text(
-                      'Scade: ${DateFormatter.formatDate(invito.dataScadenza)}',
+                      '${_s.gruppoDetailInvitoScadeLbl}: ${DateFormatter.formatDate(invito.dataScadenza)}',
                       style: TextStyle(fontSize: 12),
                     ),
                   ],
@@ -1044,7 +1046,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
                 trailing: IconButton(
                   icon: Icon(Icons.cancel,
                       color: ThemeConstants.errorColor),
-                  tooltip: 'Annulla invito',
+                  tooltip: _s.gruppoDetailTooltipAnnullaInvito,
                   onPressed: () => _annullaInvito(invito),
                 ),
               ),
@@ -1057,7 +1059,7 @@ class _GruppoDetailScreenState extends State<GruppoDetailScreen>
           child: FloatingActionButton(
             onPressed: _navigateToInvita,
             child: Icon(Icons.person_add),
-            tooltip: 'Invita membro',
+            tooltip: _s.gruppoDetailTooltipInvita,
           ),
         ),
       ],

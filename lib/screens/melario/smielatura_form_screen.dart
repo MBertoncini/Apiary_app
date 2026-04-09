@@ -130,6 +130,10 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaFormSelectApiarioMsg)));
       return;
     }
+    if (_selectedMelariIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaFormSelectMelarioMsg)));
+      return;
+    }
 
     setState(() { _isLoading = true; });
 
@@ -242,13 +246,33 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (val) {
                         if (val == null || val.isEmpty) return s.trattamentoFormValidateCampoObbligatorio;
-                        if (double.tryParse(val) == null) return s.smielaturaFormValidateNumero;
+                        final parsed = double.tryParse(val);
+                        if (parsed == null) return s.smielaturaFormValidateNumero;
+                        if (parsed >= 100000) return s.smielaturaFormValidateQuantitaMax;
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
 
                     // Melari checkboxes
+                    if (_selectedApiarioId != null && _filteredMelari.isEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          border: Border.all(color: Colors.orange.shade200),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber, color: Colors.orange.shade700, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(s.smielaturaFormNoMelariDisp, style: TextStyle(color: Colors.orange.shade800))),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     if (_filteredMelari.isNotEmpty) ...[
                       Text(s.smielaturaFormLblMelariDisp, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),

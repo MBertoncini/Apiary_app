@@ -4,7 +4,9 @@ import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/maturatore.dart';
 import '../../models/contenitore_stoccaggio.dart';
 import '../../models/invasettamento.dart';
@@ -34,6 +36,8 @@ class _CantinaScreenState extends State<CantinaScreen> {
   bool _isLoading = true;
   bool _isRefreshing = false;
   String? _error;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -82,7 +86,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
       ]);
     } catch (e) {
       if (_maturatori.isEmpty && _contenitori.isEmpty) {
-        _error = 'Errore nel caricamento: $e';
+        _error = _s.msgErrorGeneric(e.toString());
       }
     }
 
@@ -111,9 +115,11 @@ class _CantinaScreenState extends State<CantinaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cantina 🍯'),
+        title: Text(s.cantinaTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -152,7 +158,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _onAddMaturatore,
         icon: const Icon(Icons.add),
-        label: const Text('Nuovo maturatore'),
+        label: Text(s.cantinaBtnNuovoMaturatore),
       ),
     );
   }
@@ -164,7 +170,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
         children: [
           Text(_error!, textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          ElevatedButton(onPressed: _load, child: const Text('Riprova')),
+          ElevatedButton(onPressed: _load, child: Text(s.btnRetry)),
         ],
       ),
     );
@@ -174,11 +180,11 @@ class _CantinaScreenState extends State<CantinaScreen> {
   Widget _buildSummaryRow() {
     return Row(
       children: [
-        _summaryChip(Icons.hourglass_top, '${_totKgMaturazione.toStringAsFixed(1)} kg', 'In maturazione', Colors.orange),
+        _summaryChip(Icons.hourglass_top, '${_totKgMaturazione.toStringAsFixed(1)} kg', s.cantinaInMaturazione, Colors.orange),
         const SizedBox(width: 8),
-        _summaryChip(Icons.water_drop, '${_totKgStoccaggio.toStringAsFixed(1)} kg', 'Stoccati', Colors.blue),
+        _summaryChip(Icons.water_drop, '${_totKgStoccaggio.toStringAsFixed(1)} kg', s.cantinaStoccati, Colors.blue),
         const SizedBox(width: 8),
-        _summaryChip(Icons.local_grocery_store, '$_totVasetti', 'Vasetti', Colors.green),
+        _summaryChip(Icons.local_grocery_store, '$_totVasetti', s.cantinaVasetti, Colors.green),
       ],
     );
   }
@@ -210,9 +216,9 @@ class _CantinaScreenState extends State<CantinaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('🥛 Maturatori', '${active.length} attivi', onAdd: _onAddMaturatore),
+        _sectionHeader(s.cantinaSectionMaturatori, s.cantinaAttiviLabel(active.length), onAdd: _onAddMaturatore),
         if (active.isEmpty)
-          _emptyHint('Nessun maturatore attivo.\nAggiungi uno dopo una smielatura.')
+          _emptyHint(s.cantinaNoMaturatori)
         else
           ...active.map((m) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -239,9 +245,9 @@ class _CantinaScreenState extends State<CantinaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('🪣 Stoccaggio', '${active.length} contenitori'),
+        _sectionHeader(s.cantinaSectionStoccaggio, s.cantinaContenitoriLabel(active.length)),
         if (active.isEmpty)
-          _emptyHint('Nessun contenitore con miele.\nTrasferisci da un maturatore.')
+          _emptyHint(s.cantinaNoContenitori)
         else
           ...byTipo.entries.map((entry) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,9 +289,9 @@ class _CantinaScreenState extends State<CantinaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('🫙 Invasettato', '$_totVasetti vasetti'),
+        _sectionHeader(s.cantinaSectionInvasettato, s.cantinaVasettiLabel(_totVasetti)),
         if (byTipo.isEmpty)
-          _emptyHint('Nessun vasetto registrato.\nInvasetta da un contenitore.')
+          _emptyHint(s.cantinaNoVasetti)
         else
           ...byTipo.entries.map((entry) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -318,7 +324,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
             TextButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add, size: 16),
-              label: const Text('Aggiungi'),
+              label: Text(_s.btnAdd),
             ),
         ],
       ),
@@ -386,24 +392,24 @@ class _CantinaScreenState extends State<CantinaScreen> {
   }
 
   Future<void> _onDeleteMaturatore(Maturatore m) async {
-    final ok = await _confirmDelete('Eliminare il maturatore "${m.nome}"?');
+    final ok = await _confirmDelete(_s.cantinaDeleteMaturatoreMsg(m.nome));
     if (!ok) return;
     try {
       await _apiService.delete('${ApiConstants.maturatoriUrl}${m.id}/');
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.msgErrorGeneric(e.toString()))));
     }
   }
 
   Future<void> _onDeleteContenitore(ContenitoreStoccaggio c) async {
-    final ok = await _confirmDelete('Eliminare il contenitore "${c.nome.isEmpty ? c.tipoDisplay : c.nome}"?');
+    final ok = await _confirmDelete(_s.cantinaDeleteContenitoreMsg(c.nome.isEmpty ? c.tipoDisplay : c.nome));
     if (!ok) return;
     try {
       await _apiService.delete('${ApiConstants.contenitoriStoccaggioUrl}${c.id}/');
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.msgErrorGeneric(e.toString()))));
     }
   }
 
@@ -426,7 +432,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
         )));
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Vendita salvata ma errore aggiornamento vasetti: $e')),
+          SnackBar(content: Text('${_s.cantinaVenditaErrVasetti}: $e')),
         );
       }
     }
@@ -437,13 +443,13 @@ class _CantinaScreenState extends State<CantinaScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Conferma eliminazione'),
+            title: Text(_s.dialogConfirmDeleteTitle),
             content: Text(message),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ANNULLA')),
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_s.dialogCancelBtn)),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('ELIMINA', style: TextStyle(color: Colors.red)),
+                child: Text(_s.dialogConfirmDeleteBtn, style: const TextStyle(color: Colors.red)),
               ),
             ],
           ),

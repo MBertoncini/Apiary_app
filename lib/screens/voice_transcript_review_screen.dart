@@ -1,6 +1,9 @@
 // lib/screens/voice_transcript_review_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
+import '../services/language_service.dart';
+import '../l10n/app_strings.dart';
 
 /// Screen shown after a batch recording session ends (or when reviewing the
 /// offline queue).  Lets the user edit, reorder, merge and delete raw
@@ -48,6 +51,8 @@ class _VoiceTranscriptReviewScreenState
   bool _isProcessing = false;
   // Set to true when onSendToAI completes so onLeave is not called on pop.
   bool _processingComplete = false;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -99,10 +104,11 @@ class _VoiceTranscriptReviewScreenState
   }
 
   Future<void> _deleteItem(int index) async {
+    final s = _s;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Elimina trascrizione?'),
+        title: Text(s.voiceReviewDeleteItemTitle),
         content: Text(
           '"${_items[index].length > 80 ? '${_items[index].substring(0, 80)}…' : _items[index]}"',
           style: const TextStyle(fontStyle: FontStyle.italic),
@@ -110,12 +116,12 @@ class _VoiceTranscriptReviewScreenState
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('ANNULLA'),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('ELIMINA', style: TextStyle(color: Colors.white)),
+            child: Text(s.btnDeleteCaps, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -202,6 +208,8 @@ class _VoiceTranscriptReviewScreenState
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return PopScope(
       // Intercept hardware/gesture back to call onLeave with remaining items.
       canPop: false,
@@ -211,12 +219,12 @@ class _VoiceTranscriptReviewScreenState
       child: Scaffold(
         appBar: AppBar(
           leading: BackButton(onPressed: _leave),
-          title: Text('Revisione (${_items.length})'),
+          title: Text(s.voiceReviewTitleCount(_items.length)),
           actions: [
             if (_items.isNotEmpty)
               TextButton.icon(
                 icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                label: const Text('Elimina tutto'),
+                label: Text(s.voiceReviewBtnDeleteAll),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.red.shade400,
                 ),
@@ -224,13 +232,12 @@ class _VoiceTranscriptReviewScreenState
                   showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
-                      title: const Text('Eliminare tutto?'),
-                      content: const Text(
-                          'Tutte le trascrizioni verranno rimosse dalla lista.'),
+                      title: Text(s.voiceReviewDeleteAllTitle),
+                      content: Text(s.voiceReviewDeleteAllMsg),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Annulla'),
+                          child: Text(s.btnCancel),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -245,8 +252,8 @@ class _VoiceTranscriptReviewScreenState
                               _editingId = -1;
                             });
                           },
-                          child: const Text('Elimina tutto',
-                              style: TextStyle(color: Colors.white)),
+                          child: Text(s.voiceReviewBtnDeleteAll,
+                              style: const TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
@@ -258,27 +265,27 @@ class _VoiceTranscriptReviewScreenState
         ),
         body: Column(
           children: [
-            _buildInfoBanner(),
+            _buildInfoBanner(s),
             Expanded(
               child: _items.isEmpty
-                  ? _buildEmptyState()
+                  ? _buildEmptyState(s)
                   : ReorderableListView.builder(
                       padding:
                           const EdgeInsets.fromLTRB(12, 8, 12, 16),
                       onReorder: _onReorder,
                       itemCount: _items.length,
                       itemBuilder: (context, i) =>
-                          _buildTranscriptCard(i),
+                          _buildTranscriptCard(i, s),
                     ),
             ),
-            _buildBottomBar(),
+            _buildBottomBar(s),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoBanner() {
+  Widget _buildInfoBanner(AppStrings s) {
     return Container(
       width: double.infinity,
       padding:
@@ -291,7 +298,7 @@ class _VoiceTranscriptReviewScreenState
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Trascina ≡ per riordinare, poi unisci le voci adiacenti.',
+              s.voiceReviewInfoBanner,
               style: TextStyle(
                   fontSize: 12,
                   color: ThemeConstants.textSecondaryColor),
@@ -302,7 +309,7 @@ class _VoiceTranscriptReviewScreenState
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppStrings s) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -311,12 +318,12 @@ class _VoiceTranscriptReviewScreenState
               size: 52, color: Colors.grey.shade300),
           const SizedBox(height: 12),
           Text(
-            'Nessuna trascrizione rimasta.',
+            s.voiceReviewEmpty,
             style: TextStyle(color: ThemeConstants.textSecondaryColor),
           ),
           const SizedBox(height: 4),
           Text(
-            'Premi "Mantieni in coda" per uscire o torna indietro.',
+            s.voiceReviewEmptyHint,
             style: TextStyle(
                 fontSize: 12,
                 color: ThemeConstants.textSecondaryColor),
@@ -327,7 +334,7 @@ class _VoiceTranscriptReviewScreenState
     );
   }
 
-  Widget _buildTranscriptCard(int index) {
+  Widget _buildTranscriptCard(int index, AppStrings s) {
     final id = _itemIds[index];
     final isMerging = _mergingIds.contains(id);
     final isEditing = _editingId == id;
@@ -427,7 +434,7 @@ class _VoiceTranscriptReviewScreenState
                               color: ThemeConstants.primaryColor,
                               size: 20),
                           onPressed: _commitEdit,
-                          tooltip: 'Salva',
+                          tooltip: s.voiceReviewTooltipSave,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
                               minWidth: 32, minHeight: 32),
@@ -437,7 +444,7 @@ class _VoiceTranscriptReviewScreenState
                           icon: Icon(Icons.edit_outlined,
                               color: Colors.grey.shade500, size: 18),
                           onPressed: () => _startEdit(index),
-                          tooltip: 'Modifica',
+                          tooltip: s.voiceReviewTooltipEdit,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
                               minWidth: 32, minHeight: 32),
@@ -446,7 +453,7 @@ class _VoiceTranscriptReviewScreenState
                         icon: Icon(Icons.delete_outline,
                             color: Colors.red.shade300, size: 18),
                         onPressed: () => _deleteItem(index),
-                        tooltip: 'Elimina',
+                        tooltip: s.voiceReviewTooltipDelete,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
                             minWidth: 32, minHeight: 32),
@@ -490,8 +497,8 @@ class _VoiceTranscriptReviewScreenState
                         const SizedBox(width: 5),
                         Text(
                           isMerging
-                              ? 'Unione in corso…'
-                              : 'Unisci con la successiva ↓',
+                              ? s.voiceReviewMerging
+                              : s.voiceReviewMergeWith,
                           style: TextStyle(
                             fontSize: 12,
                             color: isMerging
@@ -513,7 +520,7 @@ class _VoiceTranscriptReviewScreenState
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildBottomBar(AppStrings s) {
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
@@ -527,7 +534,7 @@ class _VoiceTranscriptReviewScreenState
             Expanded(
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('Mantieni in coda'),
+                label: Text(s.voiceReviewBtnKeepQueue),
                 onPressed: _isProcessing ? null : _leave,
                 style: OutlinedButton.styleFrom(
                     padding:
@@ -548,8 +555,8 @@ class _VoiceTranscriptReviewScreenState
                                 Colors.white)))
                     : const Icon(Icons.auto_awesome, size: 18),
                 label: Text(_isProcessing
-                    ? 'Elaborazione…'
-                    : 'Invia all\'elaborazione'
+                    ? s.voiceReviewProcessing
+                    : '${s.voiceReviewBtnSendAI}'
                         '${_items.isNotEmpty ? ' (${_items.length})' : ''}'),
                 onPressed: (_isProcessing || _items.isEmpty)
                     ? null

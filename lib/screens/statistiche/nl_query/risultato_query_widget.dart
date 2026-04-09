@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import '../../../services/language_service.dart';
 
 class RisultatoQueryWidget extends StatelessWidget {
   final Map<String, dynamic> result;
@@ -13,6 +15,8 @@ class RisultatoQueryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final dati = result['dati'] as Map<String, dynamic>?;
     final colonne = result['colonne'] as List?;
     final righe = result['righe'] as List?;
@@ -36,14 +40,14 @@ class RisultatoQueryWidget extends StatelessWidget {
             _buildTable(List<String>.from(colonneTabella), righeTabella),
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text('$totale righe', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              child: Text(s.nlQueryRighe(totale as int), style: const TextStyle(color: Colors.grey, fontSize: 12)),
             ),
           ],
         );
       }
 
       if (labels.isEmpty || valori.isEmpty) {
-        return const Text('Nessun dato disponibile', style: TextStyle(color: Colors.grey));
+        return Text(s.risultatoNessunDato, style: const TextStyle(color: Colors.grey));
       }
 
       if (visualizzazione == 'bar_chart') return _buildBarChart(labels, valori, result['titolo'] ?? '');
@@ -51,7 +55,7 @@ class RisultatoQueryWidget extends StatelessWidget {
       if (visualizzazione == 'pie_chart') return _buildPieChart(labels, valori);
     }
 
-    return const Text('Nessun risultato', style: TextStyle(color: Colors.grey));
+    return Text(s.risultatoNessunRisultato, style: const TextStyle(color: Colors.grey));
   }
 
   Widget _buildTable(List<String> colonne, List righe) {

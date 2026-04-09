@@ -7,6 +7,8 @@ import '../../models/gruppo.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
 
@@ -37,15 +39,16 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
   List<Gruppo> _gruppi = [];
   Gruppo? _selectedGruppo;
 
-  // Payer: list of {id, username} for group members
   List<Map<String, dynamic>> _membriGruppo = [];
-  int? _selectedPagatoDaId;     // null = the uploader pays
+  int? _selectedPagatoDaId;
 
   bool _isLoading = false;
   bool _isInitLoading = false;
   String? _errorMessage;
 
   bool get isEditing => widget.attrezzaturaId != null;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -109,7 +112,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il caricamento: $e';
+        _errorMessage = _s.attrezzaturaFormLoadError(e.toString());
         _isInitLoading = false;
       });
     }
@@ -153,7 +156,6 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
             'id': m['utente'],
             'username': m['utente_username'] ?? '—',
           }).toList();
-          // reset payer if they're no longer in the new group
           if (_selectedPagatoDaId != null &&
               !_membriGruppo.any((m) => m['id'] == _selectedPagatoDaId)) {
             _selectedPagatoDaId = null;
@@ -216,17 +218,18 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
           'pagato_da': _selectedPagatoDaId,
       };
 
+      final s = _s;
       if (isEditing) {
         await service.updateAttrezzatura(widget.attrezzaturaId!, data);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Attrezzatura aggiornata con successo')),
+          SnackBar(content: Text(s.attrezzaturaFormUpdatedOk)),
         );
       } else {
         await service.createAttrezzatura(data, userId: auth.currentUser!.id);
 
-        String message = 'Attrezzatura creata con successo';
+        String message = s.attrezzaturaFormCreatedOk;
         if (prezzo != null && prezzo > 0) {
-          message += '\nPagamento registrato automaticamente';
+          message += '\n${s.attrezzaturaFormPagamentoAuto}';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -237,7 +240,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il salvataggio: $e';
+        _errorMessage = _s.attrezzaturaFormSaveError(e.toString());
         _isLoading = false;
       });
     }
@@ -245,11 +248,13 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     final formatDate = DateFormat('dd/MM/yyyy');
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Modifica Attrezzatura' : 'Nuova Attrezzatura'),
+        title: Text(isEditing ? s.attrezzaturaFormTitleEdit : s.attrezzaturaFormTitleNew),
       ),
       body: _isInitLoading
           ? LoadingWidget()
@@ -278,13 +283,13 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                         TextFormField(
                           controller: _nomeController,
                           decoration: InputDecoration(
-                            labelText: 'Nome *',
+                            labelText: s.attrezzaturaFormLblNome,
                             prefixIcon: Icon(Icons.label),
                             border: OutlineInputBorder(),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Inserisci il nome dell\'attrezzatura';
+                              return s.attrezzaturaFormValidateNome;
                             }
                             return null;
                           },
@@ -295,7 +300,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                         TextFormField(
                           controller: _descrizioneController,
                           decoration: InputDecoration(
-                            labelText: 'Descrizione',
+                            labelText: s.attrezzaturaDetailLblDescrizione,
                             prefixIcon: Icon(Icons.description),
                             border: OutlineInputBorder(),
                           ),
@@ -310,7 +315,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                               child: TextFormField(
                                 controller: _marcaController,
                                 decoration: InputDecoration(
-                                  labelText: 'Marca',
+                                  labelText: s.attrezzaturaFormLblMarca,
                                   border: OutlineInputBorder(),
                                 ),
                               ),
@@ -320,7 +325,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                               child: TextFormField(
                                 controller: _modelloController,
                                 decoration: InputDecoration(
-                                  labelText: 'Modello',
+                                  labelText: s.attrezzaturaFormLblModello,
                                   border: OutlineInputBorder(),
                                 ),
                               ),
@@ -333,17 +338,17 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                         TextFormField(
                           controller: _quantitaController,
                           decoration: InputDecoration(
-                            labelText: 'Quantità *',
+                            labelText: s.attrezzaturaFormLblQuantita,
                             prefixIcon: Icon(Icons.numbers),
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Inserisci la quantità';
+                              return s.attrezzaturaFormValidateQuantita;
                             }
                             if (int.tryParse(value) == null || int.parse(value) < 1) {
-                              return 'Inserisci un numero valido';
+                              return s.attrezzaturaFormValidateNumero;
                             }
                             return null;
                           },
@@ -358,13 +363,13 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                 value: _selectedStato,
                                 isExpanded: true,
                                 decoration: InputDecoration(
-                                  labelText: 'Stato',
+                                  labelText: s.attrezzaturaFormLblStato,
                                   border: OutlineInputBorder(),
                                 ),
                                 items: Attrezzatura.statiDisponibili.map((stato) {
                                   return DropdownMenuItem(
                                     value: stato,
-                                    child: Text(_displayStato(stato), overflow: TextOverflow.ellipsis),
+                                    child: Text(_displayStato(stato, s), overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
                                 onChanged: (value) {
@@ -378,13 +383,13 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                 value: _selectedCondizione,
                                 isExpanded: true,
                                 decoration: InputDecoration(
-                                  labelText: 'Condizione',
+                                  labelText: s.attrezzaturaFormLblCondizione,
                                   border: OutlineInputBorder(),
                                 ),
                                 items: Attrezzatura.condizioniDisponibili.map((cond) {
                                   return DropdownMenuItem(
                                     value: cond,
-                                    child: Text(_displayCondizione(cond), overflow: TextOverflow.ellipsis),
+                                    child: Text(_displayCondizione(cond, s), overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
                                 onChanged: (value) {
@@ -401,7 +406,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                           onTap: () => _selectDate(context),
                           child: InputDecorator(
                             decoration: InputDecoration(
-                              labelText: 'Data Acquisto',
+                              labelText: s.attrezzaturaFormLblDataAcquisto,
                               prefixIcon: Icon(Icons.calendar_today),
                               border: OutlineInputBorder(),
                             ),
@@ -414,18 +419,16 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                         TextFormField(
                           controller: _prezzoController,
                           decoration: InputDecoration(
-                            labelText: 'Prezzo Acquisto (€)',
+                            labelText: s.attrezzaturaFormLblPrezzoAcquisto,
                             prefixIcon: Icon(Icons.euro),
                             border: OutlineInputBorder(),
-                            helperText: isEditing
-                                ? null
-                                : 'Se inserisci un prezzo, verrà creato automaticamente un pagamento',
+                            helperText: isEditing ? null : s.attrezzaturaFormHelperPrezzo,
                           ),
                           keyboardType: TextInputType.numberWithOptions(decimal: true),
                           validator: (value) {
                             if (value != null && value.isNotEmpty) {
                               if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                                return 'Inserisci un importo valido';
+                                return s.attrezzaturaFormValidateImporto;
                               }
                             }
                             return null;
@@ -437,7 +440,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                         TextFormField(
                           controller: _fornitoreController,
                           decoration: InputDecoration(
-                            labelText: 'Fornitore',
+                            labelText: s.attrezzaturaFormLblFornitore,
                             prefixIcon: Icon(Icons.store),
                             border: OutlineInputBorder(),
                           ),
@@ -452,11 +455,11 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Condivisione', style: Theme.of(context).textTheme.titleMedium),
+                                  Text(s.attrezzaturaFormSectionCondivisione, style: Theme.of(context).textTheme.titleMedium),
                                   const SizedBox(height: 8),
                                   SwitchListTile(
-                                    title: Text('Condividi con gruppo'),
-                                    subtitle: Text('Le spese verranno condivise con i membri del gruppo'),
+                                    title: Text(s.attrezzaturaFormLblCondividi),
+                                    subtitle: Text(s.attrezzaturaFormSubCondividi),
                                     value: _condivisoConGruppo,
                                     onChanged: (value) {
                                       setState(() {
@@ -475,7 +478,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                     DropdownButtonFormField<Gruppo>(
                                       value: _selectedGruppo,
                                       decoration: InputDecoration(
-                                        labelText: 'Gruppo',
+                                        labelText: s.attrezzaturaDetailLblGruppo,
                                         prefixIcon: Icon(Icons.group),
                                         border: OutlineInputBorder(),
                                       ),
@@ -492,14 +495,14 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                       DropdownButtonFormField<int?>(
                                         value: _selectedPagatoDaId,
                                         decoration: InputDecoration(
-                                          labelText: 'Chi ha pagato?',
-                                          hintText: '— io stesso —',
+                                          labelText: s.attrezzaturaFormLblChiHaPagato,
+                                          hintText: s.attrezzaturaFormHintIoStesso,
                                           prefixIcon: Icon(Icons.payments),
                                           border: OutlineInputBorder(),
-                                          helperText: 'Indica il membro del gruppo che ha effettivamente sostenuto la spesa',
+                                          helperText: s.attrezzaturaFormHelperChiPaga,
                                         ),
                                         items: [
-                                          DropdownMenuItem<int?>(value: null, child: Text('— io stesso —')),
+                                          DropdownMenuItem<int?>(value: null, child: Text(s.attrezzaturaFormHintIoStesso)),
                                           ..._membriGruppo.map((m) => DropdownMenuItem<int?>(
                                             value: m['id'] as int,
                                             child: Text(m['username'] as String),
@@ -520,7 +523,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                         TextFormField(
                           controller: _noteController,
                           decoration: InputDecoration(
-                            labelText: 'Note',
+                            labelText: s.attrezzaturaFormLblNote,
                             prefixIcon: Icon(Icons.note),
                             border: OutlineInputBorder(),
                           ),
@@ -540,7 +543,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                                   SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      'Se inserisci un prezzo di acquisto, verrà creato automaticamente un pagamento.',
+                                      s.attrezzaturaFormInfoPagamento,
                                       style: TextStyle(color: Colors.blue[800]),
                                     ),
                                   ),
@@ -558,7 +561,10 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
                             onPressed: _isLoading ? null : _saveAttrezzatura,
                             child: _isLoading
                                 ? CircularProgressIndicator(color: Colors.white)
-                                : Text(isEditing ? 'AGGIORNA' : 'SALVA', style: TextStyle(fontSize: 16)),
+                                : Text(
+                                    isEditing ? s.attrezzaturaFormBtnAggiorna : s.attrezzaturaFormBtnSalva,
+                                    style: TextStyle(fontSize: 16),
+                                  ),
                           ),
                         ),
                       ],
@@ -568,26 +574,26 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
     );
   }
 
-  String _displayStato(String stato) {
+  String _displayStato(String stato, AppStrings s) {
     switch (stato) {
-      case 'disponibile': return 'Disponibile';
-      case 'in_uso': return 'In Uso';
-      case 'manutenzione': return 'In Manutenzione';
-      case 'dismesso': return 'Dismesso';
-      case 'prestato': return 'Prestato';
-      default: return stato;
+      case 'disponibile': return s.attrezzaturaStatoDisponibile;
+      case 'in_uso':      return s.attrezzaturaStatoInUso;
+      case 'manutenzione': return s.attrezzaturaStatoManutenzione;
+      case 'dismesso':    return s.attrezzaturaStatoDismesso;
+      case 'prestato':    return s.attrezzaturaStatoPrestato;
+      default:            return stato;
     }
   }
 
-  String _displayCondizione(String cond) {
+  String _displayCondizione(String cond, AppStrings s) {
     switch (cond) {
-      case 'nuovo': return 'Nuovo';
-      case 'ottimo': return 'Ottimo';
-      case 'buono': return 'Buono';
-      case 'discreto': return 'Discreto';
-      case 'usurato': return 'Usurato';
-      case 'da_riparare': return 'Da Riparare';
-      default: return cond;
+      case 'nuovo':       return s.attrezzaturaCondizioneNuovo;
+      case 'ottimo':      return s.attrezzaturaCondizioneOttimo;
+      case 'buono':       return s.attrezzaturaCondizioneBuono;
+      case 'discreto':    return s.attrezzaturaCondizioneDiscreto;
+      case 'usurato':     return s.attrezzaturaCondizioneUsurato;
+      case 'da_riparare': return s.attrezzaturaCondizioneDaRiparare;
+      default:            return cond;
     }
   }
 }

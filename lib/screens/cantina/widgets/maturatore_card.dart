@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../models/maturatore.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 
 class MaturatoreCard extends StatelessWidget {
   final Maturatore maturatore;
@@ -17,6 +20,7 @@ class MaturatoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final m = maturatore;
     final isPronto = m.isPronto;
     final color = isPronto ? Colors.green : Colors.orange;
@@ -55,8 +59,8 @@ class MaturatoreCard extends StatelessWidget {
                     if (v == 'delete') onDelete();
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Modifica')),
-                    const PopupMenuItem(value: 'delete', child: Text('Elimina')),
+                    PopupMenuItem(value: 'edit', child: Text(s.btnEdit)),
+                    PopupMenuItem(value: 'delete', child: Text(s.btnDelete)),
                   ],
                 ),
               ],
@@ -94,7 +98,7 @@ class MaturatoreCard extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onTrasferisci,
                   icon: const Icon(Icons.move_down, size: 18),
-                  label: const Text('Trasferisci in contenitori'),
+                  label: Text(s.maturatoreCardBtnTrasferisci),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
@@ -109,15 +113,15 @@ class MaturatoreCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     m.giorniRimanenti == 0
-                        ? 'Pronto oggi'
-                        : 'Pronto tra ${m.giorniRimanenti} giorn${m.giorniRimanenti == 1 ? "o" : "i"}',
+                        ? s.maturatoreCardProntoOggi
+                        : s.maturatoreCardProntoTra(m.giorniRimanenti),
                     style: TextStyle(fontSize: 12, color: Colors.orange[800]),
                   ),
                   const Spacer(),
                   TextButton.icon(
                     onPressed: onTrasferisci,
                     icon: const Icon(Icons.move_down, size: 14),
-                    label: const Text('Trasferisci ora', style: TextStyle(fontSize: 12)),
+                    label: Text(s.maturatoreCardBtnTrasferisciOra, style: const TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -135,6 +139,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     if (isPronto) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -142,8 +147,8 @@ class _StatusBadge extends StatelessWidget {
           color: Colors.green.shade100,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text('✅ Pronto',
-            style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w600)),
+        child: Text(s.maturatoreCardStatoPronto,
+            style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w600)),
       );
     }
     return Container(

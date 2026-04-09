@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../constants/api_constants.dart';
 import '../../../models/maturatore.dart';
 import '../../../models/preferenza_maturazione.dart';
 import '../../../services/api_service.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 
 class AggiungiMaturatoreSheet extends StatefulWidget {
   final ApiService apiService;
@@ -73,12 +76,14 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _saving = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(Provider.of<LanguageService>(context, listen: false).strings.msgErrorGeneric(e.toString()))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Padding(
       padding: EdgeInsets.only(
         left: 20, right: 20, top: 20,
@@ -91,21 +96,21 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.existing == null ? 'Nuovo Maturatore' : 'Modifica Maturatore',
+              widget.existing == null ? s.aggiungiMaturatoreTitleNew : s.aggiungiMaturatoreTitleEdit,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _nomeCtrl,
-              decoration: const InputDecoration(labelText: 'Nome (es. Maturatore 200L)', border: OutlineInputBorder()),
-              validator: (v) => v == null || v.isEmpty ? 'Campo obbligatorio' : null,
+              decoration: InputDecoration(labelText: s.aggiungiMaturatoreHintNome, border: const OutlineInputBorder()),
+              validator: (v) => v == null || v.isEmpty ? s.attrezzaturaFormValidateCampoObbligatorio : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _tipoMieleCtrl,
-              decoration: const InputDecoration(labelText: 'Tipo miele', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: s.aggiungiMaturatoreLblTipoMiele, border: const OutlineInputBorder()),
               onChanged: _onTipoMieleChanged,
-              validator: (v) => v == null || v.isEmpty ? 'Campo obbligatorio' : null,
+              validator: (v) => v == null || v.isEmpty ? s.attrezzaturaFormValidateCampoObbligatorio : null,
             ),
             const SizedBox(height: 12),
             Row(
@@ -114,8 +119,8 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
                   child: TextFormField(
                     controller: _capacitaCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Capacità (kg)', border: OutlineInputBorder(), suffixText: 'kg'),
-                    validator: (v) => double.tryParse(v ?? '') == null ? 'Numero non valido' : null,
+                    decoration: InputDecoration(labelText: s.aggiungiMaturatoreLblCapacita, border: const OutlineInputBorder(), suffixText: 'kg'),
+                    validator: (v) => double.tryParse(v ?? '') == null ? s.attrezzaturaFormValidateNumero : null,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -123,8 +128,8 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
                   child: TextFormField(
                     controller: _kgCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Kg attuali', border: OutlineInputBorder(), suffixText: 'kg'),
-                    validator: (v) => double.tryParse(v ?? '') == null ? 'Numero non valido' : null,
+                    decoration: InputDecoration(labelText: s.aggiungiMaturatoreLblKgAttuali, border: const OutlineInputBorder(), suffixText: 'kg'),
+                    validator: (v) => double.tryParse(v ?? '') == null ? s.attrezzaturaFormValidateNumero : null,
                   ),
                 ),
               ],
@@ -136,13 +141,13 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
                   child: TextFormField(
                     controller: _giorniCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Giorni maturazione',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: s.aggiungiMaturatoreLblGiorniMaturazione,
+                      border: const OutlineInputBorder(),
                       suffixText: 'gg',
-                      helperText: 'Auto da tipo miele',
+                      helperText: s.aggiungiMaturatoreHelperGiorni,
                     ),
-                    validator: (v) => int.tryParse(v ?? '') == null ? 'Numero non valido' : null,
+                    validator: (v) => int.tryParse(v ?? '') == null ? s.attrezzaturaFormValidateNumero : null,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -158,7 +163,7 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
                       if (picked != null) setState(() => _dataInizio = picked);
                     },
                     child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Data inizio', border: OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: s.aggiungiMaturatoreLblDataInizio, border: const OutlineInputBorder()),
                       child: Text(
                         '${_dataInizio.day.toString().padLeft(2, '0')}/${_dataInizio.month.toString().padLeft(2, '0')}/${_dataInizio.year}',
                         style: const TextStyle(fontSize: 14),
@@ -176,7 +181,7 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
                 style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(widget.existing == null ? 'Aggiungi' : 'Salva'),
+                    : Text(widget.existing == null ? s.btnAdd : s.btnSave),
               ),
             ),
           ],

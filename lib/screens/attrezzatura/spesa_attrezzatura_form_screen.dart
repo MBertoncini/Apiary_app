@@ -6,6 +6,8 @@ import '../../models/spesa_attrezzatura.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/loading_widget.dart';
 
 class SpesaAttrezzaturaFormScreen extends StatefulWidget {
@@ -40,6 +42,8 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
 
   List<Map<String, dynamic>> _membriGruppo = [];
   int? _selectedPagatoDaId;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -87,16 +91,12 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
       lastDate: DateTime.now().add(Duration(days: 365)),
     );
     if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      setState(() { _selectedDate = picked; });
     }
   }
 
   Future<void> _saveSpesa() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
@@ -123,7 +123,6 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
         'note': _noteController.text.isNotEmpty ? _noteController.text : null,
       };
 
-      // Crea la spesa - questo creerà automaticamente il Pagamento
       await service.createSpesaAttrezzatura(
         data,
         userId: auth.currentUser!.id,
@@ -134,7 +133,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Spesa registrata e pagamento creato automaticamente'),
+          content: Text(_s.spesaAttrezzaturaFormCreatedOk),
           duration: Duration(seconds: 3),
         ),
       );
@@ -142,19 +141,33 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il salvataggio: $e';
+        _errorMessage = _s.attrezzaturaFormSaveError(e.toString());
         _isLoading = false;
       });
     }
   }
 
+  String _getTipoDisplayName(String tipo, AppStrings s) {
+    switch (tipo) {
+      case 'acquisto':     return s.spesaAttrezzaturaFormTipoAcquisto;
+      case 'manutenzione': return s.spesaAttrezzaturaFormTipoManutenzione;
+      case 'riparazione':  return s.spesaAttrezzaturaFormTipoRiparazione;
+      case 'accessori':    return s.spesaAttrezzaturaFormTipoAccessori;
+      case 'consumabili':  return s.spesaAttrezzaturaFormTipoConsumabili;
+      case 'altro':        return s.spesaAttrezzaturaFormTipoAltro;
+      default:             return tipo;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     final formatDate = DateFormat('dd/MM/yyyy');
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Nuova Spesa'),
+        title: Text(s.spesaAttrezzaturaFormTitle),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
@@ -168,7 +181,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                 Card(
                   child: ListTile(
                     leading: Icon(Icons.build, color: Colors.blue),
-                    title: Text('Attrezzatura'),
+                    title: Text(s.manutenzioneFormLblAttrezzatura),
                     subtitle: Text(widget.attrezzaturaNome!),
                   ),
                 ),
@@ -179,10 +192,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   padding: EdgeInsets.only(bottom: 16),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                   ),
                 ),
 
@@ -190,14 +200,14 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
               DropdownButtonFormField<String>(
                 value: _selectedTipo,
                 decoration: InputDecoration(
-                  labelText: 'Tipo Spesa *',
+                  labelText: s.spesaAttrezzaturaFormLblTipo,
                   prefixIcon: Icon(Icons.category),
                   border: OutlineInputBorder(),
                 ),
                 items: SpesaAttrezzatura.tipiSpesa.map((tipo) {
                   return DropdownMenuItem(
                     value: tipo,
-                    child: Text(_getTipoDisplayName(tipo)),
+                    child: Text(_getTipoDisplayName(tipo, s)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -210,14 +220,14 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
               TextFormField(
                 controller: _descrizioneController,
                 decoration: InputDecoration(
-                  labelText: 'Descrizione *',
+                  labelText: s.attrezzaturaDetailLblDescrizione + ' *',
                   prefixIcon: Icon(Icons.description),
                   border: OutlineInputBorder(),
-                  hintText: 'Es: Riparazione pompa, Sostituzione filtro...',
+                  hintText: s.manutenzioneFormHintDescrizione,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Inserisci una descrizione';
+                    return s.manutenzioneFormValidateDescrizione;
                   }
                   return null;
                 },
@@ -229,17 +239,17 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
               TextFormField(
                 controller: _importoController,
                 decoration: InputDecoration(
-                  labelText: 'Importo (€) *',
+                  labelText: s.spesaAttrezzaturaFormLblImporto,
                   prefixIcon: Icon(Icons.euro),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Inserisci l\'importo';
+                    return s.spesaAttrezzaturaFormValidateImporto;
                   }
                   if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                    return 'Inserisci un importo valido';
+                    return s.attrezzaturaFormValidateImporto;
                   }
                   return null;
                 },
@@ -251,7 +261,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                 onTap: () => _selectDate(context),
                 child: InputDecorator(
                   decoration: InputDecoration(
-                    labelText: 'Data',
+                    labelText: s.spesaAttrezzaturaFormLblData,
                     prefixIcon: Icon(Icons.calendar_today),
                     border: OutlineInputBorder(),
                   ),
@@ -264,10 +274,10 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
               TextFormField(
                 controller: _fornitoreController,
                 decoration: InputDecoration(
-                  labelText: 'Fornitore',
+                  labelText: s.spesaAttrezzaturaFormLblFornitore,
                   prefixIcon: Icon(Icons.store),
                   border: OutlineInputBorder(),
-                  hintText: 'Es: Nome fornitore',
+                  hintText: s.spesaAttrezzaturaFormHintFornitore,
                 ),
               ),
               const SizedBox(height: 16),
@@ -276,10 +286,10 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
               TextFormField(
                 controller: _numeroFatturaController,
                 decoration: InputDecoration(
-                  labelText: 'Numero Fattura',
+                  labelText: s.spesaAttrezzaturaFormLblNumFattura,
                   prefixIcon: Icon(Icons.receipt_long),
                   border: OutlineInputBorder(),
-                  hintText: 'Es: FT-2024-001',
+                  hintText: s.spesaAttrezzaturaFormHintNumFattura,
                 ),
               ),
               const SizedBox(height: 16),
@@ -288,7 +298,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
               TextFormField(
                 controller: _noteController,
                 decoration: InputDecoration(
-                  labelText: 'Note (opzionale)',
+                  labelText: s.manutenzioneFormLblNote,
                   prefixIcon: Icon(Icons.note),
                   border: OutlineInputBorder(),
                 ),
@@ -296,19 +306,19 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
               ),
               const SizedBox(height: 24),
 
-              // Chi ha pagato (solo se condiviso con gruppo)
+              // Chi ha pagato
               if (widget.condivisoConGruppo && _membriGruppo.isNotEmpty) ...[
                 DropdownButtonFormField<int?>(
                   value: _selectedPagatoDaId,
                   decoration: InputDecoration(
-                    labelText: 'Chi ha pagato?',
-                    hintText: '— io stesso —',
+                    labelText: s.attrezzaturaFormLblChiHaPagato,
+                    hintText: s.attrezzaturaFormHintIoStesso,
                     prefixIcon: Icon(Icons.payments),
                     border: OutlineInputBorder(),
-                    helperText: 'Indica il membro del gruppo che ha effettivamente sostenuto la spesa',
+                    helperText: s.attrezzaturaFormHelperChiPaga,
                   ),
                   items: [
-                    DropdownMenuItem<int?>(value: null, child: Text('— io stesso —')),
+                    DropdownMenuItem<int?>(value: null, child: Text(s.attrezzaturaFormHintIoStesso)),
                     ..._membriGruppo.map((m) => DropdownMenuItem<int?>(
                       value: m['id'] as int,
                       child: Text(m['username'] as String),
@@ -329,10 +339,8 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                       Icon(Icons.info, color: Colors.blue),
                       SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'Verrà creato automaticamente un pagamento per questa spesa.',
-                          style: TextStyle(color: Colors.blue[800]),
-                        ),
+                        child: Text(s.spesaAttrezzaturaFormInfoPagamento,
+                            style: TextStyle(color: Colors.blue[800])),
                       ),
                     ],
                   ),
@@ -351,10 +359,8 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                           Icon(Icons.group, color: Colors.green),
                           SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Questa spesa sarà condivisa con il gruppo.',
-                              style: TextStyle(color: Colors.green[800]),
-                            ),
+                            child: Text(s.spesaAttrezzaturaFormInfoCondivisa,
+                                style: TextStyle(color: Colors.green[800])),
                           ),
                         ],
                       ),
@@ -372,10 +378,7 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
                   onPressed: _isLoading ? null : _saveSpesa,
                   child: _isLoading
                       ? CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          'REGISTRA SPESA',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                      : Text(s.spesaAttrezzaturaFormBtnSave, style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
@@ -383,24 +386,5 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
         ),
       ),
     );
-  }
-
-  String _getTipoDisplayName(String tipo) {
-    switch (tipo) {
-      case 'acquisto':
-        return 'Acquisto';
-      case 'manutenzione':
-        return 'Manutenzione';
-      case 'riparazione':
-        return 'Riparazione';
-      case 'accessori':
-        return 'Accessori';
-      case 'consumabili':
-        return 'Consumabili';
-      case 'altro':
-        return 'Altro';
-      default:
-        return tipo;
-    }
   }
 }

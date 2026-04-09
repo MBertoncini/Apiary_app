@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../constants/api_constants.dart';
 import '../../../models/maturatore.dart';
 import '../../../services/api_service.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 
 class TrasferisciSheet extends StatefulWidget {
   final ApiService apiService;
@@ -36,8 +39,9 @@ class _TrasferisciSheetState extends State<TrasferisciSheet> {
   Future<void> _save() async {
     if (_contenitori.isEmpty) return;
     if (_totaleAssegnato > _disponibile + 0.001) {
+      final s = Provider.of<LanguageService>(context, listen: false).strings;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Totale (${_totaleAssegnato.toStringAsFixed(1)}kg) supera il disponibile (${_disponibile.toStringAsFixed(1)}kg)')),
+        SnackBar(content: Text(s.trasferisciErrSupera(_totaleAssegnato.toStringAsFixed(1), _disponibile.toStringAsFixed(1)))),
       );
       return;
     }
@@ -50,12 +54,14 @@ class _TrasferisciSheetState extends State<TrasferisciSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _saving = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(Provider.of<LanguageService>(context, listen: false).strings.msgErrorGeneric(e.toString()))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Padding(
       padding: EdgeInsets.only(
         left: 20, right: 20, top: 20,
@@ -65,10 +71,10 @@ class _TrasferisciSheetState extends State<TrasferisciSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Trasferisci da "${widget.maturatore.nome}"',
+          Text(s.trasferisciTitle(widget.maturatore.nome),
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           Text(
-            '${widget.maturatore.tipoMiele} · ${_disponibile.toStringAsFixed(1)} kg disponibili',
+            '${widget.maturatore.tipoMiele} · ${s.trasferisciKgDisponibili(_disponibile.toStringAsFixed(1))}',
             style: TextStyle(fontSize: 13, color: Colors.grey[600]),
           ),
           const SizedBox(height: 4),
@@ -78,12 +84,12 @@ class _TrasferisciSheetState extends State<TrasferisciSheet> {
             color: _totaleAssegnato > _disponibile ? Colors.red : Colors.green,
           ),
           Text(
-            '${_totaleAssegnato.toStringAsFixed(1)} / ${_disponibile.toStringAsFixed(1)} kg assegnati',
+            s.trasferisciKgAssegnati(_totaleAssegnato.toStringAsFixed(1), _disponibile.toStringAsFixed(1)),
             style: TextStyle(fontSize: 11, color: Colors.grey[600]),
           ),
           const SizedBox(height: 12),
           if (_contenitori.isEmpty)
-            Center(child: Text('Nessun contenitore aggiunto', style: TextStyle(color: Colors.grey[500]))),
+            Center(child: Text(s.trasferisciNoContenitori, style: TextStyle(color: Colors.grey[500]))),
           ..._contenitori.asMap().entries.map((entry) {
             final i = entry.key;
             final c = entry.value;
@@ -96,7 +102,7 @@ class _TrasferisciSheetState extends State<TrasferisciSheet> {
           TextButton.icon(
             onPressed: _addContenitore,
             icon: const Icon(Icons.add_circle_outline),
-            label: const Text('Aggiungi contenitore'),
+            label: Text(s.trasferisciBtnAggiungiContenitore),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -106,7 +112,7 @@ class _TrasferisciSheetState extends State<TrasferisciSheet> {
               style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               child: _saving
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Conferma trasferimento'),
+                  : Text(s.trasferisciBtnConferma),
             ),
           ),
         ],
@@ -138,7 +144,7 @@ class _ContenitoreRow extends StatelessWidget {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           value: data['tipo'],
-                          decoration: const InputDecoration(labelText: 'Tipo', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+                          decoration: InputDecoration(labelText: Provider.of<LanguageService>(context, listen: false).strings.trasferisciLblTipo, border: const OutlineInputBorder(), contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                           items: const [
                             DropdownMenuItem(value: 'secchio', child: Text('🪣 Secchio')),
                             DropdownMenuItem(value: 'bidone', child: Text('🛢️ Bidone')),
@@ -153,7 +159,7 @@ class _ContenitoreRow extends StatelessWidget {
                         child: TextFormField(
                           initialValue: data['kg_attuali'].toString(),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(labelText: 'Kg', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), suffixText: 'kg'),
+                          decoration: InputDecoration(labelText: Provider.of<LanguageService>(context, listen: false).strings.trasferisciLblKg, border: const OutlineInputBorder(), contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), suffixText: 'kg'),
                           onChanged: (v) {
                             final kg = double.tryParse(v) ?? 0;
                             onChanged({...data, 'kg_attuali': kg, 'capacita_kg': kg});

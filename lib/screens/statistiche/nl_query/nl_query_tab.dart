@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../services/statistiche_service.dart';
 import '../../../services/api_service.dart';
 import '../../../services/ai_quota_local_tracker.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 import 'risultato_query_widget.dart';
 
 class NLQueryTab extends StatefulWidget {
@@ -26,13 +28,15 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
   String? _error;
   String? _domandaCorrente;
 
-  static const _suggerimenti = [
-    'Quali arnie non controllo da 30 giorni?',
-    'Quando ho prodotto più miele?',
-    'Quali regine hanno la valutazione più alta?',
-    'Quanti controlli ho fatto quest\'anno?',
-    'Qual è il mio bilancio di quest\'anno?',
-    'Quali trattamenti ho fatto?',
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
+  List<String> get _suggerimenti => [
+    _s.nlQuerySuggerimento1,
+    _s.nlQuerySuggerimento2,
+    _s.nlQuerySuggerimento3,
+    _s.nlQuerySuggerimento4,
+    _s.nlQuerySuggerimento5,
+    _s.nlQuerySuggerimento6,
   ];
 
   @override
@@ -75,12 +79,13 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
       });
     } catch (e) {
       String msg = e.toString();
+      final s = _s;
       if (msg.contains('504') || msg.contains('timeout') || msg.contains('lento')) {
-        msg = 'Il server AI è lento, riprova tra poco';
+        msg = s.nlQueryErrLento;
       } else if (msg.contains('400') || msg.contains('sicura') || msg.contains('non posso')) {
-        msg = 'Non posso rispondere a questa domanda';
+        msg = s.nlQueryErrRifiuto;
       } else {
-        msg = 'Errore: si prega di riprovare';
+        msg = s.nlQueryErrGenerico;
       }
       setState(() { _error = msg; _loading = false; });
     }
@@ -89,6 +94,8 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Column(
       children: [
         Expanded(
@@ -97,7 +104,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
             padding: const EdgeInsets.all(12),
             children: [
               // Domande suggerite
-              const Text('Domande suggerite:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              Text(s.nlQuerySuggerite, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -137,7 +144,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
                     children: [
                       const CircularProgressIndicator(),
                       const SizedBox(height: 8),
-                      const Text('AI sta pensando…', style: TextStyle(color: Colors.grey)),
+                      Text(s.nlQueryPensando, style: const TextStyle(color: Colors.grey)),
                     ],
                   ),
                 ),
@@ -177,10 +184,10 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
                         children: [
                           const Icon(Icons.smart_toy, color: Color(0xFFD4A017), size: 20),
                           const SizedBox(width: 6),
-                          const Text('Risposta AI', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD4A017))),
+                          Text(s.nlQueryRispostaAI, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD4A017))),
                           const Spacer(),
                           if (_result!['totale_righe'] != null)
-                            Text('${_result!['totale_righe']} risultati', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(s.nlQueryRisultati(_result!['totale_righe'] as int), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                         ],
                       ),
                       const Divider(),
@@ -209,7 +216,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
                 child: TextField(
                   controller: _controller,
                   decoration: InputDecoration(
-                    hintText: 'Fai una domanda sui tuoi dati…',
+                    hintText: s.nlQueryInputHint,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                     filled: true,
                     fillColor: Colors.grey[100],

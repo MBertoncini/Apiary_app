@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class BilancioWidget extends StatefulWidget {
@@ -15,6 +18,8 @@ class _BilancioWidgetState extends State<BilancioWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -36,7 +41,7 @@ class _BilancioWidgetState extends State<BilancioWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.euro, color: Color(0xFFD4A017)),
-      title: 'Bilancio ${_data?['anno'] ?? DateTime.now().year}',
+      title: _s.dashboardTitleBilancio(_data?['anno'] as int? ?? DateTime.now().year),
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -66,7 +71,7 @@ class _BilancioWidgetState extends State<BilancioWidget> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Saldo annuale: ', style: const TextStyle(fontSize: 14)),
+              Text(_s.dashboardBilancioSaldoAnnuale, style: const TextStyle(fontSize: 14)),
               Text('€ ${saldo.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: saldo >= 0 ? Colors.green : Colors.red)),
             ],
           ),
@@ -110,9 +115,9 @@ class _BilancioWidgetState extends State<BilancioWidget> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _legendItem(Colors.green, 'Entrate'),
+            _legendItem(Colors.green, _s.dashboardBilancioEntrate),
             const SizedBox(width: 16),
-            _legendItem(Colors.red, 'Uscite'),
+            _legendItem(Colors.red, _s.dashboardBilancioUscite),
           ],
         ),
       ],

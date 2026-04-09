@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../constants/api_constants.dart';
 import '../../../models/contenitore_stoccaggio.dart';
 import '../../../services/api_service.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 
 class InvasettaSheet extends StatefulWidget {
   final ApiService apiService;
@@ -45,12 +48,14 @@ class _InvasettaSheetState extends State<InvasettaSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _saving = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(Provider.of<LanguageService>(context, listen: false).strings.msgErrorGeneric(e.toString()))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Padding(
       padding: EdgeInsets.only(
         left: 20, right: 20, top: 20,
@@ -60,16 +65,16 @@ class _InvasettaSheetState extends State<InvasettaSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Invasetta da "${widget.contenitore.nome.isEmpty ? widget.contenitore.tipoDisplay : widget.contenitore.nome}"',
+          Text(s.invasettaTitle(widget.contenitore.nome.isEmpty ? widget.contenitore.tipoDisplay : widget.contenitore.nome),
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           Text(
-            '${widget.contenitore.tipoMiele} · ${_disponibile.toStringAsFixed(1)} kg disponibili',
+            '${widget.contenitore.tipoMiele} · ${s.trasferisciKgDisponibili(_disponibile.toStringAsFixed(1))}',
             style: TextStyle(fontSize: 13, color: Colors.grey[600]),
           ),
           const SizedBox(height: 16),
 
           // Formato selector
-          const Text('Formato vasetto', style: TextStyle(fontSize: 13, color: Colors.grey)),
+          Text(s.invasettaLblFormato, style: const TextStyle(fontSize: 13, color: Colors.grey)),
           const SizedBox(height: 6),
           SegmentedButton<int>(
             segments: const [
@@ -85,7 +90,7 @@ class _InvasettaSheetState extends State<InvasettaSheet> {
           // Number stepper
           Row(
             children: [
-              const Text('Numero vasetti:', style: TextStyle(fontSize: 14)),
+              Text(s.invasettaLblNumeroVasetti, style: const TextStyle(fontSize: 14)),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.remove_circle_outline),
@@ -105,7 +110,7 @@ class _InvasettaSheetState extends State<InvasettaSheet> {
               ),
               TextButton(
                 onPressed: () => setState(() => _numero = _maxVasetti),
-                child: const Text('Max'),
+                child: Text(s.invasettaBtnMax),
               ),
             ],
           ),
@@ -120,8 +125,8 @@ class _InvasettaSheetState extends State<InvasettaSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('${_numero} × ${_formato}g = ${_kgUsati.toStringAsFixed(2)} kg usati'),
-                Text('Rimangono: ${(_disponibile - _kgUsati).clamp(0, _disponibile).toStringAsFixed(2)} kg',
+                Text(s.invasettaKgUsati(_numero, _formato, _kgUsati.toStringAsFixed(2))),
+                Text(s.invasettaRimangono((_disponibile - _kgUsati).clamp(0, _disponibile).toStringAsFixed(2)),
                     style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               ],
             ),
@@ -131,9 +136,9 @@ class _InvasettaSheetState extends State<InvasettaSheet> {
           // Lotto
           TextField(
             controller: _lottoCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Lotto (opzionale)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: s.invasettaLblLotto,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 20),
@@ -145,7 +150,7 @@ class _InvasettaSheetState extends State<InvasettaSheet> {
               style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               child: _saving
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text('Invasetta $_numero vasett${_numero == 1 ? "o" : "i"}'),
+                  : Text(s.invasettaBtnConferma(_numero)),
             ),
           ),
         ],

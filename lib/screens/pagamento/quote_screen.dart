@@ -6,6 +6,8 @@ import '../../models/quota_utente.dart';
 import '../../models/gruppo.dart';
 import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/offline_banner.dart';
@@ -21,6 +23,8 @@ class _QuoteScreenState extends State<QuoteScreen> {
   Gruppo? _selectedGruppo;
   bool _isLoading = true;
   String? _errorMessage;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -69,7 +73,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Errore durante il caricamento delle quote: $e';
+        _errorMessage = _s.quoteErrLoading(e.toString());
         _isLoading = false;
       });
     }
@@ -104,13 +108,13 @@ class _QuoteScreenState extends State<QuoteScreen> {
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Quota aggiornata con successo')),
+          SnackBar(content: Text(_s.quoteUpdatedOk)),
         );
 
         _loadDati();
       } catch (e) {
         setState(() {
-          _errorMessage = 'Errore durante l\'aggiornamento della quota: $e';
+          _errorMessage = _s.quoteErrUpdate(e.toString());
           _isLoading = false;
         });
       }
@@ -118,30 +122,31 @@ class _QuoteScreenState extends State<QuoteScreen> {
   }
 
   Future<double?> _showEditDialog(QuotaUtente quota) async {
+    final s = _s;
     final controller = TextEditingController(text: quota.percentuale.toString());
     return showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Modifica quota'),
+        title: Text(s.quoteEditTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Modifica la percentuale per ${quota.utenteUsername}'),
+            Text(s.quoteEditMsg(quota.utenteUsername)),
             const SizedBox(height: 16),
             TextFormField(
               controller: controller,
               decoration: InputDecoration(
-                labelText: 'Percentuale',
+                labelText: s.quoteLabelPercentuale,
                 border: OutlineInputBorder(),
                 suffixText: '%',
               ),
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Inserisci una percentuale';
+                  return s.quoteValidPercRequired;
                 }
                 if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                  return 'Inserisci una percentuale valida';
+                  return s.quoteValidPercInvalid;
                 }
                 return null;
               },
@@ -151,7 +156,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('ANNULLA'),
+            child: Text(s.dialogCancelBtn),
           ),
           TextButton(
             onPressed: () {
@@ -161,11 +166,11 @@ class _QuoteScreenState extends State<QuoteScreen> {
                 Navigator.pop(context, percentuale);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Inserisci una percentuale valida')),
+                  SnackBar(content: Text(s.quoteValidPercInvalid)),
                 );
               }
             },
-            child: Text('SALVA'),
+            child: Text(s.controlloFormBtnSalva),
           ),
         ],
       ),
@@ -173,19 +178,20 @@ class _QuoteScreenState extends State<QuoteScreen> {
   }
 
   Future<void> _deleteQuota(QuotaUtente quota) async {
+    final s = _s;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Conferma eliminazione'),
-        content: Text('Sei sicuro di voler eliminare questa quota?'),
+        title: Text(s.dialogConfirmDeleteTitle),
+        content: Text(s.quoteDeleteMsg),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('ANNULLA'),
+            child: Text(s.dialogCancelBtn),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('ELIMINA'),
+            child: Text(s.dialogConfirmDeleteBtn),
           ),
         ],
       ),
@@ -204,18 +210,18 @@ class _QuoteScreenState extends State<QuoteScreen> {
 
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Quota eliminata con successo')),
+            SnackBar(content: Text(_s.quoteDeletedOk)),
           );
           _loadDati();
         } else {
           setState(() {
-            _errorMessage = 'Errore durante l\'eliminazione della quota';
+            _errorMessage = _s.quoteErrDelete;
             _isLoading = false;
           });
         }
       } catch (e) {
         setState(() {
-          _errorMessage = 'Errore durante l\'eliminazione della quota: $e';
+          _errorMessage = _s.quoteErrDeleteE(e.toString());
           _isLoading = false;
         });
       }
@@ -225,7 +231,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
   Future<void> _addQuota() async {
     if (_selectedGruppo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Seleziona un gruppo prima di aggiungere una quota')),
+        SnackBar(content: Text(_s.quoteAddNoGruppo)),
       );
       return;
     }
@@ -245,13 +251,13 @@ class _QuoteScreenState extends State<QuoteScreen> {
         await pagamentoService.createQuota(quota);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Quota aggiunta con successo')),
+          SnackBar(content: Text(_s.quoteAddedOk)),
         );
 
         _loadDati();
       } catch (e) {
         setState(() {
-          _errorMessage = 'Errore durante l\'aggiunta della quota: $e';
+          _errorMessage = _s.quoteErrAdd(e.toString());
           _isLoading = false;
         });
       }
@@ -259,6 +265,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
   }
 
   Future<Map<String, dynamic>?> _showAddDialog() async {
+    final s = _s;
     final percentualeController = TextEditingController();
     final utenteIdController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -266,7 +273,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
     return showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Aggiungi quota'),
+        title: Text(s.quoteAddTitle),
         content: Form(
           key: formKey,
           child: Column(
@@ -275,17 +282,17 @@ class _QuoteScreenState extends State<QuoteScreen> {
               TextFormField(
                 controller: utenteIdController,
                 decoration: InputDecoration(
-                  labelText: 'ID Utente',
+                  labelText: s.quoteLabelIdUtente,
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Inserisci l\'ID utente';
+                    return s.quoteValidIdRequired;
                   }
                   final id = int.tryParse(value);
                   if (id == null || id <= 0) {
-                    return 'ID utente non valido';
+                    return s.quoteValidIdInvalid;
                   }
                   return null;
                 },
@@ -294,21 +301,21 @@ class _QuoteScreenState extends State<QuoteScreen> {
               TextFormField(
                 controller: percentualeController,
                 decoration: InputDecoration(
-                  labelText: 'Percentuale',
+                  labelText: s.quoteLabelPercentuale,
                   border: OutlineInputBorder(),
                   suffixText: '%',
                 ),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Inserisci la percentuale';
+                    return s.quoteValidPercRequired;
                   }
                   final perc = double.tryParse(value.replaceAll(',', '.'));
                   if (perc == null) {
-                    return 'Valore non valido';
+                    return s.quoteValidPercInvalid;
                   }
                   if (perc <= 0 || perc > 100) {
-                    return 'La percentuale deve essere tra 0 e 100';
+                    return s.quoteValidPercRange;
                   }
                   return null;
                 },
@@ -319,7 +326,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('ANNULLA'),
+            child: Text(s.dialogCancelBtn),
           ),
           TextButton(
             onPressed: () {
@@ -337,7 +344,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
                 }
               );
             },
-            child: Text('AGGIUNGI'),
+            child: Text(s.btnAdd),
           ),
         ],
       ),
@@ -346,9 +353,11 @@ class _QuoteScreenState extends State<QuoteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestione Quote'),
+        title: Text(s.quoteTitle),
       ),
       body: Column(
         children: [
@@ -369,14 +378,14 @@ class _QuoteScreenState extends State<QuoteScreen> {
                               child: DropdownButtonFormField<Gruppo>(
                                 value: _selectedGruppo,
                                 decoration: InputDecoration(
-                                  labelText: 'Filtra per gruppo',
+                                  labelText: s.quoteLabelFiltroGruppo,
                                   border: OutlineInputBorder(),
                                   prefixIcon: Icon(Icons.filter_list),
                                 ),
                                 items: [
                                   DropdownMenuItem<Gruppo>(
                                     value: null,
-                                    child: Text('Tutti i gruppi'),
+                                    child: Text(s.quoteTuttiGruppi),
                                   ),
                                   ..._gruppi.map((gruppo) => DropdownMenuItem<Gruppo>(
                                     value: gruppo,
@@ -401,12 +410,13 @@ class _QuoteScreenState extends State<QuoteScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _addQuota,
         child: Icon(Icons.add),
-        tooltip: 'Aggiungi Quota',
+        tooltip: s.quoteTooltipAdd,
       ),
     );
   }
 
   Widget _buildQuoteList() {
+    final s = _s;
     final quoteFiltered = _getQuoteFiltered();
 
     if (quoteFiltered.isEmpty) {
@@ -421,7 +431,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Nessuna quota trovata',
+              s.quoteEmptyTitle,
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
@@ -430,7 +440,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: Icon(Icons.add),
-              label: Text('Aggiungi Quota'),
+              label: Text(s.quoteTooltipAdd),
               onPressed: _addQuota,
             ),
           ],

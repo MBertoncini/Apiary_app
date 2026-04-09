@@ -5,12 +5,14 @@ import '../../constants/theme_constants.dart';
 import '../../models/gruppo.dart';
 import '../../services/gruppo_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../utils/validators.dart';
 
 class GruppoFormScreen extends StatefulWidget {
-  final Gruppo? gruppo; // Se non null, è una modifica
+  final Gruppo? gruppo;
 
   GruppoFormScreen({this.gruppo});
 
@@ -23,9 +25,10 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
   bool _isLoading = false;
   late GruppoService _gruppoService;
 
-  // Controller per i campi del form
   late TextEditingController _nomeController;
   late TextEditingController _descrizioneController;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -33,10 +36,9 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
     final storageService = Provider.of<StorageService>(context, listen: false);
-    
+
     _gruppoService = GruppoService(apiService, storageService);
-    
-    // Inizializza i controller
+
     _nomeController = TextEditingController(text: widget.gruppo?.nome ?? '');
     _descrizioneController = TextEditingController(text: widget.gruppo?.descrizione ?? '');
   }
@@ -49,61 +51,47 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
   }
 
   Future<void> _saveGruppo() async {
-    if (_formKey.currentState?.validate() != true) {
-      return;
-    }
+    if (_formKey.currentState?.validate() != true) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() { _isLoading = true; });
 
+    final s = _s;
     try {
       final nome = _nomeController.text.trim();
       final descrizione = _descrizioneController.text.trim();
-      
+
       if (widget.gruppo == null) {
-        // Creazione nuovo gruppo
         await _gruppoService.createGruppo(nome, descrizione);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gruppo creato con successo'),
-            backgroundColor: ThemeConstants.successColor,
-          ),
+          SnackBar(content: Text(s.gruppoFormCreatedOk),
+              backgroundColor: ThemeConstants.successColor),
         );
       } else {
-        // Modifica gruppo esistente
         await _gruppoService.updateGruppo(widget.gruppo!.id, nome, descrizione);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gruppo aggiornato con successo'),
-            backgroundColor: ThemeConstants.successColor,
-          ),
+          SnackBar(content: Text(s.gruppoFormUpdatedOk),
+              backgroundColor: ThemeConstants.successColor),
         );
       }
-      
-      // Torna alla schermata precedente
+
       Navigator.of(context).pop();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Errore: ${e.toString()}'),
-          backgroundColor: ThemeConstants.errorColor,
-        ),
+        SnackBar(content: Text(_s.msgErrorGeneric(e.toString())),
+            backgroundColor: ThemeConstants.errorColor),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.gruppo == null ? 'Nuovo Gruppo' : 'Modifica Gruppo'),
+        title: Text(widget.gruppo == null ? s.gruppoFormTitleNew : s.gruppoFormTitleEdit),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -112,38 +100,29 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
               child: ListView(
                 padding: EdgeInsets.all(16.0),
                 children: [
-                  // Istruzioni
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Informazioni sul gruppo',
-                            style: ThemeConstants.subheadingStyle,
-                          ),
+                          Text(s.gruppoFormSectionInfo, style: ThemeConstants.subheadingStyle),
                           const SizedBox(height: 8),
                           Text(
-                            widget.gruppo == null
-                                ? 'Crea un nuovo gruppo per collaborare con altri apicoltori. Potrai invitare membri e condividere apiari.'
-                                : 'Modifica le informazioni del gruppo esistente.',
-                            style: TextStyle(
-                              color: ThemeConstants.textSecondaryColor,
-                            ),
+                            widget.gruppo == null ? s.gruppoFormSubtitleNew : s.gruppoFormSubtitleEdit,
+                            style: TextStyle(color: ThemeConstants.textSecondaryColor),
                           ),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
-                  // Campo nome
+
                   TextFormField(
                     controller: _nomeController,
                     decoration: InputDecoration(
-                      labelText: 'Nome del gruppo *',
-                      hintText: 'Es. Apicoltura Toscana',
+                      labelText: s.gruppoFormLblNome,
+                      hintText: s.gruppoFormHintNome,
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.group),
                     ),
@@ -151,13 +130,12 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
-                  
-                  // Campo descrizione
+
                   TextFormField(
                     controller: _descrizioneController,
                     decoration: InputDecoration(
-                      labelText: 'Descrizione',
-                      hintText: 'Es. Gruppo per la gestione degli apiari in Toscana',
+                      labelText: s.attrezzaturaDetailLblDescrizione,
+                      hintText: s.gruppoFormHintDescrizione,
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.description),
                     ),
@@ -165,20 +143,17 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
                     textInputAction: TextInputAction.done,
                   ),
                   const SizedBox(height: 32),
-                  
-                  // Pulsante salva
+
                   ElevatedButton(
                     onPressed: _isLoading ? null : _saveGruppo,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       child: Text(
-                        widget.gruppo == null ? 'CREA GRUPPO' : 'SALVA MODIFICHE',
+                        widget.gruppo == null ? s.gruppoFormBtnCrea : s.gruppoFormBtnSalva,
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size(double.infinity, 0),
-                    ),
+                    style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 0)),
                   ),
                 ],
               ),

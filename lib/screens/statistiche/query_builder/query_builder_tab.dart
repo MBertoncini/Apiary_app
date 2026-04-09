@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/statistiche_service.dart';
 import '../../../services/api_service.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 import '../nl_query/risultato_query_widget.dart';
 
 class QueryBuilderTab extends StatefulWidget {
@@ -33,14 +35,16 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
   // Step 3
   String _visualizzazione = 'bar_chart';
 
-  static const _entita = [
-    {'id': 'controlli',  'label': 'Controlli arnie',   'icon': Icons.search},
-    {'id': 'smielature', 'label': 'Smielature',         'icon': Icons.water_drop},
-    {'id': 'regine',     'label': 'Regine',             'icon': Icons.local_florist},
-    {'id': 'vendite',    'label': 'Vendite',            'icon': Icons.store},
-    {'id': 'spese',      'label': 'Spese',              'icon': Icons.receipt},
-    {'id': 'fioriture',  'label': 'Fioriture',          'icon': Icons.eco},
-    {'id': 'arnie',      'label': 'Arnie',              'icon': Icons.hive},
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
+  List<Map<String, dynamic>> get _entita => [
+    {'id': 'controlli',  'label': _s.queryBuilderEntitaControlli,  'icon': Icons.search},
+    {'id': 'smielature', 'label': _s.queryBuilderEntitaSmielature, 'icon': Icons.water_drop},
+    {'id': 'regine',     'label': _s.queryBuilderEntitaRegine,     'icon': Icons.local_florist},
+    {'id': 'vendite',    'label': _s.queryBuilderEntitaVendite,    'icon': Icons.store},
+    {'id': 'spese',      'label': _s.queryBuilderEntitaSpese,      'icon': Icons.receipt},
+    {'id': 'fioriture',  'label': _s.queryBuilderEntitaFioriture,  'icon': Icons.eco},
+    {'id': 'arnie',      'label': _s.queryBuilderEntitaArnie,      'icon': Icons.hive},
   ];
 
   @override
@@ -72,6 +76,8 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -79,7 +85,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
         children: [
           Stepper(
             currentStep: _currentStep,
-            onStepTapped: (s) => setState(() => _currentStep = s),
+            onStepTapped: (step) => setState(() => _currentStep = step),
             controlsBuilder: (context, details) => Row(
               children: [
                 if (details.currentStep < 2)
@@ -93,18 +99,18 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
                               setState(() => _currentStep++);
                             }
                           },
-                    child: Text(_currentStep == 1 ? 'Esegui analisi' : 'Avanti'),
+                    child: Text(_currentStep == 1 ? s.queryBuilderEseguiAnalisi : s.queryBuilderAvanti),
                   ),
                 if (details.currentStep > 0) ...[
                   const SizedBox(width: 8),
-                  TextButton(onPressed: () => setState(() => _currentStep--), child: const Text('Indietro')),
+                  TextButton(onPressed: () => setState(() => _currentStep--), child: Text(s.queryBuilderIndietro)),
                 ],
               ],
             ),
             steps: [
               // Step 1: Scegli entità
               Step(
-                title: const Text('Cosa analizzare?'),
+                title: Text(s.queryBuilderStepAnalizzare),
                 isActive: _currentStep >= 0,
                 state: _entitaSelezionata != null ? StepState.complete : StepState.indexed,
                 content: Wrap(
@@ -121,37 +127,37 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
 
               // Step 2: Filtri e aggregazione
               Step(
-                title: const Text('Filtri e aggregazione'),
+                title: Text(s.queryBuilderStepFiltri),
                 isActive: _currentStep >= 1,
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Expanded(child: _DateField(label: 'Data da', onChanged: (v) => setState(() => _dataDa = v))),
+                        Expanded(child: _DateField(label: s.queryBuilderDataDa, onChanged: (v) => setState(() => _dataDa = v))),
                         const SizedBox(width: 8),
-                        Expanded(child: _DateField(label: 'Data a', onChanged: (v) => setState(() => _dataA = v))),
+                        Expanded(child: _DateField(label: s.queryBuilderDataA, onChanged: (v) => setState(() => _dataA = v))),
                       ],
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: _aggregazione,
-                      decoration: const InputDecoration(labelText: 'Aggregazione', border: OutlineInputBorder()),
-                      items: const [
-                        DropdownMenuItem(value: 'count', child: Text('Conteggio')),
-                        DropdownMenuItem(value: 'sum', child: Text('Somma')),
-                        DropdownMenuItem(value: 'avg', child: Text('Media')),
-                        DropdownMenuItem(value: 'none', child: Text('Nessuna (tabella)')),
+                      decoration: InputDecoration(labelText: s.queryBuilderAggregazione, border: const OutlineInputBorder()),
+                      items: [
+                        DropdownMenuItem(value: 'count', child: Text(s.queryBuilderAggCount)),
+                        DropdownMenuItem(value: 'sum', child: Text(s.queryBuilderAggSum)),
+                        DropdownMenuItem(value: 'avg', child: Text(s.queryBuilderAggAvg)),
+                        DropdownMenuItem(value: 'none', child: Text(s.queryBuilderAggNone)),
                       ],
                       onChanged: (v) { if (v != null) setState(() => _aggregazione = v); },
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       value: _raggruppa,
-                      decoration: const InputDecoration(labelText: 'Raggruppa per', border: OutlineInputBorder()),
-                      items: const [
-                        DropdownMenuItem(value: 'mese', child: Text('Mese')),
-                        DropdownMenuItem(value: 'anno', child: Text('Anno')),
+                      decoration: InputDecoration(labelText: s.queryBuilderRaggruppaPer, border: const OutlineInputBorder()),
+                      items: [
+                        DropdownMenuItem(value: 'mese', child: Text(s.queryBuilderRaggruppaMese)),
+                        DropdownMenuItem(value: 'anno', child: Text(s.queryBuilderRagruppaAnno)),
                       ],
                       onChanged: (v) { if (v != null) setState(() => _raggruppa = v); },
                     ),
@@ -161,7 +167,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
 
               // Step 3: Risultati
               Step(
-                title: const Text('Risultati'),
+                title: Text(s.queryBuilderStepRisultati),
                 isActive: _currentStep >= 2,
                 content: _buildRisultati(),
               ),
@@ -173,22 +179,22 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
   }
 
   Widget _buildRisultati() {
+    final s = _s;
     if (_loading) return const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()));
-    if (_error != null) return Text('Errore: $_error', style: const TextStyle(color: Colors.red));
-    if (_result == null) return const Text('Esegui l\'analisi per vedere i risultati');
+    if (_error != null) return Text(s.queryBuilderErrore(_error!), style: const TextStyle(color: Colors.red));
+    if (_result == null) return Text(s.queryBuilderRunFirst);
 
-    // Selezione visualizzazione
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: 'bar_chart', icon: Icon(Icons.bar_chart), label: Text('Barre')),
-            ButtonSegment(value: 'line_chart', icon: Icon(Icons.show_chart), label: Text('Linea')),
-            ButtonSegment(value: 'table', icon: Icon(Icons.table_chart), label: Text('Tabella')),
+          segments: [
+            ButtonSegment(value: 'bar_chart', icon: const Icon(Icons.bar_chart), label: Text(s.queryBuilderVizBarre)),
+            ButtonSegment(value: 'line_chart', icon: const Icon(Icons.show_chart), label: Text(s.queryBuilderVizLinea)),
+            ButtonSegment(value: 'table', icon: const Icon(Icons.table_chart), label: Text(s.queryBuilderVizTabella)),
           ],
           selected: {_visualizzazione},
-          onSelectionChanged: (s) => setState(() => _visualizzazione = s.first),
+          onSelectionChanged: (sel) => setState(() => _visualizzazione = sel.first),
         ),
         const SizedBox(height: 12),
         RisultatoQueryWidget(result: _result!, visualizzazione: _visualizzazione),

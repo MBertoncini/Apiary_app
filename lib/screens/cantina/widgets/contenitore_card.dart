@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../models/contenitore_stoccaggio.dart';
+import '../../../services/language_service.dart';
+import '../../../l10n/app_strings.dart';
 
 class ContenitoreCard extends StatelessWidget {
   final ContenitoreStoccaggio contenitore;
@@ -17,6 +20,7 @@ class ContenitoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final c = contenitore;
     final pct = c.percentualePieno;
     final color = _colorForTipo(c.tipo);
@@ -44,7 +48,7 @@ class ContenitoreCard extends StatelessWidget {
                     iconSize: 16,
                     onSelected: (v) { if (v == 'delete') onDelete(); },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'delete', child: Text('Elimina')),
+                      PopupMenuItem(value: 'delete', child: Text(s.btnDelete)),
                     ],
                   ),
                 ],
@@ -79,7 +83,7 @@ class ContenitoreCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     backgroundColor: color.withOpacity(0.1),
                   ),
-                  child: Text('🫙 Invasetta',
+                  child: Text(s.contenitoreCardBtnInvasetta,
                       style: TextStyle(fontSize: 11, color: c.isVuoto ? Colors.grey : color)),
                 ),
               ),

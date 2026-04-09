@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class QuoteGruppoWidget extends StatefulWidget {
@@ -15,6 +18,8 @@ class _QuoteGruppoWidgetState extends State<QuoteGruppoWidget> {
   String? _error;
   bool _loading = true;
   bool _notCoordinator = false;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -41,12 +46,12 @@ class _QuoteGruppoWidgetState extends State<QuoteGruppoWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.group, color: Color(0xFFD4A017)),
-      title: 'Quote Gruppo',
+      title: _s.dashboardTitleQuoteGruppo,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
       child: _notCoordinator
-          ? const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Visibile solo ai coordinatori di gruppo', style: TextStyle(color: Colors.grey))))
+          ? Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardQuoteGruppoSoloCoord, style: const TextStyle(color: Colors.grey))))
           : _data != null ? _buildContent() : const SizedBox.shrink(),
     );
   }

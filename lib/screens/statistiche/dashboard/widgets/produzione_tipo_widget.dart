@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class ProduzionePerTipoWidget extends StatefulWidget {
@@ -32,6 +35,8 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
     }
   }
 
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
   static const _colors = [
     Color(0xFFD4A017), Color(0xFF1A6B3C), Color(0xFF8B4513),
     Color(0xFF4A90D9), Color(0xFF9B59B6), Color(0xFF2ECC71),
@@ -41,7 +46,7 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.pie_chart, color: Color(0xFFD4A017)),
-      title: 'Produzione per Tipo di Miele',
+      title: _s.dashboardTitleProduzionePerTipo,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -54,7 +59,7 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
     final totale = (_data!['totale_kg'] as num).toDouble();
 
     if (tipi.isEmpty) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Nessuna smielatura registrata')));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardProdTipoNessuno)));
     }
 
     return Row(
@@ -87,7 +92,7 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Totale: ${totale.toStringAsFixed(1)} kg', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(_s.dashboardProdTipoTotale(totale.toStringAsFixed(1)), style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               ...tipi.asMap().entries.take(6).map((entry) {
                 final t = entry.value;

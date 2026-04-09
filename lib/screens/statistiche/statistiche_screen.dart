@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/language_service.dart';
 import '../../widgets/drawer_widget.dart';
 import 'dashboard/dashboard_tab.dart';
 import 'query_builder/query_builder_tab.dart';
@@ -11,17 +13,18 @@ class StatisticheScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context).strings;
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         drawer: AppDrawer(currentRoute: routeName),
         appBar: AppBar(
-          title: const Text('Statistiche'),
-          bottom: const TabBar(
+          title: Text(s.statisticheTitle),
+          bottom: TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.dashboard_outlined), text: 'Dashboard'),
-              Tab(icon: Icon(Icons.filter_list), text: 'Analisi'),
-              Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Chiedi AI'),
+              Tab(icon: const Icon(Icons.dashboard_outlined), text: s.statisticheTabDashboard),
+              Tab(icon: const Icon(Icons.filter_list), text: s.statisticheTabAnalisi),
+              Tab(icon: const Icon(Icons.chat_bubble_outline), text: s.statisticheTabChiediAI),
             ],
           ),
         ),

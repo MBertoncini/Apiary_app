@@ -13,6 +13,8 @@ import '../../database/database_helper.dart';
 import '../../services/notification_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/regina_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/contextual_hint.dart';
 import '../../widgets/field_help_icon.dart';
 
@@ -62,6 +64,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   Map<String, dynamic>? _arnia;
   Map<String, dynamic>? _apiario;
   late ControlloService _controlloService;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   // Ultimo controllo (solo in modalità creazione)
   Map<String, dynamic>? _lastControllo;
@@ -138,7 +142,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         _controlloService.syncPendingControlli().then((success) {
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Dati sincronizzati con successo')),
+              SnackBar(content: Text(_s.controlloFormSyncOk)),
             );
           }
         });
@@ -258,7 +262,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     } catch (e) {
       debugPrint('Errore generale nel caricamento dell\'arnia: $e');
       setState(() {
-        _errorMessage = 'Impossibile caricare i dati dell\'arnia. Verifica la connessione.';
+        _errorMessage = _s.controlloFormErrCaricoArnia;
       });
     } finally {
       setState(() {
@@ -443,13 +447,10 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
           );
           if (reginaCreata != null && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Regina rilevata: scheda base creata automaticamente. '
-                  'Aprila per completare i dettagli.',
-                ),
+              SnackBar(
+                content: Text(_s.controlloFormReginaAutoCreata),
                 backgroundColor: Colors.orange,
-                duration: Duration(seconds: 5),
+                duration: const Duration(seconds: 5),
               ),
             );
           }
@@ -457,9 +458,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
 
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isOnline
-                ? 'Controllo registrato con successo'
-                : 'Controllo salvato localmente. Sarà sincronizzato quando tornerai online'),
+            content: Text(_isOnline ? _s.controlloFormSavedOk : _s.controlloFormSavedOffline),
             backgroundColor: _isOnline ? Colors.green : Colors.orange,
           )
         );
@@ -475,9 +474,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isOnline
-                ? 'Controllo aggiornato con successo'
-                : 'Aggiornamento salvato localmente. Sarà sincronizzato quando tornerai online'),
+            content: Text(_isOnline ? _s.controlloFormUpdatedOk : _s.controlloFormUpdatedOffline),
             backgroundColor: _isOnline ? Colors.green : Colors.orange,
           )
         );
@@ -488,7 +485,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     } catch (e) {
       debugPrint('Errore nel salvataggio del controllo: $e');
       setState(() {
-        _errorMessage = 'Si è verificato un errore. Riprova più tardi.';
+        _errorMessage = _s.controlloFormErrGeneric;
       });
     } finally {
       setState(() {
@@ -499,25 +496,28 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     if (_isLoading && _arnia == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('Controllo Arnia'),
+          title: Text(s.controlloFormTitleLoading),
         ),
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     final Color arniaColor = _arnia != null
         ? Color(int.parse(_arnia!['colore_hex'].replaceAll('#', '0xFF')))
         : Colors.brown;
     final Color fgColor = arniaColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
 
     final bool isNucleo = (_arnia?['tipo_arnia'] as String?) == 'nucleo';
+    final int arniaNumero = _arnia?['numero'] as int? ?? widget.arniaId;
     final String arniaLabel = _arnia != null
-        ? '${isNucleo ? 'Nucleo' : 'Arnia'} ${_arnia!['numero'] ?? widget.arniaId}'
-        : 'Arnia ${widget.arniaId}';
-    final String actionLabel = widget.controlloEsistente == null ? 'Nuovo Controllo' : 'Modifica Controllo';
+        ? (isNucleo ? s.controlloFormNucleoLabel(arniaNumero) : s.controlloFormArniaLabel(arniaNumero))
+        : s.controlloFormArniaLabel(widget.arniaId);
+    final String actionLabel = widget.controlloEsistente == null ? s.controlloFormTitleNew : s.controlloFormTitleEdit;
 
     return Scaffold(
       appBar: AppBar(
@@ -562,7 +562,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Sei offline. Le modifiche saranno salvate localmente e sincronizzate quando sarai di nuovo online.',
+                          s.controlloFormOfflineMsg,
                           style: TextStyle(color: Colors.orange[800]),
                         ),
                       ),
@@ -627,7 +627,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Arnia ${_arnia!['numero']}',
+                                s.controlloFormArniaLabel(_arnia!['numero'] as int),
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -661,7 +661,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Data Controllo',
+                        s.controlloFormSectionData,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -674,7 +674,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           child: TextFormField(
                             controller: _dataController,
                             decoration: InputDecoration(
-                              labelText: 'Data',
+                              labelText: s.controlloFormLblData,
                               prefixIcon: Icon(Icons.calendar_today),
                               border: OutlineInputBorder(),
                               contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
@@ -697,7 +697,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Configurazione Telaini',
+                        s.controlloFormSectionTelaini,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -710,12 +710,12 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          _buildToolButton('covata', 'Covata', Colors.red, Icons.grid_4x4),
-                          _buildToolButton('scorte', 'Scorte', Colors.amber, Icons.grid_4x4),
-                          _buildToolButton('foglio_cereo', 'F. Cereo', Colors.yellow.shade200, Icons.description),
-                          _buildToolButton('diaframma', 'Diaframma', Colors.black, Icons.vertical_split),
-                          _buildToolButton('nutritore', 'Nutritore', Color(0xFFE8D4B9), Icons.coffee),
-                          _buildToolButton('vuoto', 'Vuoto', Colors.grey.shade300, Icons.clear),
+                          _buildToolButton('covata', s.controlloFormTelainiCovata, Colors.red, Icons.grid_4x4),
+                          _buildToolButton('scorte', s.controlloFormTelainiScorte, Colors.amber, Icons.grid_4x4),
+                          _buildToolButton('foglio_cereo', s.controlloFormTelainiFoglioCereo, Colors.yellow.shade200, Icons.description),
+                          _buildToolButton('diaframma', s.controlloFormTelainiDiaframma, Colors.black, Icons.vertical_split),
+                          _buildToolButton('nutritore', s.controlloFormTelainiNutritore, const Color(0xFFE8D4B9), Icons.coffee),
+                          _buildToolButton('vuoto', s.controlloFormTelainiVuoto, Colors.grey.shade300, Icons.clear),
                         ],
                       ),
                       
@@ -724,7 +724,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
                           icon: const Icon(Icons.sort, size: 16),
-                          label: const Text('Auto-ordina', style: TextStyle(fontSize: 13)),
+                          label: Text(s.controlloFormAutoOrdina, style: const TextStyle(fontSize: 13)),
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.green.shade700,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -743,13 +743,13 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                               Icon(Icons.history, size: 13, color: Colors.blue.shade600),
                               const SizedBox(width: 4),
                               Text(
-                                'Pre-caricato dall\'ultimo controllo',
+                                s.controlloFormPreCaricato,
                                 style: TextStyle(fontSize: 12, color: Colors.blue.shade600),
                               ),
                             ],
                           ),
                         ),
-                      Text('Tocca un telaino per cambiare il tipo', style: TextStyle(color: Colors.grey)),
+                      Text(s.controlloFormToccaTelaino, style: const TextStyle(color: Colors.grey)),
                       const SizedBox(height: 8),
                       
                       // Visualizzazione Arnia
@@ -776,10 +776,10 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          _buildCounter('Covata', _telainiCovata, Colors.red),
-                          _buildCounter('Scorte', _telainiScorte, Colors.amber),
-                          if (_telainiDiaframma > 0) _buildCounter('Diaframma', _telainiDiaframma, Colors.blueGrey),
-                          if (_tealiniFoglioCereo > 0) _buildCounter('F. Cereo', _tealiniFoglioCereo, Colors.yellow.shade600),
+                          _buildCounter(s.controlloFormTelainiCovata, _telainiCovata, Colors.red),
+                          _buildCounter(s.controlloFormTelainiScorte, _telainiScorte, Colors.amber),
+                          if (_telainiDiaframma > 0) _buildCounter(s.controlloFormTelainiDiaframma, _telainiDiaframma, Colors.blueGrey),
+                          if (_tealiniFoglioCereo > 0) _buildCounter(s.controlloFormTelainiFoglioCereo, _tealiniFoglioCereo, Colors.yellow.shade600),
                         ],
                       ),
                     ],
@@ -796,8 +796,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Regina',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        s.controlloFormSectionRegina,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 16),
 
@@ -806,26 +806,26 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         children: [
                           Icon(Icons.star, color: ThemeConstants.primaryColor),
                           SizedBox(width: 12),
-                          Text('Stato regina', style: TextStyle(fontSize: 15)),
+                          Text(s.controlloFormLblStatoRegina, style: const TextStyle(fontSize: 15)),
                           FieldHelpIcon('Seleziona "Sì" se hai visto la regina, "Indiretto" se vedi uova fresche (< 3 giorni), "No" se non ci sono segni di covata fresca.'),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: _buildStatoReginaButton('assente', 'Assente', Icons.star_border, Colors.red.shade300)),
+                          Expanded(child: _buildStatoReginaButton('assente', s.controlloFormReginaAssente, Icons.star_border, Colors.red.shade300)),
                           SizedBox(width: 6),
-                          Expanded(child: _buildStatoReginaButton('presente', 'Presente', Icons.star_half, Colors.orange)),
+                          Expanded(child: _buildStatoReginaButton('presente', s.controlloFormReginaPresente, Icons.star_half, Colors.orange)),
                           SizedBox(width: 6),
-                          Expanded(child: _buildStatoReginaButton('vista', 'Vista', Icons.star, Colors.amber)),
+                          Expanded(child: _buildStatoReginaButton('vista', s.controlloFormReginaVista, Icons.star, Colors.amber)),
                         ],
                       ),
                       const SizedBox(height: 4),
 
                       if (_statoRegina != 'assente') ...[
                         _buildSwitchTile(
-                          'Uova fresche',
-                          'Sono state viste uova fresche',
+                          s.controlloFormUovaFresche,
+                          s.controlloFormUovaFrescheDesc,
                           Icons.egg_alt,
                           _uovaFresche,
                           (value) => setState(() => _uovaFresche = value),
@@ -833,8 +833,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                       ],
 
                       _buildSwitchTile(
-                        'Celle reali',
-                        'Sono presenti celle reali',
+                        s.controlloFormCelleReali,
+                        s.controlloFormCelleRealiDesc,
                         Icons.change_history,
                         _celleReali,
                         (value) {
@@ -851,7 +851,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           child: TextFormField(
                             controller: _numeroCelleRealiController,
                             decoration: InputDecoration(
-                              labelText: 'Numero celle reali',
+                              labelText: s.controlloFormLblNumeroCelleReali,
                               border: OutlineInputBorder(),
                               contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                             ),
@@ -861,8 +861,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         ),
 
                       _buildSwitchTile(
-                        'Regina sostituita',
-                        'La regina è stata sostituita durante questo controllo',
+                        s.controlloFormReginaSostituita,
+                        s.controlloFormReginaSostituitaDesc,
                         Icons.swap_horiz,
                         _reginaSostituita,
                         (value) => setState(() => _reginaSostituita = value),
@@ -870,8 +870,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
 
                       // Colorazione regina
                       _buildSwitchTile(
-                        'Regina colorata',
-                        'La regina è stata colorata/marcata in questo controllo',
+                        s.controlloFormReginaColorata,
+                        s.controlloFormReginaColorataDesc,
                         Icons.palette,
                         _reginaColorata,
                         (value) => setState(() {
@@ -886,7 +886,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Colore marcatura', style: TextStyle(color: Colors.grey[700])),
+                              Text(s.controlloFormColoreRegina, style: TextStyle(color: Colors.grey[700])),
                               const SizedBox(height: 8),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.start,
@@ -916,29 +916,29 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Sciamatura',
-                        style: TextStyle(
+                        s.controlloFormSectionSciamatura,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       _buildSwitchTile(
-                        'Sciamatura rilevata',
-                        'La colonia ha sciamato',
+                        s.controlloFormSciamatura,
+                        s.controlloFormSciamaturaCodice,
                         Icons.grain,
                         _sciamatura,
                         (value) => setState(() => _sciamatura = value),
                       ),
-                      
+
                       if (_sciamatura)
                         Padding(
                           padding: EdgeInsets.only(left: 48, right: 16, top: 8, bottom: 8),
                           child: TextFormField(
                             controller: _noteSciamauturaController,
                             decoration: InputDecoration(
-                              labelText: 'Note sciamatura',
+                              labelText: s.controlloFormNoteSciamatura,
                               border: OutlineInputBorder(),
                               contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                             ),
@@ -959,36 +959,36 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Problemi Sanitari',
-                        style: TextStyle(
+                        s.controlloFormSectionProblemi,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       _buildSwitchTile(
-                        'Problemi sanitari rilevati',
-                        'Sono stati rilevati problemi sanitari',
+                        s.controlloFormProblemi,
+                        s.controlloFormProblemiDesc,
                         Icons.healing,
                         _problemiSanitari,
                         (value) => setState(() => _problemiSanitari = value),
                       ),
-                      
+
                       if (_problemiSanitari)
                         Padding(
                           padding: EdgeInsets.only(left: 48, right: 16, top: 8, bottom: 8),
                           child: TextFormField(
                             controller: _noteProblemiController,
                             decoration: InputDecoration(
-                              labelText: 'Dettagli problemi sanitari',
+                              labelText: s.controlloFormDettagliProblemi,
                               border: OutlineInputBorder(),
                               contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                             ),
                             maxLines: 3,
                             validator: (value) {
                               if (_problemiSanitari && (value == null || value.isEmpty)) {
-                                return 'Inserisci i dettagli sui problemi sanitari';
+                                return s.controlloFormValidateProblemi;
                               }
                               return null;
                             },
@@ -1008,19 +1008,19 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Note Generali',
-                        style: TextStyle(
+                        s.controlloFormSectionNote,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _noteController,
                         decoration: InputDecoration(
-                          labelText: 'Note',
-                          hintText: 'Inserisci eventuali note aggiuntive...',
+                          labelText: s.controlloFormLblNote,
+                          hintText: s.controlloFormHintNote,
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                         ),
@@ -1040,8 +1040,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
                         child: Text(
-                          'ANNULLA',
-                          style: TextStyle(fontSize: 16),
+                          s.dialogCancelBtn,
+                          style: const TextStyle(fontSize: 16),
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -1065,8 +1065,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                                 ),
                               )
                             : Text(
-                                widget.controlloEsistente == null ? 'SALVA' : 'AGGIORNA',
-                                style: TextStyle(fontSize: 16),
+                                widget.controlloEsistente == null ? s.controlloFormBtnSalva : s.controlloFormBtnAggiorna,
+                                style: const TextStyle(fontSize: 16),
                               ),
                       ),
                     ),
@@ -1093,8 +1093,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     final presenzaRegina = lc['presenza_regina'] ?? true;
     final reginaVista = lc['regina_vista'] ?? false;
     final String statoRegina = !(presenzaRegina as bool)
-        ? 'Assente'
-        : ((reginaVista as bool) ? 'Vista' : 'Presente');
+        ? _s.controlloFormReginaAssente
+        : ((reginaVista as bool) ? _s.controlloFormReginaVista : _s.controlloFormReginaPresente);
     final Color statoReginaColor = !presenzaRegina
         ? Colors.red
         : (reginaVista ? Colors.amber.shade700 : Colors.orange);
@@ -1138,7 +1138,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Ultimo controllo: $data',
+                      _s.controlloFormLastControllo(data),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.blue.shade800,
@@ -1169,10 +1169,10 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    if (prevCovata > 0) _buildMiniChip('Covata $prevCovata', Colors.red),
-                    if (prevScorte > 0) _buildMiniChip('Scorte $prevScorte', Colors.amber.shade700),
-                    if (prevDiaframma > 0) _buildMiniChip('Diaframma $prevDiaframma', Colors.blueGrey),
-                    if (prevFoglioCereo > 0) _buildMiniChip('F.Cereo $prevFoglioCereo', Colors.yellow.shade700),
+                    if (prevCovata > 0) _buildMiniChip(_s.controlloFormCovataCount(prevCovata), Colors.red),
+                    if (prevScorte > 0) _buildMiniChip(_s.controlloFormScorteCount(prevScorte), Colors.amber.shade700),
+                    if (prevDiaframma > 0) _buildMiniChip(_s.controlloFormDiaframmaCount(prevDiaframma), Colors.blueGrey),
+                    if (prevFoglioCereo > 0) _buildMiniChip(_s.controlloFormFoglioCereoCount(prevFoglioCereo), Colors.yellow.shade700),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1182,7 +1182,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     Icon(Icons.star, size: 14, color: statoReginaColor),
                     const SizedBox(width: 4),
                     Text(
-                      'Regina: $statoRegina',
+                      _s.controlloFormReginaLabel(statoRegina),
                       style: TextStyle(fontSize: 12, color: statoReginaColor, fontWeight: FontWeight.w600),
                     ),
                     if (celleReali) ...[
@@ -1190,7 +1190,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                       Icon(Icons.change_history, size: 14, color: Colors.orange.shade700),
                       const SizedBox(width: 4),
                       Text(
-                        'Celle reali',
+                        _s.controlloFormCelleReali,
                         style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
                       ),
                     ],
@@ -1205,7 +1205,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         Icon(Icons.grain, size: 14, color: Colors.red.shade600),
                         const SizedBox(width: 4),
                         Text(
-                          'Sciamatura',
+                          _s.controlloFormSectionSciamatura,
                           style: TextStyle(fontSize: 12, color: Colors.red.shade600),
                         ),
                         const SizedBox(width: 12),
@@ -1214,7 +1214,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         Icon(Icons.healing, size: 14, color: Colors.purple.shade600),
                         const SizedBox(width: 4),
                         Text(
-                          'Problemi sanitari',
+                          _s.controlloFormSectionProblemi,
                           style: TextStyle(fontSize: 12, color: Colors.purple.shade600),
                         ),
                       ],

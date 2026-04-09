@@ -5,7 +5,9 @@ import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/vendita.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
@@ -25,6 +27,8 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
   late ApiService _apiService;
   late StorageService _storageService;
 
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
   @override
   void initState() {
     super.initState();
@@ -37,7 +41,6 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
   Future<void> _loadVendita() async {
     setState(() { _isRefreshing = true; _errorMessage = null; });
 
-    // Fase 1: cache
     final cached = await _storageService.getStoredData('vendite');
     final cachedMap = cached.cast<Map<String, dynamic>>().firstWhere(
       (v) => v['id'] == widget.venditaId,
@@ -47,7 +50,6 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
       setState(() { _vendita = Vendita.fromJson(cachedMap); });
     }
 
-    // Fase 2: server
     try {
       final data = await _apiService.get('${ApiConstants.venditeUrl}${widget.venditaId}/');
       if (mounted) {
@@ -58,22 +60,23 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
       setState(() => _isRefreshing = false);
       if (_vendita != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Modalità offline — dati aggiornati all\'ultimo accesso')));
+          SnackBar(content: Text(_s.venditaDetailOfflineMsg)));
       } else {
-        setState(() { _errorMessage = 'Errore: $e'; });
+        setState(() { _errorMessage = _s.msgErrorGeneric(e.toString()); });
       }
     }
   }
 
   Future<void> _deleteVendita() async {
+    final s = _s;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Conferma eliminazione'),
-        content: Text('Eliminare questa vendita?'),
+        title: Text(s.venditaDetailDeleteTitle),
+        content: Text(s.venditaDetailDeleteMsg),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('ANNULLA')),
-          TextButton(onPressed: () => Navigator.pop(context, true),  child: Text('ELIMINA')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(s.dialogCancelBtn)),
+          TextButton(onPressed: () => Navigator.pop(context, true),  child: Text(s.btnDeleteCaps)),
         ],
       ),
     );
@@ -81,62 +84,74 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
       try {
         await _apiService.delete('${ApiConstants.venditeUrl}${widget.venditaId}/');
         await _storageService.saveData('vendite', []);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vendita eliminata')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.venditaDetailDeletedOk)));
         Navigator.pop(context, true);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.msgErrorGeneric(e.toString()))));
       }
     }
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────
-
-  String _canaleLabel(String c) {
-    const m = {'mercatino':'Mercatino','negozio':'Negozio','privato':'Privato','online':'Online','altro':'Altro'};
-    return m[c] ?? c;
+  String _canaleLabel(String c, AppStrings s) {
+    switch (c) {
+      case 'mercatino': return s.venditaCanaleMercatino;
+      case 'negozio':   return s.venditaCanaleNegozio;
+      case 'privato':   return s.venditaCanalePrivato;
+      case 'online':    return s.venditaCanaleOnline;
+      default:          return s.venditaCanaleAltro;
+    }
   }
 
-  String _pagamentoLabel(String p) {
-    const m = {'contanti':'Contanti','bonifico':'Bonifico','carta':'Carta','altro':'Altro'};
-    return m[p] ?? p;
+  String _pagamentoLabel(String p, AppStrings s) {
+    switch (p) {
+      case 'contanti': return s.venditaPagamentoContanti;
+      case 'bonifico': return s.venditaPagamentoBonifico;
+      case 'carta':    return s.venditaPagamentoCarta;
+      default:         return s.venditaPagamentoAltro;
+    }
   }
 
-  String _categoriaNome(String cat) {
-    const map = {
-      'miele':'Miele','propoli':'Propoli','cera':'Cera','polline':'Polline',
-      'pappa_reale':'Pappa reale','nucleo':'Nucleo','regina':'Regina','altro':'Altro',
-    };
-    return map[cat] ?? cat;
+  String _categoriaNome(String cat, AppStrings s) {
+    switch (cat) {
+      case 'miele':      return s.venditaCatMiele;
+      case 'propoli':    return s.venditaCatPropoli;
+      case 'cera':       return s.venditaCatCera;
+      case 'polline':    return s.venditaCatPolline;
+      case 'pappa_reale': return s.venditaCatPappaReale;
+      case 'nucleo':     return s.venditaCatNucleo;
+      case 'regina':     return s.venditaCatRegina;
+      default:           return s.venditaCatAltro;
+    }
   }
 
   IconData _categoriaIcon(String cat) {
     switch (cat) {
-      case 'miele':      return Icons.local_dining;
-      case 'propoli':    return Icons.science;
-      case 'cera':       return Icons.light;
-      case 'polline':    return Icons.filter_vintage;
-      case 'nucleo':     return Icons.hive;
-      case 'regina':     return Icons.star;
-      default:           return Icons.inventory_2;
+      case 'miele':   return Icons.local_dining;
+      case 'propoli': return Icons.science;
+      case 'cera':    return Icons.light;
+      case 'polline': return Icons.filter_vintage;
+      case 'nucleo':  return Icons.hive;
+      case 'regina':  return Icons.star;
+      default:        return Icons.inventory_2;
     }
   }
 
-  String _dettaglioTitle(DettaglioVendita d) {
+  String _dettaglioTitle(DettaglioVendita d, AppStrings s) {
     if (d.categoria == 'miele') {
-      final tipo = d.tipoMiele ?? 'Miele';
+      final tipo = d.tipoMiele ?? s.venditaCatMiele;
       final fmt  = d.formatoVasetto != null ? ' ${d.formatoVasetto}g' : '';
       return '$tipo$fmt';
     }
-    return _categoriaNome(d.categoria);
+    return _categoriaNome(d.categoria, s);
   }
-
-  // ── Build ────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dettaglio Vendita'),
+        title: Text(s.venditaDetailTitle),
         actions: [
           IconButton(
             icon: Icon(Icons.edit),
@@ -160,7 +175,7 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
                 : _errorMessage != null
                     ? ErrorDisplayWidget(errorMessage: _errorMessage!, onRetry: _loadVendita)
                     : _vendita == null
-                        ? const Center(child: Text('Vendita non trovata'))
+                        ? Center(child: Text(s.venditaDetailNotFound))
                         : SingleChildScrollView(
                       padding: EdgeInsets.all(16),
                       child: Column(
@@ -183,24 +198,24 @@ class _VenditaDetailScreenState extends State<VenditaDetailScreen> {
                                     ),
                                   ),
                                   SizedBox(height: 16),
-                                  _buildInfoRow('Data',      _vendita!.data),
-                                  _buildInfoRow('Acquirente', _vendita!.displayName),
-                                  _buildInfoRow('Canale',    _canaleLabel(_vendita!.canale)),
-                                  _buildInfoRow('Pagamento', _pagamentoLabel(_vendita!.pagamento)),
+                                  _buildInfoRow(s.venditaDetailLblData,      _vendita!.data),
+                                  _buildInfoRow(s.venditaDetailLblAcquirente, _vendita!.displayName),
+                                  _buildInfoRow(s.venditaDetailLblCanale,    _canaleLabel(_vendita!.canale, s)),
+                                  _buildInfoRow(s.venditaDetailLblPagamento, _pagamentoLabel(_vendita!.pagamento, s)),
                                   if (_vendita!.note != null && _vendita!.note!.isNotEmpty)
-                                    _buildInfoRow('Note', _vendita!.note!),
+                                    _buildInfoRow(s.labelNotes, _vendita!.note!),
                                 ],
                               ),
                             ),
                           ),
                           SizedBox(height: 16),
-                          Text('Articoli', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(s.venditaDetailSectionArticoli, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           SizedBox(height: 8),
                           ..._vendita!.dettagli.map((d) => Card(
                             child: ListTile(
                               leading: Icon(_categoriaIcon(d.categoria), size: 22,
                                   color: ThemeConstants.primaryColor),
-                              title: Text(_dettaglioTitle(d)),
+                              title: Text(_dettaglioTitle(d, s)),
                               subtitle: Text(
                                 '${d.quantita} x ${d.prezzoUnitario.toStringAsFixed(2)} €'),
                               trailing: Text(

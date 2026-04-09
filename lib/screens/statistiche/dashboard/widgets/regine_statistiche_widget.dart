@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/statistiche_service.dart';
+import '../../../../services/language_service.dart';
+import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
 class RegineStatisticheWidget extends StatefulWidget {
@@ -14,6 +17,8 @@ class _RegineStatisticheWidgetState extends State<RegineStatisticheWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -35,7 +40,7 @@ class _RegineStatisticheWidgetState extends State<RegineStatisticheWidget> {
   Widget build(BuildContext context) {
     return DashboardCardBase(
       icon: const Icon(Icons.local_florist, color: Color(0xFFD4A017)),
-      title: 'Regine — Statistiche',
+      title: _s.dashboardTitleRegineStats,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -54,16 +59,16 @@ class _RegineStatisticheWidgetState extends State<RegineStatisticheWidget> {
       children: [
         Row(
           children: [
-            _KpiCard(label: 'Regine attive', valore: '$attive', color: Colors.green),
+            _KpiCard(label: _s.dashboardRegineAttive, valore: '$attive', color: Colors.green),
             const SizedBox(width: 8),
-            _KpiCard(label: 'Sostituzioni', valore: '$totale', color: Colors.orange),
+            _KpiCard(label: _s.dashboardRegineSostituzioni, valore: '$totale', color: Colors.orange),
             const SizedBox(width: 8),
-            _KpiCard(label: 'Vita media', valore: durata != null ? '${durata} mesi' : 'N/D', color: Colors.blue),
+            _KpiCard(label: _s.dashboardRegineVitaMedia, valore: durata != null ? _s.dashboardRegineVitaMesiStr(durata.toString()) : _s.labelNa, color: Colors.blue),
           ],
         ),
         if (perMotivo.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const Align(alignment: Alignment.centerLeft, child: Text('Motivi sostituzione:', style: TextStyle(fontWeight: FontWeight.w600))),
+          Align(alignment: Alignment.centerLeft, child: Text(_s.dashboardRegineMotiviSostituzione, style: const TextStyle(fontWeight: FontWeight.w600))),
           ...perMotivo.take(5).map((m) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(children: [

@@ -10,6 +10,8 @@ import '../services/api_service.dart';
 import '../services/audio_queue_service.dart';
 import '../services/storage_service.dart';
 import '../services/voice_queue_service.dart';
+import '../services/language_service.dart';
+import '../l10n/app_strings.dart';
 import '../constants/theme_constants.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
@@ -40,6 +42,8 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   // Controllers keyed by field name, rebuilt only when the entry index changes.
   final Map<String, TextEditingController> _controllers = {};
   final VoiceQueueService _queueService = VoiceQueueService();
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   // Audio player per la riproduzione dell'audio originale (modalità Audio AI)
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -108,34 +112,32 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   }
 
   Future<void> _removeEntry() async {
+    final s = _s;
     final entry = _editedEntries[_currentIndex];
     final arniaLabel = entry.arniaNumero != null
-        ? 'Arnia ${entry.arniaNumero}'
-        : 'questa scheda';
+        ? '${s.labelArnia} ${entry.arniaNumero}'
+        : s.voiceVerifScheda;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.delete_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Elimina scheda'),
+            const Icon(Icons.delete_outline, color: Colors.red),
+            const SizedBox(width: 8),
+            Text(s.voiceVerifDeleteTitle),
           ],
         ),
-        content: Text(
-          'Vuoi eliminare la scheda di $arniaLabel?\n\n'
-          'L\'operazione non può essere annullata.',
-        ),
+        content: Text(s.voiceVerifDeleteMsg(arniaLabel)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('ANNULLA'),
+            child: Text(s.dialogCancelBtn),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('ELIMINA', style: TextStyle(color: Colors.white)),
+            child: Text(s.btnDeleteCaps, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -237,30 +239,27 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               '${a['apiarioNome'] != null ? '  (${a['apiarioNome']})' : ''}')
           .join('\n');
 
+      final s = _s;
       final create = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.hive_outlined, color: Colors.orange),
-              SizedBox(width: 8),
-              Expanded(child: Text('Nuove arnie rilevate')),
+              const Icon(Icons.hive_outlined, color: Colors.orange),
+              const SizedBox(width: 8),
+              Expanded(child: Text(s.voiceVerifNewArnieTitolo)),
             ],
           ),
-          content: Text(
-            'Le seguenti arnie non sono presenti nel database:\n\n'
-            '$arniaList\n\n'
-            'Vuoi crearle nell\'apiario selezionato e salvare i controlli?',
-          ),
+          content: Text(s.voiceVerifNewArnieMsg(arniaList)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('ANNULLA'),
+              child: Text(s.dialogCancelBtn),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('CREA E SALVA'),
+              child: Text(s.voiceVerifCreateSave),
             ),
           ],
         ),
@@ -303,7 +302,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Errore creazione arnie'),
+            title: Text(_s.voiceVerifErrCreazArnieTitolo),
             content: Text(creationErrors.join('\n')),
             actions: [
               TextButton(
@@ -326,16 +325,14 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       if (!entry.isValid()) {
         // Keep invalid entries in the list so the user can fix them.
         remaining.add(entry);
-        errors.add('Arnia ${entry.arniaNumero ?? '?'}: dati non validi, saltata.');
+        errors.add(_s.voiceVerifInvalidSkipped('${entry.arniaNumero ?? '?'}'));
         continue;
       }
 
       final arniaId = resolveArniaId(entry);
       if (arniaId == null) {
         remaining.add(entry);
-        errors.add(
-            'Arnia ${entry.arniaNumero ?? '?'}: non trovata in cache. '
-            'Aggiorna la lista arnie e riprova.');
+        errors.add(_s.voiceVerifNotFoundCache('${entry.arniaNumero ?? '?'}'));
         continue;
       }
 
@@ -404,11 +401,12 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
 
     if (!mounted) return;
 
+    final s = _s;
     if (remaining.isEmpty) {
       // All saved.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Dati salvati con successo ($savedCount record)'),
+          content: Text(s.voiceVerifSavedOk(savedCount)),
           backgroundColor: Colors.green,
         ),
       );
@@ -417,14 +415,13 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
       // Partial success – show which ones failed and stay on screen.
       final summary = errors.join('\n');
       setState(() {
-        _error = 'Salvati $savedCount record. '
-            '${remaining.length} non salvati:\n$summary';
+        _error = s.voiceVerifPartialSaved(savedCount, remaining.length) + summary;
       });
     } else {
       // All failed.
       final summary = errors.join('\n');
       setState(() {
-        _error = 'Nessun record salvato:\n$summary';
+        _error = s.voiceVerifNoSaved + summary;
       });
     }
   }
@@ -437,19 +434,21 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Verifica dati vocali'),
+        title: Text(s.voiceVerifTitle),
         actions: [
           if (_editedEntries.isNotEmpty) IconButton(
-            icon: Icon(Icons.delete),
+            icon: const Icon(Icons.delete),
             onPressed: _removeEntry,
-            tooltip: 'Rimuovi registrazione',
+            tooltip: s.voiceVerifTooltipRemove,
           ),
         ],
       ),
       body: _isSubmitting
-          ? LoadingWidget(message: 'Salvataggio in corso...')
+          ? LoadingWidget(message: s.voiceVerifSaving)
           : _error != null
               ? ErrorDisplayWidget(
                   errorMessage: _error!,
@@ -463,34 +462,26 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   }
   
   Widget _buildEmptyState() {
+    final s = _s;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.mic_off,
-            size: 64,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.mic_off, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
           Text(
-            'Nessun dato da verificare',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            s.voiceVerifEmptyTitle,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Torna indietro e registra nuove ispezioni',
-            style: TextStyle(
-              color: ThemeConstants.textSecondaryColor,
-            ),
+            s.voiceVerifEmptySubtitle,
+            style: TextStyle(color: ThemeConstants.textSecondaryColor),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => widget.onCancel(),
-            child: Text('Torna indietro'),
+            child: Text(s.voiceVerifBtnGoBack),
           ),
         ],
       ),
@@ -498,10 +489,11 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   }
   
   Widget _buildEntryVerificationForm() {
+    final s = _s;
     final entry = _editedEntries[_currentIndex];
-    
+
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -510,7 +502,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Record ${_currentIndex + 1} di ${_editedEntries.length}',
+                s.voiceVerifRecordOf(_currentIndex + 1, _editedEntries.length),
                 style: TextStyle(
                   fontSize: 14,
                   color: ThemeConstants.textSecondaryColor,
@@ -519,18 +511,18 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             ],
           ),
           const SizedBox(height: 24),
-          
+
           // Location section
-          _buildSectionTitle('Posizione'),
+          _buildSectionTitle(s.voiceVerifSectionPosizione),
           _buildTextField(
-            label: 'Apiario',
+            label: s.labelApiario,
             controllerKey: 'apiarioNome',
             onChanged: (value) {
               _updateEntry(entry.copyWith(apiarioNome: value));
             },
           ),
           _buildTextField(
-            label: 'Arnia',
+            label: s.labelArnia,
             controllerKey: 'arniaNumero',
             keyboardType: TextInputType.number,
             onChanged: (value) {
@@ -540,26 +532,26 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             },
           ),
           const SizedBox(height: 16),
-          
+
           // Audio player (solo se disponibile il file originale)
           if (entry.audioFilePath != null &&
               File(entry.audioFilePath!).existsSync()) ...[
-            _buildSectionTitle('Registrazione originale'),
+            _buildSectionTitle(s.voiceVerifSectionRegistrazione),
             _buildAudioPlayer(entry.audioFilePath!),
             const SizedBox(height: 16),
           ],
 
           // Date and type section
-          _buildSectionTitle('Informazioni generali'),
+          _buildSectionTitle(s.voiceVerifSectionGenerali),
           _buildDatePicker(
-            label: 'Data',
+            label: s.labelDate,
             value: entry.data ?? DateTime.now(),
             onChanged: (date) {
               _updateEntry(entry.copyWith(data: date));
             },
           ),
           _buildDropdownField(
-            label: 'Tipo',
+            label: s.voiceVerifLblTipo,
             value: entry.tipoComando,
             items: ['ispezione', 'controllo', 'regina', 'telaini', 'trattamento'],
             onChanged: (value) {
@@ -569,17 +561,17 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           const SizedBox(height: 16),
           
           // Queen section
-          _buildSectionTitle('Regina'),
+          _buildSectionTitle(s.voiceVerifSectionRegina),
           // Stato regina a 3 stati
           Padding(
             padding: const EdgeInsets.only(bottom: 12.0),
             child: Row(
               children: [
-                _buildStatoReginaChip(entry, 'assente', 'Assente', Colors.red.shade300),
-                SizedBox(width: 6),
-                _buildStatoReginaChip(entry, 'presente', 'Presente', Colors.orange),
-                SizedBox(width: 6),
-                _buildStatoReginaChip(entry, 'vista', 'Vista', Colors.amber.shade700),
+                _buildStatoReginaChip(entry, 'assente', s.controlloFormReginaAssente, Colors.red.shade300),
+                const SizedBox(width: 6),
+                _buildStatoReginaChip(entry, 'presente', s.controlloFormReginaPresente, Colors.orange),
+                const SizedBox(width: 6),
+                _buildStatoReginaChip(entry, 'vista', s.controlloFormReginaVista, Colors.amber.shade700),
               ],
             ),
           ),
@@ -587,7 +579,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             children: [
               Expanded(
                 child: _buildSwitchField(
-                  label: 'Uova fresche',
+                  label: s.controlloFormUovaFresche,
                   value: entry.uovaFresche ?? false,
                   onChanged: (value) {
                     _updateEntry(entry.copyWith(uovaFresche: value));
@@ -597,7 +589,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               SizedBox(width: 16),
               Expanded(
                 child: _buildSwitchField(
-                  label: 'Celle reali',
+                  label: s.controlloFormCelleReali,
                   value: entry.celleReali ?? false,
                   onChanged: (value) {
                     _updateEntry(entry.copyWith(celleReali: value));
@@ -608,7 +600,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           ),
           if (entry.celleReali == true)
             _buildTextField(
-              label: 'Numero celle reali',
+              label: s.controlloFormLblNumeroCelleReali,
               controllerKey: 'numeroCelleReali',
               keyboardType: TextInputType.number,
               onChanged: (value) {
@@ -620,12 +612,12 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           const SizedBox(height: 16),
           
           // Frames section
-          _buildSectionTitle('Telaini'),
+          _buildSectionTitle(s.voiceVerifSectionTelaini),
           Row(
             children: [
               Expanded(
                 child: _buildTextField(
-                  label: 'Covata',
+                  label: s.controlloFormTelainiCovata,
                   controllerKey: 'telainiCovata',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
@@ -636,7 +628,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               SizedBox(width: 8),
               Expanded(
                 child: _buildTextField(
-                  label: 'Scorte',
+                  label: s.controlloFormTelainiScorte,
                   controllerKey: 'telainiScorte',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
@@ -647,7 +639,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               SizedBox(width: 8),
               Expanded(
                 child: _buildTextField(
-                  label: 'Diaframma',
+                  label: s.controlloFormTelainiDiaframma,
                   controllerKey: 'telainiDiaframma',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
@@ -661,7 +653,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             children: [
               Expanded(
                 child: _buildTextField(
-                  label: 'Foglio cereo',
+                  label: s.controlloFormTelainiFoglioCereo,
                   controllerKey: 'tealiniFoglioCereo',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
@@ -672,7 +664,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               SizedBox(width: 8),
               Expanded(
                 child: _buildTextField(
-                  label: 'Nutritore',
+                  label: s.controlloFormTelainiNutritore,
                   controllerKey: 'telainiNutritore',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
@@ -692,7 +684,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Totale', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      Text(s.voiceVerifLblTotale, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                       SizedBox(height: 4),
                       Text(
                         '${entry.telainiTotali}',
@@ -705,7 +697,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             ],
           ),
           _buildDropdownField(
-            label: 'Forza famiglia',
+            label: s.voiceVerifLblForzaFamiglia,
             value: entry.forzaFamiglia,
             items: ['debole', 'normale', 'forte'],
             onChanged: (value) {
@@ -715,12 +707,12 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           const SizedBox(height: 16),
           
           // Problems section
-          _buildSectionTitle('Problemi'),
+          _buildSectionTitle(s.voiceVerifSectionProblemi),
           Row(
             children: [
               Expanded(
                 child: _buildSwitchField(
-                  label: 'Sciamatura',
+                  label: s.controlloFormSciamatura,
                   value: entry.sciamatura ?? false,
                   onChanged: (value) {
                     _updateEntry(entry.copyWith(sciamatura: value));
@@ -730,7 +722,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               SizedBox(width: 16),
               Expanded(
                 child: _buildSwitchField(
-                  label: 'Problemi sanitari',
+                  label: s.voiceVerifLblProblemiSanitari,
                   value: entry.problemiSanitari ?? false,
                   onChanged: (value) {
                     _updateEntry(entry.copyWith(problemiSanitari: value));
@@ -741,7 +733,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           ),
           if (entry.problemiSanitari == true)
             _buildTextField(
-              label: 'Tipo di problema',
+              label: s.voiceVerifLblTipoProblema,
               controllerKey: 'tipoProblema',
               onChanged: (value) {
                 _updateEntry(entry.copyWith(tipoProblema: value));
@@ -750,9 +742,9 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           const SizedBox(height: 16),
 
           // Queen coloring section
-          _buildSectionTitle('Colorazione regina'),
+          _buildSectionTitle(s.voiceVerifSectionColorazione),
           _buildSwitchField(
-            label: 'Regina colorata/marcata',
+            label: s.voiceVerifLblReginaColorata,
             value: entry.reginaColorata ?? false,
             onChanged: (value) {
               _updateEntry(entry.copyWith(
@@ -764,7 +756,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           if (entry.reginaColorata == true) ...[
             const SizedBox(height: 8),
             _buildDropdownField<String>(
-              label: 'Colore marcatura',
+              label: s.voiceVerifLblColoreRegina,
               value: entry.coloreRegina,
               items: ['bianco', 'giallo', 'rosso', 'verde', 'blu'],
               onChanged: (value) {
@@ -775,9 +767,9 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           const SizedBox(height: 16),
 
           // Notes section
-          _buildSectionTitle('Note'),
+          _buildSectionTitle(s.voiceVerifSectionNote),
           _buildTextField(
-            label: 'Note aggiuntive',
+            label: s.voiceVerifLblNoteAggiuntive,
             controllerKey: 'note',
             maxLines: 3,
             onChanged: (value) {
@@ -791,9 +783,10 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
   }
   
   Widget _buildBottomBar() {
+    final s = _s;
     return BottomAppBar(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -801,29 +794,29 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
             Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back),
+                  icon: const Icon(Icons.arrow_back),
                   onPressed: _currentIndex > 0 ? _previousEntry : null,
-                  tooltip: 'Precedente',
+                  tooltip: s.voiceVerifTooltipPrecedente,
                 ),
                 IconButton(
-                  icon: Icon(Icons.arrow_forward),
+                  icon: const Icon(Icons.arrow_forward),
                   onPressed: _currentIndex < _editedEntries.length - 1 ? _nextEntry : null,
-                  tooltip: 'Successivo',
+                  tooltip: s.voiceVerifTooltipSuccessivo,
                 ),
               ],
             ),
-            
+
             // Action buttons
             Row(
               children: [
                 TextButton(
                   onPressed: () => widget.onCancel(),
-                  child: Text('ANNULLA'),
+                  child: Text(s.dialogCancelBtn),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 ElevatedButton(
                   onPressed: _saveAll,
-                  child: Text('SALVA TUTTO'),
+                  child: Text(s.voiceVerifBtnSaveAll),
                 ),
               ],
             ),
@@ -851,7 +844,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Audio originale — premi per ascoltare',
+              _s.voiceVerifAudioLabel,
               style: TextStyle(
                 fontSize: 13,
                 color: ThemeConstants.textSecondaryColor,
@@ -860,7 +853,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           ),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: isPlaying ? 'Pausa' : 'Riproduci',
+            tooltip: isPlaying ? _s.voiceVerifTooltipPausa : _s.voiceVerifTooltipRiproduci,
             icon: Icon(
               isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
               color: const Color(0xFF4285F4),
@@ -878,7 +871,7 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
           ),
           if (isPlaying || isPaused)
             IconButton(
-              tooltip: 'Stop',
+              tooltip: _s.voiceVerifTooltipStop,
               icon: const Icon(Icons.stop_circle_outlined,
                   color: Colors.red, size: 28),
               onPressed: () => _audioPlayer.stop(),

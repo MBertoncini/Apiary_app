@@ -804,6 +804,9 @@ abstract class AppStrings {
   String get smielaturaFormOfflineMsg;
   String get smielaturaFormLblMelariDisp;
   String get smielaturaFormValidateNumero;
+  String get smielaturaFormValidateQuantitaMax;
+  String get smielaturaFormSelectMelarioMsg;
+  String get smielaturaFormNoMelariDisp;
   String get smielaturaFormBtnCreate;
   String get smielaturaFormBtnUpdate;
   String get smielaturaFormCreatedOk;
@@ -1201,4 +1204,740 @@ abstract class AppStrings {
   String gruppiMembriCount(int n);
   String gruppiApiariCondivisi(int n);
   String get gruppiErrLoadingGruppi;
+
+  // ── Attrezzatura form ─────────────────────────────────────────────────────
+  String get attrezzaturaFormTitleNew;
+  String get attrezzaturaFormTitleEdit;
+  String get attrezzaturaFormLblNome;
+  String get attrezzaturaFormValidateNome;
+  String get attrezzaturaFormLblMarca;
+  String get attrezzaturaFormLblModello;
+  String get attrezzaturaFormLblQuantita;
+  String get attrezzaturaFormValidateQuantita;
+  String get attrezzaturaFormValidateNumero;
+  String get attrezzaturaFormLblStato;
+  String get attrezzaturaFormLblCondizione;
+  String get attrezzaturaFormLblDataAcquisto;
+  String get attrezzaturaFormLblPrezzoAcquisto;
+  String get attrezzaturaFormHelperPrezzo;
+  String get attrezzaturaFormValidateImporto;
+  String get attrezzaturaFormLblFornitore;
+  String get attrezzaturaFormSectionCondivisione;
+  String get attrezzaturaFormLblCondividi;
+  String get attrezzaturaFormSubCondividi;
+  String get attrezzaturaFormLblChiHaPagato;
+  String get attrezzaturaFormHintIoStesso;
+  String get attrezzaturaFormHelperChiPaga;
+  String get attrezzaturaFormLblNote;
+  String get attrezzaturaFormInfoPagamento;
+  String get attrezzaturaFormBtnSalva;
+  String get attrezzaturaFormBtnAggiorna;
+  String get attrezzaturaFormCreatedOk;
+  String get attrezzaturaFormUpdatedOk;
+  String get attrezzaturaFormPagamentoAuto;
+  String attrezzaturaFormLoadError(String e);
+  String attrezzaturaFormSaveError(String e);
+  // Stato labels
+  String get attrezzaturaStatoDisponibile;
+  String get attrezzaturaStatoInUso;
+  String get attrezzaturaStatoManutenzione;
+  String get attrezzaturaStatoDismesso;
+  String get attrezzaturaStatoPrestato;
+  // Condizione labels
+  String get attrezzaturaCondizioneNuovo;
+  String get attrezzaturaCondizioneOttimo;
+  String get attrezzaturaCondizioneBuono;
+  String get attrezzaturaCondizioneDiscreto;
+  String get attrezzaturaCondizioneUsurato;
+  String get attrezzaturaCondizioneDaRiparare;
+
+  // ── Manutenzione form ─────────────────────────────────────────────────────
+  String get manutenzioneFormTitle;
+  String get manutenzioneFormLblAttrezzatura;
+  String get manutenzioneFormLblTipo;
+  String get manutenzioneFormHintDescrizione;
+  String get manutenzioneFormValidateDescrizione;
+  String get manutenzioneFormLblDataProgrammata;
+  String get manutenzioneFormHintSelezionaData;
+  String get manutenzioneFormLblDataEsecuzione;
+  String get manutenzioneFormLblDataEsecuzioneReq;
+  String get manutenzioneFormLblCosto;
+  String get manutenzioneFormHelperCosto;
+  String get manutenzioneFormLblEseguitoDa;
+  String get manutenzioneFormHintEseguitoDa;
+  String get manutenzioneFormLblProssimaManutenzione;
+  String get manutenzioneFormHintNonProgrammata;
+  String get manutenzioneFormLblNote;
+  String get manutenzioneFormInfoPagamento;
+  String get manutenzioneFormInfoCondivisa;
+  String get manutenzioneFormBtnProgramma;
+  String get manutenzioneFormBtnRegistra;
+  String get manutenzioneFormCreatedOk;
+  String get manutenzioneFormValidateDataProgrammata;
+  String get manutenzioneFormValidateDataEsecuzione;
+  // Tipo manutenzione labels
+  String get manutenzioneFormTipoOrdinaria;
+  String get manutenzioneFormTipoStraordinaria;
+  String get manutenzioneFormTipoRiparazione;
+  String get manutenzioneFormTipoPulizia;
+  String get manutenzioneFormTipoRevisione;
+  String get manutenzioneFormTipoSostituzioneParti;
+  // Stato manutenzione labels
+  String get manutenzioneFormStatoProgrammata;
+  String get manutenzioneFormStatoInCorso;
+  String get manutenzioneFormStatoCompletata;
+  String get manutenzioneFormStatoAnnullata;
+
+  // ── Spesa attrezzatura form ───────────────────────────────────────────────
+  String get spesaAttrezzaturaFormTitle;
+  String get spesaAttrezzaturaFormLblTipo;
+  String get spesaAttrezzaturaFormLblImporto;
+  String get spesaAttrezzaturaFormValidateImporto;
+  String get spesaAttrezzaturaFormLblData;
+  String get spesaAttrezzaturaFormLblFornitore;
+  String get spesaAttrezzaturaFormHintFornitore;
+  String get spesaAttrezzaturaFormLblNumFattura;
+  String get spesaAttrezzaturaFormHintNumFattura;
+  String get spesaAttrezzaturaFormInfoPagamento;
+  String get spesaAttrezzaturaFormInfoCondivisa;
+  String get spesaAttrezzaturaFormBtnSave;
+  String get spesaAttrezzaturaFormCreatedOk;
+  // Tipo spesa labels
+  String get spesaAttrezzaturaFormTipoAcquisto;
+  String get spesaAttrezzaturaFormTipoManutenzione;
+  String get spesaAttrezzaturaFormTipoRiparazione;
+  String get spesaAttrezzaturaFormTipoAccessori;
+  String get spesaAttrezzaturaFormTipoConsumabili;
+  String get spesaAttrezzaturaFormTipoAltro;
+
+  // ── Vendita form / detail ─────────────────────────────────────────────────
+  String get venditaFormTitleNew;
+  String get venditaFormTitleEdit;
+  String get venditaFormLblAcquirente;
+  String get venditaFormBtnUsaClienteReg;
+  String get venditaFormBtnNomeLibero;
+  String get venditaFormLblClienteReg;
+  String get venditaFormHintNessuno;
+  String get venditaFormLblAcquirenteNome;
+  String get venditaFormValidateNome;
+  String get venditaFormValidateAcquirente;
+  String get venditaFormLblData;
+  String get venditaFormSectionCanale;
+  String get venditaFormSectionPagamento;
+  String get venditaFormSectionArticoli;
+  String get venditaFormBtnAddArticolo;
+  String venditaFormTotale(String amount);
+  String get venditaFormLblCondividi;
+  String get venditaFormHintSoloPersonale;
+  String get venditaFormCreatedOk;
+  String get venditaFormUpdatedOk;
+  String venditaFormArticoloLabel(int n);
+  String get venditaFormLblTipoMiele;
+  String get venditaFormValidateRequired;
+  String get venditaFormLblFormatoVasetto;
+  String get venditaFormLblQty;
+  String get venditaFormLblPrezzo;
+  String venditaFormSubtotale(String amount);
+  // Canale options
+  String get venditaCanaleMercatino;
+  String get venditaCanaleNegozio;
+  String get venditaCanalePrivato;
+  String get venditaCanaleOnline;
+  String get venditaCanaleAltro;
+  // Pagamento options
+  String get venditaPagamentoContanti;
+  String get venditaPagamentoBonifico;
+  String get venditaPagamentoCarta;
+  String get venditaPagamentoAltro;
+  // Categoria labels
+  String get venditaCatMiele;
+  String get venditaCatPropoli;
+  String get venditaCatCera;
+  String get venditaCatPolline;
+  String get venditaCatPappaReale;
+  String get venditaCatNucleo;
+  String get venditaCatRegina;
+  String get venditaCatAltro;
+  // Detail
+  String get venditaDetailTitle;
+  String get venditaDetailNotFound;
+  String get venditaDetailOfflineMsg;
+  String get venditaDetailDeleteTitle;
+  String get venditaDetailDeleteMsg;
+  String get venditaDetailDeletedOk;
+  String get venditaDetailLblData;
+  String get venditaDetailLblAcquirente;
+  String get venditaDetailLblCanale;
+  String get venditaDetailLblPagamento;
+  String get venditaDetailSectionArticoli;
+
+  // ── Cliente form ──────────────────────────────────────────────────────────
+  String get clienteFormTitleNew;
+  String get clienteFormTitleEdit;
+  String get clienteFormDeleteTitle;
+  String get clienteFormDeleteMsg;
+  String get clienteFormDeletedOk;
+  String get clienteFormLblNome;
+  String get clienteFormLblTelefono;
+  String get clienteFormLblEmail;
+  String get clienteFormLblIndirizzo;
+  String get clienteFormLblNote;
+  String get clienteFormLblCondividi;
+  String get clienteFormHintSoloPersonale;
+  String get clienteFormBtnCreate;
+  String get clienteFormBtnUpdate;
+  String get clienteFormCreatedOk;
+  String get clienteFormUpdatedOk;
+
+  // ── Gruppo form ───────────────────────────────────────────────────────────
+  String get gruppoFormTitleNew;
+  String get gruppoFormTitleEdit;
+  String get gruppoFormCreatedOk;
+  String get gruppoFormUpdatedOk;
+  String get gruppoFormSectionInfo;
+  String get gruppoFormSubtitleNew;
+  String get gruppoFormSubtitleEdit;
+  String get gruppoFormLblNome;
+  String get gruppoFormHintNome;
+  String get gruppoFormHintDescrizione;
+  String get gruppoFormBtnCrea;
+  String get gruppoFormBtnSalva;
+
+  // ── Gruppo invito screen ──────────────────────────────────────────────────
+  String get gruppoInvitoTitle;
+  String get gruppoInvitoNotFound;
+  String gruppoInvitoHeader(String nome);
+  String get gruppoInvitoSubtitle;
+  String get gruppoInvitoLblEmail;
+  String get gruppoInvitoHintEmail;
+  String get gruppoInvitoLblRuolo;
+  String get gruppoInvitoRuoloAdmin;
+  String get gruppoInvitoRuoloAdminDesc;
+  String get gruppoInvitoRuoloEditor;
+  String get gruppoInvitoRuoloEditorDesc;
+  String get gruppoInvitoRuoloViewer;
+  String get gruppoInvitoRuoloViewerDesc;
+  String get gruppoInvitoBtnSend;
+  String get gruppoInvitoInfo;
+  String get gruppoInvitoSentOk;
+
+  // ── Gruppo detail screen ──────────────────────────────────────────────────
+  String get gruppoDetailDefaultTitle;
+  String get gruppoDetailNotFound;
+  String get gruppoDetailTabMembri;
+  String get gruppoDetailTabApiari;
+  String get gruppoDetailTabInviti;
+  String get gruppoDetailTooltipInvita;
+  String get gruppoDetailTooltipModifica;
+  String get gruppoDetailBtnElimina;
+  String get gruppoDetailBtnLascia;
+  String get gruppoDetailNoMembri;
+  String get gruppoDetailRuoloAdmin;
+  String get gruppoDetailRuoloEditor;
+  String get gruppoDetailRuoloViewer;
+  String get gruppoDetailRuoloCreatore;
+  String get gruppoDetailCambiaRuoloTitle;
+  String get gruppoDetailRuoloAdminDesc;
+  String get gruppoDetailRuoloEditorDesc;
+  String get gruppoDetailRuoloViewerDesc;
+  String get gruppoDetailRuoloUpdated;
+  String get gruppoDetailRimuoviTitle;
+  String gruppoDetailRimuoviMsg(String username);
+  String get gruppoDetailRimuoviBtnConfirm;
+  String gruppoDetailRimosso(String username);
+  String get gruppoDetailEliminaTitle;
+  String get gruppoDetailEliminaMsg;
+  String get gruppoDetailEliminato;
+  String get gruppoDetailLasciaTitle;
+  String gruppoDetailLasciaMsg(String nome);
+  String get gruppoDetailLasciaBtnConfirm;
+  String get gruppoDetailLasciato;
+  String get gruppoDetailNoApiariCondivisi;
+  String get gruppoDetailNoInviti;
+  String get gruppoDetailBtnInvitaMembro;
+  String get gruppoDetailInvitoRuoloLbl;
+  String get gruppoDetailInvitoScadeLbl;
+  String get gruppoDetailTooltipAnnullaInvito;
+  String get gruppoDetailAnnullaInvitoTitle;
+  String gruppoDetailAnnullaInvitoMsg(String email);
+  String get gruppoDetailAnnullaBtnConfirm;
+  String get gruppoDetailInvitoAnnullato;
+  String get gruppoDetailApiarioProprietario;
+  String get gruppoDetailApiarioNoPos;
+  String get gruppoDetailImpossibileTrovareProf;
+  String get gruppoDetailImmagineAggiornata;
+  String get gruppoDetailDataLoadError;
+  String get gruppoDetailPopupCambiaRuolo;
+  String get gruppoDetailPopupRimuovi;
+  String get gruppoDetailMembroNonValido;
+
+  // ── Cantina screen ──
+  String get cantinaTitle;
+  String get cantinaBtnNuovoMaturatore;
+  String get cantinaInMaturazione;
+  String get cantinaStoccati;
+  String get cantinaVasetti;
+  String get cantinaSectionMaturatori;
+  String cantinaAttiviLabel(int n);
+  String get cantinaNoMaturatori;
+  String get cantinaSectionStoccaggio;
+  String cantinaContenitoriLabel(int n);
+  String get cantinaNoContenitori;
+  String get cantinaSectionInvasettato;
+  String cantinaVasettiLabel(int n);
+  String get cantinaNoVasetti;
+  String cantinaDeleteMaturatoreMsg(String nome);
+  String cantinaDeleteContenitoreMsg(String nome);
+  String get cantinaVenditaErrVasetti;
+
+  // ── Aggiungi maturatore sheet ──
+  String get aggiungiMaturatoreTitleNew;
+  String get aggiungiMaturatoreTitleEdit;
+  String get aggiungiMaturatoreHintNome;
+  String get aggiungiMaturatoreLblTipoMiele;
+  String get aggiungiMaturatoreLblCapacita;
+  String get aggiungiMaturatoreLblKgAttuali;
+  String get aggiungiMaturatoreLblGiorniMaturazione;
+  String get aggiungiMaturatoreHelperGiorni;
+  String get aggiungiMaturatoreLblDataInizio;
+
+  // ── Trasferisci sheet ──
+  String trasferisciTitle(String nome);
+  String trasferisciErrSupera(String tot, String disp);
+  String get trasferisciNoContenitori;
+  String get trasferisciBtnAggiungiContenitore;
+  String get trasferisciBtnConferma;
+  String get trasferisciLblTipo;
+  String get trasferisciLblKg;
+  String trasferisciKgAssegnati(String tot, String disp);
+  String trasferisciKgDisponibili(String n);
+
+  // ── Invasetta sheet ──
+  String invasettaTitle(String nome);
+  String get invasettaLblFormato;
+  String get invasettaLblNumeroVasetti;
+  String get invasettaBtnMax;
+  String invasettaKgUsati(int n, int formato, String kg);
+  String invasettaRimangono(String kg);
+  String get invasettaLblLotto;
+  String invasettaBtnConferma(int n);
+
+  // ── Maturatore card ──
+  String get maturatoreCardBtnTrasferisci;
+  String get maturatoreCardProntoOggi;
+  String maturatoreCardProntoTra(int n);
+  String get maturatoreCardBtnTrasferisciOra;
+  String get maturatoreCardStatoPronto;
+
+  // ── Contenitore card ──
+  String get contenitoreCardBtnInvasetta;
+
+  // ── Lotto vasetti section ──
+  String lottoVasettiCount(int n);
+  String lottoVasettiDisponibili(int n);
+  String lottoVasettiiBtnVendi(int n);
+
+  // ── Controllo form ──
+  String get controlloFormTitleNew;
+  String get controlloFormTitleEdit;
+  String get controlloFormTitleLoading;
+  String controlloFormArniaLabel(int numero);
+  String controlloFormNucleoLabel(int numero);
+  String get controlloFormBtnSalva;
+  String get controlloFormBtnAggiorna;
+  String get controlloFormSectionData;
+  String get controlloFormLblData;
+  String get controlloFormSectionTelaini;
+  String get controlloFormTelainiCovata;
+  String get controlloFormTelainiScorte;
+  String get controlloFormTelainiFoglioCereo;
+  String get controlloFormTelainiDiaframma;
+  String get controlloFormTelainiNutritore;
+  String get controlloFormTelainiVuoto;
+  String get controlloFormAutoOrdina;
+  String get controlloFormPreCaricato;
+  String get controlloFormToccaTelaino;
+  String get controlloFormSectionRegina;
+  String get controlloFormLblStatoRegina;
+  String get controlloFormReginaAssente;
+  String get controlloFormReginaPresente;
+  String get controlloFormReginaVista;
+  String get controlloFormUovaFresche;
+  String get controlloFormUovaFrescheDesc;
+  String get controlloFormCelleReali;
+  String get controlloFormCelleRealiDesc;
+  String get controlloFormLblNumeroCelleReali;
+  String get controlloFormReginaSostituita;
+  String get controlloFormReginaSostituitaDesc;
+  String get controlloFormReginaColorata;
+  String get controlloFormReginaColorataDesc;
+  String get controlloFormColoreRegina;
+  String get controlloFormSectionSciamatura;
+  String get controlloFormSciamatura;
+  String get controlloFormSciamaturaCodice;
+  String get controlloFormNoteSciamatura;
+  String get controlloFormSectionProblemi;
+  String get controlloFormProblemi;
+  String get controlloFormProblemiDesc;
+  String get controlloFormDettagliProblemi;
+  String get controlloFormValidateProblemi;
+  String get controlloFormSectionNote;
+  String get controlloFormLblNote;
+  String get controlloFormHintNote;
+  String get controlloFormOfflineMsg;
+  String get controlloFormSavedOk;
+  String get controlloFormSavedOffline;
+  String get controlloFormUpdatedOk;
+  String get controlloFormUpdatedOffline;
+  String get controlloFormErrGeneric;
+  String get controlloFormErrCaricoArnia;
+  String get controlloFormSyncOk;
+  String get controlloFormReginaAutoCreata;
+  String controlloFormLastControllo(String data);
+  String controlloFormReginaLabel(String stato);
+  String controlloFormCovataCount(int n);
+  String controlloFormScorteCount(int n);
+  String controlloFormDiaframmaCount(int n);
+  String controlloFormFoglioCereoCount(int n);
+
+  // ── Pagamenti screen ──
+  String get pagamentiTitle;
+  String get pagamentiTabPagamenti;
+  String get pagamentiTabBilancio;
+  String get pagamentiTooltipSync;
+  String get pagamentiTooltipNuovoPagamento;
+  String pagamentiErrLoading(String e);
+  String get pagamentiEmptyTitle;
+  String get pagamentiRegistraPagamento;
+  String get pagamentiLinkRapidi;
+  String get pagamentiLinkAttrezzature;
+  String get pagamentiAttrezzatureHint;
+  String get pagamentiTooltipSaldo;
+  String get pagamentiTooltipAttrezzatura;
+  String get pagamentiBilancioEmptyTitle;
+  String get pagamentiBilancioEmptyHint;
+  String pagamentiBilancioTotale(String amount);
+  String get pagamentiTooltipGestisci;
+  String get pagamentiQuoteLabel;
+  String get pagamentiTrasferimentiNecessari;
+  String get pagamentiQuoteGruppo;
+  String get pagamentiGestisci;
+  String get pagamentoPagato;
+  String get pagamentoDovuto;
+  String get pagamentoSaldo;
+  String get pagamentiTooltipRegistraSaldo;
+  String pagamentiSaldoDesc(String da, String a);
+
+  // ── Pagamento detail screen ──
+  String get pagamentoDetailTitle;
+  String get pagamentoDetailNotFound;
+  String pagamentoDetailErrLoading(String e);
+  String get pagamentoDetailDeleteMsg;
+  String get pagamentoDetailDeletedOk;
+  String get pagamentoDetailErrDelete;
+  String get pagamentoDetailLabelDescrizione;
+  String get pagamentoDetailLabelUtente;
+  String get pagamentoDetailLabelGruppo;
+
+  // ── Pagamento form screen ──
+  String get pagamentoFormTitleNew;
+  String get pagamentoFormTitleEdit;
+  String get pagamentoFormUpdatedOk;
+  String get pagamentoFormCreatedOk;
+  String pagamentoFormErrSave(String e);
+  String get pagamentoFormLabelImporto;
+  String get pagamentoFormValidImportoRequired;
+  String get pagamentoFormValidImportoInvalid;
+  String get pagamentoFormValidDescRequired;
+  String get pagamentoFormLabelGruppo;
+  String get pagamentoFormNoGruppo;
+  String get pagamentoFormLabelChiPaga;
+  String get pagamentoFormIoStesso;
+  String get pagamentoFormHelperChiPaga;
+  String get pagamentoFormSaldoTitle;
+  String get pagamentoFormSaldoSubtitle;
+  String get pagamentoFormLabelDestinatario;
+  String get pagamentoFormHelperDestinatario;
+  String get pagamentoFormValidDestinatarioRequired;
+
+  // ── Quote screen ──
+  String get quoteTitle;
+  String quoteErrLoading(String e);
+  String get quoteUpdatedOk;
+  String quoteErrUpdate(String e);
+  String get quoteEditTitle;
+  String quoteEditMsg(String username);
+  String get quoteLabelPercentuale;
+  String get quoteValidPercRequired;
+  String get quoteValidPercInvalid;
+  String get quoteDeleteMsg;
+  String get quoteDeletedOk;
+  String get quoteErrDelete;
+  String quoteErrDeleteE(String e);
+  String get quoteAddNoGruppo;
+  String get quoteAddedOk;
+  String quoteErrAdd(String e);
+  String get quoteAddTitle;
+  String get quoteLabelIdUtente;
+  String get quoteValidIdRequired;
+  String get quoteValidIdInvalid;
+  String get quoteValidPercRange;
+  String get quoteLabelFiltroGruppo;
+  String get quoteTuttiGruppi;
+  String get quoteTooltipAdd;
+  String get quoteEmptyTitle;
+
+  // ── Statistiche screen ──
+  String get statisticheTitle;
+  String get statisticheTabDashboard;
+  String get statisticheTabAnalisi;
+  String get statisticheTabChiediAI;
+
+  // ── Dashboard card base ──
+  String get dashboardErrCaricamento;
+
+  // ── Dashboard widget titles ──
+  String get dashboardTitleProduzione;
+  String get dashboardTitleSaluteArnie;
+  String get dashboardTitleRegineStats;
+  String get dashboardTitleFrequenzaControlli;
+  String get dashboardTitleFioritureVicine;
+  String get dashboardTitleAttrezzature;
+  String get dashboardTitleProduzionePerTipo;
+  String get dashboardTitleTrattamenti;
+  String get dashboardTitleAndamentoScorte;
+  String get dashboardTitlePerformanceRegine;
+  String get dashboardTitleQuoteGruppo;
+  String dashboardTitleBilancio(int anno);
+
+  // ── Salute arnie widget ──
+  String get dashboardSaluteNoArnie;
+  String get dashboardSaluteOttima;
+  String get dashboardSaluteAttenzione;
+  String get dashboardSaluteCritica;
+  String dashboardSaluteTotale(int n);
+  String dashboardSaluteCritiche(String list);
+
+  // ── Regine statistiche widget ──
+  String get dashboardRegineAttive;
+  String get dashboardRegineSostituzioni;
+  String get dashboardRegineVitaMedia;
+  String dashboardRegineVitaMesiStr(String durata);
+  String get dashboardRegineMotiviSostituzione;
+
+  // ── Performance regine widget ──
+  String get dashboardPerformanceNoRegine;
+  String get dashboardPerformanceHdrRegina;
+  String get dashboardPerformanceHdrProd;
+  String get dashboardPerformanceHdrDoc;
+  String get dashboardPerformanceHdrResist;
+  String get dashboardPerformanceHdrSc;
+
+  // ── Bilancio widget ──
+  String get dashboardBilancioSaldoAnnuale;
+  String get dashboardBilancioEntrate;
+  String get dashboardBilancioUscite;
+
+  // ── Frequenza controlli widget ──
+  String get dashboardFrequenzaMedia;
+  String dashboardFrequenzaGiorni(int n);
+  String get dashboardFrequenzaDettaglio;
+
+  // ── Fioriture vicine widget ──
+  String get dashboardFioritureNessuna;
+
+  // ── Attrezzature widget ──
+  String get dashboardAttrezzatureNessuna;
+  String get dashboardAttrezzatureCategoria;
+  String get dashboardAttrezzatureNumero;
+  String get dashboardAttrezzatureValore;
+  String get dashboardAttrezzatureInventario;
+
+  // ── Varroa trend widget ──
+  String get dashboardVarroaNessuno;
+
+  // ── Andamento scorte widget ──
+  String get dashboardScorteNessuno;
+
+  // ── Produzione tipo widget ──
+  String get dashboardProdTipoNessuno;
+  String dashboardProdTipoTotale(String kg);
+
+  // ── Quote gruppo widget ──
+  String get dashboardQuoteGruppoSoloCoord;
+
+  // ── NL Query tab ──
+  String get nlQuerySuggerite;
+  String get nlQuerySuggerimento1;
+  String get nlQuerySuggerimento2;
+  String get nlQuerySuggerimento3;
+  String get nlQuerySuggerimento4;
+  String get nlQuerySuggerimento5;
+  String get nlQuerySuggerimento6;
+  String get nlQueryPensando;
+  String get nlQueryRispostaAI;
+  String nlQueryRisultati(int n);
+  String get nlQueryErrLento;
+  String get nlQueryErrRifiuto;
+  String get nlQueryErrGenerico;
+  String get nlQueryInputHint;
+
+  // ── Risultato query widget ──
+  String nlQueryRighe(int n);
+  String get risultatoNessunDato;
+  String get risultatoNessunRisultato;
+
+  // ── Export bottom sheet ──
+  String get exportTitle;
+  String get exportExcel;
+  String get exportPdf;
+  String get exportExcelSalvato;
+  String exportErrExcel(String e);
+  String get exportPdfSalvato;
+  String exportErrPdf(String e);
+
+  // ── Query builder tab ──
+  String get queryBuilderEseguiAnalisi;
+  String get queryBuilderAvanti;
+  String get queryBuilderIndietro;
+  String get queryBuilderStepAnalizzare;
+  String get queryBuilderStepFiltri;
+  String get queryBuilderStepRisultati;
+  String get queryBuilderEntitaControlli;
+  String get queryBuilderEntitaSmielature;
+  String get queryBuilderEntitaRegine;
+  String get queryBuilderEntitaVendite;
+  String get queryBuilderEntitaSpese;
+  String get queryBuilderEntitaFioriture;
+  String get queryBuilderEntitaArnie;
+  String get queryBuilderDataDa;
+  String get queryBuilderDataA;
+  String get queryBuilderAggregazione;
+  String get queryBuilderAggCount;
+  String get queryBuilderAggSum;
+  String get queryBuilderAggAvg;
+  String get queryBuilderAggNone;
+  String get queryBuilderRaggruppaPer;
+  String get queryBuilderRaggruppaMese;
+  String get queryBuilderRagruppaAnno;
+  String queryBuilderErrore(String e);
+  String get queryBuilderRunFirst;
+  String get queryBuilderVizBarre;
+  String get queryBuilderVizLinea;
+  String get queryBuilderVizTabella;
+
+  // ── Voice transcript review screen ──
+  String voiceReviewTitleCount(int n);
+  String get voiceReviewBtnDeleteAll;
+  String get voiceReviewDeleteAllTitle;
+  String get voiceReviewDeleteAllMsg;
+  String get voiceReviewDeleteItemTitle;
+  String get voiceReviewInfoBanner;
+  String get voiceReviewEmpty;
+  String get voiceReviewEmptyHint;
+  String get voiceReviewBtnKeepQueue;
+  String get voiceReviewBtnSendAI;
+  String get voiceReviewProcessing;
+  String get voiceReviewMerging;
+  String get voiceReviewMergeWith;
+  String get voiceReviewTooltipEdit;
+  String get voiceReviewTooltipSave;
+  String get voiceReviewTooltipDelete;
+
+  // ── Voice entry verification screen ──
+  String get voiceVerifTitle;
+  String get voiceVerifTooltipRemove;
+  String get voiceVerifSaving;
+  String get voiceVerifDeleteTitle;
+  String voiceVerifDeleteMsg(String label);
+  String get voiceVerifScheda;
+  String get voiceVerifNewArnieTitolo;
+  String voiceVerifNewArnieMsg(String list);
+  String get voiceVerifCreateSave;
+  String get voiceVerifErrCreazArnieTitolo;
+  String voiceVerifSavedOk(int n);
+  String voiceVerifPartialSaved(int saved, int remaining);
+  String get voiceVerifNoSaved;
+  String voiceVerifInvalidSkipped(String arnia);
+  String voiceVerifNotFoundCache(String arnia);
+  String get voiceVerifEmptyTitle;
+  String get voiceVerifEmptySubtitle;
+  String get voiceVerifBtnGoBack;
+  String voiceVerifRecordOf(int current, int total);
+  String get voiceVerifSectionPosizione;
+  String get voiceVerifSectionRegistrazione;
+  String get voiceVerifAudioLabel;
+  String get voiceVerifSectionGenerali;
+  String get voiceVerifLblTipo;
+  String get voiceVerifSectionRegina;
+  String get voiceVerifSectionTelaini;
+  String get voiceVerifLblTotale;
+  String get voiceVerifLblForzaFamiglia;
+  String get voiceVerifSectionProblemi;
+  String get voiceVerifLblProblemiSanitari;
+  String get voiceVerifLblTipoProblema;
+  String get voiceVerifSectionColorazione;
+  String get voiceVerifLblReginaColorata;
+  String get voiceVerifLblColoreRegina;
+  String get voiceVerifSectionNote;
+  String get voiceVerifLblNoteAggiuntive;
+  String get voiceVerifTooltipPrecedente;
+  String get voiceVerifTooltipSuccessivo;
+  String get voiceVerifBtnSaveAll;
+  String get voiceVerifTooltipPausa;
+  String get voiceVerifTooltipRiproduci;
+  String get voiceVerifTooltipStop;
+
+  // ── Voice command screen ──
+  String get voiceCommandTitle;
+  String get voiceCommandTooltipMenu;
+  String get voiceCommandTooltipQueue;
+  String get voiceCommandTooltipHideGuide;
+  String get voiceCommandTooltipShowTutorial;
+  String voiceCommandDraftRestored(int n);
+  String get voiceCommandUnsavedTitle;
+  String voiceCommandUnsavedMsg(int n);
+  String get voiceCommandBtnScarta;
+  String get voiceCommandBtnRiprendi;
+  String voiceCommandRecoveredSaved(int n);
+  String get voiceCommandNoTranscription;
+  String voiceCommandSavedToQueue(int n);
+  String get voiceCommandNoValidEntry;
+  String get voiceCommandNoValidData;
+  String voiceCommandQueueSaved(int n);
+  String voiceCommandSavedWithRemaining(int saved, int remaining);
+  String voiceCommandSavedOk(int n);
+  String get voiceCommandBtnSaveLater;
+  String get voiceCommandGuideTitle;
+  String get voiceCommandGuideStep1Title;
+  String get voiceCommandGuideStep1Desc;
+  String get voiceCommandGuideStep2Title;
+  String get voiceCommandGuideStep2Desc;
+  String get voiceCommandGuideStep3Title;
+  String get voiceCommandGuideStep3Desc;
+  String get voiceCommandGuideOffline;
+  String get voiceCommandGuideExamplesTitle;
+  String get voiceCommandGuideKeywordsTitle;
+  String get voiceCommandGuideKeyNextCmd;
+  String get voiceCommandGuideKeyStopCmd;
+
+  // ── Voice tutorial sheet ──
+  String get voiceTutorialTitle;
+  String get voiceTutorialSubtitle;
+  String get voiceTutorialStep1Title;
+  String get voiceTutorialStep1Body;
+  String get voiceTutorialStep2Title;
+  String get voiceTutorialStep2Body;
+  String get voiceTutorialStep3Title;
+  String get voiceTutorialStep3Body;
+  String get voiceTutorialStep4Title;
+  String get voiceTutorialStep4Body;
+  String get voiceTutorialExamplesTitle;
+  String get voiceTutorialMultiTitle;
+  String get voiceTutorialMultiNextKeyword;
+  String get voiceTutorialMultiNextDesc;
+  String get voiceTutorialMultiStopKeyword;
+  String get voiceTutorialMultiStopDesc;
+  String get voiceTutorialOfflineMsg;
+  String get voiceTutorialBtnStart;
 }

@@ -9,6 +9,8 @@ import '../../models/quota_utente.dart';
 import '../../services/pagamento_service.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
@@ -24,6 +26,8 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   List<QuotaUtente> _quote = [];
   bool _isRefreshing = true;
   String? _errorMessage;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -70,7 +74,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     } catch (e) {
       debugPrint('Errore API pagamenti: $e');
       if (_pagamenti.isEmpty && _quote.isEmpty) {
-        _errorMessage = 'Errore durante il caricamento dei dati: $e';
+        _errorMessage = _s.pagamentiErrLoading(e.toString());
       }
     }
 
@@ -79,20 +83,22 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestione Pagamenti'),
+        title: Text(s.pagamentiTitle),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Pagamenti'),
-            Tab(text: 'Bilancio'),
+            Tab(text: s.pagamentiTabPagamenti),
+            Tab(text: s.pagamentiTabBilancio),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(Icons.sync),
-            tooltip: 'Sincronizza dati',
+            tooltip: s.pagamentiTooltipSync,
             onPressed: _loadData,
           ),
         ],
@@ -127,7 +133,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                     .then((_) => _loadData());
               },
               child: Icon(Icons.add),
-              tooltip: 'Nuovo Pagamento',
+              tooltip: s.pagamentiTooltipNuovoPagamento,
             )
           : null,
     );
@@ -151,7 +157,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             ),
             const SizedBox(height: 16),
             Text(
-              'Nessun pagamento registrato',
+              s.pagamentiEmptyTitle,
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
@@ -160,7 +166,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: Icon(Icons.add),
-              label: Text('Registra Pagamento'),
+              label: Text(s.pagamentiRegistraPagamento),
               onPressed: () {
                 Navigator.pushNamed(context, AppConstants.pagamentoCreateRoute)
                     .then((_) => _loadData());
@@ -188,7 +194,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Link Rapidi',
+                    s.pagamentiLinkRapidi,
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   const SizedBox(height: 8),
@@ -197,7 +203,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                       Expanded(
                         child: OutlinedButton.icon(
                           icon: Icon(Icons.build, size: 16),
-                          label: Text('Gestione Attrezzature', style: TextStyle(fontSize: 12)),
+                          label: Text(s.pagamentiLinkAttrezzature, style: TextStyle(fontSize: 12)),
                           onPressed: () {
                             Navigator.pushNamed(context, AppConstants.attrezzatureRoute);
                           },
@@ -207,7 +213,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Le spese per attrezzature vengono registrate automaticamente nei pagamenti',
+                    s.pagamentiAttrezzatureHint,
                     style: TextStyle(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic),
                   ),
                 ],
@@ -235,7 +241,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                       Padding(
                         padding: EdgeInsets.only(right: 6),
                         child: Tooltip(
-                          message: 'Saldo bilancio',
+                          message: s.pagamentiTooltipSaldo,
                           child: Icon(Icons.swap_horiz, size: 16, color: Colors.blue),
                         ),
                       )
@@ -243,7 +249,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                       Padding(
                         padding: EdgeInsets.only(right: 6),
                         child: Tooltip(
-                          message: 'Spesa attrezzatura',
+                          message: s.pagamentiTooltipAttrezzatura,
                           child: Icon(Icons.build, size: 16, color: Colors.cyan),
                         ),
                       ),
@@ -324,7 +330,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             ),
             const SizedBox(height: 16),
             Text(
-              'Nessun bilancio disponibile',
+              s.pagamentiBilancioEmptyTitle,
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
@@ -334,7 +340,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
-                'Per calcolare il bilancio servono quote assegnate ai membri del gruppo e pagamenti registrati.',
+                s.pagamentiBilancioEmptyHint,
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[500],
@@ -364,7 +370,8 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
 
   Widget _buildGruppoBilancio(int gruppoId, List<QuotaUtente> quoteGruppo, NumberFormat formatCurrency) {
-    final gruppoNome = quoteGruppo.first.gruppoNome ?? 'Gruppo $gruppoId';
+    final s = _s;
+    final gruppoNome = quoteGruppo.first.gruppoNome ?? '${s.pagamentoDetailLabelGruppo} $gruppoId';
 
     // Tutti i pagamenti del gruppo
     final pagamentiGruppo = _pagamenti.where((p) => p.gruppo == gruppoId).toList();
@@ -427,7 +434,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   ),
                 ),
                 Tooltip(
-                  message: 'Gestisci quote',
+                  message: s.pagamentiTooltipGestisci,
                   child: InkWell(
                     onTap: () => _showQuotePopup(context, quoteGruppo, gruppoId),
                     borderRadius: BorderRadius.circular(20),
@@ -439,7 +446,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                           Icon(Icons.pie_chart, size: 14, color: ThemeConstants.textSecondaryColor),
                           const SizedBox(width: 2),
                           Text(
-                            'Quote',
+                            s.pagamentiQuoteLabel,
                             style: TextStyle(fontSize: 11, color: ThemeConstants.textSecondaryColor),
                           ),
                         ],
@@ -451,7 +458,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             ),
             const SizedBox(height: 4),
             Text(
-              'Totale spese gruppo: ${formatCurrency.format(totalePagamentiGruppo)}',
+              s.pagamentiBilancioTotale(formatCurrency.format(totalePagamentiGruppo)),
               style: TextStyle(color: ThemeConstants.textSecondaryColor, fontSize: 14),
             ),
             const Divider(height: 24),
@@ -464,7 +471,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
             if (trasferimenti.isNotEmpty) ...[
               const Divider(height: 24),
               Text(
-                'Trasferimenti necessari',
+                s.pagamentiTrasferimentiNecessari,
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -478,6 +485,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
 
   void _showQuotePopup(BuildContext context, List<QuotaUtente> quote, int gruppoId) {
+    final s = _s;
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
@@ -492,11 +500,11 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
               children: [
                 Icon(Icons.pie_chart, color: ThemeConstants.primaryColor, size: 18),
                 const SizedBox(width: 8),
-                Text('Quote gruppo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(s.pagamentiQuoteGruppo, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const Spacer(),
                 TextButton.icon(
                   icon: Icon(Icons.edit, size: 14),
-                  label: Text('Gestisci', style: TextStyle(fontSize: 12)),
+                  label: Text(s.pagamentiGestisci, style: TextStyle(fontSize: 12)),
                   onPressed: () {
                     Navigator.pop(context);
                     Navigator.pushNamed(context, AppConstants.quoteRoute)
@@ -542,6 +550,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
 
   Widget _buildMembroBilancioRow(Map<String, dynamic> membro, NumberFormat formatCurrency) {
+    final s = _s;
     final double saldo = membro['saldo'];
     final bool isPositive = saldo >= 0;
 
@@ -608,7 +617,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pagato',
+                      s.pagamentoPagato,
                       style: TextStyle(fontSize: 11, color: ThemeConstants.textSecondaryColor),
                     ),
                     Text(
@@ -623,7 +632,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Dovuto',
+                      s.pagamentoDovuto,
                       style: TextStyle(fontSize: 11, color: ThemeConstants.textSecondaryColor),
                     ),
                     Text(
@@ -638,7 +647,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      'Saldo',
+                      s.pagamentoSaldo,
                       style: TextStyle(fontSize: 11, color: ThemeConstants.textSecondaryColor),
                     ),
                     Text(
@@ -701,6 +710,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
 
   Widget _buildTrasferimentoRow(Map<String, dynamic> trasf, int gruppoId, NumberFormat formatCurrency) {
+    final s = _s;
     return Container(
       margin: EdgeInsets.only(bottom: 6),
       padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -738,7 +748,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
           ),
           const SizedBox(width: 6),
           Tooltip(
-            message: 'Registra pagamento di saldo',
+            message: s.pagamentiTooltipRegistraSaldo,
             child: InkWell(
               onTap: () => _registraSaldoPagamento(trasf, gruppoId),
               borderRadius: BorderRadius.circular(12),
@@ -767,7 +777,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
         'utenteId': trasf['daId'],
         'destinatarioId': trasf['aId'],
         'importo': trasf['importo'],
-        'descrizione': 'Saldo bilancio: ${trasf['da']} → ${trasf['a']}',
+        'descrizione': _s.pagamentiSaldoDesc(trasf['da'] as String, trasf['a'] as String),
       },
     ).then((_) => _loadData());
   }
