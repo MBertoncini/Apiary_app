@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/storage_service.dart';
+import '../l10n/app_strings.dart';
+import '../services/language_service.dart';
 
 class DisclaimerScreen extends StatefulWidget {
   final bool isFirstLogin;
@@ -40,6 +42,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -52,7 +55,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 32),
-                      
+
                       // Logo app
                       Container(
                         width: 80,
@@ -68,9 +71,9 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       Text(
-                        'Informativa sulla Sicurezza',
+                        s.disclaimerTitle,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -79,7 +82,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Contenuto disclaimer
                       Container(
                         padding: EdgeInsets.all(16),
@@ -91,18 +94,12 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                           ),
                         ),
                         child: Text(
-                          'ATTENZIONE: Nonostante facciamo del nostro meglio per proteggere i tuoi dati utilizzando protocolli HTTPS, l\'app non garantisce una sicurezza completa delle informazioni.\n\n'
-                          'Utilizzando questa applicazione, accetti i potenziali rischi di:\n'
-                          '• Perdita di dati in caso di violazione del database\n'
-                          '• Accesso non autorizzato alle informazioni degli apiari\n'
-                          '• Possibili interruzioni del servizio\n\n'
-                          'Ti consigliamo di non memorizzare informazioni sensibili o dati personali critici all\'interno dell\'applicazione.\n\n'
-                          'Se rifiuti questi termini, l\'app verrà chiusa. Accettando, confermi di comprendere e accettare i rischi sopra elencati.',
+                          s.disclaimerBody,
                           style: TextStyle(fontSize: 16),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Checkbox "non visualizzare più"
                       Row(
                         children: [
@@ -122,7 +119,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                                 });
                               },
                               child: Text(
-                                'Non visualizzare più questo messaggio',
+                                s.disclaimerDontShow,
                                 style: TextStyle(fontSize: 16),
                               ),
                             ),
@@ -133,7 +130,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                   ),
                 ),
               ),
-              
+
               // Pulsanti
               const SizedBox(height: 24),
               Row(
@@ -145,7 +142,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                         padding: EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: Text(
-                        'RIFIUTA',
+                        s.disclaimerBtnReject,
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
@@ -158,7 +155,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                         padding: EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: Text(
-                        'ACCETTA',
+                        s.disclaimerBtnAccept,
                         style: TextStyle(fontSize: 16),
                       ),
                     ),

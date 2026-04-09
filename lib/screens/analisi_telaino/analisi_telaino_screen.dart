@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/analisi_telaino.dart';
 import '../../services/bee_detection_service.dart';
 import '../../services/analisi_telaino_service.dart';
 import '../../services/controllo_service.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 import '../../utils/telaini_utils.dart';
 import '../../widgets/contextual_hint.dart';
 
@@ -101,6 +103,8 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
   bool _isSaving = false;
 
   final _picker = ImagePicker();
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   // Services
   late ControlloService _controlloService;
@@ -196,7 +200,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
       if (!mounted) return;
       setState(() => _step = 0);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Errore durante l'analisi: $e")),
+        SnackBar(content: Text(_s.analisiErrAnalysis(e.toString()))),
       );
     }
   }
@@ -210,30 +214,31 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
     final hi = Colors.red.shade700;
     final md = Colors.orange.shade700;
     final lo = Colors.amber.shade800;
+    final s  = _s;
 
     switch (slot.tipo) {
       case 'diaframma':
         if (result.bees > 5) {
           w.add(_DetectionWarning(
-            'Api rilevate su diaframma (${result.bees}): il divisore non dovrebbe essere colonizzato.',
+            s.analisiWarnDiafammaApi(result.bees),
             hi, Icons.priority_high,
           ));
         }
         if (result.queenBees > 0) {
           w.add(_DetectionWarning(
-            'Regina rilevata sul diaframma: situazione anomala, verifica subito.',
+            s.analisiWarnDiafammaRegina,
             hi, Icons.priority_high,
           ));
         }
         if (result.royalCells > 0) {
           w.add(_DetectionWarning(
-            'Celle reali sul diaframma (${result.royalCells}): anomalia grave, intervento necessario.',
+            s.analisiWarnDiafammaCelle(result.royalCells),
             hi, Icons.priority_high,
           ));
         }
         if (result.drones > 10) {
           w.add(_DetectionWarning(
-            'Molti fuchi sul diaframma (${result.drones}): la separazione potrebbe non funzionare.',
+            s.analisiWarnDiafammaFuchi(result.drones),
             md, Icons.warning_amber_rounded,
           ));
         }
@@ -242,19 +247,19 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
       case 'nutritore':
         if (result.queenBees > 0) {
           w.add(_DetectionWarning(
-            'Regina sul nutritore: si è spostata fuori dalla zona covata.',
+            s.analisiWarnNutritoreRegina,
             md, Icons.warning_amber_rounded,
           ));
         }
         if (result.royalCells > 0) {
           w.add(_DetectionWarning(
-            'Celle reali sul nutritore (${result.royalCells}): la colonia potrebbe prepararsi alla sciamatura.',
+            s.analisiWarnNutritoreCelle(result.royalCells),
             md, Icons.warning_amber_rounded,
           ));
         }
         if (result.bees > 80) {
           w.add(_DetectionWarning(
-            'Molte api sul nutritore (${result.bees}): verifica che il nutritore non ostacoli il movimento.',
+            s.analisiWarnNutritoreApi(result.bees),
             lo, Icons.info_outline,
           ));
         }
@@ -263,30 +268,30 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
       case 'covata':
         if (result.royalCells > 3) {
           w.add(_DetectionWarning(
-            'Celle reali elevate (${result.royalCells}): probabile preparazione alla sciamatura. Intervieni presto.',
+            s.analisiWarnCovataSciamaturaAlta(result.royalCells),
             md, Icons.warning_amber_rounded,
           ));
         } else if (result.royalCells > 0) {
           w.add(_DetectionWarning(
-            'Celle reali presenti (${result.royalCells}): monitora la colonia nelle prossime settimane.',
+            s.analisiWarnCovataSciamaturaMedia(result.royalCells),
             lo, Icons.info_outline,
           ));
         }
         if (result.queenBees > 1) {
           w.add(_DetectionWarning(
-            'Più regine rilevate (${result.queenBees}): anomalia – verifica la presenza di celle reali.',
+            s.analisiWarnCovataRegine(result.queenBees),
             hi, Icons.priority_high,
           ));
         }
         if (result.bees == 0) {
           w.add(_DetectionWarning(
-            'Nessuna ape su telaino covata: colonia indebolita, sciamata o cella vuota.',
+            s.analisiWarnCovataVuota,
             lo, Icons.warning_amber_rounded,
           ));
         }
         if (result.drones > 30) {
           w.add(_DetectionWarning(
-            'Alta presenza di fuchi su covata (${result.drones}): possibile covata da fuche, colonia orfana?',
+            s.analisiWarnCovataFuchi(result.drones),
             md, Icons.warning_amber_rounded,
           ));
         }
@@ -295,19 +300,19 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
       case 'scorte':
         if (result.queenBees > 0) {
           w.add(_DetectionWarning(
-            'Regina su telaino scorte (${result.queenBees}): posizione inusuale, verifica lo spazio covata.',
+            s.analisiWarnScorteRegina(result.queenBees),
             md, Icons.warning_amber_rounded,
           ));
         }
         if (result.royalCells > 0) {
           w.add(_DetectionWarning(
-            'Celle reali su telaino scorte (${result.royalCells}): segnale di sciamatura o rimpiazzo della regina.',
+            s.analisiWarnScorteCelle(result.royalCells),
             md, Icons.warning_amber_rounded,
           ));
         }
         if (result.bees > 200) {
           w.add(_DetectionWarning(
-            'Alta densità api su scorte (${result.bees}): possibile accumulo pre-sciamatura.',
+            s.analisiWarnScorteApi(result.bees),
             lo, Icons.info_outline,
           ));
         }
@@ -318,7 +323,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
     final total = result.bees + result.drones;
     if (slot.tipo != 'covata' && total > 300) {
       w.add(_DetectionWarning(
-        'Densità altissima (${total} insetti): questo telaino è molto affollato.',
+        s.analisiWarnDensitaAltissima(total),
         lo, Icons.info_outline,
       ));
     }
@@ -354,13 +359,13 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Analisi salvata con successo')),
+        SnackBar(content: Text(_s.analisiSnackSaved)),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante il salvataggio: $e')),
+        SnackBar(content: Text(_s.analisiErrSave(e.toString()))),
       );
     } finally {
       setState(() => _isSaving = false);
@@ -430,12 +435,13 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
     return Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Analisi Telaino'),
+            Text(_s.analisiTitle),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -474,6 +480,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
   // -------------------------------------------------------------------------
 
   Widget _buildConfigStep() {
+    final s = _s;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -488,7 +495,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
           ElevatedButton.icon(
             onPressed: () => _pickImage(ImageSource.camera),
             icon: const Icon(Icons.camera_alt),
-            label: const Text('Scatta Foto'),
+            label: Text(s.analisiBtnScattaFoto),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -497,7 +504,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
           OutlinedButton.icon(
             onPressed: () => _pickImage(ImageSource.gallery),
             icon: const Icon(Icons.photo_library),
-            label: const Text('Scegli dalla Galleria'),
+            label: Text(s.analisiBtnGalleria),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -508,30 +515,31 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
   }
 
   Widget _buildTelainoCard() {
+    final s = _s;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Configurazione',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              s.analisiConfigTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
 
             // Source label
             if (_loadingControllo)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 14, height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    SizedBox(width: 8),
-                    Text('Caricamento stato arnia...', style: TextStyle(color: Colors.grey)),
+                    const SizedBox(width: 8),
+                    Text(s.analisiLoadingControllo, style: const TextStyle(color: Colors.grey)),
                   ],
                 ),
               )
@@ -544,8 +552,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Dati dal controllo del ${_lastControlloDate ?? "—"} '
-                        '(${_telainoSlots.length} telaini presenti)',
+                        s.analisiSlotSource(_lastControlloDate ?? '—', _telainoSlots.length),
                         style: const TextStyle(fontSize: 12, color: Colors.green),
                       ),
                     ),
@@ -561,7 +568,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Nessun controllo recente trovato – selezione manuale.',
+                        s.analisiNoSlot,
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ),
@@ -582,7 +589,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
             // Facciata toggle
             Row(
               children: [
-                const Text('Facciata'),
+                Text(s.analisiFacciata),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ToggleButtons(
@@ -626,7 +633,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text('Telaino ${slot.numero}'),
+              Text(_s.analisiTelainoN(slot.numero)),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -661,10 +668,10 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
           _selectedSlot = _telainoSlots.firstWhere((s) => s.numero == v);
         });
       },
-      decoration: const InputDecoration(
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        border: OutlineInputBorder(),
-        labelText: 'Seleziona telaino',
+      decoration: InputDecoration(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: const OutlineInputBorder(),
+        labelText: _s.analisiSelectTelaino,
       ),
     );
   }
@@ -673,7 +680,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
   Widget _buildManualDropdown() {
     return Row(
       children: [
-        const Text('Telaino n.'),
+        Text(_s.analisiTelainoLabel),
         const SizedBox(width: 12),
         Expanded(
           child: DropdownButtonFormField<int>(
@@ -709,7 +716,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
           const SizedBox(height: 24),
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
-          const Text('Analisi in corso...', style: TextStyle(fontSize: 16)),
+          Text(_s.analisiAnalyzing, style: const TextStyle(fontSize: 16)),
           if (_selectedSlot != null) ...[
             const SizedBox(height: 8),
             Row(
@@ -718,7 +725,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                 Icon(_selectedSlot!.icon, color: _selectedSlot!.color, size: 16),
                 const SizedBox(width: 6),
                 Text(
-                  'Telaino ${_selectedSlot!.numero} – ${_selectedSlot!.label}',
+                  _s.analisiProgressLabel(_selectedSlot!.numero, _selectedSlot!.label),
                   style: TextStyle(color: _selectedSlot!.color),
                 ),
               ],
@@ -780,18 +787,18 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Telaino ${_selectedSlot?.numero ?? _numeroTelaino} – Facciata $_facciata',
+                    _s.analisiSummaryTitle(_selectedSlot?.numero ?? _numeroTelaino, _facciata),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const Divider(),
-                  _buildCountRow('Api',         _result!.bees,        Icons.bug_report,       Colors.orange),
-                  _buildCountRow('Regine',      _result!.queenBees,   Icons.star,             Colors.purple),
-                  _buildCountRow('Fuchi',       _result!.drones,      Icons.circle,           Colors.blue),
-                  _buildCountRow('Celle Reali', _result!.royalCells,  Icons.hexagon_outlined, Colors.amber),
+                  _buildCountRow(_s.analisiCountApi,        _result!.bees,        Icons.bug_report,       Colors.orange),
+                  _buildCountRow(_s.analisiCountRegine,     _result!.queenBees,   Icons.star,             Colors.purple),
+                  _buildCountRow(_s.analisiCountFuchi,      _result!.drones,      Icons.circle,           Colors.blue),
+                  _buildCountRow(_s.analisiCountCelleReali, _result!.royalCells,  Icons.hexagon_outlined, Colors.amber),
                   const Divider(),
                   Row(
                     children: [
-                      const Text('Confidenza media: '),
+                      Text(_s.analisiConfidenzaMedia),
                       Expanded(
                         child: LinearProgressIndicator(
                           value:           _result!.averageConfidence,
@@ -819,10 +826,10 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
           // Notes
           TextField(
             controller: _notesController,
-            decoration: const InputDecoration(
-              labelText: 'Note (opzionale)',
-              border: OutlineInputBorder(),
-              hintText: 'Aggiungi osservazioni...',
+            decoration: InputDecoration(
+              labelText: _s.analisiNoteLbl,
+              border: const OutlineInputBorder(),
+              hintText: _s.analisiNoteHint,
             ),
             maxLines: 3,
           ),
@@ -835,7 +842,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _isSaving ? null : _retry,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Ripeti'),
+                  label: Text(_s.analisiBtnRipeti),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -852,7 +859,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save),
-                  label: const Text('Salva'),
+                  label: Text(_s.analisiBtnSalva),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -881,14 +888,14 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Telaino ${slot.numero} – ${slot.label}',
+                _s.analisiIdentityBadge(slot.numero, slot.label),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: slot.color,
                 ),
               ),
               Text(
-                'Tipo registrato nell\'ultimo controllo (${_lastControlloDate ?? "—"})',
+                _s.analisiIdentityDate(_lastControlloDate ?? '—'),
                 style: TextStyle(fontSize: 11, color: slot.color.withOpacity(0.8)),
               ),
             ],
@@ -915,7 +922,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
                 Icon(Icons.analytics, color: Colors.amber.shade800, size: 18),
                 const SizedBox(width: 6),
                 Text(
-                  'Analisi diagnostica',
+                  _s.analisiDiagnostica,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.amber.shade900,

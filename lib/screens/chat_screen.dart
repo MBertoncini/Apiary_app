@@ -2,8 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
+import '../l10n/app_strings.dart';
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
+import '../services/language_service.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../widgets/chart_widget.dart';
@@ -19,6 +21,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isComposing = false;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
   
   @override
   void initState() {
@@ -41,37 +45,39 @@ class _ChatScreenState extends State<ChatScreen> {
   
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     final chatService = Provider.of<ChatService>(context);
-    
+
     // Auto-scroll quando nuovi messaggi arrivano
     if (chatService.messages.isNotEmpty) {
       _scrollToBottom();
     }
-    
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('ApiarioAI Assistant'),
+        title: const Text('ApiarioAI Assistant'),
         actions: [
           IconButton(
-            icon: Icon(Icons.delete_outline),
-            tooltip: 'Cancella conversazione',
+            icon: const Icon(Icons.delete_outline),
+            tooltip: s.chatTooltipClear,
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: Text('Cancellare la conversazione?'),
-                  content: Text('Questa azione cancellerà tutti i messaggi e non può essere annullata.'),
+                  title: Text(s.chatClearTitle),
+                  content: Text(s.chatClearMsg),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('ANNULLA'),
+                      child: Text(s.dialogCancelBtn),
                     ),
                     TextButton(
                       onPressed: () {
                         chatService.clearConversation();
                         Navigator.pop(context);
                       },
-                      child: Text('CANCELLA'),
+                      child: Text(s.chatClearBtn),
                     ),
                   ],
                 ),
@@ -84,18 +90,18 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           // Area informativa
           Container(
-            padding: EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12),
             color: ThemeConstants.primaryColor.withOpacity(0.1),
             child: Row(
               children: [
-                Icon(Icons.info_outline, 
+                Icon(Icons.info_outline,
                   color: ThemeConstants.primaryColor,
                   size: 20,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'ApiarioAI ha accesso ai dati dei tuoi apiari e può generare grafici per le tue analisi.',
+                    s.chatInfoBanner,
                     style: TextStyle(
                       fontSize: 12,
                       color: ThemeConstants.textSecondaryColor,
@@ -105,13 +111,13 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-          
+
           // Lista dei messaggi
           Expanded(
             child: chatService.messages.isEmpty
                 ? Center(
                     child: Text(
-                      'Nessun messaggio. Inizia una conversazione!\nProva a chiedere "Mostrami un grafico della popolazione dell\'arnia 3"',
+                      s.chatEmpty,
                       style: TextStyle(color: ThemeConstants.textSecondaryColor),
                       textAlign: TextAlign.center,
                     ),
@@ -133,14 +139,14 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     height: 16,
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'ApiarioAI sta elaborando...',
+                    s.chatLoading,
                     style: TextStyle(
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
@@ -150,12 +156,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
-          
+
           // Messaggi di errore
           if (chatService.error != null)
             Container(
-              margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              padding: EdgeInsets.all(8),
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.red.shade50,
                 borderRadius: BorderRadius.circular(8),
@@ -163,11 +169,11 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 16),
-                  SizedBox(width: 8),
+                  const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Errore: ${chatService.error}',
+                      s.chatErrMsg(chatService.error!),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.red.shade800,
@@ -212,7 +218,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: TextField(
               controller: _textController,
               decoration: InputDecoration(
-                hintText: 'Scrivi un messaggio...',
+                hintText: _s.chatHint,
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
@@ -261,8 +267,8 @@ class _ChatScreenState extends State<ChatScreen> {
     // Mostra un breve feedback
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Riprovando a inviare il messaggio...'),
-        duration: Duration(seconds: 1),
+        content: Text(_s.chatRetrySnackbar),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -373,7 +379,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           CircularProgressIndicator(),
                           const SizedBox(height: 8),
                           Text(
-                            'Generazione grafico in corso...',
+                            _s.chatGeneratingChart,
                             style: TextStyle(
                               fontSize: 12,
                               color: ThemeConstants.textSecondaryColor,

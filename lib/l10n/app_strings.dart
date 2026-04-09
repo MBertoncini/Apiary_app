@@ -1940,4 +1940,229 @@ abstract class AppStrings {
   String get voiceTutorialMultiStopDesc;
   String get voiceTutorialOfflineMsg;
   String get voiceTutorialBtnStart;
+
+  // ── Common shared ──
+  String get btnClose;
+
+  // ── Settings screen (remaining) ──
+  String get settingsPhotoUpdated;
+  String get settingsPhotoError;
+
+  // ── Chat screen ──
+  String get chatTooltipClear;
+  String get chatClearTitle;
+  String get chatClearMsg;
+  String get chatClearBtn;
+  String get chatInfoBanner;
+  String get chatEmpty;
+  String get chatLoading;
+  String chatErrMsg(String e);
+  String get chatRetrySnackbar;
+  String get chatHint;
+  String get chatGeneratingChart;
+
+  // ── Analisi telaino list screen ──
+  String get analisiListTitle;
+  String get analisiListTooltipNew;
+  String get analisiListEmpty;
+  String get analisiListBtnStart;
+  String analisiListCardTitle(int n, String side);
+  String analisiListTagApi(int n);
+  String analisiListTagRegine(int n);
+  String analisiListTagFuchi(int n);
+  String analisiListTagCelleR(int n);
+
+  // ── Analisi telaino screen ──
+  String get analisiTitle;
+  String analisiErrAnalysis(String e);
+  String get analisiSnackSaved;
+  String analisiErrSave(String e);
+  String get analisiConfigTitle;
+  String get analisiLoadingControllo;
+  String analisiSlotSource(String date, int count);
+  String get analisiNoSlot;
+  String get analisiFacciata;
+  String analisiTelainoN(int n);
+  String get analisiSelectTelaino;
+  String get analisiTelainoLabel;
+  String get analisiAnalyzing;
+  String analisiProgressLabel(int n, String label);
+  String analisiSummaryTitle(int n, String side);
+  String get analisiCountApi;
+  String get analisiCountRegine;
+  String get analisiCountFuchi;
+  String get analisiCountCelleReali;
+  String get analisiConfidenzaMedia;
+  String get analisiNoteLbl;
+  String get analisiNoteHint;
+  String get analisiBtnRipeti;
+  String get analisiBtnSalva;
+  String get analisiBtnScattaFoto;
+  String get analisiBtnGalleria;
+  String get analisiDiagnostica;
+  String analisiIdentityBadge(int n, String label);
+  String analisiIdentityDate(String date);
+  // warnings
+  String analisiWarnDiafammaApi(int n);
+  String get analisiWarnDiafammaRegina;
+  String analisiWarnDiafammaCelle(int n);
+  String analisiWarnDiafammaFuchi(int n);
+  String get analisiWarnNutritoreRegina;
+  String analisiWarnNutritoreCelle(int n);
+  String analisiWarnNutritoreApi(int n);
+  String analisiWarnCovataSciamaturaAlta(int n);
+  String analisiWarnCovataSciamaturaMedia(int n);
+  String analisiWarnCovataRegine(int n);
+  String get analisiWarnCovataVuota;
+  String analisiWarnCovataFuchi(int n);
+  String analisiWarnScorteRegina(int n);
+  String analisiWarnScorteCelle(int n);
+  String analisiWarnScorteApi(int n);
+  String analisiWarnDensitaAltissima(int n);
+
+  // ── Mappa screen ──
+  String get mappaTitle;
+  String get mappaOfflineTooltip;
+  String get mappaTooltipOsmHide;
+  String get mappaTooltipOsmShow;
+  String get mappaTooltipRaggioHide;
+  String get mappaTooltipRaggioShow;
+  String get mappaTooltipNomadismo;
+  String get mappaTooltipSync;
+  String get mappaErrPermission;
+  String get mappaErrPermissionPermanent;
+  String get mappaSnackSettings;
+  String get mappaErrServiceDisabled;
+  String get mappaSnackActivate;
+  String get mappaErrPosition;
+  String get mappaSnackNord;
+  String mappaErrData(String e);
+  String get mappaSnackZoom;
+  String get mappaErrOsm;
+  String get mappaStatArnie;
+  String get mappaStatApicoltore;
+  String get mappaStatTipo;
+  String get mappaStatCommunity;
+  String get mappaStatTuoGruppo;
+  String get mappaApprox;
+  String get mappaBtnVisualizza;
+  String get mappaBtnApriApiario;
+  String get mappaLegenda;
+  String get mappaLegendaMioApiario;
+  String get mappaLegendaCommunity;
+  String get mappaLegendaGruppo;
+  String get mappaLegendaRaggio;
+  String get mappaLegendaFiorituraAttiva;
+  String get mappaLegendaFiorituraInattiva;
+  String get mappaLegendaBosco;
+  String get mappaLegendaMacchia;
+  String get mappaLegendaPrato;
+  String get mappaLegendaFrutteto;
+  String get mappaLegendaColtura;
+  String get mappaLegendaPosizione;
+  String get mappaTooltipNord;
+  String get mappaTooltipFioritura;
+  String get mappaTooltipPosizione;
+  String get mappaFiorApiario;
+  String get mappaFiorPeriodo;
+  String get mappaFiorRaggio;
+  String get mappaFiorNote;
+  String get mappaFiorConferme;
+  String mappaFiorMetri(int n);
+  String mappaFiorConferN(int n);
+  String mappaFiorConferNI(int n, String avg);
+  String mappaFiorDalAl(String start, String end);
+  String mappaFiorDal(String start);
+  String get mappaFiorDettaglio;
+  String get mappaApiario;
+
+  // ── Nomadismo screen ──
+  String get nomadismoTitle;
+  String get nomadismoLegendaDensita;
+  String get nomadismoLegendaApiario;
+  String get nomadismoLegendaAreaAnalisi;
+  String get nomadismoLegendaDati;
+  String get nomadismoSoloApiari;
+  String get nomadismoBtnTocca;
+  String get nomadismoBtnAnalizza;
+  String get nomadismoFloraTitle;
+  String get nomadismoNessunaSpecie;
+  String get nomadismoAltrePiante;
+  String get nomadismoGbifFooter;
+  String nomadismoErrGbif(String e);
+
+  // ── Splash screen ──
+  String get splashSubtitle;
+
+  // ── Disclaimer screen ──
+  String get disclaimerTitle;
+  String get disclaimerBody;
+  String get disclaimerDontShow;
+  String get disclaimerBtnReject;
+  String get disclaimerBtnAccept;
+
+  // ── What's New screen ──
+  String get whatsNewBadge;
+  String get whatsNewTitle;
+  String get whatsNewSubtitle;
+  String get whatsNewEmpty;
+  String get whatsNewBtnExplore;
+  String whatsNewCatLabel(String cat);
+
+  // ── Onboarding screen ──
+  String get onboardingSkip;
+  String get onboardingBack;
+  String get onboardingNext;
+  String get onboardingBtnCreate;
+  String get onboardingBtnExplore;
+  String get onboardingStep1Title;
+  String get onboardingStep1Desc;
+  String get onboardingStep2Title;
+  String get onboardingStep2Desc;
+  String get onboardingStep3Title;
+  String get onboardingStep3Desc;
+  String get onboardingStep4Title;
+  String get onboardingStep4F1Title;
+  String get onboardingStep4F1Desc;
+  String get onboardingStep4F2Title;
+  String get onboardingStep4F2Desc;
+  String get onboardingStep4F3Title;
+  String get onboardingStep4F3Desc;
+  String get onboardingStep4F4Title;
+  String get onboardingStep4F4Desc;
+  String get onboardingStep5Title;
+  String get onboardingStep5Desc;
+
+  // ── Donazione screen ──
+  String get donazioneTitle;
+  String get donazioneErrLink;
+  String get donazioneTxOk;
+  String donazioneErrEmail(String email);
+  String get donazioneHeroSubtitle;
+  String get donazioneBtnCoffee;
+  String get donazioneCard1Desc;
+  String get donazioneCard2Title;
+  String get donazioneCard2Desc;
+  String get donazioneCard3Title;
+  String get donazioneCard3Desc;
+  String get donazioneCard4Title;
+  String get donazioneCard4Desc;
+  String get donazioneFeedbackTitle;
+  String get donazioneFeedbackSubtitle;
+  String get donazioneLblNome;
+  String get donazioneErrNome;
+  String get donazioneLblEmail;
+  String get donazioneErrEmailInvalid;
+  String get donazioneLblMsg;
+  String get donazioneErrMsg;
+  String get donazioneBtnInvio;
+  String get donazioneBtnInvia;
+
+  // ── Guida screen ──
+  String get guidaTitle;
+  String get guidaSubtitle;
+  String get guidaBtnReview;
+
+  // ── Privacy Policy screen ──
+  String get privacyTitle;
 }

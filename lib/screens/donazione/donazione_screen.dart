@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../widgets/drawer_widget.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class DonazioneScreen extends StatefulWidget {
   const DonazioneScreen({Key? key}) : super(key: key);
@@ -24,6 +27,8 @@ class _DonazioneScreenState extends State<DonazioneScreen>
 
   static const String _feedbackEmail = 'michele.bertoncini@gmail.com';
   static const String _buyMeCoffeeUrl = 'https://www.buymeacoffee.com/apiary';
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -51,7 +56,7 @@ class _DonazioneScreenState extends State<DonazioneScreen>
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Impossibile aprire il link.')),
+          SnackBar(content: Text(_s.donazioneErrLink)),
         );
       }
     }
@@ -81,7 +86,7 @@ class _DonazioneScreenState extends State<DonazioneScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Grazie! Il tuo messaggio è stato preparato.'),
+            content: Text(_s.donazioneTxOk),
             backgroundColor: ThemeConstants.successColor,
           ),
         );
@@ -93,8 +98,7 @@ class _DonazioneScreenState extends State<DonazioneScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-                'Nessuna app email trovata. Scrivici a $_feedbackEmail'),
+            content: Text(_s.donazioneErrEmail(_feedbackEmail)),
             backgroundColor: ThemeConstants.errorColor,
             duration: const Duration(seconds: 5),
           ),
@@ -105,9 +109,10 @@ class _DonazioneScreenState extends State<DonazioneScreen>
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Offrici un caffè'),
+        title: Text(_s.donazioneTitle),
       ),
       drawer: AppDrawer(currentRoute: AppConstants.donazioneRoute),
       body: SingleChildScrollView(
@@ -162,18 +167,17 @@ class _DonazioneScreenState extends State<DonazioneScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Un progetto aperto, fatto da apicoltori per apicoltori.\n'
-              'Se ti è utile, offrici un caffè!',
-              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+            Text(
+              _s.donazioneHeroSubtitle,
+              style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _openBuyMeCoffee,
               icon: const Text('☕', style: TextStyle(fontSize: 18)),
-              label: const Text(
-                'Offrici un caffè',
+              label: Text(
+                _s.donazioneBtnCoffee,
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
@@ -193,34 +197,31 @@ class _DonazioneScreenState extends State<DonazioneScreen>
   }
 
   Widget _buildInfoCards() {
+    final s = _s;
     final items = [
       _InfoItem(
         icon: Icons.code,
         color: const Color(0xFF4CAF50),
         title: '100% Open Source',
-        description:
-            'Il codice è pubblico e accessibile a tutti. Nessuna funzionalità nascosta.',
+        description: s.donazioneCard1Desc,
       ),
       _InfoItem(
         icon: Icons.hive,
         color: const Color(0xFFD3A121),
-        title: 'Fatto da apicoltori',
-        description:
-            'Ogni funzionalità nasce dall\'esperienza diretta sul campo, per chi davvero alleva api.',
+        title: s.donazioneCard2Title,
+        description: s.donazioneCard2Desc,
       ),
       _InfoItem(
         icon: Icons.cloud,
         color: const Color(0xFF2196F3),
-        title: 'Costi infrastruttura',
-        description:
-            'Server, dominio e archiviazione cloud hanno un costo reale. Il tuo aiuto li copre.',
+        title: s.donazioneCard3Title,
+        description: s.donazioneCard3Desc,
       ),
       _InfoItem(
         icon: Icons.auto_awesome,
         color: const Color(0xFF9C27B0),
-        title: 'Crescita continua',
-        description:
-            'Django · Flutter · AI/YOLO · Gemini. Investiamo in tecnologia per te.',
+        title: s.donazioneCard4Title,
+        description: s.donazioneCard4Desc,
       ),
     ];
 
@@ -300,7 +301,7 @@ class _DonazioneScreenState extends State<DonazioneScreen>
                     color: ThemeConstants.primaryColor, size: 22),
                 const SizedBox(width: 8),
                 Text(
-                  'Mandaci un messaggio',
+                  _s.donazioneFeedbackTitle,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -312,7 +313,7 @@ class _DonazioneScreenState extends State<DonazioneScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'Segnala un bug, proponi una funzionalità o lasciaci il tuo feedback.',
+              _s.donazioneFeedbackSubtitle,
               style: TextStyle(
                 fontSize: 13,
                 color: ThemeConstants.textPrimaryColor.withValues(alpha: 0.65),
@@ -325,28 +326,28 @@ class _DonazioneScreenState extends State<DonazioneScreen>
                 children: [
                   TextFormField(
                     controller: _nomeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome *',
-                      prefixIcon: Icon(Icons.person_outline),
+                    decoration: InputDecoration(
+                      labelText: _s.donazioneLblNome,
+                      prefixIcon: const Icon(Icons.person_outline),
                     ),
                     textCapitalization: TextCapitalization.words,
                     validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Il nome è obbligatorio'
+                        ? _s.donazioneErrNome
                         : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email (opzionale, per risponderti)',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    decoration: InputDecoration(
+                      labelText: _s.donazioneLblEmail,
+                      prefixIcon: const Icon(Icons.email_outlined),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return null;
                       final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
                       if (!emailRegex.hasMatch(v.trim())) {
-                        return 'Email non valida';
+                        return _s.donazioneErrEmailInvalid;
                       }
                       return null;
                     },
@@ -354,16 +355,16 @@ class _DonazioneScreenState extends State<DonazioneScreen>
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _messaggioController,
-                    decoration: const InputDecoration(
-                      labelText: 'Messaggio *',
-                      prefixIcon: Icon(Icons.message_outlined),
+                    decoration: InputDecoration(
+                      labelText: _s.donazioneLblMsg,
+                      prefixIcon: const Icon(Icons.message_outlined),
                       alignLabelWithHint: true,
                     ),
                     maxLines: 5,
                     maxLength: 2000,
                     textCapitalization: TextCapitalization.sentences,
                     validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Il messaggio è obbligatorio'
+                        ? _s.donazioneErrMsg
                         : null,
                   ),
                   const SizedBox(height: 16),
@@ -381,7 +382,7 @@ class _DonazioneScreenState extends State<DonazioneScreen>
                               ),
                             )
                           : const Icon(Icons.send_outlined),
-                      label: Text(_isSubmitting ? 'Invio...' : 'Invia feedback'),
+                      label: Text(_isSubmitting ? _s.donazioneBtnInvio : _s.donazioneBtnInvia),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),

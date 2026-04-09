@@ -1898,4 +1898,242 @@ class StringsEn extends AppStrings {
   @override String get voiceTutorialMultiStopDesc => 'ends the batch and goes to review';
   @override String get voiceTutorialOfflineMsg => 'Without connection use "Save for later": transcriptions are queued and you can process them as soon as you are back online.';
   @override String get voiceTutorialBtnStart => 'Start recording';
+
+  // ── Common shared ──
+  @override String get btnClose => 'Close';
+
+  // ── Settings screen (remaining) ──
+  @override String get settingsPhotoUpdated => 'Profile photo updated';
+  @override String get settingsPhotoError => 'Error uploading photo';
+
+  // ── Chat screen ──
+  @override String get chatTooltipClear => 'Clear conversation';
+  @override String get chatClearTitle => 'Clear conversation?';
+  @override String get chatClearMsg => 'This action will delete all messages and cannot be undone.';
+  @override String get chatClearBtn => 'CLEAR';
+  @override String get chatInfoBanner => 'ApiarioAI has access to your apiary data and can generate charts for your analyses.';
+  @override String get chatEmpty => 'No messages. Start a conversation!\nTry asking "Show me a chart of hive 3 population"';
+  @override String get chatLoading => 'ApiarioAI is processing...';
+  @override String chatErrMsg(String e) => 'Error: $e';
+  @override String get chatRetrySnackbar => 'Retrying to send the message...';
+  @override String get chatHint => 'Write a message...';
+  @override String get chatGeneratingChart => 'Generating chart...';
+
+  // ── Analisi telaino list screen ──
+  @override String get analisiListTitle => 'Frame Analyses';
+  @override String get analisiListTooltipNew => 'New analysis';
+  @override String get analisiListEmpty => 'No analyses recorded';
+  @override String get analisiListBtnStart => 'Start Analysis';
+  @override String analisiListCardTitle(int n, String side) => 'Frame $n - Side $side';
+  @override String analisiListTagApi(int n) => 'Bees: $n';
+  @override String analisiListTagRegine(int n) => 'Queens: $n';
+  @override String analisiListTagFuchi(int n) => 'Drones: $n';
+  @override String analisiListTagCelleR(int n) => 'Q. Cells: $n';
+
+  // ── Analisi telaino screen ──
+  @override String get analisiTitle => 'Frame Analysis';
+  @override String analisiErrAnalysis(String e) => 'Analysis error: $e';
+  @override String get analisiSnackSaved => 'Analysis saved successfully';
+  @override String analisiErrSave(String e) => 'Save error: $e';
+  @override String get analisiConfigTitle => 'Configuration';
+  @override String get analisiLoadingControllo => 'Loading hive status...';
+  @override String analisiSlotSource(String date, int count) => 'Data from inspection on $date ($count frames present)';
+  @override String get analisiNoSlot => 'No recent inspection found – manual selection.';
+  @override String get analisiFacciata => 'Side';
+  @override String analisiTelainoN(int n) => 'Frame $n';
+  @override String get analisiSelectTelaino => 'Select frame';
+  @override String get analisiTelainoLabel => 'Frame n.';
+  @override String get analisiAnalyzing => 'Analyzing...';
+  @override String analisiProgressLabel(int n, String label) => 'Frame $n – $label';
+  @override String analisiSummaryTitle(int n, String side) => 'Frame $n – Side $side';
+  @override String get analisiCountApi => 'Bees';
+  @override String get analisiCountRegine => 'Queens';
+  @override String get analisiCountFuchi => 'Drones';
+  @override String get analisiCountCelleReali => 'Queen Cells';
+  @override String get analisiConfidenzaMedia => 'Average confidence: ';
+  @override String get analisiNoteLbl => 'Notes (optional)';
+  @override String get analisiNoteHint => 'Add observations...';
+  @override String get analisiBtnRipeti => 'Retry';
+  @override String get analisiBtnSalva => 'Save';
+  @override String get analisiBtnScattaFoto => 'Take Photo';
+  @override String get analisiBtnGalleria => 'Choose from Gallery';
+  @override String get analisiDiagnostica => 'Diagnostic analysis';
+  @override String analisiIdentityBadge(int n, String label) => 'Frame $n – $label';
+  @override String analisiIdentityDate(String date) => 'Type from last inspection ($date)';
+  @override String analisiWarnDiafammaApi(int n) => 'Bees detected on divider board ($n): the board should not be colonized.';
+  @override String get analisiWarnDiafammaRegina => 'Queen detected on divider board: abnormal situation, check immediately.';
+  @override String analisiWarnDiafammaCelle(int n) => 'Queen cells on divider board ($n): serious anomaly, intervention needed.';
+  @override String analisiWarnDiafammaFuchi(int n) => 'Many drones on divider board ($n): the separation may not be working.';
+  @override String get analisiWarnNutritoreRegina => 'Queen on feeder: has moved outside the brood area.';
+  @override String analisiWarnNutritoreCelle(int n) => 'Queen cells on feeder ($n): colony may be preparing to swarm.';
+  @override String analisiWarnNutritoreApi(int n) => 'Many bees on feeder ($n): check that the feeder does not obstruct movement.';
+  @override String analisiWarnCovataSciamaturaAlta(int n) => 'High queen cells ($n): likely swarm preparation. Act soon.';
+  @override String analisiWarnCovataSciamaturaMedia(int n) => 'Queen cells present ($n): monitor colony in the coming weeks.';
+  @override String analisiWarnCovataRegine(int n) => 'Multiple queens detected ($n): anomaly – check for queen cells.';
+  @override String get analisiWarnCovataVuota => 'No bees on brood frame: weakened colony, swarmed or empty frame.';
+  @override String analisiWarnCovataFuchi(int n) => 'High drones on brood frame ($n): possible drone brood, orphaned colony?';
+  @override String analisiWarnScorteRegina(int n) => 'Queen on stores frame ($n): unusual position, check brood space.';
+  @override String analisiWarnScorteCelle(int n) => 'Queen cells on stores frame ($n): swarm or queen replacement signal.';
+  @override String analisiWarnScorteApi(int n) => 'High bee density on stores ($n): possible pre-swarm accumulation.';
+  @override String analisiWarnDensitaAltissima(int n) => 'Very high density ($n insects): this frame is very crowded.';
+
+  // ── Mappa screen ──
+  @override String get mappaTitle => 'Apiary Map';
+  @override String get mappaOfflineTooltip => 'Offline mode - Data loaded from cache';
+  @override String get mappaTooltipOsmHide => 'Hide OSM vegetation';
+  @override String get mappaTooltipOsmShow => 'Show OSM vegetation';
+  @override String get mappaTooltipRaggioHide => 'Hide flight range';
+  @override String get mappaTooltipRaggioShow => 'Show flight range (3 km)';
+  @override String get mappaTooltipNomadismo => 'Nomadic Beekeeping & Flora';
+  @override String get mappaTooltipSync => 'Sync data';
+  @override String get mappaErrPermission => 'Location permission denied';
+  @override String get mappaErrPermissionPermanent => 'Location permissions are permanently denied. Enable them from settings.';
+  @override String get mappaSnackSettings => 'Settings';
+  @override String get mappaErrServiceDisabled => 'Location service disabled. Enable it to use this feature.';
+  @override String get mappaSnackActivate => 'Enable';
+  @override String get mappaErrPosition => 'Error retrieving position';
+  @override String get mappaSnackNord => 'Map oriented to North';
+  @override String mappaErrData(String e) => 'Error loading data: $e';
+  @override String get mappaSnackZoom => 'Zoom in to see OSM vegetation (zoom ≥ 10)';
+  @override String get mappaErrOsm => 'Error loading OSM vegetation';
+  @override String get mappaStatArnie => 'Hives';
+  @override String get mappaStatApicoltore => 'Beekeeper';
+  @override String get mappaStatTipo => 'Type';
+  @override String get mappaStatCommunity => 'Community';
+  @override String get mappaStatTuoGruppo => 'Mine/Group';
+  @override String get mappaApprox => 'Approximate position';
+  @override String get mappaBtnVisualizza => 'View';
+  @override String get mappaBtnApriApiario => 'Open Apiary';
+  @override String get mappaLegenda => 'Legend';
+  @override String get mappaLegendaMioApiario => 'My apiary';
+  @override String get mappaLegendaCommunity => 'Community apiary';
+  @override String get mappaLegendaGruppo => 'Group apiary';
+  @override String get mappaLegendaRaggio => 'Flight range (3 km)';
+  @override String get mappaLegendaFiorituraAttiva => 'Active bloom';
+  @override String get mappaLegendaFiorituraInattiva => 'Inactive bloom';
+  @override String get mappaLegendaBosco => 'Wood / Forest';
+  @override String get mappaLegendaMacchia => 'Scrubland';
+  @override String get mappaLegendaPrato => 'Meadow / Pasture';
+  @override String get mappaLegendaFrutteto => 'Orchard';
+  @override String get mappaLegendaColtura => 'Crop';
+  @override String get mappaLegendaPosizione => 'Current position';
+  @override String get mappaTooltipNord => 'Orient to North';
+  @override String get mappaTooltipFioritura => 'Add bloom';
+  @override String get mappaTooltipPosizione => 'Center on current position';
+  @override String get mappaFiorApiario => 'Apiary';
+  @override String get mappaFiorPeriodo => 'Period';
+  @override String get mappaFiorRaggio => 'Radius';
+  @override String get mappaFiorNote => 'Notes';
+  @override String get mappaFiorConferme => 'Community confirmations';
+  @override String mappaFiorMetri(int n) => '$n metres';
+  @override String mappaFiorConferN(int n) => '$n beekeepers';
+  @override String mappaFiorConferNI(int n, String avg) => '$n beekeepers · avg intensity $avg/5';
+  @override String mappaFiorDalAl(String start, String end) => 'From $start to $end';
+  @override String mappaFiorDal(String start) => 'From $start';
+  @override String get mappaFiorDettaglio => 'Details';
+  @override String get mappaApiario => 'Apiary';
+
+  // ── Nomadismo screen ──
+  @override String get nomadismoTitle => 'Nomadic Beekeeping';
+  @override String get nomadismoLegendaDensita => 'GBIF density (millions of observations)';
+  @override String get nomadismoLegendaApiario => 'Your apiary';
+  @override String get nomadismoLegendaAreaAnalisi => 'Analysis area (5 km)';
+  @override String get nomadismoLegendaDati => 'GBIF data 2010–2025';
+  @override String get nomadismoSoloApiari => '🗺️ Apiary only';
+  @override String get nomadismoBtnTocca => 'Tap the map…';
+  @override String get nomadismoBtnAnalizza => 'Analyze point (5 km)';
+  @override String get nomadismoFloraTitle => 'Honey flora — 5 km radius';
+  @override String get nomadismoNessunaSpecie => 'No species found.';
+  @override String get nomadismoAltrePiante => 'Other plants';
+  @override String get nomadismoGbifFooter => 'GBIF data · observations 2010–2025 · 5 km radius';
+  @override String nomadismoErrGbif(String e) => 'GBIF error: $e';
+
+  // ── Splash screen ──
+  @override String get splashSubtitle => 'Manage your apiaries anywhere';
+
+  // ── Disclaimer screen ──
+  @override String get disclaimerTitle => 'Security Notice';
+  @override String get disclaimerBody =>
+    'WARNING: Although we do our best to protect your data using HTTPS protocols, the app does not guarantee complete information security.\n\n'
+    'By using this application, you accept the potential risks of:\n'
+    '• Data loss in the event of a database breach\n'
+    '• Unauthorised access to apiary information\n'
+    '• Possible service interruptions\n\n'
+    'We recommend not storing sensitive information or critical personal data within the application.\n\n'
+    'If you reject these terms, the app will close. By accepting, you confirm that you understand and accept the risks listed above.';
+  @override String get disclaimerDontShow => 'Do not show this message again';
+  @override String get disclaimerBtnReject => 'REJECT';
+  @override String get disclaimerBtnAccept => 'ACCEPT';
+
+  // ── What's New screen ──
+  @override String get whatsNewBadge => 'Update';
+  @override String get whatsNewTitle => "What's new 🐝";
+  @override String get whatsNewSubtitle => 'Apiary has been updated. Here are the new features.';
+  @override String get whatsNewEmpty => 'Nothing new to show.';
+  @override String get whatsNewBtnExplore => 'Start exploring';
+  @override String whatsNewCatLabel(String cat) {
+    switch (cat) {
+      case 'Nuovo': return 'New';
+      case 'Miglioramento': return 'Improvement';
+      case 'Fix': return 'Fix';
+      default: return cat;
+    }
+  }
+
+  // ── Onboarding screen ──
+  @override String get onboardingSkip => 'Skip';
+  @override String get onboardingBack => 'Back';
+  @override String get onboardingNext => 'Next';
+  @override String get onboardingBtnCreate => 'Create my first apiary';
+  @override String get onboardingBtnExplore => 'Explore first';
+  @override String get onboardingStep1Title => 'Welcome to Apiary';
+  @override String get onboardingStep1Desc => 'Your digital beekeeping diary. Record, monitor and manage everything about your bees — from inspections to sales, from queen genealogy to AI frame analysis.';
+  @override String get onboardingStep2Title => 'Your Apiaries';
+  @override String get onboardingStep2Desc => 'An apiary is your physical location — a field, a forest, a plot of land. Inside each apiary you find your hives. You can have multiple apiaries in different places and manage them all from here.';
+  @override String get onboardingStep3Title => 'Hives & Inspections';
+  @override String get onboardingStep3Desc => 'Every hive has its own story: queen, treatments, supers, harvests. Record periodic inspections to track colony strength, queen presence and health status.';
+  @override String get onboardingStep4Title => 'Advanced Features';
+  @override String get onboardingStep4F1Title => 'Voice Control';
+  @override String get onboardingStep4F1Desc => 'Record a complete inspection simply by speaking';
+  @override String get onboardingStep4F2Title => 'AI Analysis';
+  @override String get onboardingStep4F2Desc => 'Photograph a frame and instantly detect bees, brood and queen cells';
+  @override String get onboardingStep4F3Title => 'Statistics';
+  @override String get onboardingStep4F3Desc => 'Production, health and trend charts over time';
+  @override String get onboardingStep4F4Title => 'Collaboration';
+  @override String get onboardingStep4F4Desc => 'Share apiaries with partners or collaborators';
+  @override String get onboardingStep5Title => 'You\'re ready!';
+  @override String get onboardingStep5Desc => 'Start by creating your first apiary. It will take less than a minute. You can always review this guide from the settings page.';
+
+  // ── Donazione screen ──
+  @override String get donazioneTitle => 'Buy us a coffee';
+  @override String get donazioneErrLink => 'Unable to open the link.';
+  @override String get donazioneTxOk => 'Thank you! Your message has been prepared.';
+  @override String donazioneErrEmail(String email) => 'No email app found. Write to us at $email';
+  @override String get donazioneHeroSubtitle => 'An open project, made by beekeepers for beekeepers.\nIf it helps you, buy us a coffee!';
+  @override String get donazioneBtnCoffee => 'Buy us a coffee';
+  @override String get donazioneCard1Desc => 'The code is public and accessible to everyone. No hidden features.';
+  @override String get donazioneCard2Title => 'Made by beekeepers';
+  @override String get donazioneCard2Desc => 'Every feature comes from direct field experience, for those who truly keep bees.';
+  @override String get donazioneCard3Title => 'Infrastructure costs';
+  @override String get donazioneCard3Desc => 'Server, domain and cloud storage have a real cost. Your help covers them.';
+  @override String get donazioneCard4Title => 'Continuous growth';
+  @override String get donazioneCard4Desc => 'Django · Flutter · AI/YOLO · Gemini. We invest in technology for you.';
+  @override String get donazioneFeedbackTitle => 'Send us a message';
+  @override String get donazioneFeedbackSubtitle => 'Report a bug, suggest a feature or leave us your feedback.';
+  @override String get donazioneLblNome => 'Name *';
+  @override String get donazioneErrNome => 'Name is required';
+  @override String get donazioneLblEmail => 'Email (optional, so we can reply)';
+  @override String get donazioneErrEmailInvalid => 'Invalid email';
+  @override String get donazioneLblMsg => 'Message *';
+  @override String get donazioneErrMsg => 'Message is required';
+  @override String get donazioneBtnInvio => 'Sending...';
+  @override String get donazioneBtnInvia => 'Send feedback';
+
+  // ── Guida screen ──
+  @override String get guidaTitle => 'Complete Guide';
+  @override String get guidaSubtitle => 'Everything you need to know to get the most out of Apiary';
+  @override String get guidaBtnReview => 'Review the tutorial';
+
+  // ── Privacy Policy screen ──
+  @override String get privacyTitle => 'Privacy Policy';
 }

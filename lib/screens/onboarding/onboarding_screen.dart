@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../whats_new/whats_new_screen.dart' show getAppBuildNumber;
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -16,6 +19,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final int _totalPages = 5;
 
   static const String _prefKey = 'onboarding_completato';
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -34,34 +39,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const Color darkBrown = Color(0xFF3A2E21);
   static const Color cardBorder = Color(0xFFEAD9BF);
 
-  final List<_OnboardingStep> _steps = [
+  List<_OnboardingStep> _buildSteps(AppStrings s) => [
     _OnboardingStep(
       icon: '🐝',
-      title: 'Benvenuto in Apiary',
-      description: 'Il tuo diario digitale da apicoltore. Registra, monitora e gestisci tutto ciò che riguarda le tue api — dai controlli alle vendite, dalla genealogia delle regine all\'analisi AI dei telai.',
+      title: s.onboardingStep1Title,
+      description: s.onboardingStep1Desc,
       features: null,
     ),
     _OnboardingStep(
       icon: '📍',
-      title: 'I tuoi Apiari',
-      description: 'Un apiario è la tua postazione fisica — un campo, un bosco, un terreno. Dentro ogni apiario trovi le tue arnie. Puoi avere più apiari in luoghi diversi e gestirli tutti da qui.',
+      title: s.onboardingStep2Title,
+      description: s.onboardingStep2Desc,
       features: null,
     ),
     _OnboardingStep(
       icon: '🏠',
-      title: 'Arnie & Controlli',
-      description: 'Ogni arnia ha la sua storia: regina, trattamenti, melari, raccolti. Registra i controlli periodici per tenere traccia della forza della colonia, della presenza della regina e dello stato sanitario.',
+      title: s.onboardingStep3Title,
+      description: s.onboardingStep3Desc,
       features: null,
     ),
     _OnboardingStep(
       icon: '✨',
-      title: 'Funzioni Avanzate',
+      title: s.onboardingStep4Title,
       description: null,
       features: [
-        _Feature('🎤', 'Controllo Vocale', 'Registra un\'ispezione completa semplicemente parlando'),
-        _Feature('🤖', 'Analisi AI', 'Fotografa un telaio e scopri subito api, covata e celle reali'),
-        _Feature('📊', 'Statistiche', 'Grafici di produzione, salute e andamento nel tempo'),
-        _Feature('👥', 'Collaborazione', 'Condividi gli apiari con soci o collaboratori'),
+        _Feature('🎤', s.onboardingStep4F1Title, s.onboardingStep4F1Desc),
+        _Feature('🤖', s.onboardingStep4F2Title, s.onboardingStep4F2Desc),
+        _Feature('📊', s.onboardingStep4F3Title, s.onboardingStep4F3Desc),
+        _Feature('👥', s.onboardingStep4F4Title, s.onboardingStep4F4Desc),
       ],
     ),
     _OnboardingStep(
@@ -71,8 +76,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         width: 96,
         height: 96,
       ),
-      title: 'Sei pronto!',
-      description: 'Inizia creando il tuo primo apiario. Ci vorranno meno di un minuto. Potrai sempre rivedere questa guida dalla pagina delle impostazioni.',
+      title: s.onboardingStep5Title,
+      description: s.onboardingStep5Desc,
       features: null,
       isFinal: true,
     ),
@@ -118,6 +123,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
+    final steps = _buildSteps(s);
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
@@ -132,7 +140,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   TextButton(
                     onPressed: () => _completeOnboarding(),
                     child: Text(
-                      'Salta',
+                      s.onboardingSkip,
                       style: GoogleFonts.poppins(
                         color: Colors.grey[500],
                         fontSize: 14,
@@ -150,7 +158,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (page) => setState(() => _currentPage = page),
                 itemCount: _totalPages,
                 itemBuilder: (context, index) {
-                  return _buildStep(_steps[index]);
+                  return _buildStep(steps[index], s);
                 },
               ),
             ),
@@ -178,7 +186,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: Text('Indietro', style: GoogleFonts.poppins(color: darkBrown)),
+                        child: Text(s.onboardingBack, style: GoogleFonts.poppins(color: darkBrown)),
                       ),
                     ),
                   if (_currentPage > 0) const SizedBox(width: 12),
@@ -193,7 +201,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
                         ),
-                        child: Text('Avanti', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                        child: Text(s.onboardingNext, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                       ),
                     ),
                 ],
@@ -205,7 +213,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildStep(_OnboardingStep step) {
+  Widget _buildStep(_OnboardingStep step, AppStrings s) {
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
         child: ConstrainedBox(
@@ -286,7 +294,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: ElevatedButton.icon(
                 onPressed: () => _completeOnboarding(goToCreate: true),
                 icon: const Icon(Icons.add_circle_outline),
-                label: Text('Crea il mio primo apiario', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
+                label: Text(s.onboardingBtnCreate, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
@@ -300,7 +308,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             TextButton(
               onPressed: () => _completeOnboarding(),
               child: Text(
-                'Esplora prima',
+                s.onboardingBtnExplore,
                 style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 14),
               ),
             ),

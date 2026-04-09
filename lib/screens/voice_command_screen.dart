@@ -245,7 +245,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     final transcription = _voiceManager.getTranscription();
     if (transcription.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nessuna trascrizione da salvare')),
+        SnackBar(content: Text(_s.voiceCommandNoTranscription)),
       );
       return;
     }
@@ -256,7 +256,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Trascrizione salvata in coda ($_pendingQueueCount in attesa)'),
+          content: Text(_s.voiceCommandSavedToQueue(_pendingQueueCount)),
           backgroundColor: Colors.orange,
         ),
       );
@@ -343,7 +343,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                   SnackBar(
                     content: Text(_dataProcessor.error != null
                         ? 'Gemini: ${_dataProcessor.error}'
-                        : 'Nessuna entry valida estratta dalla coda'),
+                        : _s.voiceCommandNoValidEntry),
                     backgroundColor: Colors.red,
                     duration: const Duration(seconds: 6),
                   ),
@@ -385,9 +385,8 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                   onSuccess: (results) {
                     Navigator.of(context).pop();
                     final msg = unprocessed.isEmpty
-                        ? 'Dati dalla coda salvati (${results.length} record)'
-                        : 'Dati salvati (${results.length} record). '
-                            '${unprocessed.length} trascrizioni rimaste in coda.';
+                        ? _s.voiceCommandQueueSaved(results.length)
+                        : _s.voiceCommandSavedWithRemaining(results.length, unprocessed.length);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text(msg),
@@ -408,15 +407,17 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       drawer: AppDrawer(currentRoute: AppConstants.voiceCommandRoute),
       appBar: AppBar(
-        title: const Text('Inserimento vocale'),
+        title: Text(s.voiceCommandTitle),
         leading: Builder(
           builder: (ctx) => IconButton(
             icon: const Icon(Icons.menu),
             onPressed: () => Scaffold.of(ctx).openDrawer(),
-            tooltip: 'Menu',
+            tooltip: s.voiceCommandTooltipMenu,
           ),
         ),
         actions: [
@@ -428,7 +429,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                 IconButton(
                   icon: const Icon(Icons.queue),
                   onPressed: _processOfflineQueue,
-                  tooltip: 'Elabora coda offline',
+                  tooltip: s.voiceCommandTooltipQueue,
                 ),
                 Positioned(
                   right: 6,
@@ -466,7 +467,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                 setState(() => _showGuide = false);
               }
             },
-            tooltip: _showGuide ? 'Nascondi guida' : 'Rivedi tutorial',
+            tooltip: _showGuide ? s.voiceCommandTooltipHideGuide : s.voiceCommandTooltipShowTutorial,
           ),
         ],
       ),
@@ -499,7 +500,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Come funziona l\'inserimento vocale',
+                            s.voiceCommandGuideTitle,
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -509,28 +510,25 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                           const SizedBox(height: 16),
                           _buildGuideItem(
                             icon: Icons.hive,
-                            title: 'Seleziona apiario',
-                            description:
-                                'Tocca il banner in cima per scegliere l\'apiario. Poi basta dire solo il numero arnia.',
+                            title: s.voiceCommandGuideStep1Title,
+                            description: s.voiceCommandGuideStep1Desc,
                           ),
                           _buildGuideItem(
                             icon: Icons.mic,
-                            title: 'Inizia a parlare',
-                            description:
-                                'Premi il pulsante microfono e parla chiaramente',
+                            title: s.voiceCommandGuideStep2Title,
+                            description: s.voiceCommandGuideStep2Desc,
                           ),
                           _buildGuideItem(
                             icon: Icons.check_circle,
-                            title: 'Verifica e salva',
-                            description:
-                                'Controlla i dati riconosciuti da Gemini prima di salvarli',
+                            title: s.voiceCommandGuideStep3Title,
+                            description: s.voiceCommandGuideStep3Desc,
                           ),
                           const SizedBox(height: 8),
                           const Divider(),
                           const SizedBox(height: 8),
-                          const Text(
-                            'Esempi:',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          Text(
+                            s.voiceCommandGuideExamplesTitle,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
                           _buildCommandExample(
@@ -542,15 +540,13 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                           const SizedBox(height: 8),
                           const Divider(),
                           const SizedBox(height: 4),
-                          const Text(
-                            'Parole chiave modalità multipla:',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          Text(
+                            s.voiceCommandGuideKeywordsTitle,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
-                          _buildCommandExample(
-                              '"avanti" / "ok" / "vai" / "continua" → registra arnia successiva'),
-                          _buildCommandExample(
-                              '"stop" / "fine" / "basta" / "finito" → termina il batch e vai alla revisione'),
+                          _buildCommandExample(s.voiceCommandGuideKeyNextCmd),
+                          _buildCommandExample(s.voiceCommandGuideKeyStopCmd),
                           const SizedBox(height: 8),
                           const Divider(),
                           const SizedBox(height: 8),
@@ -562,14 +558,14 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                               border: Border.all(
                                   color: Colors.orange.withOpacity(0.3)),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: Colors.orange),
-                                SizedBox(width: 8),
+                                const Icon(Icons.info_outline, color: Colors.orange),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Senza connessione: usa "Salva per dopo" e riprendi quando sei online.',
-                                    style: TextStyle(fontSize: 13),
+                                    s.voiceCommandGuideOffline,
+                                    style: const TextStyle(fontSize: 13),
                                   ),
                                 ),
                               ],
@@ -616,10 +612,9 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                                   child: OutlinedButton.icon(
                                     icon: const Icon(Icons.save_outlined,
                                         color: Colors.orange),
-                                    label: const Text(
-                                      'Salva per dopo',
-                                      style:
-                                          TextStyle(color: Colors.orange),
+                                    label: Text(
+                                      s.voiceCommandBtnSaveLater,
+                                      style: const TextStyle(color: Colors.orange),
                                     ),
                                     style: OutlinedButton.styleFrom(
                                       side: const BorderSide(
@@ -734,8 +729,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                   content: Text(
                     errDetail != null
                         ? 'Gemini: $errDetail'
-                        : 'Nessun dato valido estratto. '
-                            'Controlla le trascrizioni e riprova.',
+                        : _s.voiceCommandNoValidData,
                   ),
                   backgroundColor: Colors.red,
                   duration: const Duration(seconds: 6),
@@ -762,9 +756,8 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                     _voiceManager.clearBatch();
                     Navigator.of(context).pop();
                     final msg = failed.isEmpty
-                        ? 'Dati salvati (${results.length} record)'
-                        : 'Dati salvati (${results.length} record). '
-                            '${failed.length} trascrizioni in coda.';
+                        ? _s.voiceCommandQueueSaved(results.length)
+                        : _s.voiceCommandSavedWithRemaining(results.length, failed.length);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text(msg),
@@ -796,7 +789,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content:
-                    Text('Dati salvati con successo (${results.length} record)'),
+                    Text(_s.voiceCommandSavedOk(results.length)),
                 backgroundColor: Colors.green,
               ),
             );
@@ -829,6 +822,7 @@ class _VoiceTutorialSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       minChildSize: 0.5,
@@ -871,16 +865,16 @@ class _VoiceTutorialSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Inserimento vocale',
+                            s.voiceTutorialTitle,
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: ThemeConstants.primaryColor,
                             ),
                           ),
-                          const Text(
-                            'Come registrare un\'ispezione a mani libere',
-                            style: TextStyle(fontSize: 13, color: Colors.grey),
+                          Text(
+                            s.voiceTutorialSubtitle,
+                            style: const TextStyle(fontSize: 13, color: Colors.grey),
                           ),
                         ],
                       ),
@@ -902,42 +896,34 @@ class _VoiceTutorialSheet extends StatelessWidget {
                     _tutorialSection(
                       step: '1',
                       icon: Icons.hive,
-                      title: 'Seleziona l\'apiario',
-                      body:
-                          'Tocca il banner arancione in cima e scegli l\'apiario su cui stai lavorando. '
-                          'Da quel momento basterà dire solo il numero dell\'arnia — non serve ripeterlo ogni volta.',
+                      title: s.voiceTutorialStep1Title,
+                      body: s.voiceTutorialStep1Body,
                       color: Colors.orange,
                     ),
                     _tutorialSection(
                       step: '2',
                       icon: Icons.mic,
-                      title: 'Parla chiaramente',
-                      body:
-                          'Premi il pulsante microfono e descrivi l\'ispezione come faresti con un collega. '
-                          'Non serve una sintassi precisa: l\'AI capisce il linguaggio naturale.',
+                      title: s.voiceTutorialStep2Title,
+                      body: s.voiceTutorialStep2Body,
                       color: ThemeConstants.primaryColor,
                     ),
                     _tutorialSection(
                       step: '3',
                       icon: Icons.auto_awesome,
-                      title: 'Gemini interpreta il testo',
-                      body:
-                          'Il testo riconosciuto viene inviato a Gemini AI che estrae automaticamente: '
-                          'numero arnia, telaini, stato regina, problemi sanitari e altro ancora.',
+                      title: s.voiceTutorialStep3Title,
+                      body: s.voiceTutorialStep3Body,
                       color: Colors.deepPurple,
                     ),
                     _tutorialSection(
                       step: '4',
                       icon: Icons.check_circle_outline,
-                      title: 'Verifica e salva',
-                      body:
-                          'Controlla i dati interpretati nella schermata di verifica, '
-                          'modifica eventuali errori e premi Salva.',
+                      title: s.voiceTutorialStep4Title,
+                      body: s.voiceTutorialStep4Body,
                       color: Colors.green,
                     ),
                     const SizedBox(height: 8),
                     // Esempi
-                    _sectionTitle('Esempi di frasi'),
+                    _sectionTitle(s.voiceTutorialExamplesTitle),
                     const SizedBox(height: 8),
                     _exampleChip(
                         '"Arnia 3, regina presente, vista, 4 telaini di covata, 3 scorte"'),
@@ -947,16 +933,16 @@ class _VoiceTutorialSheet extends StatelessWidget {
                         '"Arnia 2, 7 telaini totali, 2 celle reali, rischio sciamatura"'),
                     const SizedBox(height: 16),
                     // Modalità multipla
-                    _sectionTitle('Modalità multipla (più arnie di seguito)'),
+                    _sectionTitle(s.voiceTutorialMultiTitle),
                     const SizedBox(height: 8),
                     _infoRow(
                         Icons.skip_next,
-                        '"avanti" / "ok" / "vai" / "continua"',
-                        'registra l\'arnia successiva'),
+                        s.voiceTutorialMultiNextKeyword,
+                        s.voiceTutorialMultiNextDesc),
                     _infoRow(
                         Icons.stop_circle_outlined,
-                        '"stop" / "fine" / "basta" / "finito"',
-                        'termina il batch e vai alla revisione'),
+                        s.voiceTutorialMultiStopKeyword,
+                        s.voiceTutorialMultiStopDesc),
                     const SizedBox(height: 16),
                     // Offline
                     Container(
@@ -966,15 +952,14 @@ class _VoiceTutorialSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.orange.withOpacity(0.3)),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.wifi_off, color: Colors.orange, size: 20),
-                          SizedBox(width: 10),
+                          const Icon(Icons.wifi_off, color: Colors.orange, size: 20),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Senza connessione usa "Salva per dopo": le trascrizioni vengono '
-                              'messe in coda e puoi elaborarle non appena torni online.',
-                              style: TextStyle(fontSize: 13),
+                              s.voiceTutorialOfflineMsg,
+                              style: const TextStyle(fontSize: 13),
                             ),
                           ),
                         ],
@@ -986,7 +971,7 @@ class _VoiceTutorialSheet extends StatelessWidget {
                       width: double.infinity,
                       child: FilledButton.icon(
                         icon: const Icon(Icons.mic),
-                        label: const Text('Inizia a registrare'),
+                        label: Text(s.voiceTutorialBtnStart),
                         style: FilledButton.styleFrom(
                           backgroundColor: ThemeConstants.primaryColor,
                           padding: const EdgeInsets.symmetric(vertical: 14),

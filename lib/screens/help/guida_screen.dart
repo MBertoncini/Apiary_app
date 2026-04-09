@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 class GuidaScreen extends StatefulWidget {
   const GuidaScreen({super.key});
@@ -56,13 +59,15 @@ class _GuidaScreenState extends State<GuidaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
         title: Text(
-          'Guida Completa',
+          s.guidaTitle,
           style: GoogleFonts.caveat(fontSize: 26, fontWeight: FontWeight.bold, color: darkBrown),
         ),
         iconTheme: const IconThemeData(color: darkBrown),
@@ -71,7 +76,7 @@ class _GuidaScreenState extends State<GuidaScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Tutto quello che devi sapere per usare Apiary al meglio',
+            s.guidaSubtitle,
             style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
@@ -116,7 +121,7 @@ class _GuidaScreenState extends State<GuidaScreen> {
             child: TextButton.icon(
               onPressed: () => Navigator.pushReplacementNamed(context, '/onboarding'),
               icon: const Icon(Icons.play_circle_outline, color: Color(0xFFD3A121)),
-              label: Text('Rivedi il tutorial', style: GoogleFonts.poppins(color: Color(0xFFD3A121))),
+              label: Text(s.guidaBtnReview, style: GoogleFonts.poppins(color: Color(0xFFD3A121))),
             ),
           ),
           const SizedBox(height: 20),

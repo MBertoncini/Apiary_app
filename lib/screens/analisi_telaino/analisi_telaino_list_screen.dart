@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../database/dao/analisi_telaino_dao.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 import '../../widgets/skeleton_widgets.dart';
 import '../../models/analisi_telaino.dart';
 import '../../services/analisi_telaino_service.dart';
@@ -18,6 +20,8 @@ class AnalisiTelainoListScreen extends StatefulWidget {
 class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
   List<AnalisiTelaino> _analisi = [];
   bool _isRefreshing = true;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -49,9 +53,11 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analisi Telaini'),
+        title: Text(s.analisiListTitle),
       ),
       body: Column(
         children: [
@@ -82,12 +88,13 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
           if (result == true) _loadAnalisi();
         },
         child: const Icon(Icons.add),
-        tooltip: 'Nuova analisi',
+        tooltip: s.analisiListTooltipNew,
       ),
     );
   }
 
   Widget _buildEmptyState() {
+    final s = _s;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -99,7 +106,7 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Nessuna analisi registrata',
+            s.analisiListEmpty,
             style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
@@ -113,7 +120,7 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
               if (result == true) _loadAnalisi();
             },
             icon: const Icon(Icons.camera_alt),
-            label: const Text('Avvia Analisi'),
+            label: Text(s.analisiListBtnStart),
           ),
         ],
       ),
@@ -121,6 +128,7 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
   }
 
   Widget _buildAnalisiCard(AnalisiTelaino analisi) {
+    final s = _s;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -144,7 +152,7 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Telaino ${analisi.numeroTelaino} - Facciata ${analisi.facciata}',
+                        s.analisiListCardTitle(analisi.numeroTelaino, analisi.facciata),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -165,10 +173,10 @@ class _AnalisiTelainoListScreenState extends State<AnalisiTelainoListScreen> {
               spacing: 8,
               runSpacing: 6,
               children: [
-                _buildTag('Api: ${analisi.conteggioApi}', Colors.orange),
-                _buildTag('Regine: ${analisi.conteggioRegine}', Colors.purple),
-                _buildTag('Fuchi: ${analisi.conteggioFuchi}', Colors.blue),
-                _buildTag('Celle R.: ${analisi.conteggioCelleReali}', Colors.amber),
+                _buildTag(s.analisiListTagApi(analisi.conteggioApi), Colors.orange),
+                _buildTag(s.analisiListTagRegine(analisi.conteggioRegine), Colors.purple),
+                _buildTag(s.analisiListTagFuchi(analisi.conteggioFuchi), Colors.blue),
+                _buildTag(s.analisiListTagCelleR(analisi.conteggioCelleReali), Colors.amber),
               ],
             ),
             if (analisi.note != null && analisi.note!.isNotEmpty) ...[

@@ -10,7 +10,9 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
+import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
+import '../../services/language_service.dart';
 
 // ── Modello preset miele ──────────────────────────────────────────────────────
 class _Preset {
@@ -63,6 +65,8 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
   bool      _loadingApiari = true;
   Position? _currentPosition;
   double    _mapRotation = 0;
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -127,7 +131,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Chiudi')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(_s.btnClose)),
         ],
       ),
     );
@@ -210,7 +214,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Nomadismo', style: GoogleFonts.caveat(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text(_s.nomadismoTitle, style: GoogleFonts.caveat(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: ThemeConstants.secondaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -366,7 +370,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
           mini: true,
           backgroundColor: Colors.white,
           onPressed: _resetRotation,
-          tooltip: 'Orienta a Nord',
+          tooltip: _s.mappaTooltipNord,
           child: Transform.rotate(
             angle: -_mapRotation * pi / 180,
             child: const Icon(Icons.navigation, color: Colors.black),
@@ -379,7 +383,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
           mini: true,
           backgroundColor: Colors.white,
           onPressed: _getCurrentPosition,
-          tooltip: 'Centra sulla posizione attuale',
+          tooltip: _s.mappaTooltipPosizione,
           child: const Icon(Icons.my_location, color: Colors.black87),
         ),
       ],
@@ -398,7 +402,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
             scrollDirection: Axis.horizontal,
             children: [
               _PresetChip(
-                label: '🗺️ Solo apiari',
+                label: _s.nomadismoSoloApiari,
                 selected: _presetAttivo == null,
                 colore: Colors.grey.shade200,
                 coloreBordo: Colors.grey.shade400,
@@ -494,7 +498,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
                   Icon(_analizzaModo ? Icons.close : Icons.search, color: Colors.white, size: 18),
                   const SizedBox(width: 6),
                   Text(
-                    _analizzaModo ? 'Tocca la mappa…' : 'Analizza punto (5 km)',
+                    _analizzaModo ? _s.nomadismoBtnTocca : _s.nomadismoBtnAnalizza,
                     style: GoogleFonts.quicksand(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ],
@@ -529,7 +533,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
                 children: [
                   Icon(Icons.info_outline, size: 15, color: ThemeConstants.textSecondaryColor),
                   const SizedBox(width: 6),
-                  Text('Legenda', style: GoogleFonts.quicksand(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeConstants.textSecondaryColor)),
+                  Text(_s.mappaLegenda, style: GoogleFonts.quicksand(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeConstants.textSecondaryColor)),
                   const Spacer(),
                   Text(_legendaAperta ? '−' : '+', style: GoogleFonts.quicksand(fontSize: 16, fontWeight: FontWeight.bold, color: ThemeConstants.primaryColor)),
                 ],
@@ -559,14 +563,14 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
               color: const Color(0x4D50A050), border: Border.all(color: const Color(0xFF388E3C)),
               borderRadius: BorderRadius.circular(2),
             )),
-            label: 'Densità GBIF (milioni di osservazioni)',
+            label: _s.nomadismoLegendaDensita,
           ),
           const SizedBox(height: 4),
           _LegendaVoce(
             icona: Container(width: 14, height: 14, decoration: BoxDecoration(
               color: ThemeConstants.primaryColor, shape: BoxShape.circle,
             ), child: const Center(child: Text('🍯', style: TextStyle(fontSize: 8)))),
-            label: 'Tuo apiario',
+            label: _s.nomadismoLegendaApiario,
           ),
           const SizedBox(height: 4),
           _LegendaVoce(
@@ -574,10 +578,10 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
               color: const Color(0x1A1565C0), shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFF1565C0), width: 1.5),
             )),
-            label: 'Area analisi (5 km)',
+            label: _s.nomadismoLegendaAreaAnalisi,
           ),
           const SizedBox(height: 4),
-          Text('Dati GBIF 2010–2025', style: GoogleFonts.quicksand(fontSize: 10, color: ThemeConstants.textSecondaryColor)),
+          Text(_s.nomadismoLegendaDati, style: GoogleFonts.quicksand(fontSize: 10, color: ThemeConstants.textSecondaryColor)),
         ],
       ),
     );
@@ -661,12 +665,13 @@ class _SpecieBottomSheetState extends State<_SpecieBottomSheet> {
       final specie = await widget.fetchFn(widget.centro, 5.0);
       if (mounted) setState(() { _specie = specie; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _errore = 'Errore GBIF: $e'; _loading = false; });
+      if (mounted) setState(() { _errore = e.toString(); _loading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final loc = Provider.of<LanguageService>(context, listen: false).strings;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.55,
@@ -686,7 +691,7 @@ class _SpecieBottomSheetState extends State<_SpecieBottomSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Flora mellifera — raggio 5 km',
+                    loc.nomadismoFloraTitle,
                     style: GoogleFonts.caveat(fontSize: 20, fontWeight: FontWeight.bold, color: ThemeConstants.textPrimaryColor),
                   ),
                 ),
@@ -701,9 +706,9 @@ class _SpecieBottomSheetState extends State<_SpecieBottomSheet> {
             if (_loading)
               const Expanded(child: Center(child: CircularProgressIndicator()))
             else if (_errore != null)
-              Expanded(child: Center(child: Text(_errore!, style: const TextStyle(color: Colors.red))))
+              Expanded(child: Center(child: Text(loc.nomadismoErrGbif(_errore!), style: const TextStyle(color: Colors.red))))
             else if (_specie!.isEmpty)
-              Expanded(child: Center(child: Text('Nessuna specie trovata.', style: GoogleFonts.quicksand(color: ThemeConstants.textSecondaryColor))))
+              Expanded(child: Center(child: Text(loc.nomadismoNessunaSpecie, style: GoogleFonts.quicksand(color: ThemeConstants.textSecondaryColor))))
             else
               Expanded(child: ListView(
                 controller: scrollController,
@@ -712,12 +717,12 @@ class _SpecieBottomSheetState extends State<_SpecieBottomSheet> {
                   if (_specie!.any((s) => s['mellifera'] != true)) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text('Altre piante', style: GoogleFonts.quicksand(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeConstants.textSecondaryColor)),
+                      child: Text(loc.nomadismoAltrePiante, style: GoogleFonts.quicksand(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeConstants.textSecondaryColor)),
                     ),
                     ..._specie!.where((s) => s['mellifera'] != true).take(5).map((s) => _SpecieTile(specie: s, mellifera: false)),
                   ],
                   const SizedBox(height: 8),
-                  Text('Dati GBIF · osservazioni 2010–2025 · raggio 5 km', style: GoogleFonts.quicksand(fontSize: 10, color: ThemeConstants.textSecondaryColor), textAlign: TextAlign.center),
+                  Text(loc.nomadismoGbifFooter, style: GoogleFonts.quicksand(fontSize: 10, color: ThemeConstants.textSecondaryColor), textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                 ],
               )),

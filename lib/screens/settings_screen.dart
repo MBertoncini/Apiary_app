@@ -124,8 +124,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await authService.uploadProfileImage(File(picked.path));
     setState(() => _isUploadingPhoto = false);
     if (!mounted) return;
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok ? 'Foto profilo aggiornata' : 'Errore nel caricamento della foto'),
+      content: Text(ok ? s.settingsPhotoUpdated : s.settingsPhotoError),
       backgroundColor: ok ? ThemeConstants.successColor : ThemeConstants.errorColor,
     ));
   }
@@ -1240,7 +1241,7 @@ class _PremiumFeatureSheet extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text('Annulla'),
+                  child: Text(Provider.of<LanguageService>(context, listen: false).strings.btnCancel),
                 ),
               ),
               const SizedBox(width: 12),

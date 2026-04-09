@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../l10n/app_strings.dart';
+import '../../services/language_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHANGELOG — aggiorna questa mappa prima di ogni release
@@ -60,6 +63,8 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
   static const Color _cardBorder = Color(0xFFEAD9BF);
   static const Color _textBody = Color(0xFF5A4030);
 
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
+
   /// Raccoglie tutte le release da mostrare (build > lastSeen && <= current),
   /// ordinate dalla più recente alla più vecchia.
   List<_ReleaseNotes> get _releasesToShow {
@@ -79,6 +84,7 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
     final releases = _releasesToShow;
 
     return Scaffold(
@@ -122,7 +128,7 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'Aggiornamento',
+                  _s.whatsNewBadge,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 11,
@@ -135,7 +141,7 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Cosa c'è di nuovo 🐝",
+            _s.whatsNewTitle,
             style: GoogleFonts.caveat(
               fontSize: 34,
               fontWeight: FontWeight.bold,
@@ -144,7 +150,7 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Apiary è stato aggiornato. Ecco le novità.',
+            _s.whatsNewSubtitle,
             style: GoogleFonts.poppins(fontSize: 13, color: _textBody),
           ),
         ],
@@ -259,7 +265,7 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
-        category,
+        _s.whatsNewCatLabel(category),
         style: GoogleFonts.poppins(
           fontSize: 10,
           fontWeight: FontWeight.w600,
@@ -273,7 +279,7 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
   Widget _buildEmpty() {
     return Center(
       child: Text(
-        'Nessuna novità da mostrare.',
+        _s.whatsNewEmpty,
         style: GoogleFonts.poppins(color: Colors.grey),
       ),
     );
@@ -297,7 +303,7 @@ class _WhatsNewScreenState extends State<WhatsNewScreen> {
             elevation: 0,
           ),
           child: Text(
-            'Inizia ad esplorare',
+            _s.whatsNewBtnExplore,
             style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15),
           ),
         ),

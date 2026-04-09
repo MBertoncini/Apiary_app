@@ -8,9 +8,11 @@ import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/osm_vegetazione.dart';
 import '../../services/api_service.dart';
 import '../../services/api_cache_helper.dart';
+import '../../services/language_service.dart';
 import '../../services/osm_vegetazione_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/drawer_widget.dart';
@@ -37,6 +39,8 @@ class _MappaScreenState extends State<MappaScreen> {
   List<OsmVegetazione> _osmVegetazione = [];
   Timer? _osmDebounceTimer;
   final OsmVegetazioneService _osmService = OsmVegetazioneService();
+
+  AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
@@ -78,7 +82,7 @@ class _MappaScreenState extends State<MappaScreen> {
         if (permission == LocationPermission.denied) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Permessi di localizzazione negati')),
+              SnackBar(content: Text(_s.mappaErrPermission)),
             );
             setState(() {
               _isLoading = false;
@@ -87,15 +91,15 @@ class _MappaScreenState extends State<MappaScreen> {
           return;
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('I permessi di localizzazione sono negati permanentemente. Attivali dalle impostazioni.'),
-              duration: Duration(seconds: 5),
+              content: Text(_s.mappaErrPermissionPermanent),
+              duration: const Duration(seconds: 5),
               action: SnackBarAction(
-                label: 'Impostazioni',
+                label: _s.mappaSnackSettings,
                 onPressed: () => Geolocator.openAppSettings(),
               ),
             ),
@@ -127,10 +131,10 @@ class _MappaScreenState extends State<MappaScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Servizio di localizzazione disattivato. Attivalo per usare questa funzione.'),
-              duration: Duration(seconds: 5),
+              content: Text(_s.mappaErrServiceDisabled),
+              duration: const Duration(seconds: 5),
               action: SnackBarAction(
-                label: 'Attiva',
+                label: _s.mappaSnackActivate,
                 onPressed: () => Geolocator.openLocationSettings(),
               ),
             ),
@@ -168,7 +172,7 @@ class _MappaScreenState extends State<MappaScreen> {
       debugPrint('Error getting current position: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nel recupero della posizione')),
+          SnackBar(content: Text(_s.mappaErrPosition)),
         );
       }
     } finally {
@@ -184,7 +188,7 @@ class _MappaScreenState extends State<MappaScreen> {
   void _resetRotation() {
     _mapController.rotate(0);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Mappa orientata verso Nord'))
+      SnackBar(content: Text(_s.mappaSnackNord)),
     );
   }
   
@@ -359,7 +363,7 @@ class _MappaScreenState extends State<MappaScreen> {
       debugPrint('Error loading data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore durante il caricamento dei dati: ${e.toString()}')),
+          SnackBar(content: Text(_s.mappaErrData(e.toString()))),
         );
       }
     } finally {
@@ -383,9 +387,9 @@ class _MappaScreenState extends State<MappaScreen> {
     final zoom = _mapController.zoom;
     if (zoom < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Avvicinati per vedere la vegetazione OSM (zoom ≥ 10)'),
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(_s.mappaSnackZoom),
+          duration: const Duration(seconds: 3),
         ),
       );
       return;
@@ -409,8 +413,8 @@ class _MappaScreenState extends State<MappaScreen> {
       debugPrint('OSM vegetation error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Errore nel caricamento vegetazione OSM')),
+          SnackBar(
+              content: Text(_s.mappaErrOsm)),
         );
       }
     } finally {
@@ -489,7 +493,7 @@ class _MappaScreenState extends State<MappaScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Chiudi'),
+            child: Text(_s.btnClose),
           ),
         ],
       ),
@@ -703,7 +707,7 @@ class _MappaScreenState extends State<MappaScreen> {
                   children: [
                     if (!isCommunity) ...[
                       Expanded(
-                        child: _statCard(Icons.hive_outlined, '$arnieCount', 'Arnie'),
+                        child: _statCard(Icons.hive_outlined, '$arnieCount', _s.mappaStatArnie),
                       ),
                       const SizedBox(width: 10),
                     ],
@@ -712,7 +716,7 @@ class _MappaScreenState extends State<MappaScreen> {
                         child: _statCard(
                           Icons.person_outline,
                           '${apiario['proprietario_username']}',
-                          'Apicoltore',
+                          _s.mappaStatApicoltore,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -720,8 +724,8 @@ class _MappaScreenState extends State<MappaScreen> {
                     Expanded(
                       child: _statCard(
                         isCommunity ? Icons.public : Icons.lock_open_outlined,
-                        isCommunity ? 'Community' : 'Tuo/Gruppo',
-                        'Tipo',
+                        isCommunity ? _s.mappaStatCommunity : _s.mappaStatTuoGruppo,
+                        _s.mappaStatTipo,
                       ),
                     ),
                   ],
@@ -747,7 +751,7 @@ class _MappaScreenState extends State<MappaScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Posizione approssimata',
+                            _s.mappaApprox,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.orange.shade800,
@@ -804,7 +808,7 @@ class _MappaScreenState extends State<MappaScreen> {
                       _navigateToApiarioDetail(apiario['id'], isCommunity: isCommunity);
                     },
                     icon: Icon(isCommunity ? Icons.visibility : Icons.open_in_new, size: 18),
-                    label: Text(isCommunity ? 'Visualizza' : 'Apri Apiario'),
+                    label: Text(isCommunity ? _s.mappaBtnVisualizza : _s.mappaBtnApriApiario),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: headerColor,
                       foregroundColor: Colors.white,
@@ -1064,7 +1068,7 @@ class _MappaScreenState extends State<MappaScreen> {
                       ],
                     ),
                     child: Text(
-                      apiario['nome'] ?? 'Apiario',
+                      apiario['nome'] ?? _s.mappaApiario,
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -1127,6 +1131,8 @@ class _MappaScreenState extends State<MappaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -1134,7 +1140,7 @@ class _MappaScreenState extends State<MappaScreen> {
           children: [
             Flexible(
               child: Text(
-                'Mappa Apiari',
+                s.mappaTitle,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1142,8 +1148,8 @@ class _MappaScreenState extends State<MappaScreen> {
               Padding(
                 padding: const EdgeInsets.only(left: 6.0),
                 child: Tooltip(
-                  message: 'Modalità offline - Dati caricati dalla cache',
-                  child: Icon(Icons.offline_bolt, size: 16, color: Colors.amber),
+                  message: s.mappaOfflineTooltip,
+                  child: const Icon(Icons.offline_bolt, size: 16, color: Colors.amber),
                 ),
               ),
           ],
@@ -1172,8 +1178,8 @@ class _MappaScreenState extends State<MappaScreen> {
                     : Colors.white,
               ),
               tooltip: _showOsmVegetazione
-                  ? 'Nascondi vegetazione OSM'
-                  : 'Mostra vegetazione OSM',
+                  ? s.mappaTooltipOsmHide
+                  : s.mappaTooltipOsmShow,
               onPressed: _toggleOsmVegetazione,
             ),
           IconButton(
@@ -1181,17 +1187,17 @@ class _MappaScreenState extends State<MappaScreen> {
               _showRaggioVolo ? Icons.radar : Icons.radar_outlined,
               color: _showRaggioVolo ? Colors.amber : null,
             ),
-            tooltip: _showRaggioVolo ? 'Nascondi raggio di volo' : 'Mostra raggio di volo (3 km)',
+            tooltip: _showRaggioVolo ? s.mappaTooltipRaggioHide : s.mappaTooltipRaggioShow,
             onPressed: () => setState(() => _showRaggioVolo = !_showRaggioVolo),
           ),
           IconButton(
-            icon: Icon(Icons.route),
-            tooltip: 'Nomadismo & Flora',
+            icon: const Icon(Icons.route),
+            tooltip: s.mappaTooltipNomadismo,
             onPressed: () => Navigator.pushNamed(context, AppConstants.mappaNomadismoRoute),
           ),
           IconButton(
-            icon: Icon(Icons.sync),
-            tooltip: 'Sincronizza dati',
+            icon: const Icon(Icons.sync),
+            tooltip: s.mappaTooltipSync,
             onPressed: _loadData,
           ),
         ],
@@ -1499,7 +1505,7 @@ class _MappaScreenState extends State<MappaScreen> {
                               children: [
                                 Icon(Icons.info_outline, size: 15, color: ThemeConstants.textSecondaryColor),
                                 const SizedBox(width: 6),
-                                Text('Legenda', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeConstants.textSecondaryColor)),
+                                Text(s.mappaLegenda, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: ThemeConstants.textSecondaryColor)),
                                 const SizedBox(width: 16),
                                 Text(_legendaAperta ? '−' : '+', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ThemeConstants.primaryColor)),
                               ],
@@ -1518,51 +1524,51 @@ class _MappaScreenState extends State<MappaScreen> {
                                       const SizedBox(height: 6),
                                       _LegendaVoceMappa(
                                         icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: ThemeConstants.primaryColor, shape: BoxShape.circle), child: const Icon(Icons.hive, color: Colors.white, size: 9)),
-                                        label: 'Mio apiario',
+                                        label: s.mappaLegendaMioApiario,
                                       ),
                                       const SizedBox(height: 4),
                                       _LegendaVoceMappa(
                                         icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.orange.shade700, shape: BoxShape.circle), child: const Icon(Icons.hive, color: Colors.white, size: 9)),
-                                        label: 'Apiario community',
+                                        label: s.mappaLegendaCommunity,
                                       ),
                                       const SizedBox(height: 4),
                                       _LegendaVoceMappa(
                                         icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.indigo.shade600, shape: BoxShape.circle), child: const Icon(Icons.hive, color: Colors.white, size: 9)),
-                                        label: 'Apiario gruppo',
+                                        label: s.mappaLegendaGruppo,
                                       ),
                                       if (_showRaggioVolo) ...[
                                         const SizedBox(height: 4),
                                         _LegendaVoceMappa(
                                           icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.amber.withOpacity(0.08), shape: BoxShape.circle, border: Border.all(color: Colors.amber.withOpacity(0.55), width: 1))),
-                                          label: 'Raggio volo (3 km)',
+                                          label: s.mappaLegendaRaggio,
                                         ),
                                       ],
                                       const SizedBox(height: 4),
                                       _LegendaVoceMappa(
                                         icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.green.withOpacity(0.3), shape: BoxShape.circle, border: Border.all(color: Colors.green, width: 1))),
-                                        label: 'Fioritura attiva',
+                                        label: s.mappaLegendaFiorituraAttiva,
                                       ),
                                       const SizedBox(height: 4),
                                       _LegendaVoceMappa(
                                         icona: Opacity(opacity: 0.5, child: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.15), shape: BoxShape.circle, border: Border.all(color: Colors.grey, width: 1)))),
-                                        label: 'Fioritura inattiva',
+                                        label: s.mappaLegendaFiorituraInattiva,
                                       ),
                                       if (_showOsmVegetazione) ...[
                                         const SizedBox(height: 4),
-                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.65)))), label: 'Bosco / Foresta'),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.65)))), label: s.mappaLegendaBosco),
                                         const SizedBox(height: 4),
-                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF689F38).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF689F38).withOpacity(0.65)))), label: 'Macchia'),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF689F38).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF689F38).withOpacity(0.65)))), label: s.mappaLegendaMacchia),
                                         const SizedBox(height: 4),
-                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF9CCC65).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF9CCC65).withOpacity(0.65)))), label: 'Prato / Pascolo'),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF9CCC65).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF9CCC65).withOpacity(0.65)))), label: s.mappaLegendaPrato),
                                         const SizedBox(height: 4),
-                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF00897B).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF00897B).withOpacity(0.65)))), label: 'Frutteto'),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFF00897B).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFF00897B).withOpacity(0.65)))), label: s.mappaLegendaFrutteto),
                                         const SizedBox(height: 4),
-                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFFF9A825).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFFF9A825).withOpacity(0.65)))), label: 'Coltura'),
+                                        _LegendaVoceMappa(icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: const Color(0xFFF9A825).withOpacity(0.22), borderRadius: BorderRadius.circular(3), border: Border.all(color: const Color(0xFFF9A825).withOpacity(0.65)))), label: s.mappaLegendaColtura),
                                       ],
                                       const SizedBox(height: 4),
                                       _LegendaVoceMappa(
                                         icona: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1))),
-                                        label: 'Posizione attuale',
+                                        label: s.mappaLegendaPosizione,
                                       ),
                                     ],
                                   ),
@@ -1591,7 +1597,7 @@ class _MappaScreenState extends State<MappaScreen> {
                           Icons.navigation,
                           color: Colors.black,
                         ),
-                        tooltip: 'Orienta a Nord',
+                        tooltip: s.mappaTooltipNord,
                       ),
                       const SizedBox(height: 8),
                     ],
@@ -1605,7 +1611,7 @@ class _MappaScreenState extends State<MappaScreen> {
           FloatingActionButton(
             heroTag: "btnNuovaFiorituraMappa",
             mini: true,
-            tooltip: 'Aggiungi fioritura',
+            tooltip: s.mappaTooltipFioritura,
             onPressed: () async {
               final result = await Navigator.of(context)
                   .pushNamed(AppConstants.fiorituraCreateRoute);
@@ -1618,7 +1624,7 @@ class _MappaScreenState extends State<MappaScreen> {
             heroTag: "btnPosition",
             onPressed: _getCurrentPosition,
             child: Icon(Icons.my_location),
-            tooltip: 'Centra sulla posizione attuale',
+            tooltip: s.mappaTooltipPosizione,
           ),
         ],
       ),
@@ -1626,14 +1632,15 @@ class _MappaScreenState extends State<MappaScreen> {
   }
   
   void _showFiorituraInfo(Map<String, dynamic> fioritura) {
+    final s = _s;
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.local_florist, color: Colors.green),
-              SizedBox(width: 8),
+              const Icon(Icons.local_florist, color: Colors.green),
+              const SizedBox(width: 8),
               Expanded(child: Text('${fioritura['pianta']}', overflow: TextOverflow.ellipsis)),
             ],
           ),
@@ -1644,47 +1651,50 @@ class _MappaScreenState extends State<MappaScreen> {
               children: [
                 if (fioritura['apiario_nome'] != null)
                   ListTile(
-                    leading: Icon(Icons.hive, size: 18),
-                    title: Text('Apiario'),
+                    leading: const Icon(Icons.hive, size: 18),
+                    title: Text(s.mappaFiorApiario),
                     subtitle: Text('${fioritura['apiario_nome']}'),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
                 ListTile(
-                  leading: Icon(Icons.calendar_today, size: 18),
-                  title: Text('Periodo'),
+                  leading: const Icon(Icons.calendar_today, size: 18),
+                  title: Text(s.mappaFiorPeriodo),
                   subtitle: Text(
                     fioritura['data_fine'] != null
-                      ? 'Dal ${_formatDate(fioritura['data_inizio'])} al ${_formatDate(fioritura['data_fine'])}'
-                      : 'Dal ${_formatDate(fioritura['data_inizio'])}'
+                      ? s.mappaFiorDalAl(_formatDate(fioritura['data_inizio']), _formatDate(fioritura['data_fine']))
+                      : s.mappaFiorDal(_formatDate(fioritura['data_inizio']))
                   ),
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                 ),
                 if (fioritura['raggio'] != null)
                   ListTile(
-                    leading: Icon(Icons.radio_button_checked, size: 18),
-                    title: Text('Raggio'),
-                    subtitle: Text('${fioritura['raggio']} metri'),
+                    leading: const Icon(Icons.radio_button_checked, size: 18),
+                    title: Text(s.mappaFiorRaggio),
+                    subtitle: Text(s.mappaFiorMetri((fioritura['raggio'] as num).toInt())),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
                 if (fioritura['note'] != null && fioritura['note'].toString().isNotEmpty)
                   ListTile(
-                    leading: Icon(Icons.note, size: 18),
-                    title: Text('Note'),
+                    leading: const Icon(Icons.note, size: 18),
+                    title: Text(s.mappaFiorNote),
                     subtitle: Text('${fioritura['note']}'),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
                 if ((fioritura['n_conferme'] ?? 0) > 0)
                   ListTile(
-                    leading: Icon(Icons.people_outline, size: 18),
-                    title: Text('Conferme community'),
+                    leading: const Icon(Icons.people_outline, size: 18),
+                    title: Text(s.mappaFiorConferme),
                     subtitle: Text(
                       fioritura['intensita_media'] != null
-                          ? '${fioritura['n_conferme']} apicoltori · intensità media ${(fioritura['intensita_media'] as num).toStringAsFixed(1)}/5'
-                          : '${fioritura['n_conferme']} apicoltori',
+                          ? s.mappaFiorConferNI(
+                              fioritura['n_conferme'] as int,
+                              (fioritura['intensita_media'] as num).toStringAsFixed(1),
+                            )
+                          : s.mappaFiorConferN(fioritura['n_conferme'] as int),
                     ),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -1695,11 +1705,11 @@ class _MappaScreenState extends State<MappaScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Chiudi'),
+              child: Text(s.btnClose),
             ),
             ElevatedButton.icon(
-              icon: Icon(Icons.open_in_new, size: 16),
-              label: Text('Dettaglio'),
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: Text(s.mappaFiorDettaglio),
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pushNamed(
