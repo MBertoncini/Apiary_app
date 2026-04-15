@@ -15,6 +15,21 @@ import 'auth_token_provider.dart';
 const _googleServerClientId =
     '349177568966-it8t7p7d79geijhup4l3n51gkh16bc6k.apps.googleusercontent.com';
 
+class _AuthLifecycleObserver extends WidgetsBindingObserver {
+  final AuthService _authService;
+  _AuthLifecycleObserver(this._authService);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _authService.isAuthenticated &&
+        _authService.refreshTokenValue != null) {
+      debugPrint('App resumed: proactively refreshing token');
+      _authService.refreshToken();
+    }
+  }
+}
+
 class AuthService extends ChangeNotifier implements AuthTokenProvider {
   bool _isLoading = true;
   bool _isAuthenticated = false;
@@ -27,6 +42,9 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
   // Lock to prevent concurrent refresh attempts
   Future<bool>? _refreshFuture;
 
+  // Lifecycle observer for proactive token refresh on app resume
+  late final _AuthLifecycleObserver _lifecycleObserver;
+
   // Getters
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
@@ -38,6 +56,8 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
 
   // Costruttore
   AuthService() {
+    _lifecycleObserver = _AuthLifecycleObserver(this);
+    WidgetsBinding.instance.addObserver(_lifecycleObserver);
     // Verifica l'autenticazione all'avvio
     checkAuth();
   }
@@ -369,7 +389,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     }
   }
 
-  Future<bool> _doRefreshToken() async {
+  Future<bool> _doRefreshToken({int attempt = 1}) async {
     try {
       final data = {
         'refresh': _refreshToken,
@@ -379,7 +399,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         Uri.parse(ApiConstants.tokenRefreshUrl),
         body: data,
       ).timeout(
-        Duration(seconds: 5),
+        Duration(seconds: 15),
         onTimeout: () => throw TimeoutException('Timeout refreshing token'),
       );
 
@@ -394,7 +414,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           _refreshToken = responseData['refresh'];
         }
 
-        // Salva i nuovi token
+        // Salva i nuovi token PRIMA di qualsiasi altra operazione
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(AppConstants.tokenKey, _token!);
         if (_refreshToken != null) {
@@ -414,7 +434,14 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         return _isAuthenticated;
       }
 
-      // Non-200 response (e.g., refresh token expired) — fall through to logout
+      // Non-200 response — retry once before giving up
+      debugPrint('Token refresh: server returned ${response.statusCode} (attempt $attempt)');
+      if (attempt < 2) {
+        await Future.delayed(const Duration(seconds: 2));
+        return _doRefreshToken(attempt: attempt + 1);
+      }
+
+      // Truly expired after retries — fall through to logout
     } on SocketException {
       debugPrint('Token refresh: network error (offline)');
       if (_currentUser != null) {
@@ -423,7 +450,11 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
         return true;
       }
     } on TimeoutException {
-      debugPrint('Token refresh: timeout (offline)');
+      debugPrint('Token refresh: timeout (attempt $attempt)');
+      // Retry once on timeout before falling back to offline
+      if (attempt < 2) {
+        return _doRefreshToken(attempt: attempt + 1);
+      }
       if (_currentUser != null) {
         _offlineMode = true;
         notifyListeners();
@@ -449,18 +480,24 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     final prefs = await SharedPreferences.getInstance();
     prefs.remove(AppConstants.tokenKey);
     prefs.remove(AppConstants.refreshTokenKey);
-    
+
     // Non rimuoviamo le info utente per permettere un uso offline futuro
     // prefs.remove(AppConstants.userInfoKey);
-    
+
     // Pulisci lo stato in memoria
     _token = null;
     _refreshToken = null;
     _currentUser = null;
     _isAuthenticated = false;
     _offlineMode = false;
-    
+
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
+    super.dispose();
   }
 
   // Ottieni informazioni sull'utente

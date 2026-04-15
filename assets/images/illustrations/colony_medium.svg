@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#FFF8E7" stroke="#F5D77A" stroke-width="2"/>
+
+  <!-- Ground / grass -->
+  <ellipse cx="100" cy="170" rx="80" ry="8" fill="#8BC34A" opacity="0.5"/>
+  <path d="M40 170 Q43 157 46 170" fill="#66BB6A" opacity="0.6"/>
+  <path d="M58 170 Q61 155 64 170" fill="#66BB6A" opacity="0.7"/>
+  <path d="M130 170 Q133 156 136 170" fill="#66BB6A" opacity="0.6"/>
+  <path d="M148 170 Q151 160 154 170" fill="#66BB6A" opacity="0.5"/>
+  <path d="M85 170 Q88 158 91 170" fill="#66BB6A" opacity="0.5"/>
+
+  <!-- Medium beehive - two stacked boxes -->
+  <!-- Bottom box -->
+  <rect x="65" y="135" width="70" height="32" rx="3" fill="#F5C542" stroke="#D4A017" stroke-width="1.5"/>
+  <rect x="65" y="135" width="70" height="32" rx="3" fill="url(#hiveGradMed)"/>
+  <line x1="67" y1="145" x2="133" y2="145" stroke="#D4A017" stroke-width="0.8" opacity="0.4"/>
+  <line x1="67" y1="155" x2="133" y2="155" stroke="#D4A017" stroke-width="0.8" opacity="0.4"/>
+
+  <!-- Top box -->
+  <rect x="65" y="100" width="70" height="32" rx="3" fill="#FFCA28" stroke="#D4A017" stroke-width="1.5"/>
+  <rect x="65" y="100" width="70" height="32" rx="3" fill="url(#hiveGradMed)"/>
+  <line x1="67" y1="110" x2="133" y2="110" stroke="#D4A017" stroke-width="0.8" opacity="0.4"/>
+  <line x1="67" y1="120" x2="133" y2="120" stroke="#D4A017" stroke-width="0.8" opacity="0.4"/>
+
+  <!-- Roof -->
+  <path d="M58 100 L100 82 L142 100 Z" fill="#8D6E63" stroke="#6D4C41" stroke-width="1.5"/>
+  <path d="M58 100 L100 82 L142 100 Z" fill="url(#roofGradMed)"/>
+
+  <!-- Hive entrance -->
+  <ellipse cx="100" cy="160" rx="9" ry="11" fill="#5D4037"/>
+
+  <!-- Stand -->
+  <rect x="63" y="167" width="74" height="4" rx="2" fill="#8D6E63"/>
+  <rect x="70" y="171" width="5" height="10" fill="#8D6E63"/>
+  <rect x="125" y="171" width="5" height="10" fill="#8D6E63"/>
+
+  <!-- Bee 1 - flying left -->
+  <g transform="translate(42, 70)">
+    <ellipse cx="-3" cy="-5" rx="6" ry="3.5" fill="white" opacity="0.7" transform="rotate(-25)"/>
+    <ellipse cx="5" cy="-5" rx="6" ry="3.5" fill="white" opacity="0.7" transform="rotate(25)"/>
+    <ellipse cx="0" cy="0" rx="7" ry="5" fill="#FFD54F"/>
+    <rect x="-2" y="-5" width="2.5" height="10" rx="1" fill="#5D4037" opacity="0.7"/>
+    <rect x="2" y="-4.5" width="2.5" height="9" rx="1" fill="#5D4037" opacity="0.7"/>
+    <circle cx="-8" cy="0" r="4.5" fill="#FFD54F"/>
+    <circle cx="-10" cy="-1" r="1.3" fill="#333"/>
+    <path d="M-11 1.5 Q-8 3.5 -6 1.5" fill="none" stroke="#333" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="-11" y1="-4" x2="-14" y2="-8" stroke="#5D4037" stroke-width="0.7"/>
+    <circle cx="-14" cy="-8.5" r="0.9" fill="#5D4037"/>
+    <line x1="-7" y1="-4" x2="-8" y2="-9" stroke="#5D4037" stroke-width="0.7"/>
+    <circle cx="-8" cy="-9.5" r="0.9" fill="#5D4037"/>
+    <path d="M7 0 L10 0" stroke="#5D4037" stroke-width="0.8" stroke-linecap="round"/>
+  </g>
+
+  <!-- Bee 2 - flying right -->
+  <g transform="translate(150, 58) scale(-1,1)">
+    <ellipse cx="-3" cy="-5" rx="6" ry="3.5" fill="white" opacity="0.7" transform="rotate(-25)"/>
+    <ellipse cx="5" cy="-5" rx="6" ry="3.5" fill="white" opacity="0.7" transform="rotate(25)"/>
+    <ellipse cx="0" cy="0" rx="7" ry="5" fill="#FFD54F"/>
+    <rect x="-2" y="-5" width="2.5" height="10" rx="1" fill="#5D4037" opacity="0.7"/>
+    <rect x="2" y="-4.5" width="2.5" height="9" rx="1" fill="#5D4037" opacity="0.7"/>
+    <circle cx="-8" cy="0" r="4.5" fill="#FFD54F"/>
+    <circle cx="-10" cy="-1" r="1.3" fill="#333"/>
+    <path d="M-11 1.5 Q-8 3.5 -6 1.5" fill="none" stroke="#333" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="-11" y1="-4" x2="-14" y2="-8" stroke="#5D4037" stroke-width="0.7"/>
+    <circle cx="-14" cy="-8.5" r="0.9" fill="#5D4037"/>
+    <line x1="-7" y1="-4" x2="-8" y2="-9" stroke="#5D4037" stroke-width="0.7"/>
+    <circle cx="-8" cy="-9.5" r="0.9" fill="#5D4037"/>
+    <path d="M7 0 L10 0" stroke="#5D4037" stroke-width="0.8" stroke-linecap="round"/>
+  </g>
+
+  <!-- Bee 3 - near entrance -->
+  <g transform="translate(118, 148) scale(0.7)">
+    <ellipse cx="-3" cy="-5" rx="6" ry="3.5" fill="white" opacity="0.7" transform="rotate(-25)"/>
+    <ellipse cx="5" cy="-5" rx="6" ry="3.5" fill="white" opacity="0.7" transform="rotate(25)"/>
+    <ellipse cx="0" cy="0" rx="7" ry="5" fill="#FFD54F"/>
+    <rect x="-2" y="-5" width="2.5" height="10" rx="1" fill="#5D4037" opacity="0.7"/>
+    <rect x="2" y="-4.5" width="2.5" height="9" rx="1" fill="#5D4037" opacity="0.7"/>
+    <circle cx="-8" cy="0" r="4.5" fill="#FFD54F"/>
+    <circle cx="-10" cy="-1" r="1.3" fill="#333"/>
+    <path d="M-11 1 Q-8 3 -6 1" fill="none" stroke="#333" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="-11" y1="-4" x2="-14" y2="-8" stroke="#5D4037" stroke-width="0.7"/>
+    <circle cx="-14" cy="-8.5" r="0.9" fill="#5D4037"/>
+    <line x1="-7" y1="-4" x2="-8" y2="-9" stroke="#5D4037" stroke-width="0.7"/>
+    <circle cx="-8" cy="-9.5" r="0.9" fill="#5D4037"/>
+  </g>
+
+  <!-- Flowers -->
+  <g transform="translate(38, 158)">
+    <line x1="0" y1="0" x2="0" y2="12" stroke="#66BB6A" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="4" fill="#E91E63" opacity="0.7"/>
+    <circle cx="0" cy="-3.5" r="2.2" fill="#F48FB1" opacity="0.8"/>
+    <circle cx="3.2" cy="-1" r="2.2" fill="#F48FB1" opacity="0.8"/>
+    <circle cx="3.2" cy="2.5" r="2.2" fill="#F48FB1" opacity="0.8"/>
+    <circle cx="0" cy="3.5" r="2.2" fill="#F48FB1" opacity="0.8"/>
+    <circle cx="-3.2" cy="2.5" r="2.2" fill="#F48FB1" opacity="0.8"/>
+    <circle cx="-3.2" cy="-1" r="2.2" fill="#F48FB1" opacity="0.8"/>
+    <circle cx="0" cy="0" r="2" fill="#E91E63" opacity="0.7"/>
+  </g>
+  <g transform="translate(158, 160)">
+    <line x1="0" y1="0" x2="0" y2="10" stroke="#66BB6A" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="3.5" fill="#FFB74D"/>
+    <circle cx="0" cy="-3" r="2" fill="#FFF176" opacity="0.8"/>
+    <circle cx="2.8" cy="0" r="2" fill="#FFF176" opacity="0.8"/>
+    <circle cx="0" cy="3" r="2" fill="#FFF176" opacity="0.8"/>
+    <circle cx="-2.8" cy="0" r="2" fill="#FFF176" opacity="0.8"/>
+    <circle cx="0" cy="0" r="1.8" fill="#FFB74D"/>
+  </g>
+
+  <!-- Honeycomb decorations -->
+  <g transform="translate(35, 40)" opacity="0.25">
+    <polygon points="0,-6 5.2,-3 5.2,3 0,6 -5.2,3 -5.2,-3" fill="#F5C542" stroke="#D4A017" stroke-width="0.5"/>
+  </g>
+  <g transform="translate(46, 32)" opacity="0.2">
+    <polygon points="0,-5 4.3,-2.5 4.3,2.5 0,5 -4.3,2.5 -4.3,-2.5" fill="#F5C542" stroke="#D4A017" stroke-width="0.5"/>
+  </g>
+  <g transform="translate(160, 38)" opacity="0.25">
+    <polygon points="0,-6 5.2,-3 5.2,3 0,6 -5.2,3 -5.2,-3" fill="#F5C542" stroke="#D4A017" stroke-width="0.5"/>
+  </g>
+
+  <!-- Label -->
+  <text x="100" y="28" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="bold" fill="#8D6E63">MEDIA</text>
+
+  <defs>
+    <linearGradient id="hiveGradMed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE082" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#F5C542" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="roofGradMed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A1887F" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#6D4C41" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>

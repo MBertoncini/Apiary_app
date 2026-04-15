@@ -10,7 +10,7 @@ class DatabaseHelper {
 
   static Database? _database;
   final String _databaseName = "apiario_manager.db";
-  final int _databaseVersion = 5;
+  final int _databaseVersion = 6;
 
   // Tabelle
   final String tableApiari = 'apiari';
@@ -105,6 +105,7 @@ class DatabaseHelper {
         colonia_successore INTEGER,
         data_creazione TEXT,
         n_controlli INTEGER,
+        regina_attiva TEXT,
         sync_status TEXT NOT NULL DEFAULT 'synced',
         last_updated INTEGER NOT NULL
       )
@@ -406,6 +407,16 @@ class DatabaseHelper {
       }
       // Rende arnia_numero e arnia nullable (SQLite non supporta ALTER COLUMN,
       // ma i nuovi record possono già avere null grazie ai DEFAULT)
+    }
+    if (oldVersion < 6) {
+      // Aggiunge colonna regina_attiva (JSON) alla tabella colonie
+      try {
+        await db.execute(
+          'ALTER TABLE $tableColonie ADD COLUMN regina_attiva TEXT;'
+        );
+      } catch (_) {
+        // colonna già presente (es. fresh install su v6): ignora
+      }
     }
   }
 
