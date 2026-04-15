@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import '../database_helper.dart';
 import '../../models/colonia.dart';
@@ -134,6 +135,13 @@ class ColoniaDao {
 
   /// Converte una riga del DAO in un oggetto [Colonia].
   static Colonia fromRow(Map<String, dynamic> row) {
+    Map<String, dynamic>? reginaAttiva;
+    final raw = row['regina_attiva'];
+    if (raw is String && raw.isNotEmpty) {
+      try { reginaAttiva = jsonDecode(raw) as Map<String, dynamic>; } catch (_) {}
+    } else if (raw is Map<String, dynamic>) {
+      reginaAttiva = raw;
+    }
     return Colonia(
       id:                  row['id'] as int,
       apiario:             row['apiario'] as int,
@@ -153,6 +161,7 @@ class ColoniaDao {
       coloniaSuccessoreId: row['colonia_successore'] as int?,
       dataCreazione:       row['data_creazione'] as String?,
       nControlli:          row['n_controlli'] as int?,
+      reginaAttiva:        reginaAttiva,
     );
   }
 
@@ -177,6 +186,7 @@ class ColoniaDao {
       'colonia_successore': c.coloniaSuccessoreId,
       'data_creazione':     c.dataCreazione,
       'n_controlli':        c.nControlli,
+      'regina_attiva':      c.reginaAttiva != null ? jsonEncode(c.reginaAttiva) : null,
     };
   }
 }

@@ -71,6 +71,15 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   Future<void> _loadArnia() async {
     setState(() { _isRefreshing = true; });
 
+    // Mostra subito la colonia dalla cache SQLite (prima di qualsiasi chiamata server)
+    try {
+      final dao = ColoniaDao();
+      final cached = await dao.getAttivaByArnia(widget.arniaId);
+      if (cached != null && mounted) {
+        setState(() { _coloniaAttiva = ColoniaDao.fromRow(cached); });
+      }
+    } catch (_) {}
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
