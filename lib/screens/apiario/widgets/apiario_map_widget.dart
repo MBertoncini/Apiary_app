@@ -1,11 +1,14 @@
 import 'dart:convert';
-import 'dart:math' show min, max, Random, cos, sin, pi, sqrt;
+import 'dart:math' show min, max, Random, cos, sin, pi, sqrt, atan2;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../constants/app_constants.dart';
 import '../../../services/api_service.dart';
+import '../../../services/language_service.dart';
+import '../../../services/storage_service.dart';
+import '../../../widgets/attrezzatura_prompt_dialog.dart';
 
 // ════════════════════════════════════════════════════════════════
 //  DATA MODELS
@@ -207,8 +210,10 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   String? _drawingPathId;
   bool _drawingIsEnd = true;
   Offset _drawingHandleCanvasPos = Offset.zero;
-  Offset _drawingCurrentCanvasPos = Offset.zero;
+  Offset _drawingLastCanvasPos = Offset.zero;
   List<PathSegment> _drawingPreviewSegs = [];
+
+  final GlobalKey _canvasContainerKey = GlobalKey();
 
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
@@ -383,11 +388,14 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     );
   }
 
-  Offset _screenToCanvas(Offset screen) {
+  Offset _screenToCanvas(Offset globalPos) {
+    // Convert global screen position to local (relative to InteractiveViewer)
+    final rb = _canvasContainerKey.currentContext?.findRenderObject() as RenderBox?;
+    final local = rb?.globalToLocal(globalPos) ?? globalPos;
     final m = _transformCtrl.value;
     final s = m.getMaxScaleOnAxis();
     final t = m.getTranslation();
-    return Offset((screen.dx - t.x) / s, (screen.dy - t.y) / s);
+    return Offset((local.dx - t.x) / s, (local.dy - t.y) / s);
   }
 
   void _centerOnArnie() {
@@ -467,8 +475,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       el = MapElement(
         id: id,
         type: type,
-        position: _snap(Offset(c.dx - 50, c.dy - 20)),
-        segments: [PathSegment(angle: 0, length: 100)],
+        position: _snap(Offset(c.dx - 25, c.dy - 10)),
+        segments: [PathSegment(angle: 0, length: 50)],
         pathWidth: 40,
       );
     } else {
@@ -494,38 +502,33 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     });
   }
 
-  // ── estensione vialetto con drag ortogonale ───────────────────
+  // ── estensione vialetto con drag libero ─────────────────────
 
-  List<PathSegment> _computeOrthogonalSegments(Offset from, Offset to) {
-    final dx = to.dx - from.dx;
-    final dy = to.dy - from.dy;
-    const minLen = 5.0;
-    final segs = <PathSegment>[];
-    if (dx.abs() >= dy.abs()) {
-      if (dx.abs() >= minLen)
-        segs.add(PathSegment(angle: dx > 0 ? 0 : 180, length: dx.abs()));
-      if (dy.abs() >= minLen)
-        segs.add(PathSegment(angle: dy > 0 ? 90 : 270, length: dy.abs()));
-    } else {
-      if (dy.abs() >= minLen)
-        segs.add(PathSegment(angle: dy > 0 ? 90 : 270, length: dy.abs()));
-      if (dx.abs() >= minLen)
-        segs.add(PathSegment(angle: dx > 0 ? 0 : 180, length: dx.abs()));
+  /// Simplify a segment list: merge nearly-collinear consecutive segments
+  /// and drop very short ones.
+  List<PathSegment> _simplifySegments(List<PathSegment> segs,
+      {double angleTol = 15.0, double minLen = 6.0}) {
+    if (segs.isEmpty) return segs;
+    final result = <PathSegment>[
+      PathSegment(angle: segs.first.angle, length: segs.first.length),
+    ];
+    for (var i = 1; i < segs.length; i++) {
+      final prev = result.last;
+      final cur = segs[i];
+      var diff = (cur.angle - prev.angle) % 360;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      if (diff.abs() <= angleTol) {
+        // Merge: weighted average angle, sum lengths
+        final totalLen = prev.length + cur.length;
+        prev.angle = (prev.angle + diff * (cur.length / totalLen)) % 360;
+        prev.length = totalLen;
+      } else {
+        result.add(PathSegment(angle: cur.angle, length: cur.length));
+      }
     }
-    return segs;
-  }
-
-  /// Merge the first new segment into [prev] if they share the same angle,
-  /// avoiding collinear segment accumulation.
-  List<PathSegment> _mergeCollinear(List<PathSegment> newSegs, PathSegment? prev) {
-    if (newSegs.isEmpty) return newSegs;
-    if (prev == null) return newSegs;
-    final first = newSegs.first;
-    if ((first.angle - prev.angle).abs() < 0.01) {
-      prev.length += first.length;
-      return newSegs.sublist(1);
-    }
-    return newSegs;
+    result.removeWhere((s) => s.length < minLen);
+    return result;
   }
 
   void _startDraw(String id, bool isEnd, Offset handleCanvasPos) {
@@ -534,7 +537,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       _drawingPathId = id;
       _drawingIsEnd = isEnd;
       _drawingHandleCanvasPos = handleCanvasPos;
-      _drawingCurrentCanvasPos = handleCanvasPos;
+      _drawingLastCanvasPos = handleCanvasPos;
       _drawingPreviewSegs = [];
     });
   }
@@ -542,13 +545,17 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   void _updateDraw(Offset fingerScreenPos) {
     if (_drawingPathId == null) return;
     final fingerCanvas = _screenToCanvas(fingerScreenPos);
-    final segs = _drawingIsEnd
-        ? _computeOrthogonalSegments(_drawingHandleCanvasPos, fingerCanvas)
-        : _computeOrthogonalSegments(fingerCanvas, _drawingHandleCanvasPos);
-    setState(() {
-      _drawingCurrentCanvasPos = fingerCanvas;
-      _drawingPreviewSegs = segs;
-    });
+    final dx = fingerCanvas.dx - _drawingLastCanvasPos.dx;
+    final dy = fingerCanvas.dy - _drawingLastCanvasPos.dy;
+    final dist = sqrt(dx * dx + dy * dy);
+    // Accumulate a new segment when the finger moves enough
+    if (dist >= 8.0) {
+      final angle = (atan2(dy, dx) * 180 / pi) % 360;
+      setState(() {
+        _drawingPreviewSegs.add(PathSegment(angle: angle, length: dist));
+        _drawingLastCanvasPos = fingerCanvas;
+      });
+    }
   }
 
   void _commitDraw() {
@@ -556,15 +563,37 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       MapElement? el;
       try { el = _elements.firstWhere((e) => e.id == _drawingPathId); } catch (_) {}
       if (el != null) {
-        final target = el; // non-nullable local for closure capture
+        final target = el;
+        final simplified = _simplifySegments(_drawingPreviewSegs);
         setState(() {
           if (_drawingIsEnd) {
-            target.segments.addAll(_mergeCollinear(_drawingPreviewSegs,
-                target.segments.isEmpty ? null : target.segments.last));
+            // Merge first simplified segment into last existing if collinear
+            if (target.segments.isNotEmpty && simplified.isNotEmpty) {
+              final prev = target.segments.last;
+              final first = simplified.first;
+              var diff = (first.angle - prev.angle) % 360;
+              if (diff > 180) diff -= 360;
+              if (diff < -180) diff += 360;
+              if (diff.abs() <= 15.0) {
+                final total = prev.length + first.length;
+                prev.angle = (prev.angle + diff * (first.length / total)) % 360;
+                prev.length = total;
+                target.segments.addAll(simplified.sublist(1));
+              } else {
+                target.segments.addAll(simplified);
+              }
+            } else {
+              target.segments.addAll(simplified);
+            }
           } else {
-            final merged = _mergeCollinear(_drawingPreviewSegs, null);
-            target.segments.insertAll(0, merged);
-            target.position = _drawingCurrentCanvasPos;
+            // Prepend: reverse segments so they go from finger → old start
+            final reversed = simplified.reversed
+                .map((s) => PathSegment(
+                    angle: (s.angle + 180) % 360, length: s.length))
+                .toList();
+            target.segments.insertAll(0, reversed);
+            // Move position to the new start (where the finger ended up)
+            target.position = _drawingLastCanvasPos;
           }
           _hasChanges = true;
           _drawingPathId = null;
@@ -582,17 +611,30 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     }
   }
 
+  // ── primo numero disponibile nell'apiario ─────────────────────
+
+  int _nextAvailableNumber() {
+    final usedNumbers = widget.arnie
+        .map((a) => a['numero'] as int?)
+        .whereType<int>()
+        .toSet();
+    int n = 1;
+    while (usedNumbers.contains(n)) n++;
+    return n;
+  }
+
   // ── cassette piccole: dialog aggiunta ─────────────────────────
 
   void _showAddSmallHiveDialog(MapElementType type) {
+    final _s = Provider.of<LanguageService>(context, listen: false).strings;
     final labels = {
-      MapElementType.apidea:      'Apidea/Kieler',
-      MapElementType.mini_plus:   'Mini-Plus',
-      MapElementType.portasciami: 'portasciami',
+      MapElementType.apidea:      _s.mapLabelApidea,
+      MapElementType.mini_plus:   _s.mapLabelMiniPlus,
+      MapElementType.portasciami: _s.mapLabelPortasciami,
     };
     final label = labels[type] ?? 'elemento';
 
-    final numCtrl = TextEditingController();
+    final numCtrl = TextEditingController(text: '${_nextAvailableNumber()}');
     String selectedColor = '#FFC107';
     final colors = ['#FFC107', '#8B6914', '#0d6efd', '#198754',
                     '#dc3545', '#fd7e14', '#6f42c1', '#212529',
@@ -602,7 +644,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          title: Text('Aggiungi $label'),
+          title: Text(_s.mapAddTitle(label)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -610,12 +652,12 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 controller: numCtrl,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Numero $label',
+                  labelText: _s.mapAddNumberLabel(label),
                   border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
-              const Text('Colore', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text(_s.mapLabelColor, style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -646,7 +688,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annulla'),
+              child: Text(_s.btnCancel),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -655,7 +697,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 Navigator.pop(ctx);
                 await _createSmallHiveDb(num, selectedColor, type);
               },
-              child: const Text('Aggiungi'),
+              child: Text(_s.mapBtnAdd),
             ),
           ],
         ),
@@ -685,10 +727,21 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       });
       await _saveLayout();
       widget.onRefresh?.call();
+
+      // Popup lite: registra come attrezzatura?
+      if (mounted) {
+        await showAttrezzaturaPrompt(
+          context: context,
+          tipoArnia: type.name,
+          numero: numero,
+          apiarioId: widget.apiarioId,
+          arniaId: arniaId,
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')));
+          SnackBar(content: Text('${Provider.of<LanguageService>(context, listen: false).strings.qrNavErrorTitle}: $e')));
       }
     }
   }
@@ -696,6 +749,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   // ── nucleo legacy: sheet info (elementi esistenti in layout) ───
 
   void _showNucleoSheet(MapElement el) {
+    final _s = Provider.of<LanguageService>(context, listen: false).strings;
     final num = el.numero ?? '?';
 
     showModalBottomSheet(
@@ -712,17 +766,17 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                 decoration: BoxDecoration(color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
-            Text('Nucleo $num',
+            Text(_s.mapNucleoTitle(num.toString()),
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('Elemento legacy — rimuovilo dalla mappa se non più in uso.',
-                style: TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+            Text(_s.mapNucleoLegacyHint,
+                style: const TextStyle(color: Colors.grey), textAlign: TextAlign.center),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
-                label: const Text('Rimuovi dalla mappa', style: TextStyle(color: Colors.red)),
+                label: Text(_s.mapRemoveFromMap, style: const TextStyle(color: Colors.red)),
                 onPressed: () {
                   Navigator.pop(ctx);
                   _removeElement(el.id);
@@ -737,23 +791,24 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   }
 
   Future<int?> _askNumeroConflict(int current, int suggested) async {
+    final _s = Provider.of<LanguageService>(context, listen: false).strings;
     final ctrl = TextEditingController(text: '$suggested');
     final result = await showDialog<int>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Numero già esistente'),
+        title: Text(_s.mapNumberConflictTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('L\'arnia numero $current esiste già.\nScegli un numero per la nuova arnia:'),
+            Text(_s.mapNumberConflictMsg('$current')),
             const SizedBox(height: 12),
             TextField(
               controller: ctrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Numero arnia',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: _s.mapArniaNumberLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -761,14 +816,14 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annulla'),
+            child: Text(_s.btnCancel),
           ),
           ElevatedButton(
             onPressed: () {
               final v = int.tryParse(ctrl.text.trim());
               if (v != null && v > 0) Navigator.pop(ctx, v);
             },
-            child: const Text('Conferma'),
+            child: Text(_s.btnConfirm),
           ),
         ],
       ),
@@ -791,8 +846,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
       await _saveLayout();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mappa salvata'),
-              duration: Duration(seconds: 2)));
+          SnackBar(content: Text(Provider.of<LanguageService>(context, listen: false).strings.mapSaved),
+              duration: const Duration(seconds: 2)));
       }
     }
     _cancelDraw();
@@ -821,18 +876,19 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   }
 
   void _confirmDelete(String id, String msg) {
+    final _s = Provider.of<LanguageService>(context, listen: false).strings;
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Rimuovi elemento'),
+        title: Text(_s.mapRemoveElementTitle),
         content: Text(msg),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annulla')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_s.btnCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Rimuovi'),
+            child: Text(_s.btnRemove),
           ),
         ],
       ),
@@ -845,6 +901,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
   @override
   Widget build(BuildContext context) {
+    final _s = Provider.of<LanguageService>(context, listen: false).strings;
     final isEmpty = widget.arnie.isEmpty;
 
     return LayoutBuilder(builder: (ctx, constraints) {
@@ -856,6 +913,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
 
         // ── canvas ───────────────────────────────────────────────
         Positioned.fill(
+          key: _canvasContainerKey,
           child: GestureDetector(
             onTap: () {
               if (_selectedPathId != null) {
@@ -917,12 +975,12 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                       color: Colors.brown.withOpacity(.3)),
                 ),
                 const SizedBox(height: 20),
-                Text('Nessuna arnia in questo apiario',
+                Text(_s.mapNoArnie,
                     style: TextStyle(fontSize: 16,
                         color: Colors.brown.withOpacity(.5),
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                Text('Premi + per aggiungerne una',
+                Text(_s.mapNoArnieCta,
                     style: TextStyle(fontSize: 13, color: Colors.grey[500])),
               ],
             ),
@@ -958,7 +1016,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                   ? _InfoChip(
                       key: const ValueKey('edit_chip'),
                       icon: Icons.open_with_rounded,
-                      text: 'Trascina · Tocca vialetto per estenderlo',
+                      text: _s.mapEditModeHint,
                     )
                   : const SizedBox.shrink(key: ValueKey('empty_chip')),
             ),
@@ -968,7 +1026,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
         if (widget.selectionMode && !isEmpty)
           Positioned(
             top: 116, left: 12,
-            child: _InfoChip(icon: Icons.touch_app_rounded, text: 'Tocca per selezionare'),
+            child: _InfoChip(icon: Icons.touch_app_rounded, text: _s.mapSelectionHint),
           ),
 
         // ── zoom controls (selection mode) ───────────────────────
@@ -1003,7 +1061,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                     color: Theme.of(context).colorScheme.primary.withOpacity(.4),
                     blurRadius: 12, offset: const Offset(0, 4))],
               ),
-              child: Text('${widget.selectedArnieIds.length} selezionate',
+              child: Text(_s.mapSelectedCount(widget.selectedArnieIds.length),
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
             ),
@@ -1365,20 +1423,28 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               );
       } else {
         // Calcola isOverlapped prima di costruire il widget (serve al painter per l'ombra).
-        // Albero semi-trasparente se un'arnia "davanti" (base più bassa) si sovrappone.
-        // I melari sono sovrapposti dentro il corpo arnia (90px) — non estendono l'altezza.
+        // Albero semi-trasparente se un'arnia "dietro" (base più alta sullo schermo)
+        // viene coperta dalla chioma. Con il y-sorting, le arnie dietro (baseY minore)
+        // sono disegnate prima → l'albero le copre → serve la trasparenza.
         const treeW = 72.0, treeH = 82.0;
-        final treeRect = Rect.fromLTWH(pos.dx, pos.dy, treeW, treeH);
+        // La chioma occupa circa la metà superiore del widget (raggio ~24px centrato a y≈25).
+        // Usiamo un rect ristretto alla chioma per un overlap più preciso.
+        const canopyTop = 0.0, canopyH = 55.0, canopyInset = 6.0;
+        final canopyRect = Rect.fromLTWH(
+          pos.dx + canopyInset, pos.dy + canopyTop,
+          treeW - canopyInset * 2, canopyH,
+        );
         final treeBaseY = pos.dy + treeH;
         baseY = treeBaseY;
         const arniaH = _cellSize; // altezza visiva reale del corpo arnia
         final isOverlapped = _arniaPositions.entries.any((arniaEntry) {
           final arniaPos = arniaEntry.value;
-          // L'arnia è "davanti" se la sua base è più bassa di quella dell'albero
-          if (arniaPos.dy + arniaH <= treeBaseY) return false;
-          return treeRect.overlaps(
-            Rect.fromLTWH(arniaPos.dx, arniaPos.dy, _cellSize, arniaH),
-          );
+          final arniaBaseY = arniaPos.dy + arniaH;
+          // L'arnia è "dietro" se la sua base è più alta (baseY minore) di quella dell'albero.
+          // Solo in quel caso l'albero la copre visivamente e serve la trasparenza.
+          if (arniaBaseY >= treeBaseY) return false;
+          final arniaRect = Rect.fromLTWH(arniaPos.dx, arniaPos.dy, _cellSize, arniaH);
+          return canopyRect.overlaps(arniaRect);
         });
 
         // albero
@@ -1442,9 +1508,8 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     MapElement? drawingEl;
     try { drawingEl = _elements.firstWhere((e) => e.id == _drawingPathId); } catch (_) {}
     final pw = drawingEl?.pathWidth ?? 40.0;
-    final previewStart = _drawingIsEnd
-        ? _drawingHandleCanvasPos
-        : _drawingCurrentCanvasPos;
+    // Always render from handle position — segments accumulate outward
+    final previewStart = _drawingHandleCanvasPos;
     final hw = pw / 2 + 28.0;
     final pts = <Offset>[Offset.zero];
     var cur = Offset.zero;
@@ -1547,10 +1612,10 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           // ── handle START ─────────────────────────────────────
           if (isSelected && _editMode)
             Positioned(
-              left: startInBox.dx - 20,
-              top: startInBox.dy - 20,
+              left: startInBox.dx - 18,
+              top: startInBox.dy - 18,
               child: _PathHandle(
-                icon: Icons.add_rounded,
+                icon: Icons.open_with_rounded,
                 color: _drawingPathId == el.id && !_drawingIsEnd
                     ? const Color(0xFF10B981)
                     : const Color(0xFF3B82F6),
@@ -1563,10 +1628,10 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           // ── handle END ───────────────────────────────────────
           if (isSelected && _editMode)
             Positioned(
-              left: endInBox.dx - 20,
-              top: endInBox.dy - 20,
+              left: endInBox.dx - 18,
+              top: endInBox.dy - 18,
               child: _PathHandle(
-                icon: Icons.add_rounded,
+                icon: Icons.open_with_rounded,
                 color: _drawingPathId == el.id && _drawingIsEnd
                     ? const Color(0xFF10B981)
                     : const Color(0xFF3B82F6),
@@ -1576,20 +1641,29 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               ),
             ),
 
-          // ── hint tieni premuto ───────────────────────────────
+          // ── hint trascina per estendere ───────────────────────
           if (isSelected && _editMode)
             Positioned(
-              left: (startInBox.dx + endInBox.dx) / 2 - 56,
-              top: (startInBox.dy + endInBox.dy) / 2 - 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A2332).withOpacity(.85),
-                  borderRadius: BorderRadius.circular(10),
+              left: (startInBox.dx + endInBox.dx) / 2 - 70,
+              top: (startInBox.dy + endInBox.dy) / 2 - 14,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A2332).withOpacity(.85),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.touch_app_rounded, size: 12, color: Colors.white60),
+                      const SizedBox(width: 4),
+                      Text(Provider.of<LanguageService>(context, listen: false).strings.mapLongPressToDelete,
+                          style: const TextStyle(color: Colors.white70, fontSize: 9,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
-                child: const Text('Tieni premuto per eliminare',
-                    style: TextStyle(color: Colors.white70, fontSize: 9,
-                        fontWeight: FontWeight.w600)),
               ),
             ),
         ],
@@ -1675,6 +1749,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   }
 
   Widget _buildBottomPanel() {
+    final _s = Provider.of<LanguageService>(context, listen: false).strings;
     return Positioned(
       bottom: 0, left: 16, right: 16,
       child: SafeArea(
@@ -1724,42 +1799,42 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                         children: [
                           _AddBtn(
                             icon: Icons.hive_rounded,
-                            label: 'Arnia',
+                            label: _s.mapLabelArnia,
                             color: const Color(0xFFF59E0B),
                             onTap: widget.onAddArnia,
                           ),
                           const SizedBox(width: 4),
                           _AddBtn(
                             icon: Icons.square_outlined,
-                            label: 'Apidea',
+                            label: _s.mapLabelApidea,
                             color: const Color(0xFF5B8DEF),
                             onTap: () => _addElement(MapElementType.apidea),
                           ),
                           const SizedBox(width: 4),
                           _AddBtn(
                             icon: Icons.layers_outlined,
-                            label: 'Mini-Plus',
+                            label: _s.mapLabelMiniPlus,
                             color: const Color(0xFF9B59B6),
                             onTap: () => _addElement(MapElementType.mini_plus),
                           ),
                           const SizedBox(width: 4),
                           _AddBtn(
                             icon: Icons.inventory_2_outlined,
-                            label: 'Portasc.',
+                            label: _s.mapLabelPortasciami,
                             color: const Color(0xFFA0856C),
                             onTap: () => _addElement(MapElementType.portasciami),
                           ),
                           const SizedBox(width: 4),
                           _AddBtn(
                             icon: Icons.park_rounded,
-                            label: 'Albero',
+                            label: _s.mapLabelAlbero,
                             color: const Color(0xFF2E7D32),
                             onTap: () => _addElement(MapElementType.albero),
                           ),
                           const SizedBox(width: 4),
                           _AddBtn(
                             icon: Icons.remove_road_rounded,
-                            label: 'Vialetto',
+                            label: _s.mapLabelVialetto,
                             color: const Color(0xFF8D6E63),
                             onTap: () => _addElement(MapElementType.vialetto),
                           ),
@@ -1777,7 +1852,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               _MapIconButton(
                 icon: Icons.filter_center_focus_rounded,
                 onTap: _centerOnArnie,
-                tooltip: 'Centra',
+                tooltip: _s.mapTooltipCenter,
               ),
               // Snap toggle — slide+fade in/out
               AnimatedSize(
@@ -1797,7 +1872,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
                               HapticFeedback.selectionClick();
                               setState(() => _snapEnabled = !_snapEnabled);
                             },
-                            tooltip: _snapEnabled ? 'Snap ON' : 'Snap OFF',
+                            tooltip: _snapEnabled ? _s.mapSnapOn : _s.mapSnapOff,
                             active: _snapEnabled,
                           ),
                         ])
@@ -1987,7 +2062,9 @@ class _HiveCell extends StatelessWidget {
           Positioned(
             bottom: cellSize * .12, left: 0, right: 0,
             child: Center(
-              child: Text(isSmall ? 'inattivo' : 'inattiva',
+              child: Text(isSmall
+                  ? Provider.of<LanguageService>(context, listen: false).strings.mapLabelInactive
+                  : Provider.of<LanguageService>(context, listen: false).strings.mapLabelInactiveFem,
                 style: TextStyle(color: tc.withOpacity(.7),
                     fontSize: cellSize * .10, fontWeight: FontWeight.w600)),
             ),
@@ -2727,13 +2804,13 @@ class _PathHandle extends StatelessWidget {
     onPanUpdate: onDragUpdate,
     onPanEnd: onDragEnd,
     child: Container(
-      width: 40, height: 40,
+      width: 36, height: 36,
       decoration: BoxDecoration(
         color: color, shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2.5),
+        border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
-          BoxShadow(color: color.withOpacity(.5), blurRadius: 10, spreadRadius: 1),
-          BoxShadow(color: Colors.black.withOpacity(.25), blurRadius: 6),
+          BoxShadow(color: color.withOpacity(.5), blurRadius: 8, spreadRadius: 1),
+          BoxShadow(color: Colors.black.withOpacity(.2), blurRadius: 4),
         ],
       ),
       child: Icon(icon, color: Colors.white, size: 20),
@@ -2917,7 +2994,9 @@ class _EditToggleBtnState extends State<_EditToggleBtn>
                         const Icon(Icons.check_rounded, color: Colors.white, size: 18),
                         const SizedBox(width: 6),
                         Text(
-                          widget.hasChanges ? 'Salva*' : 'Fine',
+                          widget.hasChanges
+                              ? Provider.of<LanguageService>(context, listen: false).strings.mapBtnSave
+                              : Provider.of<LanguageService>(context, listen: false).strings.mapBtnDone,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,

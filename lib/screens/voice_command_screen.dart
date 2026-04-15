@@ -21,6 +21,8 @@ import '../widgets/audio_input_widget.dart';
 import '../widgets/drawer_widget.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
+import '../services/voice_language_rules.dart';
+import '../services/bee_vocabulary_corrector.dart';
 import '../l10n/app_strings.dart';
 
 class VoiceCommandScreen extends StatefulWidget {
@@ -66,6 +68,8 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
       if (user != null && user.geminiApiKey.isNotEmpty) {
         _audioProcessor.setPersonalKey(user.geminiApiKey);
       }
+      // Sync language to all voice services (STT locale, regex, Gemini prompt).
+      _applyLanguageToVoiceServices();
       final mode = await _voiceSettings.getMode();
       if (mounted) setState(() => _voiceMode = mode);
       await _restoreVerificationDraft();
@@ -216,6 +220,18 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
       _dataProcessor,
       feedbackService: feedbackService,
     );
+  }
+
+  /// Syncs the app language to all voice services (STT locale, regex rules,
+  /// Gemini prompt, trigger/stop words, vocabulary corrector).
+  void _applyLanguageToVoiceServices() {
+    final langCode = Provider.of<LanguageService>(context, listen: false).currentCode;
+    final rules = VoiceLanguageRules.forCode(langCode);
+    _speechService.setLanguageCode(rules.speechLocale);
+    _dataProcessor.setLanguage(langCode);
+    _audioProcessor.setLanguage(langCode);
+    _voiceManager.setLanguage(langCode);
+    BeeVocabularyCorrector().setDictionary(rules.vocabularyCorrectionDict);
   }
 
   Future<void> _checkConnectivity() async {
@@ -531,12 +547,9 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
-                          _buildCommandExample(
-                              '"Arnia 3, regina presente, vista, 4 telaini di covata, 3 scorte"'),
-                          _buildCommandExample(
-                              '"Arnia 7, famiglia forte, problemi sanitari, varroa"'),
-                          _buildCommandExample(
-                              '"Arnia 2, 7 telaini totali, celle reali 2, rischio sciamatura"'),
+                          _buildCommandExample(s.voiceCommandExample1),
+                          _buildCommandExample(s.voiceCommandExample2),
+                          _buildCommandExample(s.voiceCommandExample3),
                           const SizedBox(height: 8),
                           const Divider(),
                           const SizedBox(height: 4),
@@ -728,7 +741,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                 SnackBar(
                   content: Text(
                     errDetail != null
-                        ? 'Gemini: $errDetail'
+                        ? _s.voiceCommandGeminiError(errDetail)
                         : _s.voiceCommandNoValidData,
                   ),
                   backgroundColor: Colors.red,

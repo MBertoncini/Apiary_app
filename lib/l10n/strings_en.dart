@@ -94,6 +94,11 @@ class StringsEn extends AppStrings {
       'In the future it may become part of a paid plan.';
   @override String get voiceAudioPremiumSheetActivate => 'Activate';
 
+  // Equipment prompt
+  @override String get sectionEquipmentPrompt => 'Equipment';
+  @override String get settingsAttrezzaturaPrompt => 'Suggest equipment registration';
+  @override String get settingsAttrezzaturaPromptSub => 'Show popup after creating hives';
+
   // AI Quota section
   @override String get sectionQuota => 'AI Quota — Daily usage';
   @override String get quotaRefreshTooltip => 'Refresh';
@@ -832,19 +837,12 @@ class StringsEn extends AppStrings {
   @override String invasettamentoFormLblTotale(String kg) => 'Total: $kg kg';
   @override String get invasettamentoFormLblLotto => 'Batch';
 
-  // ── Controllo form ────────────────────────────────────────────────────────
+  // ── Controllo form (legacy keys) ──────────────────────────────────────────
   @override String get controlloFormDialogTitle => 'Hive Inspection';
-  @override String get controlloFormTitleNew => 'New Inspection';
-  @override String get controlloFormTitleEdit => 'Edit Inspection';
-  @override String get controlloFormLblData => 'Date';
   @override String get controlloFormBtnAutoOrdina => 'Auto-arrange';
   @override String get controlloFormLblNumCelleReali => 'Number of queen cells';
   @override String get controlloFormLblNoteSciamatura => 'Swarm notes';
   @override String get controlloFormLblDettagliProblemi => 'Health issue details';
-  @override String get controlloFormLblNote => 'Notes';
-  @override String get controlloFormHintNote => 'Enter any additional notes...';
-  @override String get controlloFormSyncOk => 'Data synchronised successfully';
-  @override String get controlloFormLblStatoRegina => 'Queen status';
   @override String get controlloFormLblColore => 'Marking colour';
   @override String get controlloFormToccoTelaino => 'Tap a frame to change its type';
 
@@ -1177,6 +1175,7 @@ class StringsEn extends AppStrings {
   @override String get attrezzaturaFormTitleEdit => 'Edit Equipment';
   @override String get attrezzaturaFormLblNome => 'Name *';
   @override String get attrezzaturaFormValidateNome => 'Enter the equipment name';
+  @override String get attrezzaturaFormValidateCampoObbligatorio => 'Required field';
   @override String get attrezzaturaFormLblMarca => 'Brand';
   @override String get attrezzaturaFormLblModello => 'Model';
   @override String get attrezzaturaFormLblQuantita => 'Quantity *';
@@ -1215,6 +1214,18 @@ class StringsEn extends AppStrings {
   @override String get attrezzaturaCondizioneDiscreto => 'Fair';
   @override String get attrezzaturaCondizioneUsurato => 'Worn';
   @override String get attrezzaturaCondizioneDaRiparare => 'Needs Repair';
+
+  // ── Attrezzatura prompt (popup lite dopo creazione arnia) ────────────────
+  @override String get attrezzaturaPromptTitle => 'Register as equipment?';
+  @override String get attrezzaturaPromptBody => 'Track this item in your equipment inventory?';
+  @override String get attrezzaturaPromptNome => 'Name';
+  @override String get attrezzaturaPromptCondizione => 'Condition';
+  @override String get attrezzaturaPromptPrezzo => 'Purchase price (optional)';
+  @override String get attrezzaturaPromptSkip => 'Don\'t ask again';
+  @override String get attrezzaturaPromptBtnNo => 'No thanks';
+  @override String get attrezzaturaPromptBtnYes => 'Register';
+  @override String get attrezzaturaPromptSuccess => 'Equipment registered!';
+  @override String attrezzaturaPromptError(String e) => 'Registration error: $e';
 
   // ── Manutenzione form ─────────────────────────────────────────────────────
   @override String get manutenzioneFormTitle => 'New Maintenance';
@@ -2136,4 +2147,249 @@ class StringsEn extends AppStrings {
 
   // ── Privacy Policy screen ──
   @override String get privacyTitle => 'Privacy Policy';
+  @override String get privacyHeader => 'Privacy Policy';
+  @override String get privacyLastUpdated => 'Last updated: 12 March 2026';
+  @override String get privacyIntro =>
+      'This Privacy Policy describes how Apiary collects, uses and protects '
+      'user data. Please read it carefully before using the application.';
+  @override String get privacyS1Title => '1. Data controller';
+  @override String get privacyS1Body =>
+      'The data controller is the developer of the Apiary application.\n'
+      'For any privacy-related requests, you can contact us at:';
+  @override String get privacyS2Title => '2. Data collected';
+  @override String get privacyS2Body => 'The application may collect the following categories of data, depending on the features used:';
+  @override String get privacyS2_1Title => '2.1 Data entered voluntarily by the user';
+  @override List<String> get privacyS2_1Bullets => [
+    'Beekeeping data: information about apiaries, hives, queens, supers, swarms, blooms, periodic inspections and frame analyses (brood, stores, dividers, feeders).',
+    'Account data: username and password for backend service authentication.',
+    'Email address (upcoming feature): may be required for registration, password recovery or sending application-related notifications.',
+  ];
+  @override String get privacyS2_2Title => '2.2 Data collected automatically';
+  @override List<String> get privacyS2_2Bullets => [
+    'Usage data: technical information about app usage (e.g. version, OS, device language) for diagnostic and improvement purposes. This data does not personally identify the user.',
+    'Device identifiers: may be collected anonymously or pseudonymously to ensure proper app operation.',
+  ];
+  @override String get privacyS2_3Title => '2.3 Data collected via camera';
+  @override String get privacyS2_3Body =>
+      'The application requires camera access for the AI-powered frame analysis feature '
+      '(detection of bees, drones, queen cells and brood). Captured images are processed '
+      'locally on the device and/or sent to the backend server for analysis. '
+      'Images are not shared with third parties nor used for purposes other than beekeeping analysis.';
+  @override String get privacyS3Title => '3. Purpose of processing';
+  @override List<String> get privacyS3Bullets => [
+    'Service delivery: managing apiary data, syncing across devices via the remote backend, AI frame analysis.',
+    'App improvement: aggregate and anonymous analyses to identify malfunctions and optimize features.',
+    'Service communications: notifications related to your account or app operation.',
+    'Marketing and newsletters (planned): with explicit consent, your email address may be used to send updates or offers related to the application.',
+    'Advertising (planned): in the future, third-party advertising services (e.g. Google AdMob) may be integrated. Users will be informed and, where required by law, their consent will be requested.',
+  ];
+  @override String get privacyS4Title => '4. Legal basis for processing';
+  @override List<String> get privacyS4Bullets => [
+    'Performance of a contract (Art. 6(1)(b) GDPR): for data necessary for app operation and account management.',
+    'Consent (Art. 6(1)(a) GDPR): for camera access, marketing communications and personalized advertising. Consent may be withdrawn at any time.',
+    'Legitimate interest (Art. 6(1)(f) GDPR): for diagnostic and service security purposes.',
+  ];
+  @override String get privacyS5Title => '5. Data retention';
+  @override List<String> get privacyS5Bullets => [
+    'Apiary data is stored on the backend server (cible99.pythonanywhere.com) for the duration of the active account, plus an additional 30 days after deletion, unless required by law.',
+    'Data stored locally on the device (SQLite and SharedPreferences) remains on the device until app uninstallation or manual deletion by the user.',
+    'Email data collected for marketing purposes will be retained until consent is withdrawn.',
+  ];
+  @override String get privacyS6Title => '6. Sharing with third parties';
+  @override String get privacyS6Body => 'Personal data is not sold or transferred to third parties. It may only be shared with:';
+  @override List<String> get privacyS6Bullets => [
+    'Hosting provider: PythonAnywhere (backend server), which processes data as a data processor in compliance with GDPR.',
+    'Analytics and advertising services (future): e.g. Google AdMob / Google Analytics, which have their own privacy policies.',
+    'Competent authorities: where required by law or to protect legitimate rights.',
+  ];
+  @override String get privacyS7Title => '7. User rights (GDPR)';
+  @override String get privacyS7Body => 'As a data subject, you have the right to:';
+  @override List<String> get privacyS7Bullets => [
+    'Access – obtain confirmation of processing and a copy of your data.',
+    'Rectification – correct inaccurate or incomplete data.',
+    'Erasure ("right to be forgotten") – request deletion of your data, subject to legal retention obligations.',
+    'Restriction of processing – request suspension of processing in certain cases.',
+    'Data portability – receive your data in a structured, machine-readable format.',
+    'Objection – object to processing based on legitimate interest or for direct marketing purposes.',
+    'Withdrawal of consent – withdraw previously given consent at any time.',
+  ];
+  @override String get privacyS7Contact => 'To exercise these rights, contact:';
+  @override String get privacyS7Garante => 'You also have the right to lodge a complaint with the Data Protection Authority:';
+  @override String get privacyS8Title => '8. Security';
+  @override String get privacyS8Body =>
+      'We adopt adequate technical and organizational measures to protect data from '
+      'unauthorized access, loss or destruction, including the use of HTTPS connections '
+      'for data transmission between app and server.';
+  @override String get privacyS9Title => '9. Minors';
+  @override String get privacyS9Body =>
+      'The application is not intended for children under 16 years of age. We do not knowingly '
+      'collect data from minors. Should we become aware of accidental collection of such data, '
+      'we will proceed with its immediate deletion.';
+  @override String get privacyS10Title => '10. Changes to this policy';
+  @override String get privacyS10Body =>
+      'We reserve the right to update this policy. In case of significant changes, '
+      'the user will be notified via in-app notification or email. '
+      'Continued use of the app following publication of changes '
+      'constitutes acceptance thereof.';
+  @override String get privacyS11Title => '11. Contact';
+  @override String get privacyS11Body => 'For any privacy-related questions:';
+  @override String get privacyCopyright => '© 2026 Apiary – All rights reserved.';
+
+  // ── Weather widget ──
+  @override String get weatherErrorNoData => 'Unable to load weather data. Check your connection.';
+  @override String weatherUpdatedAt(String time) => 'Updated: $time';
+  @override String weatherFeelsLike(String temp) => 'Feels like $temp°C';
+  @override String get weatherHumidity => 'Humidity';
+  @override String get weatherWind => 'Wind';
+  @override String get weatherRain => 'Rain';
+  @override String get weatherPressure => 'Pressure';
+  @override String get weatherForecast7Days => '7-day forecast';
+  @override String get weatherToday => 'Today';
+  @override List<String> get weatherDayNamesShort => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // ── QR code ──
+  @override String get qrUnsupportedEntity => 'Entity type not supported for QR generation';
+  @override String get qrLabelApiario => 'Apiary';
+  @override String get qrLabelUnknown => 'Unknown';
+  @override String qrLabelPosition(String position) => 'Location: $position';
+  @override String get qrLabelNotSpecified => 'Not specified';
+  @override String get qrBtnCopy => 'Copy';
+  @override String get qrCopiedToClipboard => 'QR code copied to clipboard';
+  @override String get qrBtnShare => 'Share';
+  @override String qrShareText(String title) => '$title - Scan me to view details';
+  @override String qrShareError(String error) => 'Error while sharing: $error';
+  @override String get qrNavUnsupportedTitle => 'Unsupported QR type';
+  @override String get qrNavUnsupportedMsg => 'The scanned QR code format is not recognized.';
+  @override String get qrNavErrorTitle => 'Error';
+  @override String qrNavErrorMsg(String error) => 'An error occurred: $error';
+  @override String get qrNavArniaNonTrovatoTitle => 'Hive not found';
+  @override String get qrNavArniaNonTrovatoMsg => 'The scanned hive was not found in the system. Make sure you have the necessary permissions.';
+  @override String get qrNavArniaOfflineTitle => 'Hive not available offline';
+  @override String get qrNavArniaOfflineMsg => 'The scanned hive is not available in offline mode. Connect to the internet to download the data.';
+  @override String get qrNavApiarioNonTrovatoTitle => 'Apiary not found';
+  @override String get qrNavApiarioNonTrovatoMsg => 'The scanned apiary was not found in the system. Make sure you have the necessary permissions.';
+  @override String get qrNavApiarioOfflineTitle => 'Apiary not available offline';
+  @override String get qrNavApiarioOfflineMsg => 'The scanned apiary is not available in offline mode. Connect to the internet to download the data.';
+
+  // ── Minimap / edit mode ──
+  @override String mapAddTitle(String label) => 'Add $label';
+  @override String mapAddNumberLabel(String label) => '$label number';
+  @override String get mapLabelColor => 'Color';
+  @override String get mapBtnAdd => 'Add';
+  @override String mapNucleoTitle(String num) => 'Nuc $num';
+  @override String get mapNucleoLegacyHint => 'Legacy element — remove it from the map if no longer in use.';
+  @override String get mapRemoveFromMap => 'Remove from map';
+  @override String get mapNumberConflictTitle => 'Number already exists';
+  @override String mapNumberConflictMsg(String current) => 'Hive number $current already exists.\nChoose a number for the new hive:';
+  @override String get mapArniaNumberLabel => 'Hive number';
+  @override String get mapSaved => 'Map saved';
+  @override String get mapRemoveElementTitle => 'Remove element';
+  @override String get mapNoArnie => 'No hives in this apiary';
+  @override String get mapNoArnieCta => 'Press + to add one';
+  @override String get mapEditModeHint => 'Drag · Tap path to extend it';
+  @override String get mapSelectionHint => 'Tap to select';
+  @override String mapSelectedCount(int count) => '$count selected';
+  @override String get mapLongPressToDelete => 'Long press to delete';
+  @override String get mapLabelArnia => 'Hive';
+  @override String get mapLabelApidea => 'Apidea';
+  @override String get mapLabelMiniPlus => 'Mini-Plus';
+  @override String get mapLabelPortasciami => 'Nuc box';
+  @override String get mapLabelAlbero => 'Tree';
+  @override String get mapLabelVialetto => 'Path';
+  @override String get mapTooltipCenter => 'Center';
+  @override String get mapSnapOn => 'Snap ON';
+  @override String get mapSnapOff => 'Snap OFF';
+  @override String get mapBtnSave => 'Save*';
+  @override String get mapBtnDone => 'Done';
+  @override String get mapLabelInactive => 'inactive';
+  @override String get mapLabelInactiveFem => 'inactive';
+
+  // ── Colony data in arnia detail ──
+  @override String get arniaColoniaVuota => 'Empty hive — no active colony';
+  @override String get arniaInsediaColonia => 'Settle colony';
+  @override String arniaColoniaHeader(int id, String date) => 'Colony #$id — since $date';
+  @override String arniaColoniaRegina(String razza, String origine) => 'Queen: $razza · $origine';
+  @override String get arniaMenuStoriaColonie => 'Colony history';
+  @override String get arniaMenuInsediaNuovaColonia => 'Settle new colony';
+
+  // ── Equipment model display ──
+  @override String get attrezzaturaStatoNonSpecificato => 'Not specified';
+  @override String get attrezzaturaCondizioneNonSpecificato => 'Not specified';
+
+  // ── Sales banner ──
+  @override List<String> get monthNames => [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+  @override String venditeBannerSummary(int count, String total) => '$count sales  •  $total €';
+  @override String get venditeCanaleMercatino => 'Market';
+  @override String get venditeCanaleNegozio => 'Shop';
+  @override String get venditeCanaleOnline => 'Online';
+  @override String get venditeCanalePravato => 'Private';
+  @override String get venditeCanaleAltro => 'Other';
+
+  // ── Voice command examples ──
+  @override String get voiceCommandExample1 => '"Hive 3, queen present, spotted, 4 brood frames, 3 stores"';
+  @override String get voiceCommandExample2 => '"Hive 7, strong colony, health issues, varroa"';
+  @override String get voiceCommandExample3 => '"Hive 2, 7 total frames, 2 queen cells, swarming risk"';
+  @override String voiceCommandGeminiError(String detail) => 'Gemini: $detail';
+
+  // ── Guide sections ──
+  @override String get guidaSection1Title => 'Getting Started — Create your first apiary';
+  @override String get guidaSection2Title => 'Hives & Inspections — Record an inspection';
+  @override String get guidaSection3Title => 'Queens — Manage and track queens';
+  @override String get guidaSection4Title => 'Supers & Harvests — From super to cellar';
+  @override String get guidaSection5Title => 'AI Features — Chat, voice, frame analysis';
+  @override String get guidaSection6Title => 'Collaboration — Share with other beekeepers';
+  @override String get guidaSection7Title => 'Exports — PDF and CSV';
+  @override List<String> get guidaSection1Items => [
+    'Tap the menu and go to Apiaries → New Apiary',
+    'Enter name, map location and apiary type',
+    'Save — your apiary is ready',
+    'From inside the apiary, tap + to add hives',
+    '💡 Give descriptive names to hives (e.g. "Hive 1 — Ligustica") to find them easily.',
+  ];
+  @override List<String> get guidaSection2Items => [
+    'Enter the hive you want to inspect',
+    'Tap New Inspection',
+    'Fill in: date, colony strength (1–10), queen presence, health status',
+    'Add free-text notes for specific observations',
+    '💡 Colony strength: 1 = very weak, 5 = average, 10 = very strong occupying all frames.',
+  ];
+  @override List<String> get guidaSection3Items => [
+    'Each hive can have an associated queen — add her from the hive detail',
+    'Record: birth date, breed, marking color, origin',
+    'View the genealogical tree to track lineages',
+    'Use Compare Queens to evaluate performance',
+    '💡 International colors: White (1/6), Yellow (2/7), Red (3/8), Green (4/9), Blue (5/0).',
+  ];
+  @override List<String> get guidaSection4Items => [
+    'Add a super to the hive when it\'s harvest time',
+    'When ready, record the extraction: date, gross weight, quality',
+    'Extracted honey goes to Cellar: maturators and storage containers',
+    'From the jarring section, track jars produced and final weight',
+  ];
+  @override List<String> get guidaSection5Items => [
+    '🗨️ AI Chat — Tap the chat widget to ask questions to the Gemini assistant',
+    '🎤 Voice Input — Speak and the app automatically transcribes the inspection',
+    '📷 Frame Analysis — Upload a frame photo to detect bees, brood and queen cells',
+    '💡 For frame analysis use diffused natural light and hold the frame parallel to the camera.',
+  ];
+  @override List<String> get guidaSection6Items => [
+    'Go to Groups from the main menu',
+    'Create a group and invite other beekeepers via email or link',
+    'Assign roles: Owner, Collaborator, Viewer',
+    'Share one or more apiaries with the group from inside the apiary',
+  ];
+  @override List<String> get guidaSection7Items => [
+    'Inspection PDF: from inside an apiary → Export PDF',
+    'Treatments CSV: from Management → Treatments → Export CSV',
+    'Sales CSV: from Management → Sales → Export CSV',
+    '💡 CSVs are compatible with Excel and Google Sheets for traceability and accounting.',
+  ];
+
+  // ── AI Chat ──
+  @override String get chatWelcomeMessage => 'Hello! I\'m ApiarioAI, your beekeeping assistant. How can I help you today?';
+  @override String get chatTitle => 'ApiarioAI Assistant';
+  @override String get chatChartDefaultTitle => 'Chart';
 }

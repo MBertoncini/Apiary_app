@@ -102,7 +102,11 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           } else if (arnieData is Map && arnieData.containsKey('results')) {
             fetched = arnieData['results'] as List;
           }
-          if (fetched.isNotEmpty) _arnie = fetched;
+          if (fetched.isNotEmpty) {
+            _arnie = fetched;
+            // Aggiorna cache SharedPreferences (merge con arnie di altri apiari)
+            _updateArnieCache(storageService, fetched);
+          }
         } catch (e) {
           debugPrint('Error fetching arnie from apiario endpoint, trying global: $e');
           // Fallback: endpoint globale filtrato lato client
@@ -115,7 +119,10 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
               all = allArnieData['results'] as List;
             }
             final filtered = all.where((a) => a['apiario'] == widget.apiarioId).toList();
-            if (filtered.isNotEmpty) _arnie = filtered;
+            if (filtered.isNotEmpty) {
+              _arnie = filtered;
+              _updateArnieCache(storageService, filtered);
+            }
           } catch (e2) {
             debugPrint('Error fetching arnie from global endpoint: $e2');
           }
@@ -227,6 +234,18 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       if (id != null) map[id] = await dao.getLatestByArnia(id);
     }
     if (mounted) setState(() => _ultimiControlli = map);
+  }
+
+  /// Aggiorna la cache SharedPreferences delle arnie: sostituisce quelle
+  /// dell'apiario corrente con [freshArnie] mantenendo le arnie di altri apiari.
+  Future<void> _updateArnieCache(StorageService storageService, List<dynamic> freshArnie) async {
+    try {
+      final allCached = await storageService.getStoredData('arnie');
+      final otherApiari = allCached.where((a) => a['apiario'] != widget.apiarioId).toList();
+      await storageService.saveData('arnie', [...otherApiari, ...freshArnie]);
+    } catch (e) {
+      debugPrint('Error updating arnie cache: $e');
+    }
   }
 
   void _navigateToArniaDetail(int arniaId) {

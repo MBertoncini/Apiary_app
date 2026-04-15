@@ -15,6 +15,7 @@ extension StringExtension on String {
 
 class ChatService with ChangeNotifier {
   final ApiService _apiService;
+  String _welcomeMessage = "Ciao! Sono ApiarioAI, il tuo assistente per l'apicoltura. Come posso aiutarti oggi?";
 
   List<ChatMessage> _messages = [];
   bool _isLoading = false;
@@ -29,11 +30,25 @@ class ChatService with ChangeNotifier {
   ChatService(this._apiService) {
     _messages.add(
       ChatMessage(
-        text: "Ciao! Sono ApiarioAI, il tuo assistente per l'apicoltura. Come posso aiutarti oggi?",
+        text: _welcomeMessage,
         isUser: false,
         timestamp: DateTime.now(),
       ),
     );
+  }
+
+  /// Update the welcome message with the localized version.
+  void setWelcomeMessage(String message) {
+    _welcomeMessage = message;
+    // Update the first message if it's the welcome
+    if (_messages.isNotEmpty && !_messages[0].isUser) {
+      _messages[0] = ChatMessage(
+        text: message,
+        isUser: false,
+        timestamp: _messages[0].timestamp,
+      );
+      notifyListeners();
+    }
   }
 
   /// Invia un messaggio al backend e riceve la risposta AI.
@@ -172,7 +187,7 @@ class ChatService with ChangeNotifier {
   void clearConversation() {
     _messages = [
       ChatMessage(
-        text: "Ciao! Sono ApiarioAI, il tuo assistente per l'apicoltura. Come posso aiutarti oggi?",
+        text: _welcomeMessage,
         isUser: false,
         timestamp: DateTime.now(),
       ),

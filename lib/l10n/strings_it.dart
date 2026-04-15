@@ -94,6 +94,11 @@ class StringsIt extends AppStrings {
       'In futuro potrebbe diventare parte di un piano a pagamento.';
   @override String get voiceAudioPremiumSheetActivate => 'Attiva';
 
+  // Equipment prompt
+  @override String get sectionEquipmentPrompt => 'Attrezzatura';
+  @override String get settingsAttrezzaturaPrompt => 'Suggerisci registrazione attrezzatura';
+  @override String get settingsAttrezzaturaPromptSub => 'Mostra popup dopo creazione arnie';
+
   // AI Quota section
   @override String get sectionQuota => 'Quota AI — Uso giornaliero';
   @override String get quotaRefreshTooltip => 'Aggiorna';
@@ -799,19 +804,12 @@ class StringsIt extends AppStrings {
   @override String invasettamentoFormLblTotale(String kg) => 'Totale: $kg kg';
   @override String get invasettamentoFormLblLotto => 'Lotto';
 
-  // ── Controllo form ────────────────────────────────────────────────────────
+  // ── Controllo form (legacy keys) ──────────────────────────────────────────
   @override String get controlloFormDialogTitle => 'Controllo Arnia';
-  @override String get controlloFormTitleNew => 'Nuovo Controllo';
-  @override String get controlloFormTitleEdit => 'Modifica Controllo';
-  @override String get controlloFormLblData => 'Data';
   @override String get controlloFormBtnAutoOrdina => 'Auto-ordina';
   @override String get controlloFormLblNumCelleReali => 'Numero celle reali';
   @override String get controlloFormLblNoteSciamatura => 'Note sciamatura';
   @override String get controlloFormLblDettagliProblemi => 'Dettagli problemi sanitari';
-  @override String get controlloFormLblNote => 'Note';
-  @override String get controlloFormHintNote => 'Inserisci eventuali note aggiuntive...';
-  @override String get controlloFormSyncOk => 'Dati sincronizzati con successo';
-  @override String get controlloFormLblStatoRegina => 'Stato regina';
   @override String get controlloFormLblColore => 'Colore marcatura';
   @override String get controlloFormToccoTelaino => 'Tocca un telaino per cambiare il tipo';
 
@@ -1144,6 +1142,7 @@ class StringsIt extends AppStrings {
   @override String get attrezzaturaFormTitleEdit => 'Modifica Attrezzatura';
   @override String get attrezzaturaFormLblNome => 'Nome *';
   @override String get attrezzaturaFormValidateNome => 'Inserisci il nome dell\'attrezzatura';
+  @override String get attrezzaturaFormValidateCampoObbligatorio => 'Campo obbligatorio';
   @override String get attrezzaturaFormLblMarca => 'Marca';
   @override String get attrezzaturaFormLblModello => 'Modello';
   @override String get attrezzaturaFormLblQuantita => 'Quantità *';
@@ -1184,6 +1183,18 @@ class StringsIt extends AppStrings {
   @override String get attrezzaturaCondizioneDaRiparare => 'Da Riparare';
 
   // ── Manutenzione form ─────────────────────────────────────────────────────
+  // ── Attrezzatura prompt (popup lite dopo creazione arnia) ────────────────
+  @override String get attrezzaturaPromptTitle => 'Registrare come attrezzatura?';
+  @override String get attrezzaturaPromptBody => 'Vuoi tracciare questo elemento nel tuo inventario attrezzature?';
+  @override String get attrezzaturaPromptNome => 'Nome';
+  @override String get attrezzaturaPromptCondizione => 'Condizione';
+  @override String get attrezzaturaPromptPrezzo => 'Prezzo acquisto (opzionale)';
+  @override String get attrezzaturaPromptSkip => 'Non chiedere più';
+  @override String get attrezzaturaPromptBtnNo => 'No grazie';
+  @override String get attrezzaturaPromptBtnYes => 'Registra';
+  @override String get attrezzaturaPromptSuccess => 'Attrezzatura registrata!';
+  @override String attrezzaturaPromptError(String e) => 'Errore registrazione: $e';
+
   @override String get manutenzioneFormTitle => 'Nuova Manutenzione';
   @override String get manutenzioneFormLblAttrezzatura => 'Attrezzatura';
   @override String get manutenzioneFormLblTipo => 'Tipo Manutenzione *';
@@ -2096,4 +2107,251 @@ class StringsIt extends AppStrings {
 
   // ── Privacy Policy screen ──
   @override String get privacyTitle => 'Informativa sulla Privacy';
+  @override String get privacyHeader => 'Informativa sulla Privacy';
+  @override String get privacyLastUpdated => 'Ultimo aggiornamento: 12 marzo 2026';
+  @override String get privacyIntro =>
+      'La presente Informativa sulla Privacy descrive come Apiary '
+      'raccoglie, utilizza e protegge i dati degli utenti. '
+      'Ti invitiamo a leggerla attentamente prima di utilizzare l\'applicazione.';
+  @override String get privacyS1Title => '1. Titolare del trattamento';
+  @override String get privacyS1Body =>
+      'Il titolare del trattamento è lo sviluppatore dell\'applicazione Apiary.\n'
+      'Per qualsiasi richiesta relativa alla privacy puoi contattarci all\'indirizzo:';
+  @override String get privacyS2Title => '2. Dati raccolti';
+  @override String get privacyS2Body => 'L\'applicazione può raccogliere le seguenti categorie di dati, a seconda delle funzionalità utilizzate:';
+  @override String get privacyS2_1Title => '2.1 Dati inseriti volontariamente dall\'utente';
+  @override List<String> get privacyS2_1Bullets => [
+    'Dati apicoltura: informazioni su apiari, arnie, regine, melari, sciamature, fioriture, controlli periodici e analisi dei telaini (covata, scorte, diaframmi, nutritori).',
+    'Dati di account: nome utente e password per l\'autenticazione al servizio backend.',
+    'Indirizzo e-mail (funzionalità in arrivo): potrà essere richiesto per la registrazione, il recupero password o l\'invio di notifiche inerenti l\'applicazione.',
+  ];
+  @override String get privacyS2_2Title => '2.2 Dati raccolti automaticamente';
+  @override List<String> get privacyS2_2Bullets => [
+    'Dati di utilizzo: informazioni tecniche sull\'uso dell\'app (es. versione, sistema operativo, lingua del dispositivo) per scopi diagnostici e di miglioramento. Questi dati non identificano personalmente l\'utente.',
+    'Identificatori del dispositivo: possono essere raccolti in forma anonima o pseudonima per garantire il corretto funzionamento dell\'app.',
+  ];
+  @override String get privacyS2_3Title => '2.3 Dati raccolti tramite fotocamera';
+  @override String get privacyS2_3Body =>
+      'L\'applicazione richiede l\'accesso alla fotocamera del dispositivo per la funzionalità '
+      'di analisi fotografica dei telaini tramite intelligenza artificiale (rilevamento di api, '
+      'fuchi, celle reali e covata). Le immagini scattate vengono elaborate localmente sul '
+      'dispositivo e/o inviate al server backend per l\'analisi. '
+      'Le immagini non vengono condivise con terze parti né utilizzate per scopi diversi dall\'analisi apistica.';
+  @override String get privacyS3Title => '3. Finalità del trattamento';
+  @override List<String> get privacyS3Bullets => [
+    'Erogazione del servizio: gestione dei dati degli apiari, sincronizzazione tra dispositivi tramite il backend remoto, analisi AI dei telaini.',
+    'Miglioramento dell\'app: analisi aggregate e anonime per identificare malfunzionamenti e ottimizzare le funzionalità.',
+    'Comunicazioni di servizio: notifiche relative al proprio account o al funzionamento dell\'app.',
+    'Marketing e newsletter (previsto): previo consenso esplicito, l\'indirizzo e-mail potrà essere usato per inviare aggiornamenti o offerte relative all\'applicazione.',
+    'Pubblicità (prevista): in futuro potranno essere integrati servizi pubblicitari di terze parti (es. Google AdMob). Gli utenti saranno informati e, ove richiesto dalla normativa, sarà richiesto il loro consenso.',
+  ];
+  @override String get privacyS4Title => '4. Base giuridica del trattamento';
+  @override List<String> get privacyS4Bullets => [
+    'Esecuzione del contratto (art. 6, par. 1, lett. b GDPR): per i dati necessari al funzionamento dell\'app e alla gestione dell\'account.',
+    'Consenso (art. 6, par. 1, lett. a GDPR): per l\'accesso alla fotocamera, per comunicazioni marketing e per la pubblicità personalizzata. Il consenso può essere revocato in qualsiasi momento.',
+    'Legittimo interesse (art. 6, par. 1, lett. f GDPR): per scopi diagnostici e di sicurezza del servizio.',
+  ];
+  @override String get privacyS5Title => '5. Conservazione dei dati';
+  @override List<String> get privacyS5Bullets => [
+    'I dati dell\'apiario sono conservati sul server backend (cible99.pythonanywhere.com) per tutta la durata dell\'account attivo, più un ulteriore periodo di 30 giorni dopo la cancellazione, salvo obblighi di legge.',
+    'I dati memorizzati localmente sul dispositivo (SQLite e SharedPreferences) rimangono sul dispositivo fino alla disinstallazione dell\'app o alla cancellazione manuale da parte dell\'utente.',
+    'I dati e-mail raccolti per finalità di marketing saranno conservati fino alla revoca del consenso.',
+  ];
+  @override String get privacyS6Title => '6. Condivisione con terze parti';
+  @override String get privacyS6Body => 'I dati personali non vengono venduti né ceduti a terzi. Possono essere condivisi esclusivamente con:';
+  @override List<String> get privacyS6Bullets => [
+    'Provider di hosting: PythonAnywhere (server backend), che tratta i dati come responsabile del trattamento nel rispetto del GDPR.',
+    'Servizi di analisi e pubblicità (in futuro): es. Google AdMob / Google Analytics, che dispongono di proprie informative sulla privacy.',
+    'Autorità competenti: ove richiesto dalla legge o per tutelare diritti legittimi.',
+  ];
+  @override String get privacyS7Title => '7. Diritti dell\'utente (GDPR)';
+  @override String get privacyS7Body => 'In qualità di interessato, hai il diritto di:';
+  @override List<String> get privacyS7Bullets => [
+    'Accesso – ottenere conferma del trattamento e copia dei tuoi dati.',
+    'Rettifica – correggere dati inesatti o incompleti.',
+    'Cancellazione ("diritto all\'oblio") – richiedere la cancellazione dei tuoi dati, salvo obblighi di conservazione previsti dalla legge.',
+    'Limitazione del trattamento – richiedere la sospensione del trattamento in determinati casi.',
+    'Portabilità – ricevere i tuoi dati in formato strutturato e leggibile da macchina.',
+    'Opposizione – opporti al trattamento basato su legittimo interesse o per finalità di marketing diretto.',
+    'Revoca del consenso – ritirare in qualsiasi momento il consenso precedentemente accordato.',
+  ];
+  @override String get privacyS7Contact => 'Per esercitare questi diritti, contatta:';
+  @override String get privacyS7Garante => 'Hai inoltre il diritto di proporre reclamo all\'Autorità Garante per la protezione dei dati personali:';
+  @override String get privacyS8Title => '8. Sicurezza';
+  @override String get privacyS8Body =>
+      'Adottiamo misure tecniche e organizzative adeguate per proteggere i dati da accesso '
+      'non autorizzato, perdita o distruzione, incluso l\'uso di connessioni HTTPS per la '
+      'trasmissione dei dati tra app e server.';
+  @override String get privacyS9Title => '9. Minori';
+  @override String get privacyS9Body =>
+      'L\'applicazione non è destinata a minori di 16 anni. Non raccogliamo consapevolmente '
+      'dati di minori. Qualora dovessimo venire a conoscenza di una raccolta accidentale di '
+      'tali dati, procederemo alla loro cancellazione immediata.';
+  @override String get privacyS10Title => '10. Modifiche alla presente informativa';
+  @override String get privacyS10Body =>
+      'Ci riserviamo il diritto di aggiornare questa informativa. In caso di modifiche '
+      'sostanziali, l\'utente sarà informato tramite notifica nell\'app o via e-mail. '
+      'L\'uso continuato dell\'app successivo alla pubblicazione delle modifiche '
+      'costituisce accettazione delle stesse.';
+  @override String get privacyS11Title => '11. Contatti';
+  @override String get privacyS11Body => 'Per qualsiasi domanda relativa alla privacy:';
+  @override String get privacyCopyright => '© 2026 Apiary – Tutti i diritti riservati.';
+
+  // ── Weather widget ──
+  @override String get weatherErrorNoData => 'Impossibile ottenere i dati meteo. Controlla la connessione.';
+  @override String weatherUpdatedAt(String time) => 'Aggiornato: $time';
+  @override String weatherFeelsLike(String temp) => 'Percepita $temp°C';
+  @override String get weatherHumidity => 'Umidità';
+  @override String get weatherWind => 'Vento';
+  @override String get weatherRain => 'Pioggia';
+  @override String get weatherPressure => 'Pressione';
+  @override String get weatherForecast7Days => 'Previsioni 7 giorni';
+  @override String get weatherToday => 'Oggi';
+  @override List<String> get weatherDayNamesShort => ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
+  // ── QR code ──
+  @override String get qrUnsupportedEntity => 'Tipo di entità non supportato per la generazione QR';
+  @override String get qrLabelApiario => 'Apiario';
+  @override String get qrLabelUnknown => 'Sconosciuto';
+  @override String qrLabelPosition(String position) => 'Posizione: $position';
+  @override String get qrLabelNotSpecified => 'Non specificata';
+  @override String get qrBtnCopy => 'Copia';
+  @override String get qrCopiedToClipboard => 'Codice QR copiato negli appunti';
+  @override String get qrBtnShare => 'Condividi';
+  @override String qrShareText(String title) => '$title - Scansionami per visualizzare i dettagli';
+  @override String qrShareError(String error) => 'Errore durante la condivisione: $error';
+  @override String get qrNavUnsupportedTitle => 'Tipo QR non supportato';
+  @override String get qrNavUnsupportedMsg => 'Il formato del QR code scansionato non è riconosciuto.';
+  @override String get qrNavErrorTitle => 'Errore';
+  @override String qrNavErrorMsg(String error) => 'Si è verificato un errore: $error';
+  @override String get qrNavArniaNonTrovatoTitle => 'Arnia non trovata';
+  @override String get qrNavArniaNonTrovatoMsg => 'L\'arnia scansionata non è stata trovata nel sistema. Assicurati di avere i permessi necessari.';
+  @override String get qrNavArniaOfflineTitle => 'Arnia non disponibile offline';
+  @override String get qrNavArniaOfflineMsg => 'L\'arnia scansionata non è disponibile in modalità offline. Connettiti a internet per scaricare i dati.';
+  @override String get qrNavApiarioNonTrovatoTitle => 'Apiario non trovato';
+  @override String get qrNavApiarioNonTrovatoMsg => 'L\'apiario scansionato non è stato trovato nel sistema. Assicurati di avere i permessi necessari.';
+  @override String get qrNavApiarioOfflineTitle => 'Apiario non disponibile offline';
+  @override String get qrNavApiarioOfflineMsg => 'L\'apiario scansionato non è disponibile in modalità offline. Connettiti a internet per scaricare i dati.';
+
+  // ── Minimap / edit mode ──
+  @override String mapAddTitle(String label) => 'Aggiungi $label';
+  @override String mapAddNumberLabel(String label) => 'Numero $label';
+  @override String get mapLabelColor => 'Colore';
+  @override String get mapBtnAdd => 'Aggiungi';
+  @override String mapNucleoTitle(String num) => 'Nucleo $num';
+  @override String get mapNucleoLegacyHint => 'Elemento legacy — rimuovilo dalla mappa se non più in uso.';
+  @override String get mapRemoveFromMap => 'Rimuovi dalla mappa';
+  @override String get mapNumberConflictTitle => 'Numero già esistente';
+  @override String mapNumberConflictMsg(String current) => 'L\'arnia numero $current esiste già.\nScegli un numero per la nuova arnia:';
+  @override String get mapArniaNumberLabel => 'Numero arnia';
+  @override String get mapSaved => 'Mappa salvata';
+  @override String get mapRemoveElementTitle => 'Rimuovi elemento';
+  @override String get mapNoArnie => 'Nessuna arnia in questo apiario';
+  @override String get mapNoArnieCta => 'Premi + per aggiungerne una';
+  @override String get mapEditModeHint => 'Trascina · Tocca vialetto per estenderlo';
+  @override String get mapSelectionHint => 'Tocca per selezionare';
+  @override String mapSelectedCount(int count) => '$count selezionate';
+  @override String get mapLongPressToDelete => 'Tieni premuto per eliminare';
+  @override String get mapLabelArnia => 'Arnia';
+  @override String get mapLabelApidea => 'Apidea';
+  @override String get mapLabelMiniPlus => 'Mini-Plus';
+  @override String get mapLabelPortasciami => 'Portasc.';
+  @override String get mapLabelAlbero => 'Albero';
+  @override String get mapLabelVialetto => 'Vialetto';
+  @override String get mapTooltipCenter => 'Centra';
+  @override String get mapSnapOn => 'Snap ON';
+  @override String get mapSnapOff => 'Snap OFF';
+  @override String get mapBtnSave => 'Salva*';
+  @override String get mapBtnDone => 'Fine';
+  @override String get mapLabelInactive => 'inattivo';
+  @override String get mapLabelInactiveFem => 'inattiva';
+
+  // ── Colony data in arnia detail ──
+  @override String get arniaColoniaVuota => 'Arnia vuota — nessuna colonia attiva';
+  @override String get arniaInsediaColonia => 'Insedia colonia';
+  @override String arniaColoniaHeader(int id, String date) => 'Colonia #$id — dal $date';
+  @override String arniaColoniaRegina(String razza, String origine) => 'Regina: $razza · $origine';
+  @override String get arniaMenuStoriaColonie => 'Storia colonie';
+  @override String get arniaMenuInsediaNuovaColonia => 'Insedia nuova colonia';
+
+  // ── Equipment model display ──
+  @override String get attrezzaturaStatoNonSpecificato => 'Non specificato';
+  @override String get attrezzaturaCondizioneNonSpecificato => 'Non specificato';
+
+  // ── Sales banner ──
+  @override List<String> get monthNames => [
+    'Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+    'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre',
+  ];
+  @override String venditeBannerSummary(int count, String total) => '$count vendite  •  $total €';
+  @override String get venditeCanaleMercatino => 'Mercatino';
+  @override String get venditeCanaleNegozio => 'Negozio';
+  @override String get venditeCanaleOnline => 'Online';
+  @override String get venditeCanalePravato => 'Privato';
+  @override String get venditeCanaleAltro => 'Altro';
+
+  // ── Voice command examples ──
+  @override String get voiceCommandExample1 => '"Arnia 3, regina presente, vista, 4 telaini di covata, 3 scorte"';
+  @override String get voiceCommandExample2 => '"Arnia 7, famiglia forte, problemi sanitari, varroa"';
+  @override String get voiceCommandExample3 => '"Arnia 2, 7 telaini totali, celle reali 2, rischio sciamatura"';
+  @override String voiceCommandGeminiError(String detail) => 'Gemini: $detail';
+
+  // ── Guide sections ──
+  @override String get guidaSection1Title => 'Primi Passi — Creare il primo apiario';
+  @override String get guidaSection2Title => 'Arnie & Controlli — Registrare un\'ispezione';
+  @override String get guidaSection3Title => 'Regine — Gestire e tracciare le regine';
+  @override String get guidaSection4Title => 'Melari & Raccolti — Dal melario alla cantina';
+  @override String get guidaSection5Title => 'Funzioni AI — Chat, voce, analisi telaino';
+  @override String get guidaSection6Title => 'Collaborazione — Condividere con altri apicoltori';
+  @override String get guidaSection7Title => 'Esportazioni — PDF e CSV';
+  @override List<String> get guidaSection1Items => [
+    'Tocca il menu e vai su Apiari → Nuovo Apiario',
+    'Inserisci nome, posizione sulla mappa e tipo di apiario',
+    'Salva — il tuo apiario è pronto',
+    'Dall\'interno dell\'apiario, tocca + per aggiungere le arnie',
+    '💡 Dai nomi descrittivi alle arnie (es: "Arnia 1 — Ligustica") per ritrovarle facilmente.',
+  ];
+  @override List<String> get guidaSection2Items => [
+    'Entra nell\'arnia che vuoi controllare',
+    'Tocca Nuovo Controllo',
+    'Compila: data, forza colonia (1–10), presenza regina, stato sanitario',
+    'Aggiungi note libere per osservazioni specifiche',
+    '💡 Forza colonia: 1 = debolissima, 5 = media, 10 = fortissima che occupa tutti i favi.',
+  ];
+  @override List<String> get guidaSection3Items => [
+    'Ogni arnia può avere una regina associata — aggiungila dalla scheda dell\'arnia',
+    'Registra: data nascita, razza, colore marcatura, origine',
+    'Visualizza l\'albero genealogico per tracciare discendenze',
+    'Usa Confronta Regine per valutare le prestazioni',
+    '💡 Colori internazionali: Bianco (1/6), Giallo (2/7), Rosso (3/8), Verde (4/9), Blu (5/0).',
+  ];
+  @override List<String> get guidaSection4Items => [
+    'Aggiungi un melario all\'arnia quando è il momento della raccolta',
+    'Quando è pronto, registra la smielatura: data, peso grezzo, qualità',
+    'Il miele estratto va in Cantina: maturatori e contenitori di stoccaggio',
+    'Dall\'invasettamento, traccia i vasetti prodotti e il peso finale',
+  ];
+  @override List<String> get guidaSection5Items => [
+    '🗨️ Chat AI — Tocca il widget chat per fare domande all\'assistente Gemini',
+    '🎤 Controllo Vocale — Parla e l\'app trascrive automaticamente l\'ispezione',
+    '📷 Analisi Telaino — Carica una foto del telaio per rilevare api, covata e celle reali',
+    '💡 Per l\'analisi telaino usa luce naturale diffusa e tieni il telaio parallelo alla fotocamera.',
+  ];
+  @override List<String> get guidaSection6Items => [
+    'Vai su Gruppi dal menu principale',
+    'Crea un gruppo e invita altri apicoltori via email o link',
+    'Assegna ruoli: Proprietario, Collaboratore, Visualizzatore',
+    'Condividi uno o più apiari con il gruppo dall\'interno dell\'apiario',
+  ];
+  @override List<String> get guidaSection7Items => [
+    'Ispezioni PDF: dall\'interno di un apiario → Esporta PDF',
+    'Trattamenti CSV: da Gestione → Trattamenti → Esporta CSV',
+    'Vendite CSV: da Gestione → Vendite → Esporta CSV',
+    '💡 I CSV sono compatibili con Excel e Google Sheets per tracciabilità e contabilità.',
+  ];
+
+  // ── AI Chat ──
+  @override String get chatWelcomeMessage => 'Ciao! Sono ApiarioAI, il tuo assistente per l\'apicoltura. Come posso aiutarti oggi?';
+  @override String get chatTitle => 'ApiarioAI Assistant';
+  @override String get chatChartDefaultTitle => 'Grafico';
 }

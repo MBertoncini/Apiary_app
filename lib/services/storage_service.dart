@@ -105,4 +105,17 @@ class StorageService {
     return prefs.getBool(_disclaimerAcceptedKey) ?? false;
   }
 
+  // Preferenza "Non chiedere più" per il prompt attrezzatura dopo creazione arnia
+  static const String _skipAttrezzaturaPromptKey = 'skip_attrezzatura_prompt';
+
+  Future<void> saveSkipAttrezzaturaPrompt(bool skip) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_skipAttrezzaturaPromptKey, skip);
+  }
+
+  Future<bool> shouldSkipAttrezzaturaPrompt() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_skipAttrezzaturaPromptKey) ?? false;
+  }
+
 }

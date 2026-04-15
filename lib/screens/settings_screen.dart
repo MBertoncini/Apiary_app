@@ -48,6 +48,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _voiceSettings = VoiceSettingsService();
   String _voiceMode = VoiceSettingsService.modeStt;
 
+  // Attrezzatura prompt preference
+  bool _skipAttrezzaturaPrompt = false;
+
   // AI quota
   Map<String, dynamic>? _quotaData;
   bool _isLoadingQuota = false;
@@ -66,6 +69,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadLocalQuotas();
       _voiceSettings.getMode().then((m) {
         if (mounted) setState(() => _voiceMode = m);
+      });
+      Provider.of<StorageService>(context, listen: false)
+          .shouldSkipAttrezzaturaPrompt()
+          .then((v) {
+        if (mounted) setState(() => _skipAttrezzaturaPrompt = v);
       });
       await Provider.of<AuthService>(context, listen: false).refreshUserProfile();
       _populateFields();
@@ -594,6 +602,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             // ── QUOTA AI ──────────────────────────────────────────────────
             _buildQuotaCard(s),
+            const SizedBox(height: 16),
+
+            // ── ATTREZZATURA PROMPT ───────────────────────────────────────
+            PaperCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(s.sectionEquipmentPrompt, style: ThemeConstants.subheadingStyle),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    secondary: Icon(Icons.inventory_2_outlined, color: const Color(0xFFD3A121)),
+                    title: Text(s.settingsAttrezzaturaPrompt, style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF3A2E21))),
+                    subtitle: Text(s.settingsAttrezzaturaPromptSub, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                    value: !_skipAttrezzaturaPrompt,
+                    onChanged: (v) async {
+                      setState(() => _skipAttrezzaturaPrompt = !v);
+                      await Provider.of<StorageService>(context, listen: false)
+                          .saveSkipAttrezzaturaPrompt(!v);
+                    },
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
 
             // ── GUIDA & TUTORIAL ──────────────────────────────────────────

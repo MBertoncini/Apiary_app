@@ -213,7 +213,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            _attrezzatura!.getStatoDisplay(),
+                            _attrezzatura!.getStatoDisplay(s),
                             style: TextStyle(
                               color: _getStatoColor(_attrezzatura!.stato),
                               fontWeight: FontWeight.bold,
@@ -224,7 +224,7 @@ class _AttrezzaturaDetailScreenState extends State<AttrezzaturaDetailScreen>
                     ),
                     Divider(height: 32),
                     if (_attrezzatura!.condizione != null)
-                      _buildInfoRow(Icons.star, s.attrezzaturaDetailLblCondizione, _attrezzatura!.getCondizioneDisplay()),
+                      _buildInfoRow(Icons.star, s.attrezzaturaDetailLblCondizione, _attrezzatura!.getCondizioneDisplay(s)),
                     if (_attrezzatura!.descrizione != null && _attrezzatura!.descrizione!.isNotEmpty)
                       _buildInfoRow(Icons.description, s.attrezzaturaDetailLblDescrizione, _attrezzatura!.descrizione!),
                     if (_attrezzatura!.marca != null && _attrezzatura!.marca!.isNotEmpty)

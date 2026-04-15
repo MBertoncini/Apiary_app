@@ -35,10 +35,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   static const String _cacheKeyVendite = 'vendite';
   static const String _cacheKeyClienti = 'clienti';
 
-  static const _mesiItaliani = [
-    'Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
-    'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre',
-  ];
+  // Month names now come from l10n: s.monthNames
 
   @override
   void initState() {
@@ -104,7 +101,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
     } catch (e) {
       if (!mounted) return;
       if (_vendite.isEmpty && _clienti.isEmpty) {
-        setState(() { _errorMessage = 'Errore: $e'; _isLoading = false; _isRefreshing = false; });
+        setState(() { _errorMessage = '${Provider.of<LanguageService>(context, listen: false).strings.qrNavErrorTitle}: $e'; _isLoading = false; _isRefreshing = false; });
       } else {
         setState(() { _isLoading = false; _isRefreshing = false; });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -173,12 +170,13 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   }
 
   String _canaleLabel(String canale) {
-    const map = {
-      'mercatino': 'Mercatino',
-      'negozio':   'Negozio',
-      'online':    'Online',
-      'privato':   'Privato',
-      'altro':     'Altro',
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+    final map = {
+      'mercatino': s.venditeCanaleMercatino,
+      'negozio':   s.venditeCanaleNegozio,
+      'online':    s.venditeCanaleOnline,
+      'privato':   s.venditeCanalePravato,
+      'altro':     s.venditeCanaleAltro,
     };
     return map[canale] ?? canale;
   }
@@ -233,6 +231,7 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
   }
 
   Widget _buildVenditeTab() {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     final now = DateTime.now();
     final filtered = _venditeFiltered;
     final meseCorrente = filtered.where((v) {
@@ -253,11 +252,11 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${_mesiItaliani[now.month - 1]} ${now.year}',
+                '${s.monthNames[now.month - 1]} ${now.year}',
                 style: TextStyle(fontWeight: FontWeight.bold, color: ThemeConstants.primaryColor),
               ),
               Text(
-                '${meseCorrente.length} vendite  •  ${totaleMese.toStringAsFixed(2)} €',
+                s.venditeBannerSummary(meseCorrente.length, totaleMese.toStringAsFixed(2)),
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ],

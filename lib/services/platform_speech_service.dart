@@ -17,6 +17,15 @@ class PlatformSpeechService with ChangeNotifier {
   bool _isProcessing = false;
   String _transcription = '';
   String _languageCode = 'it_IT';
+
+  /// Maps an ISO 639-1 language code (e.g. 'it', 'en') to a speech_to_text
+  /// locale identifier (e.g. 'it_IT', 'en_US').
+  static String speechLocaleFor(String langCode) {
+    switch (langCode) {
+      case 'en': return 'en_US';
+      default:   return 'it_IT';
+    }
+  }
   double _confidence = 0.0;
   List<String> _recognitionHistory = []; // Stores final results
   String? _error;

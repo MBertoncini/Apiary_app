@@ -489,7 +489,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      a.getStatoDisplay(),
+                      a.getStatoDisplay(s),
                       style: TextStyle(
                         fontSize: 10,
                         color: _statoColor(a.stato),
@@ -499,7 +499,7 @@ class _AttrezzatureListScreenState extends State<AttrezzatureListScreen> {
                   ),
                   if (a.condizione != null)
                     Text(
-                      a.getCondizioneDisplay(),
+                      a.getCondizioneDisplay(s),
                       style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                     ),
                 ],

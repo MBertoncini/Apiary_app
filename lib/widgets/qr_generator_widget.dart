@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../services/mobile_scanner_service.dart';
+import '../services/language_service.dart';
 
 /// Widget per generare e visualizzare codici QR per arnie e apiari
 class QrGeneratorWidget extends StatelessWidget {
@@ -21,22 +23,23 @@ class QrGeneratorWidget extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     String qrData = '';
     String title = '';
     String details = '';
-    
+
     // Genera dati QR in base al tipo di entità
     if (entity is Map<String, dynamic> && entity.containsKey('numero') && entity.containsKey('apiario')) {
       // È un'arnia
       final arnia = entity;
       qrData = service.generateArniaQrData(
-        arnia['id'], 
-        arnia['numero'], 
-        arnia['apiario'], 
-        arnia['apiario_nome'] ?? 'Apiario'
+        arnia['id'],
+        arnia['numero'],
+        arnia['apiario'],
+        arnia['apiario_nome'] ?? s.qrLabelApiario
       );
       title = 'Arnia ${arnia['numero']}';
-      details = 'Apiario: ${arnia['apiario_nome'] ?? 'Sconosciuto'}';
+      details = '${s.qrLabelApiario}: ${arnia['apiario_nome'] ?? s.qrLabelUnknown}';
     } else if (entity is Map<String, dynamic> && entity.containsKey('nome') && !entity.containsKey('arnia')) {
       // È un apiario
       final apiario = entity;
@@ -47,10 +50,10 @@ class QrGeneratorWidget extends StatelessWidget {
         double.tryParse(apiario['longitudine']?.toString() ?? ''),
       );
       title = apiario['nome'];
-      details = 'Posizione: ${apiario['posizione'] ?? "Non specificata"}';
+      details = s.qrLabelPosition(apiario['posizione'] ?? s.qrLabelNotSpecified);
     } else {
       return Center(
-        child: Text('Tipo di entità non supportato per la generazione QR'),
+        child: Text(s.qrUnsupportedEntity),
       );
     }
     
@@ -111,21 +114,21 @@ class QrGeneratorWidget extends StatelessWidget {
                 // Copia dati QR
                 OutlinedButton.icon(
                   icon: Icon(Icons.copy),
-                  label: Text('Copia'),
+                  label: Text(s.qrBtnCopy),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: qrData));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Codice QR copiato negli appunti'),
+                        content: Text(s.qrCopiedToClipboard),
                       ),
                     );
                   },
                 ),
-                
+
                 // Condividi QR
                 ElevatedButton.icon(
                   icon: Icon(Icons.share),
-                  label: Text('Condividi'),
+                  label: Text(s.qrBtnShare),
                   onPressed: () async {
                     try {
                       // Crea un widget QR temporaneo
@@ -156,7 +159,7 @@ class QrGeneratorWidget extends StatelessWidget {
                       // Condividi l'immagine
                       await Share.shareXFiles(
                         [XFile(path)],
-                        text: '$title - Scansionami per visualizzare i dettagli',
+                        text: s.qrShareText(title),
                         subject: title,
                       );
                       
@@ -167,7 +170,7 @@ class QrGeneratorWidget extends StatelessWidget {
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Errore durante la condivisione: $e'),
+                          content: Text(s.qrShareError('$e')),
                           backgroundColor: Colors.red,
                         ),
                       );

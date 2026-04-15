@@ -6,6 +6,7 @@ import '../../models/arnia.dart';
 import '../../models/apiario.dart';  // Import the Apiario model
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';  // Import StorageService
+import '../../widgets/attrezzatura_prompt_dialog.dart';
 import '../../widgets/field_help_icon.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/language_service.dart';
@@ -163,9 +164,10 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
           .toSet();
       if (mounted) {
         setState(() { _numeriUsati = numeri; });
-        // In modalità creazione, suggerisci il prossimo numero
+        // In modalità creazione, suggerisci il primo numero disponibile
         if (widget.arnia == null) {
-          final next = numeri.isEmpty ? 1 : (numeri.reduce((a, b) => a > b ? a : b) + 1);
+          int next = 1;
+          while (numeri.contains(next)) next++;
           _numero = next;
           _numeroController.text = next.toString();
         }
@@ -243,13 +245,25 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
           );
         } else {
           // Modalità creazione
-          await _apiService.post(ApiConstants.arnieUrl, data);
+          final resp = await _apiService.post(ApiConstants.arnieUrl, data);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(_s.arniaCreatedOk)),
           );
+
+          // Popup lite: registra come attrezzatura?
+          if (resp != null && resp['id'] != null) {
+            await showAttrezzaturaPrompt(
+              context: context,
+              tipoArnia: _tipoArnia,
+              numero: _numero,
+              apiarioId: _apiarioId!,
+              arniaId: resp['id'] as int,
+            );
+          }
         }
 
+        if (!mounted) return;
         // Torna indietro
         Navigator.of(context).pop();
       } catch (e) {

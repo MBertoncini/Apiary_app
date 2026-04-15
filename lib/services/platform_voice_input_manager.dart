@@ -6,6 +6,7 @@ import 'platform_speech_service.dart';
 import 'voice_data_processor.dart';
 import 'voice_feedback_service.dart';
 import 'bee_vocabulary_corrector.dart';
+import 'voice_language_rules.dart';
 
 /// Gestore di input vocale che utilizza il riconoscimento vocale nativo della piattaforma
 class PlatformVoiceInputManager with ChangeNotifier {
@@ -40,16 +41,8 @@ class PlatformVoiceInputManager with ChangeNotifier {
   static const int _maxSilentRestarts = 2;
   bool _handlingEngineStop = false; // debounce guard
 
-  /// Words that activate the next recording in batch mode.
-  static const List<String> _triggerWords = [
-    'avanti', 'prossima', 'ok', 'okay', 'vai', 'continua',
-    'registra', 'pronto', 'sì', 'si', 'inizia', 'next',
-  ];
-
-  /// Words that end the current batch entirely.
-  static const List<String> _stopWords = [
-    'stop', 'fine', 'finito', 'basta', 'termina', 'ho finito',
-  ];
+  /// Current language rules (trigger/stop words are language-dependent).
+  VoiceLanguageRules _langRules = VoiceRulesIt();
 
   // Getters
   bool get isListening => _isListening;
@@ -77,6 +70,11 @@ class PlatformVoiceInputManager with ChangeNotifier {
     // Setup listeners
     _speechService.addListener(_onSpeechServiceChanged);
     _dataProcessor.addListener(_onDataProcessorChanged);
+  }
+
+  /// Updates the language rules used for trigger/stop word detection.
+  void setLanguage(String languageCode) {
+    _langRules = VoiceLanguageRules.forCode(languageCode);
   }
 
   // ── Speech service change listener ───────────────────────────────────────
@@ -187,7 +185,7 @@ class PlatformVoiceInputManager with ChangeNotifier {
     final text = _speechService.transcription.toLowerCase().trim();
 
     // Check stop words first — ends the batch entirely
-    if (text.isNotEmpty && _stopWords.any((w) => text.contains(w))) {
+    if (text.isNotEmpty && _langRules.stopWords.any((w) => text.contains(w))) {
       debugPrint('[VoiceManager] Stop word detected: "$text"');
       _isAwaitingTrigger = false;
       _isBatchMode = false;
@@ -200,7 +198,7 @@ class PlatformVoiceInputManager with ChangeNotifier {
     }
 
     // Check next-trigger words — start recording the next arnia
-    if (text.isNotEmpty && _triggerWords.any((w) => text.contains(w))) {
+    if (text.isNotEmpty && _langRules.triggerWords.any((w) => text.contains(w))) {
       debugPrint('[VoiceManager] Trigger detected: "$text"');
       _isAwaitingTrigger = false;
       _triggerRestartTimer?.cancel();

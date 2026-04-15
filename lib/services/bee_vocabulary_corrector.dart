@@ -33,17 +33,30 @@ class CorrectedSegment extends TextSegment {
 
 // ── Corrector ─────────────────────────────────────────────────────────────────
 
-/// Singleton vocabulary corrector for Italian beekeeping STT output.
+/// Singleton vocabulary corrector for beekeeping STT output.
+/// Supports switching dictionaries at runtime via [setDictionary].
 class BeeVocabularyCorrector {
   static final BeeVocabularyCorrector _instance = BeeVocabularyCorrector._();
   factory BeeVocabularyCorrector() => _instance;
   BeeVocabularyCorrector._() {
-    // Sort longest-key-first so multi-word patterns win over sub-phrases.
-    _entries = _dict.entries.toList()
-      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+    _rebuildEntries(_dict);
   }
 
-  late final List<MapEntry<String, String>> _entries;
+  late List<MapEntry<String, String>> _entries;
+  Map<String, String> _activeDict = _dict;
+
+  /// Replaces the correction dictionary (e.g. when the user switches language).
+  /// Pass the `vocabularyCorrectionDict` from [VoiceLanguageRules].
+  void setDictionary(Map<String, String> dict) {
+    if (identical(dict, _activeDict)) return;
+    _activeDict = dict;
+    _rebuildEntries(dict);
+  }
+
+  void _rebuildEntries(Map<String, String> dict) {
+    _entries = dict.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+  }
 
   // ── Dictionary ─────────────────────────────────────────────────────────────
   // Keys: lowercase, as the STT might say them.

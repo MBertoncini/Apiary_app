@@ -509,7 +509,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     // Group melari by arnia ID
     final Map<int, List<Melario>> melariByArnia = {};
     for (final m in activeMelari) {
-      melariByArnia.putIfAbsent(m.arnia, () => []).add(m);
+      if (m.arnia != null) melariByArnia.putIfAbsent(m.arnia!, () => []).add(m);
     }
 
     // Group arnie by apiario
@@ -521,7 +521,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     // Collect all apiario IDs (from arnie and from melari)
     final apiarioNomi = <int, String>{};
     for (final m in _melari) {
-      apiarioNomi[m.apiarioId] = m.apiarioNome;
+      if (m.apiarioId != null) apiarioNomi[m.apiarioId!] = m.apiarioNome ?? '';
     }
     for (final a in _arnie) {
       apiarioNomi[a.apiario] = a.apiarioNome;
@@ -550,8 +550,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
             // Collect arnia IDs that have melari but may not be in _arnie list
             final arniaIdsFromMelari = _melari
-                .where((m) => m.apiarioId == apiarioId)
-                .map((m) => m.arnia)
+                .where((m) => m.apiarioId == apiarioId && m.arnia != null)
+                .map((m) => m.arnia!)
                 .toSet();
             final arniaIdsFromArnie = arnieInApiario.map((a) => a.id).toSet();
             final extraIds = arniaIdsFromMelari.difference(arniaIdsFromArnie);
@@ -562,7 +562,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               final m = _melari.firstWhere((m) => m.arnia == extraId, orElse: () => _melari.first);
               arnieToShow.add(Arnia(
                 id: extraId, apiario: apiarioId, apiarioNome: apiarioNomi[apiarioId] ?? '',
-                numero: m.arniaNumero, colore: '', coloreHex: '#F5A623',
+                numero: m.arniaNumero ?? 0, colore: '', coloreHex: '#F5A623',
                 dataInstallazione: '', attiva: true,
               ));
             }

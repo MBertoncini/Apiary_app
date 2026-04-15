@@ -12,6 +12,7 @@ class Arnia {
   final String dataInstallazione;
   final String? note;
   final bool attiva;
+  final int? attrezzatura;
   /// Colonia attualmente attiva in questa arnia (null se vuota).
   /// Popolata da una chiamata separata a /arnie/{id}/colonia_attiva/.
   final Colonia? coloniaAttiva;
@@ -27,6 +28,7 @@ class Arnia {
     required this.dataInstallazione,
     this.note,
     required this.attiva,
+    this.attrezzatura,
     this.coloniaAttiva,
   });
 
@@ -42,6 +44,7 @@ class Arnia {
       dataInstallazione: json['data_installazione'],
       note: json['note'],
       attiva: json['attiva'] ?? true,
+      attrezzatura: json['attrezzatura'],
       // coloniaAttiva non arriva nel payload base dell'arnia
     );
   }
@@ -58,10 +61,11 @@ class Arnia {
       'data_installazione': dataInstallazione,
       'note': note,
       'attiva': attiva,
+      'attrezzatura': attrezzatura,
     };
   }
 
-  Arnia copyWith({Colonia? coloniaAttiva}) {
+  Arnia copyWith({Colonia? coloniaAttiva, int? attrezzatura}) {
     return Arnia(
       id: id,
       apiario: apiario,
@@ -73,6 +77,7 @@ class Arnia {
       dataInstallazione: dataInstallazione,
       note: note,
       attiva: attiva,
+      attrezzatura: attrezzatura ?? this.attrezzatura,
       coloniaAttiva: coloniaAttiva ?? this.coloniaAttiva,
     );
   }

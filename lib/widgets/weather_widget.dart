@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../services/meteo_service.dart';
+import '../services/language_service.dart';
 import '../constants/theme_constants.dart';
 
 class WeatherWidget extends StatefulWidget {
@@ -40,7 +42,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     if (!mounted) return;
     if (data == null) {
       setState(() {
-        _error = 'Impossibile ottenere i dati meteo. Controlla la connessione.';
+        _error = 'error';
         _isLoading = false;
       });
     } else {
@@ -62,6 +64,8 @@ class _WeatherWidgetState extends State<WeatherWidget> {
       );
     }
 
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+
     if (_error != null) {
       return Center(
         child: Padding(
@@ -71,13 +75,13 @@ class _WeatherWidgetState extends State<WeatherWidget> {
             children: [
               const Icon(Icons.cloud_off_outlined, size: 56, color: Colors.grey),
               const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center,
+              Text(s.weatherErrorNoData, textAlign: TextAlign.center,
                   style: TextStyle(color: ThemeConstants.textSecondaryColor)),
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: _load,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Riprova'),
+                label: Text(s.btnRetry),
               ),
             ],
           ),
@@ -114,7 +118,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                       ),
                     ),
                     Text(
-                      'Aggiornato: ${DateFormat('HH:mm').format(cur.time)}',
+                      s.weatherUpdatedAt(DateFormat('HH:mm').format(cur.time)),
                       style: const TextStyle(
                         fontSize: 12,
                         color: ThemeConstants.textSecondaryColor,
@@ -158,7 +162,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                             style: const TextStyle(fontSize: 15),
                           ),
                           Text(
-                            'Percepita ${cur.apparentTemperature.toStringAsFixed(1)}°C',
+                            s.weatherFeelsLike(cur.apparentTemperature.toStringAsFixed(1)),
                             style: const TextStyle(
                               fontSize: 12,
                               color: ThemeConstants.textSecondaryColor,
@@ -178,15 +182,15 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _detailCol('Umidità', '${cur.humidity.toStringAsFixed(0)}%',
+                    _detailCol(s.weatherHumidity, '${cur.humidity.toStringAsFixed(0)}%',
                         Icons.water_drop, Colors.blue),
-                    _detailCol('Vento',
+                    _detailCol(s.weatherWind,
                         '${cur.windSpeed.toStringAsFixed(1)} km/h',
                         Icons.air, Colors.blueGrey),
-                    _detailCol('Pioggia',
+                    _detailCol(s.weatherRain,
                         '${cur.precipitation.toStringAsFixed(1)} mm',
                         Icons.umbrella, Colors.indigo),
-                    _detailCol('Pressione',
+                    _detailCol(s.weatherPressure,
                         '${cur.pressure.toStringAsFixed(0)} hPa',
                         Icons.compress, Colors.purple),
                   ],
@@ -205,7 +209,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Previsioni 7 giorni', style: ThemeConstants.subheadingStyle),
+                Text(s.weatherForecast7Days, style: ThemeConstants.subheadingStyle),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 120,
@@ -236,8 +240,8 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                           children: [
                             Text(
                               isToday
-                                  ? 'Oggi'
-                                  : _shortDayName(day.date.weekday),
+                                  ? s.weatherToday
+                                  : s.weatherDayNamesShort[(day.date.weekday - 1) % 7],
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
@@ -308,12 +312,6 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     if (code >= 85 && code <= 86) return Icons.ac_unit;
     if (code >= 95) return Icons.thunderstorm;
     return isDay ? Icons.wb_sunny : Icons.nightlight_round;
-  }
-
-  /// Nome breve del giorno in italiano (1=Lun … 7=Dom)
-  String _shortDayName(int weekday) {
-    const days = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-    return days[(weekday - 1) % 7];
   }
 
   /// Colore icona per il codice WMO

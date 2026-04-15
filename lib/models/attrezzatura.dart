@@ -1,4 +1,6 @@
 // lib/models/attrezzatura.dart
+import '../l10n/app_strings.dart';
+
 class Attrezzatura {
   final int id;
   final String nome;
@@ -149,20 +151,24 @@ class Attrezzatura {
     'prestato',
   ];
 
-  String getStatoDisplay() {
+  String getStatoDisplay([AppStrings? s]) {
+    if (s != null) {
+      switch (stato) {
+        case 'disponibile':  return s.attrezzaturaStatoDisponibile;
+        case 'in_uso':       return s.attrezzaturaStatoInUso;
+        case 'manutenzione': return s.attrezzaturaStatoManutenzione;
+        case 'dismesso':     return s.attrezzaturaStatoDismesso;
+        case 'prestato':     return s.attrezzaturaStatoPrestato;
+        default:             return stato ?? s.attrezzaturaStatoNonSpecificato;
+      }
+    }
     switch (stato) {
-      case 'disponibile':
-        return 'Disponibile';
-      case 'in_uso':
-        return 'In Uso';
-      case 'manutenzione':
-        return 'In Manutenzione';
-      case 'dismesso':
-        return 'Dismesso';
-      case 'prestato':
-        return 'Prestato';
-      default:
-        return stato ?? 'Non specificato';
+      case 'disponibile':  return 'Disponibile';
+      case 'in_uso':       return 'In Uso';
+      case 'manutenzione': return 'In Manutenzione';
+      case 'dismesso':     return 'Dismesso';
+      case 'prestato':     return 'Prestato';
+      default:             return stato ?? 'Non specificato';
     }
   }
 
@@ -176,22 +182,26 @@ class Attrezzatura {
     'da_riparare',
   ];
 
-  String getCondizioneDisplay() {
+  String getCondizioneDisplay([AppStrings? s]) {
+    if (s != null) {
+      switch (condizione) {
+        case 'nuovo':      return s.attrezzaturaCondizioneNuovo;
+        case 'ottimo':     return s.attrezzaturaCondizioneOttimo;
+        case 'buono':      return s.attrezzaturaCondizioneBuono;
+        case 'discreto':   return s.attrezzaturaCondizioneDiscreto;
+        case 'usurato':    return s.attrezzaturaCondizioneUsurato;
+        case 'da_riparare': return s.attrezzaturaCondizioneDaRiparare;
+        default:           return condizione ?? s.attrezzaturaCondizioneNonSpecificato;
+      }
+    }
     switch (condizione) {
-      case 'nuovo':
-        return 'Nuovo';
-      case 'ottimo':
-        return 'Ottimo';
-      case 'buono':
-        return 'Buono';
-      case 'discreto':
-        return 'Discreto';
-      case 'usurato':
-        return 'Usurato';
-      case 'da_riparare':
-        return 'Da Riparare';
-      default:
-        return condizione ?? 'Non specificato';
+      case 'nuovo':      return 'Nuovo';
+      case 'ottimo':     return 'Ottimo';
+      case 'buono':      return 'Buono';
+      case 'discreto':   return 'Discreto';
+      case 'usurato':    return 'Usurato';
+      case 'da_riparare': return 'Da Riparare';
+      default:           return condizione ?? 'Non specificato';
     }
   }
 }

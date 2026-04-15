@@ -82,6 +82,11 @@ abstract class AppStrings {
   String get voiceAudioPremiumSheetBody;
   String get voiceAudioPremiumSheetActivate;
 
+  // Equipment prompt (after hive creation)
+  String get sectionEquipmentPrompt;
+  String get settingsAttrezzaturaPrompt;
+  String get settingsAttrezzaturaPromptSub;
+
   // AI Quota section
   String get sectionQuota;
   String get quotaRefreshTooltip;
@@ -833,19 +838,12 @@ abstract class AppStrings {
   String invasettamentoFormLblTotale(String kg);
   String get invasettamentoFormLblLotto;
 
-  // ── Controllo form ────────────────────────────────────────────────────────
+  // ── Controllo form (legacy keys) ──────────────────────────────────────────
   String get controlloFormDialogTitle;
-  String get controlloFormTitleNew;
-  String get controlloFormTitleEdit;
-  String get controlloFormLblData;
   String get controlloFormBtnAutoOrdina;
   String get controlloFormLblNumCelleReali;
   String get controlloFormLblNoteSciamatura;
   String get controlloFormLblDettagliProblemi;
-  String get controlloFormLblNote;
-  String get controlloFormHintNote;
-  String get controlloFormSyncOk;
-  String get controlloFormLblStatoRegina;
   String get controlloFormLblColore;
   String get controlloFormToccoTelaino;
 
@@ -1210,6 +1208,7 @@ abstract class AppStrings {
   String get attrezzaturaFormTitleEdit;
   String get attrezzaturaFormLblNome;
   String get attrezzaturaFormValidateNome;
+  String get attrezzaturaFormValidateCampoObbligatorio;
   String get attrezzaturaFormLblMarca;
   String get attrezzaturaFormLblModello;
   String get attrezzaturaFormLblQuantita;
@@ -1250,6 +1249,18 @@ abstract class AppStrings {
   String get attrezzaturaCondizioneDiscreto;
   String get attrezzaturaCondizioneUsurato;
   String get attrezzaturaCondizioneDaRiparare;
+
+  // ── Attrezzatura prompt (popup lite dopo creazione arnia) ────────────────
+  String get attrezzaturaPromptTitle;
+  String get attrezzaturaPromptBody;
+  String get attrezzaturaPromptNome;
+  String get attrezzaturaPromptCondizione;
+  String get attrezzaturaPromptPrezzo;
+  String get attrezzaturaPromptSkip;
+  String get attrezzaturaPromptBtnNo;
+  String get attrezzaturaPromptBtnYes;
+  String get attrezzaturaPromptSuccess;
+  String attrezzaturaPromptError(String e);
 
   // ── Manutenzione form ─────────────────────────────────────────────────────
   String get manutenzioneFormTitle;
@@ -2165,4 +2176,157 @@ abstract class AppStrings {
 
   // ── Privacy Policy screen ──
   String get privacyTitle;
+  String get privacyHeader;
+  String get privacyLastUpdated;
+  String get privacyIntro;
+  String get privacyS1Title;
+  String get privacyS1Body;
+  String get privacyS2Title;
+  String get privacyS2Body;
+  String get privacyS2_1Title;
+  List<String> get privacyS2_1Bullets;
+  String get privacyS2_2Title;
+  List<String> get privacyS2_2Bullets;
+  String get privacyS2_3Title;
+  String get privacyS2_3Body;
+  String get privacyS3Title;
+  List<String> get privacyS3Bullets;
+  String get privacyS4Title;
+  List<String> get privacyS4Bullets;
+  String get privacyS5Title;
+  List<String> get privacyS5Bullets;
+  String get privacyS6Title;
+  String get privacyS6Body;
+  List<String> get privacyS6Bullets;
+  String get privacyS7Title;
+  String get privacyS7Body;
+  List<String> get privacyS7Bullets;
+  String get privacyS7Contact;
+  String get privacyS7Garante;
+  String get privacyS8Title;
+  String get privacyS8Body;
+  String get privacyS9Title;
+  String get privacyS9Body;
+  String get privacyS10Title;
+  String get privacyS10Body;
+  String get privacyS11Title;
+  String get privacyS11Body;
+  String get privacyCopyright;
+
+  // ── Weather widget ──
+  String get weatherErrorNoData;
+  String weatherUpdatedAt(String time);
+  String weatherFeelsLike(String temp);
+  String get weatherHumidity;
+  String get weatherWind;
+  String get weatherRain;
+  String get weatherPressure;
+  String get weatherForecast7Days;
+  String get weatherToday;
+  List<String> get weatherDayNamesShort;
+
+  // ── QR code ──
+  String get qrUnsupportedEntity;
+  String get qrLabelApiario;
+  String get qrLabelUnknown;
+  String qrLabelPosition(String position);
+  String get qrLabelNotSpecified;
+  String get qrBtnCopy;
+  String get qrCopiedToClipboard;
+  String get qrBtnShare;
+  String qrShareText(String title);
+  String qrShareError(String error);
+  String get qrNavUnsupportedTitle;
+  String get qrNavUnsupportedMsg;
+  String get qrNavErrorTitle;
+  String qrNavErrorMsg(String error);
+  String get qrNavArniaNonTrovatoTitle;
+  String get qrNavArniaNonTrovatoMsg;
+  String get qrNavArniaOfflineTitle;
+  String get qrNavArniaOfflineMsg;
+  String get qrNavApiarioNonTrovatoTitle;
+  String get qrNavApiarioNonTrovatoMsg;
+  String get qrNavApiarioOfflineTitle;
+  String get qrNavApiarioOfflineMsg;
+
+  // ── Minimap / edit mode ──
+  String mapAddTitle(String label);
+  String mapAddNumberLabel(String label);
+  String get mapLabelColor;
+  String get mapBtnAdd;
+  String mapNucleoTitle(String num);
+  String get mapNucleoLegacyHint;
+  String get mapRemoveFromMap;
+  String get mapNumberConflictTitle;
+  String mapNumberConflictMsg(String current);
+  String get mapArniaNumberLabel;
+  String get mapSaved;
+  String get mapRemoveElementTitle;
+  String get mapNoArnie;
+  String get mapNoArnieCta;
+  String get mapEditModeHint;
+  String get mapSelectionHint;
+  String mapSelectedCount(int count);
+  String get mapLongPressToDelete;
+  String get mapLabelArnia;
+  String get mapLabelApidea;
+  String get mapLabelMiniPlus;
+  String get mapLabelPortasciami;
+  String get mapLabelAlbero;
+  String get mapLabelVialetto;
+  String get mapTooltipCenter;
+  String get mapSnapOn;
+  String get mapSnapOff;
+  String get mapBtnSave;
+  String get mapBtnDone;
+  String get mapLabelInactive;
+  String get mapLabelInactiveFem;
+
+  // ── Colony data in arnia detail ──
+  String get arniaColoniaVuota;
+  String get arniaInsediaColonia;
+  String arniaColoniaHeader(int id, String date);
+  String arniaColoniaRegina(String razza, String origine);
+  String get arniaMenuStoriaColonie;
+  String get arniaMenuInsediaNuovaColonia;
+
+  // ── Equipment model display ──
+  String get attrezzaturaStatoNonSpecificato;
+  String get attrezzaturaCondizioneNonSpecificato;
+
+  // ── Sales banner ──
+  List<String> get monthNames;
+  String venditeBannerSummary(int count, String total);
+  String get venditeCanaleMercatino;
+  String get venditeCanaleNegozio;
+  String get venditeCanaleOnline;
+  String get venditeCanalePravato;
+  String get venditeCanaleAltro;
+
+  // ── Voice command examples ──
+  String get voiceCommandExample1;
+  String get voiceCommandExample2;
+  String get voiceCommandExample3;
+  String voiceCommandGeminiError(String detail);
+
+  // ── Guide sections ──
+  String get guidaSection1Title;
+  String get guidaSection2Title;
+  String get guidaSection3Title;
+  String get guidaSection4Title;
+  String get guidaSection5Title;
+  String get guidaSection6Title;
+  String get guidaSection7Title;
+  List<String> get guidaSection1Items;
+  List<String> get guidaSection2Items;
+  List<String> get guidaSection3Items;
+  List<String> get guidaSection4Items;
+  List<String> get guidaSection5Items;
+  List<String> get guidaSection6Items;
+  List<String> get guidaSection7Items;
+
+  // ── AI Chat ──
+  String get chatWelcomeMessage;
+  String get chatTitle;
+  String get chatChartDefaultTitle;
 }

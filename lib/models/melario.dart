@@ -1,9 +1,11 @@
 class Melario {
   final int id;
-  final int arnia;
-  final int arniaNumero;
-  final int apiarioId;
-  final String apiarioNome;
+  final int? colonia;
+  final int? coloniaId;
+  final int? arnia;
+  final int? arniaNumero;
+  final int? apiarioId;
+  final String? apiarioNome;
   final int numeroTelaini;
   final int posizione;
   final String dataPosizionamento;
@@ -18,10 +20,12 @@ class Melario {
 
   Melario({
     required this.id,
-    required this.arnia,
-    required this.arniaNumero,
-    required this.apiarioId,
-    required this.apiarioNome,
+    this.colonia,
+    this.coloniaId,
+    this.arnia,
+    this.arniaNumero,
+    this.apiarioId,
+    this.apiarioNome,
     required this.numeroTelaini,
     required this.posizione,
     required this.dataPosizionamento,
@@ -38,7 +42,9 @@ class Melario {
   factory Melario.fromJson(Map<String, dynamic> json) {
     return Melario(
       id: json['id'],
-      arnia: json['arnia'],
+      colonia: json['colonia'],
+      coloniaId: json['colonia_id'],
+      arnia: json['arnia_id'] ?? json['arnia'],
       arniaNumero: json['arnia_numero'],
       apiarioId: json['apiario_id'],
       apiarioNome: json['apiario_nome'],
@@ -59,8 +65,7 @@ class Melario {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'arnia': arnia,
-      'arnia_numero': arniaNumero,
+      'colonia': colonia ?? coloniaId,
       'apiario_id': apiarioId,
       'apiario_nome': apiarioNome,
       'numero_telaini': numeroTelaini,
@@ -75,7 +80,7 @@ class Melario {
       'note': note,
     };
   }
-  
+
   bool isActive() {
     return stato == 'posizionato';
   }

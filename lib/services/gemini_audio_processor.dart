@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
 import '../config/api_keys.dart';
 import 'ai_quota_local_tracker.dart';
+import 'voice_language_rules.dart';
 
 /// Invia un file audio direttamente a Gemini multimodale (inline_data base64).
 /// Gemini trascrive e struttura i dati in un unico passaggio, eliminando
@@ -28,6 +29,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
   String? _personalApiKey;
   int? _contextApiarioId;
   String? _contextApiarioNome;
+  VoiceLanguageRules _langRules = VoiceRulesIt();
 
   bool _isProcessing = false;
   String? _error;
@@ -41,6 +43,10 @@ class GeminiAudioProcessor extends ChangeNotifier {
 
   void setPersonalKey(String? key) {
     _personalApiKey = (key != null && key.isNotEmpty) ? key : null;
+  }
+
+  void setLanguage(String languageCode) {
+    _langRules = VoiceLanguageRules.forCode(languageCode);
   }
 
   void setContext(int? apiarioId, String? apiarioNome) {
@@ -84,59 +90,18 @@ class GeminiAudioProcessor extends ChangeNotifier {
       final base64Audio = base64Encode(bytes);
 
       final contextInfo = _contextApiarioNome != null
-          ? 'Contesto sessione: apiario "$_contextApiarioNome" '
-              '(ID: $_contextApiarioId). '
-              'L\'apicoltore parlerà solo del numero arnia.'
-          : 'Nessun apiario selezionato come contesto.';
+          ? (_langRules.code == 'en'
+              ? 'Session context: apiary "$_contextApiarioNome" '
+                  '(ID: $_contextApiarioId). '
+                  'The beekeeper will only mention the hive number.'
+              : 'Contesto sessione: apiario "$_contextApiarioNome" '
+                  '(ID: $_contextApiarioId). '
+                  'L\'apicoltore parlerà solo del numero arnia.')
+          : (_langRules.code == 'en'
+              ? 'No apiary selected as context.'
+              : 'Nessun apiario selezionato come contesto.');
 
-      const jsonSchema = '''
-{
-  "arnia_numero": <intero o null>,
-  "presenza_regina": <true/false o null>,
-  "regina_vista": <true/false o null>,
-  "uova_fresche": <true/false o null>,
-  "celle_reali": <true/false o null>,
-  "numero_celle_reali": <intero o null>,
-  "telaini_covata": <intero o null>,
-  "telaini_scorte": <intero o null>,
-  "telaini_diaframma": <intero o null>,
-  "telaini_foglio_cereo": <intero o null>,
-  "telaini_nutritore": <intero o null>,
-  "forza_famiglia": <"debole"/"normale"/"forte" o null>,
-  "sciamatura": <true/false o null>,
-  "problemi_sanitari": <true/false o null>,
-  "tipo_problema": <stringa o null>,
-  "note": <stringa con osservazioni libere o null>,
-  "regina_colorata": <true/false o null>,
-  "colore_regina": <"bianco"/"giallo"/"rosso"/"verde"/"blu" o null>
-}''';
-
-      final prompt = '''
-Sei un assistente per apicoltori. Ascolta questa registrazione audio di un apicoltore
-che descrive l'ispezione di un'arnia ed estrai i dati strutturati.
-
-$contextInfo
-
-Rispondi SOLO con un oggetto JSON valido (nessun testo aggiuntivo, nessun markdown):
-$jsonSchema
-
-Regole:
-- Se viene menzionato "arnia N", arnia_numero = N
-- "famiglia forte/normale/debole" → forza_famiglia
-- "presenza regina" o "regina presente" → presenza_regina = true, regina_vista = false
-- "regina vista" o "ho visto la regina" → presenza_regina = true, regina_vista = true
-- "regina assente" → presenza_regina = false, regina_vista = false
-- "celle reali" → celle_reali = true; se viene dato un numero, numero_celle_reali
-- "sciamatura" o "rischio sciamatura" → sciamatura = true
-- "problemi sanitari", "varroa", "nosema", "covata calcificata" → problemi_sanitari = true + tipo_problema
-- "diaframma" → telaini_diaframma (numero intero)
-- "foglio cereo" o "fogli cerei" → telaini_foglio_cereo (numero intero)
-- "nutritore" → telaini_nutritore (numero intero)
-- NON calcolare telaini_totali
-- "ho colorato la regina" o "marcato la regina" → regina_colorata = true
-- Se viene menzionato un colore insieme alla regina → colore_regina
-- Le osservazioni non strutturate vanno in note
-''';
+      final prompt = _langRules.geminiPrompt(contextInfo);
 
       final body = jsonEncode({
         'contents': [

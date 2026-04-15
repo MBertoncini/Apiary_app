@@ -164,6 +164,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
   }
 
   Widget _buildError() {
+    final s = _s;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -178,6 +179,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
 
   // ── Summary bar ──────────────────────────────────────────────────────
   Widget _buildSummaryRow() {
+    final s = _s;
     return Row(
       children: [
         _summaryChip(Icons.hourglass_top, '${_totKgMaturazione.toStringAsFixed(1)} kg', s.cantinaInMaturazione, Colors.orange),
@@ -212,6 +214,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
 
   // ── Maturatori ───────────────────────────────────────────────────────
   Widget _buildMaturatoriSection() {
+    final s = _s;
     final active = _maturatori.where((m) => !m.isSvuotato).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,6 +238,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
 
   // ── Stoccaggio ───────────────────────────────────────────────────────
   Widget _buildStoccaggioSection() {
+    final s = _s;
     final active = _contenitori.where((c) => !c.isVuoto).toList();
     // Group by tipo_miele
     final Map<String, List<ContenitoreStoccaggio>> byTipo = {};
@@ -285,6 +289,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
 
   // ── Invasettato ──────────────────────────────────────────────────────
   Widget _buildInvasettatiSection() {
+    final s = _s;
     final byTipo = _invasettamentiPerTipo;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

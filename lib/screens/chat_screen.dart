@@ -49,6 +49,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final s = _s;
     final chatService = Provider.of<ChatService>(context);
 
+    // Set localized welcome message
+    chatService.setWelcomeMessage(s.chatWelcomeMessage);
+
     // Auto-scroll quando nuovi messaggi arrivano
     if (chatService.messages.isNotEmpty) {
       _scrollToBottom();
@@ -56,7 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ApiarioAI Assistant'),
+        title: Text(s.chatTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -347,7 +350,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               ChartExporter.captureAndShareChart(
                                 context,
                                 ChartWidget(chartData: message.chartData!),
-                                message.chartData!['title'] ?? 'Grafico',
+                                message.chartData!['title'] ?? _s.chatChartDefaultTitle,
                               );
                             },
                             borderRadius: BorderRadius.circular(20),

@@ -145,6 +145,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   }
 
   Widget _buildPagamentiTab() {
+    final s = _s;
     if (_pagamenti.isEmpty) {
       return Center(
         child: Column(
@@ -309,6 +310,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
   /// Se SALDO > 0: il membro ha pagato di più, gli altri gli devono dei soldi
   /// Se SALDO < 0: il membro deve pagare ancora
   Widget _buildBilancioTab() {
+    final s = _s;
     // Raggruppa le quote per gruppo
     final Map<int, List<QuotaUtente>> quotePerGruppo = {};
     for (var quota in _quote) {

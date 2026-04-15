@@ -684,16 +684,16 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             children: [
               const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Arnia vuota — nessuna colonia attiva',
-                  style: TextStyle(fontSize: 13, color: Colors.orange),
+                  _s.arniaColoniaVuota,
+                  style: const TextStyle(fontSize: 13, color: Colors.orange),
                 ),
               ),
               TextButton.icon(
                 onPressed: _navigateToNuovaColonia,
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Insedia colonia'),
+                label: Text(_s.arniaInsediaColonia),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -721,12 +721,12 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Colonia #${colonia.id} — dal ${colonia.dataInizio}',
+                    _s.arniaColoniaHeader(colonia.id, colonia.dataInizio),
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   if (colonia.reginaAttiva != null)
                     Text(
-                      'Regina: ${colonia.reginaAttiva!['razza'] ?? ''} · ${colonia.reginaAttiva!['origine'] ?? ''}',
+                      _s.arniaColoniaRegina(colonia.reginaAttiva!['razza'] ?? '', colonia.reginaAttiva!['origine'] ?? ''),
                       style: const TextStyle(fontSize: 11, color: Colors.black54),
                     ),
                 ],
@@ -823,20 +823,20 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                   dense: true,
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'storia_colonie',
                 child: ListTile(
-                  leading: Icon(Icons.history_rounded),
-                  title: Text('Storia colonie'),
+                  leading: const Icon(Icons.history_rounded),
+                  title: Text(_s.arniaMenuStoriaColonie),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'nuova_colonia',
                 child: ListTile(
-                  leading: Icon(Icons.add_circle_outline),
-                  title: Text('Insedia nuova colonia'),
+                  leading: const Icon(Icons.add_circle_outline),
+                  title: Text(_s.arniaMenuInsediaNuovaColonia),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),

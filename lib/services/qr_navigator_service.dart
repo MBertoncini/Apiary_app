@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../database/dao/arnia_dao.dart';
 import '../database/dao/apiario_dao.dart';
 import '../services/connectivity_service.dart';
+import '../services/language_service.dart';
 import '../constants/app_constants.dart';
-import '../constants/api_constants.dart';  // Aggiunto l'import
+import '../constants/api_constants.dart';
 import '../services/api_service.dart';
 
 /// Servizio che gestisce la navigazione dopo la scansione di un QR code
@@ -19,101 +21,83 @@ class QrNavigatorService {
   Future<bool> navigateToQrResult(BuildContext context, Map<String, dynamic> qrData) async {
     bool isConnected = await _connectivityService.isConnected();
     
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
       if (qrData['type'] == 'arnia') {
-        return await _navigateToArnia(context, qrData, isConnected);
+        return await _navigateToArnia(context, qrData, isConnected, s);
       } else if (qrData['type'] == 'apiario') {
-        return await _navigateToApiario(context, qrData, isConnected);
+        return await _navigateToApiario(context, qrData, isConnected, s);
       }
-      
+
       // Tipo QR non riconosciuto
-      _showErrorDialog(context, 'Tipo QR non supportato', 
-          'Il formato del QR code scansionato non è riconosciuto.');
+      _showErrorDialog(context, s.qrNavUnsupportedTitle, s.qrNavUnsupportedMsg);
       return false;
     } catch (e) {
-      _showErrorDialog(context, 'Errore', 'Si è verificato un errore: $e');
+      _showErrorDialog(context, s.qrNavErrorTitle, s.qrNavErrorMsg('$e'));
       return false;
     }
   }
 
   /// Naviga alla schermata di dettaglio dell'arnia
-  Future<bool> _navigateToArnia(BuildContext context, Map<String, dynamic> qrData, bool isConnected) async {
+  Future<bool> _navigateToArnia(BuildContext context, Map<String, dynamic> qrData, bool isConnected, dynamic s) async {
     final int arniaId = qrData['id'];
-    
+
     // Prima cerca l'arnia localmente
     final arnia = await _arniaDao.getById(arniaId);
-    
+
     if (arnia != null) {
-      // L'arnia è stata trovata localmente, naviga direttamente
       Navigator.of(context).pushNamed(
         AppConstants.arniaDetailRoute,
         arguments: arniaId,
       );
       return true;
     } else if (isConnected) {
-      // L'arnia non è stata trovata localmente, ma siamo online
-      // Tenta di recuperarla dal server e poi navigare
       try {
         final response = await _apiService.get('${ApiConstants.arnieUrl}$arniaId/');
-        
-        // Salva l'arnia localmente per uso futuro
         await _arniaDao.syncFromServer([response]);
-        
         Navigator.of(context).pushNamed(
           AppConstants.arniaDetailRoute,
           arguments: arniaId,
         );
         return true;
       } catch (e) {
-        _showErrorDialog(context, 'Arnia non trovata', 
-            'L\'arnia scansionata non è stata trovata nel sistema. Assicurati di avere i permessi necessari.');
+        _showErrorDialog(context, s.qrNavArniaNonTrovatoTitle, s.qrNavArniaNonTrovatoMsg);
         return false;
       }
     } else {
-      // Offline e l'arnia non è nel database locale
-      _showErrorDialog(context, 'Arnia non disponibile offline', 
-          'L\'arnia scansionata non è disponibile in modalità offline. Connettiti a internet per scaricare i dati.');
+      _showErrorDialog(context, s.qrNavArniaOfflineTitle, s.qrNavArniaOfflineMsg);
       return false;
     }
   }
 
   /// Naviga alla schermata di dettaglio dell'apiario
-  Future<bool> _navigateToApiario(BuildContext context, Map<String, dynamic> qrData, bool isConnected) async {
+  Future<bool> _navigateToApiario(BuildContext context, Map<String, dynamic> qrData, bool isConnected, dynamic s) async {
     final int apiarioId = qrData['id'];
-    
+
     // Prima cerca l'apiario localmente
     final apiario = await _apiarioDao.getById(apiarioId);
-    
+
     if (apiario != null) {
-      // L'apiario è stato trovato localmente, naviga direttamente
       Navigator.of(context).pushNamed(
         AppConstants.apiarioDetailRoute,
         arguments: apiarioId,
       );
       return true;
     } else if (isConnected) {
-      // L'apiario non è stato trovato localmente, ma siamo online
-      // Tenta di recuperarlo dal server e poi navigare
       try {
         final response = await _apiService.get('${ApiConstants.apiariUrl}$apiarioId/');
-        
-        // Salva l'apiario localmente per uso futuro
         await _apiarioDao.syncFromServer([response]);
-        
         Navigator.of(context).pushNamed(
           AppConstants.apiarioDetailRoute,
           arguments: apiarioId,
         );
         return true;
       } catch (e) {
-        _showErrorDialog(context, 'Apiario non trovato', 
-            'L\'apiario scansionato non è stato trovato nel sistema. Assicurati di avere i permessi necessari.');
+        _showErrorDialog(context, s.qrNavApiarioNonTrovatoTitle, s.qrNavApiarioNonTrovatoMsg);
         return false;
       }
     } else {
-      // Offline e l'apiario non è nel database locale
-      _showErrorDialog(context, 'Apiario non disponibile offline', 
-          'L\'apiario scansionato non è disponibile in modalità offline. Connettiti a internet per scaricare i dati.');
+      _showErrorDialog(context, s.qrNavApiarioOfflineTitle, s.qrNavApiarioOfflineMsg);
       return false;
     }
   }
@@ -128,7 +112,7 @@ class QrNavigatorService {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('OK'),
+            child: const Text('OK'),
           ),
         ],
       ),
