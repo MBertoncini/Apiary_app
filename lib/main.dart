@@ -12,6 +12,8 @@ import 'constants/theme_constants.dart';
 import 'database/database_helper.dart';
 import 'provider_setup.dart';
 import 'services/language_service.dart';
+import 'services/auth_service.dart';
+import 'services/subscription_service.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -45,7 +47,8 @@ void main() {
     runApp(
       MultiProvider(
         providers: providers,
-        child: Consumer<LanguageService>(
+        child: _InitSubscription(
+          child: Consumer<LanguageService>(
           builder: (context, languageService, _) => MaterialApp(
             navigatorKey: navigatorKey,
             title: AppConstants.appName,
@@ -67,6 +70,7 @@ void main() {
             ),
           ),
         ),
+        ),
       ),
     );
   }, (Object error, StackTrace stack) {
@@ -76,4 +80,30 @@ void main() {
       debugPrint('$stack');
     }
   });
+}
+
+/// Eagerly initializes [SubscriptionService] once the widget tree is ready.
+class _InitSubscription extends StatefulWidget {
+  final Widget child;
+  const _InitSubscription({required this.child});
+
+  @override
+  State<_InitSubscription> createState() => _InitSubscriptionState();
+}
+
+class _InitSubscriptionState extends State<_InitSubscription> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final subService = Provider.of<SubscriptionService>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      // Let AuthService call RC login/logout automatically.
+      authService.subscriptionService = subService;
+      subService.init();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

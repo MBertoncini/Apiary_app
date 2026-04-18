@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'debug_trace.dart';
 
 /// Coda persistente di registrazioni audio in attesa di essere elaborate
 /// da Gemini. I file audio vengono salvati nella directory documenti
@@ -57,6 +58,7 @@ class AudioQueueService {
     });
     await prefs.setString(_queueKey, jsonEncode(queue));
     debugPrint('[AudioQueue] Added: $filePath (${queue.length} total)');
+    DebugTrace.log('queue: ADD ok count=${queue.length} file=${filePath.split('/').last}');
   }
 
   Future<void> removeFromQueue(String id) async {

@@ -1896,6 +1896,94 @@ class StringsIt extends AppStrings {
   @override String get chatRetrySnackbar => 'Riprovando a inviare il messaggio...';
   @override String get chatHint => 'Scrivi un messaggio...';
   @override String get chatGeneratingChart => 'Generazione grafico in corso...';
+  @override String get chatQuotaUpgradeHint =>
+      'Puoi inserire una chiave Gemini personale nelle impostazioni oppure passare a un piano superiore.';
+
+  // ── AI Tier ──
+  @override String get aiTierLabel => 'Piano AI';
+  @override String get aiTierUpgrade => 'Upgrade';
+  @override String get aiTierUpgradeComingSoon => 'L\'upgrade dei piani sarà disponibile a breve!';
+  @override String get aiTierTotal => 'Totale';
+  @override String get aiTierFreeDesc => 'Chat: 10/giorno, Voice: 5/giorno';
+  @override String get aiTierApicoltoreDesc => 'Chat: 30/giorno, Voice: 30/giorno';
+  @override String get aiTierProfessionaleDesc => 'Chat: 200/giorno, Voice: 100/giorno';
+
+  // ── AI Tier upgrade screen ──
+  @override String get aiUpgradeTitle => 'Piani AI';
+  @override String get aiUpgradeSubtitle => 'Scegli il piano più adatto alle tue esigenze apistiche';
+  @override String get aiUpgradeCurrentPlan => 'Piano attuale';
+  @override String get aiUpgradeChatPerDay => 'chat/giorno';
+  @override String get aiUpgradeVoicePerDay => 'voice/giorno';
+  @override String get aiUpgradeTotalPerDay => 'totale/giorno';
+  @override String get aiUpgradeFeatureAdvanced => 'Analisi AI avanzate';
+  @override String get aiUpgradeContactUs => 'Richiedi upgrade';
+  @override String get aiUpgradeContactEmail => 'Email inviata per la richiesta di upgrade!';
+  @override String get aiUpgradeContactSent => 'Ti contatteremo a breve per attivare il piano.';
+  @override String get aiUpgradeFreeNote => 'Perfetto per iniziare e provare l\'assistente AI';
+  @override String get aiUpgradeApicoltoreNote => 'Per apicoltori con più alveari da gestire';
+  @override String get aiUpgradeProfessionaleNote => 'Per aziende apistiche e professionisti';
+  @override String get aiUpgradeMostPopular => 'Più popolare';
+  @override String get aiUpgradeDowngradeNote => 'Per modificare o ridurre il piano, contattaci.';
+  @override String get chatQuotaPreCheckError => 'Hai raggiunto il limite giornaliero di messaggi. Aggiorna il piano o riprova domani.';
+  @override String get chatQuotaResetNotice => 'La quota è stata ripristinata. Puoi inviare nuovi messaggi.';
+
+  // ── Subscription / Paywall ──
+  @override String get subPaywallTitle => 'Apiary Pro';
+  @override String get subPaywallSubtitle => 'Sblocca tutto il potenziale dell\'assistente AI';
+  @override String get subMonthly => 'Mensile';
+  @override String get subYearly => 'Annuale';
+  @override String get subYearlySave => 'Risparmia';
+  @override String get subRestore => 'Ripristina acquisti';
+  @override String get subRestoreSuccess => 'Acquisti ripristinati con successo!';
+  @override String get subRestoreNone => 'Nessun acquisto precedente trovato.';
+  @override String get subRestoreError => 'Errore nel ripristino degli acquisti.';
+  @override String get subPurchaseSuccess => 'Abbonamento attivato! Benvenuto in Apiary Pro.';
+  @override String get subPurchaseError => 'Errore durante l\'acquisto. Riprova.';
+  @override String get subManage => 'Gestisci abbonamento';
+  @override String get subCurrentPlan => 'Piano attuale';
+  @override String get subFreeDesc => 'Funzionalità AI di base con limiti giornalieri';
+  @override String get subProMonthlyDesc => 'Accesso completo, fatturazione mensile';
+  @override String get subProYearlyDesc => 'Accesso completo, fatturazione annuale';
+  @override String get subFeatureUnlimitedChat => 'Chat AI senza limiti';
+  @override String get subFeatureVoice => 'Inserimento vocale illimitato';
+  @override String get subFeatureAdvancedAI => 'Analisi AI avanzate';
+  @override String get subCostExplanation => 'I costi saranno minimi: servono a coprire le spese della chiave API Gemini e a mantenere l\'app attiva e aggiornata. Vogliamo che Apiary resti accessibile a tutti gli apicoltori.';
+  @override String get subLoading => 'Caricamento piani...';
+  @override String get subNoProducts => 'Nessun piano disponibile al momento.';
+  @override String subPricePerMonth(String price) => '$price/mese';
+  @override String subPricePerYear(String price) => '$price/anno';
+  @override String subSavePercent(int percent) => 'Risparmi $percent%';
+  @override String get subFreeTrial => 'Prova gratuita';
+  @override String subFreeTrialDays(int days) => '$days giorni gratis';
+  @override String get subThenPrice => 'poi';
+  @override String get subBestValue => 'Miglior valore';
+  @override String get subMostPopular => 'Consigliato';
+  @override String get subSubscribe => 'Abbonati';
+  @override String get subPerMonth => '/mese';
+  @override String get subPerYear => '/anno';
+  @override String get subChoosePlan => 'Scegli il tuo piano';
+  @override String get subTermsNotice => 'L\'abbonamento si rinnova automaticamente. Puoi annullare in qualsiasi momento dalle impostazioni del Play Store.';
+  @override String subPackageDuration(String type) {
+    switch (type) {
+      case 'MONTHLY': return 'Mensile';
+      case 'ANNUAL': return 'Annuale';
+      case 'SIX_MONTH': return 'Semestrale';
+      case 'THREE_MONTH': return 'Trimestrale';
+      case 'TWO_MONTH': return 'Bimestrale';
+      case 'WEEKLY': return 'Settimanale';
+      case 'LIFETIME': return 'Lifetime';
+      default: return type;
+    }
+  }
+  @override String get subComingSoon => 'Prossimamente';
+  @override String get subComingSoonDesc => 'Gli abbonamenti in-app saranno disponibili a breve. Nel frattempo, se hai un codice di accesso puoi attivare le funzionalità Pro.';
+  @override String get subActivateCode => 'Hai un codice?';
+  @override String get subActivateCodeHint => 'Inserisci codice di accesso';
+  @override String get subActivateBtn => 'Attiva';
+  @override String get subActivateSuccess => 'Codice attivato! Benvenuto in Apiary Pro.';
+  @override String get subActivateError => 'Errore durante l\'attivazione. Riprova.';
+  @override String get subActivateInvalid => 'Codice non valido o scaduto.';
+  @override String get subActivating => 'Attivazione in corso...';
 
   // ── Analisi telaino list screen ──
   @override String get analisiListTitle => 'Analisi Telaini';

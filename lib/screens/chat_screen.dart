@@ -7,11 +7,11 @@ import '../models/chat_message.dart';
 import '../services/chat_service.dart';
 import '../services/language_service.dart';
 import 'package:intl/intl.dart';
-import '../services/auth_service.dart';
 import '../widgets/chart_widget.dart';
 import '../utils/chart_exporter.dart';
 import '../widgets/formatted_message_widget.dart';
 import '../widgets/rich_message_widget.dart';
+import 'ai_tier_upgrade_screen.dart';
 class ChatScreen extends StatefulWidget {
   @override
   _ChatScreenState createState() => _ChatScreenState();
@@ -166,21 +166,67 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: chatService.isQuotaExceeded
+                    ? Colors.orange.shade50
+                    : Colors.red.shade50,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
+                border: Border.all(
+                  color: chatService.isQuotaExceeded
+                      ? Colors.orange.shade200
+                      : Colors.red.shade200,
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                  Icon(
+                    chatService.isQuotaExceeded
+                        ? Icons.hourglass_empty
+                        : Icons.error_outline,
+                    color: chatService.isQuotaExceeded
+                        ? Colors.orange
+                        : Colors.red,
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      s.chatErrMsg(chatService.error!),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.red.shade800,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          chatService.isQuotaExceeded
+                              ? chatService.error!
+                              : s.chatErrMsg(chatService.error!),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: chatService.isQuotaExceeded
+                                ? Colors.orange.shade800
+                                : Colors.red.shade800,
+                          ),
+                        ),
+                        if (chatService.isQuotaExceeded)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          const AiTierUpgradeScreen()),
+                                );
+                              },
+                              child: Text(
+                                s.chatQuotaUpgradeHint,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.orange.shade700,
+                                  fontStyle: FontStyle.italic,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   IconButton(
@@ -259,13 +305,13 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     
     final chatService = Provider.of<ChatService>(context, listen: false);
-    chatService.sendMessage(text);
+    chatService.sendMessage(text, preCheckErrorMsg: _s.chatQuotaPreCheckError);
   }
   
   // Funzione per ritrasmettere un messaggio in caso di errore
   void _retryMessage(String messageText) {
     final chatService = Provider.of<ChatService>(context, listen: false);
-    chatService.sendMessage(messageText);
+    chatService.sendMessage(messageText, preCheckErrorMsg: _s.chatQuotaPreCheckError);
     
     // Mostra un breve feedback
     ScaffoldMessenger.of(context).showSnackBar(

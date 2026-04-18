@@ -10,6 +10,7 @@ import '../constants/api_constants.dart';
 import '../models/user.dart';
 import 'dart:async';
 import 'auth_token_provider.dart';
+import 'subscription_service.dart';
 
 // Web Client ID da google-services.json (oauth_client type 3)
 const _googleServerClientId =
@@ -41,6 +42,10 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
 
   // Lock to prevent concurrent refresh attempts
   Future<bool>? _refreshFuture;
+
+  /// Optional reference to the subscription service for RC login/logout.
+  /// Set externally after both services are created (see provider_setup).
+  SubscriptionService? subscriptionService;
 
   // Lifecycle observer for proactive token refresh on app resume
   late final _AuthLifecycleObserver _lifecycleObserver;
@@ -88,6 +93,9 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           }
         }
 
+        // Reset offline flag before validation
+        _offlineMode = false;
+
         // Always validate the token by calling the server
         final userInfo = await _fetchUserInfo();
         if (userInfo != null) {
@@ -95,23 +103,33 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           _currentUser = userInfo;
           _isAuthenticated = true;
           _offlineMode = false;
+          _loginToRevenueCat();
           _isLoading = false;
           notifyListeners();
           return true;
         }
 
-        // Token invalid — try refreshing
-        final refreshed = await refreshToken();
-        if (refreshed) {
+        // If _fetchUserInfo failed due to network/timeout, _offlineMode is now true.
+        // If we have cached user data, go offline immediately — no point trying refresh
+        // over a broken network.
+        if (_offlineMode && _currentUser != null) {
           _isAuthenticated = true;
           _isLoading = false;
           notifyListeners();
           return true;
         }
 
-        // Both token and refresh failed.
-        // If we have a cached user AND the failure was due to network issues
-        // (offlineMode was set by _fetchUserInfo or refreshToken), allow offline access.
+        // Token invalid (401) — try refreshing
+        final refreshed = await refreshToken();
+        if (refreshed) {
+          _loginToRevenueCat();
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+
+        // Refresh failed — if we ended up in offline mode (network issue during
+        // refresh) and have cached user, allow offline access.
         if (_offlineMode && _currentUser != null) {
           _isAuthenticated = true;
           _isLoading = false;
@@ -196,10 +214,13 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           final user = await _fetchUserInfo();
           if (user != null) {
             _currentUser = user;
-            
+
             // Salva le informazioni dell'utente per uso offline
             await prefs.setString(AppConstants.userInfoKey, json.encode(user.toJson()));
           }
+
+          // Link RevenueCat customer to our user id
+          _loginToRevenueCat();
 
           _isLoading = false;
           notifyListeners();
@@ -313,6 +334,9 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           await prefs.setString(AppConstants.userInfoKey, json.encode(user.toJson()));
         }
 
+        // Link RevenueCat customer to our user id
+        _loginToRevenueCat();
+
         _isLoading = false;
         notifyListeners();
         return true;
@@ -421,27 +445,50 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           await prefs.setString(AppConstants.refreshTokenKey, _refreshToken!);
         }
 
-        // Verifica la validità del nuovo token
-        _currentUser = await _fetchUserInfo();
+        // Token refreshed successfully — mark authenticated immediately.
+        // Use cached user or extract from token as fallback; fetch full
+        // profile in background without blocking the refresh result.
         if (_currentUser == null) {
           extractUserFromToken();
         }
-
-        _isAuthenticated = (_currentUser != null);
+        _isAuthenticated = true;
         _offlineMode = false;
-
         notifyListeners();
-        return _isAuthenticated;
+
+        // Fire-and-forget: update user profile from server
+        _fetchUserInfo().then((user) {
+          if (user != null) {
+            _currentUser = user;
+            notifyListeners();
+          }
+        }).catchError((e) {
+          debugPrint('Background user fetch after refresh failed: $e');
+        });
+
+        return true;
       }
 
-      // Non-200 response — retry once before giving up
+      // 401 from refresh endpoint means the refresh token is truly invalid/expired
+      if (response.statusCode == 401) {
+        debugPrint('Token refresh: refresh token rejected (401) — logging out');
+        await logout();
+        return false;
+      }
+
+      // Other non-200 responses (500, 502, 503, etc.) — transient server error
       debugPrint('Token refresh: server returned ${response.statusCode} (attempt $attempt)');
       if (attempt < 2) {
         await Future.delayed(const Duration(seconds: 2));
         return _doRefreshToken(attempt: attempt + 1);
       }
 
-      // Truly expired after retries — fall through to logout
+      // Server error after retries — fall back to offline if we have cached user
+      debugPrint('Token refresh: server error after retries, falling back to offline');
+      if (_currentUser != null) {
+        _offlineMode = true;
+        notifyListeners();
+        return true;
+      }
     } on SocketException {
       debugPrint('Token refresh: network error (offline)');
       if (_currentUser != null) {
@@ -469,10 +516,13 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
       }
     }
 
-    // If we get here, the refresh truly failed (not a network issue)
+    // If we get here, the refresh truly failed AND we have no cached user
     await logout();
     return false;
   }
+
+  @override
+  Future<void> onSessionExpired() async => logout();
 
   // Logout
   Future<void> logout() async {
@@ -484,6 +534,9 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     // Non rimuoviamo le info utente per permettere un uso offline futuro
     // prefs.remove(AppConstants.userInfoKey);
 
+    // Detach RevenueCat customer identity
+    subscriptionService?.logout();
+
     // Pulisci lo stato in memoria
     _token = null;
     _refreshToken = null;
@@ -492,6 +545,14 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
     _offlineMode = false;
 
     notifyListeners();
+  }
+
+  /// Fire-and-forget: link the RevenueCat customer to our user id.
+  void _loginToRevenueCat() {
+    final userId = _currentUser?.id;
+    if (userId != null && subscriptionService != null) {
+      subscriptionService!.login(userId.toString());
+    }
   }
 
   @override
@@ -513,7 +574,7 @@ class AuthService extends ChangeNotifier implements AuthTokenProvider {
           'Authorization': 'Bearer $_token',
         },
       ).timeout(
-        Duration(seconds: 5),
+        Duration(seconds: 10),
         onTimeout: () => throw TimeoutException('Timeout fetching user info'),
       );
 

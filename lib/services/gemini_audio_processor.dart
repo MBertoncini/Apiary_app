@@ -8,6 +8,7 @@ import '../models/voice_entry.dart';
 import '../config/api_keys.dart';
 import 'ai_quota_local_tracker.dart';
 import 'voice_language_rules.dart';
+import 'debug_trace.dart';
 
 /// Invia un file audio direttamente a Gemini multimodale (inline_data base64).
 /// Gemini trascrive e struttura i dati in un unico passaggio, eliminando
@@ -64,6 +65,10 @@ class GeminiAudioProcessor extends ChangeNotifier {
   /// Processa il file audio [filePath] (AAC) inviandolo a Gemini multimodale.
   /// Restituisce un [VoiceEntry] strutturato, o null in caso di errore.
   Future<VoiceEntry?> processAudioInput(String filePath) async {
+    DebugTrace.log('gemini: processAudioInput ENTER ${filePath.split('/').last}');
+    final keyInUse = _personalApiKey != null ? 'personal' : 'shared';
+    final keyLen = (_personalApiKey ?? ApiKeys.geminiApiKey).length;
+    DebugTrace.log('gemini: key=$keyInUse len=$keyLen');
     _isProcessing = true;
     _error = null;
     _lastCallWasNetworkError = false;
@@ -73,14 +78,17 @@ class GeminiAudioProcessor extends ChangeNotifier {
     try {
       final file = File(filePath);
       if (!await file.exists()) {
+        DebugTrace.log('gemini: FILE MISSING $filePath');
         _error = 'File audio non trovato';
         return null;
       }
 
       final fileSize = await file.length();
+      DebugTrace.log('gemini: file size=${(fileSize / 1024).toStringAsFixed(1)}KB');
       // Limite conservativo: ~15 MB raw → ~20 MB base64
       const maxBytes = 15 * 1024 * 1024;
       if (fileSize > maxBytes) {
+        DebugTrace.log('gemini: FILE TOO LARGE');
         _error = 'Il file audio è troppo grande (${(fileSize / 1048576).toStringAsFixed(1)} MB). '
             'Registrazioni superiori a ~15 minuti non sono supportate.';
         return null;
@@ -128,6 +136,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
             '$_geminiBaseUrl/$model:generateContent'
             '?key=${_personalApiKey ?? ApiKeys.geminiApiKey}');
 
+        DebugTrace.log('gemini: POST model=$model');
         http.Response response;
         try {
           response = await http
@@ -137,11 +146,14 @@ class GeminiAudioProcessor extends ChangeNotifier {
                 body: body,
               )
               .timeout(const Duration(seconds: 90)); // audio richiede più tempo
-        } on SocketException {
+          DebugTrace.log('gemini: HTTP status=${response.statusCode} len=${response.body.length}');
+        } on SocketException catch (e) {
+          DebugTrace.log('gemini: SocketException $e');
           _lastCallWasNetworkError = true;
           _error = 'Nessuna connessione di rete';
           return null;
         } on TimeoutException {
+          DebugTrace.log('gemini: TIMEOUT');
           _lastCallWasNetworkError = true;
           _error = 'Timeout nella comunicazione con Gemini (>90s). '
               'Connessione lenta o audio troppo lungo.';
@@ -164,10 +176,20 @@ class GeminiAudioProcessor extends ChangeNotifier {
           final isDisabled = response.body.contains('limit: 0') ||
               response.body.contains('"limit":0');
           debugPrint('[GeminiAudio] 429 on $model (disabled=$isDisabled)');
-          if (isDisabled) continue;
+          final snippet429 = response.body.length > 200
+              ? '${response.body.substring(0, 200)}…'
+              : response.body;
+          DebugTrace.log('gemini: 429 on $model disabled=$isDisabled body=$snippet429');
+          // Prova sempre i modelli successivi su 429: spesso gemini-2.5-flash
+          // ha quote molto restrittive su account Tier 1 freschi, mentre
+          // 2.0-flash o 1.5-flash hanno quote più ampie.
+          if (model != _modelFallbacks.last) {
+            continue;
+          }
           _lastCallWasRateLimit = true;
           _error =
-              'Limite richieste Gemini ($model). Attendi un minuto e riprova.';
+              'Limite richieste Gemini esaurito su tutti i modelli. '
+              'Attendi qualche minuto e riprova.';
           return null;
         } else {
           String reason = '';
@@ -178,6 +200,10 @@ class GeminiAudioProcessor extends ChangeNotifier {
           _error = 'Errore Gemini API ${response.statusCode}'
               '${reason.isNotEmpty ? ': $reason' : ''}';
           debugPrint('[GeminiAudio] ${response.statusCode}: ${response.body}');
+          final snippet = response.body.length > 160
+              ? '${response.body.substring(0, 160)}…'
+              : response.body;
+          DebugTrace.log('gemini: ERR ${response.statusCode} body=$snippet');
           // Per modello non trovato (404) o non disponibile (503/502)
           // proviamo il modello successivo; per errori client (400, 401)
           // usciamo subito perché cambiare modello non aiuta.
@@ -194,6 +220,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
     } catch (e) {
       _error = 'Errore: $e';
       debugPrint('[GeminiAudio] error: $e');
+      DebugTrace.log('gemini: EXCEPTION $e');
       return null;
     } finally {
       _isProcessing = false;

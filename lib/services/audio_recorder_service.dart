@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'debug_trace.dart';
 
 /// Gestisce la registrazione audio tramite flutter_sound.
 /// Produce file AAC nel directory temporanea del dispositivo.
@@ -59,9 +60,11 @@ class AudioRecorderService {
         sampleRate: 16000,
       );
       debugPrint('[AudioRecorder] Recording started: $_currentPath');
+      DebugTrace.log('recorder: START ok path=${_currentPath?.split('/').last}');
       return true;
     } catch (e) {
       debugPrint('[AudioRecorder] startRecording error: $e');
+      DebugTrace.log('recorder: START FAIL $e');
       return false;
     }
   }
@@ -70,13 +73,18 @@ class AudioRecorderService {
   /// Restituisce null se non era in corso una registrazione, per evitare
   /// di restituire il path di una sessione precedente.
   Future<String?> stopRecording() async {
-    if (!_recorder.isRecording) return null;
+    if (!_recorder.isRecording) {
+      DebugTrace.log('recorder: STOP called but not recording');
+      return null;
+    }
     try {
       final path = await _recorder.stopRecorder();
       debugPrint('[AudioRecorder] Recording stopped: ${path ?? _currentPath}');
+      DebugTrace.log('recorder: STOP ok path=${(path ?? _currentPath)?.split('/').last}');
       return path ?? _currentPath;
     } catch (e) {
       debugPrint('[AudioRecorder] stopRecording error: $e');
+      DebugTrace.log('recorder: STOP FAIL $e');
       return _currentPath;
     }
   }

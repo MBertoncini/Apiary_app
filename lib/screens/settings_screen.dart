@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/api_constants.dart';
 import '../constants/theme_constants.dart';
+import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/language_service.dart';
@@ -19,6 +20,7 @@ import '../widgets/skeleton_widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'privacy_policy_screen.dart';
+import 'ai_tier_upgrade_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -185,6 +187,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadQuota() async {
     setState(() => _isLoadingQuota = true);
     final chatService = Provider.of<ChatService>(context, listen: false);
+    // Also refresh the user profile so the tier is up-to-date.
+    Provider.of<AuthService>(context, listen: false).refreshUserProfile();
     final data = await chatService.fetchQuota();
     if (mounted) {
       setState(() { _quotaData = data; _isLoadingQuota = false; });
@@ -196,8 +200,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _scheduleResetRefresh(Map<String, dynamic> data) {
     _resetTimer?.cancel();
     final resets = [
-      ((data['personal'] ?? {}) as Map<String, dynamic>)['reset_at'] as String?,
-      ((data['system']   ?? {}) as Map<String, dynamic>)['reset_at'] as String?,
+      (Map<String, dynamic>.from((data['personal'] ?? {}) as Map))['reset_at'] as String?,
+      (Map<String, dynamic>.from((data['system']   ?? {}) as Map))['reset_at'] as String?,
     ].whereType<String>();
 
     DateTime? earliest;
@@ -450,8 +454,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Text(s.sectionAiApiKeys, style: ThemeConstants.subheadingStyle),
                     ],
                   ),
-                  // ── Gemini (ApiarioAI chat + Inserimento vocale) ──────────
+                  // ── Piano AI attuale ────────────────────────────────────
                   const SizedBox(height: 12),
+                  _buildAiTierCard(context, s),
+                  const Divider(height: 24),
+
+                  // ── Gemini (ApiarioAI chat + Inserimento vocale) ──────────
                   Row(
                     children: [
                       Icon(Icons.auto_awesome, color: const Color(0xFF4285F4), size: 16),
@@ -901,6 +909,124 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ── AI Tier card ──────────────────────────────────────────────────────────
+
+  Widget _buildAiTierCard(BuildContext context, dynamic s) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
+    final tier = user?.aiTier ?? AiTier.free;
+    // Prefer backend tier_limits when available; fall back to enum.
+    final allTierLimits = _quotaData?['all_tier_limits'] as Map<String, dynamic>?;
+    final limits = tier.resolvedLimits(allTierLimits);
+
+    Color tierColor;
+    IconData tierIcon;
+    switch (tier) {
+      case AiTier.free:
+        tierColor = Colors.grey;
+        tierIcon = Icons.eco_outlined;
+        break;
+      case AiTier.apicoltore:
+        tierColor = ThemeConstants.primaryColor;
+        tierIcon = Icons.hive;
+        break;
+      case AiTier.professionale:
+        tierColor = const Color(0xFFFFB300);
+        tierIcon = Icons.workspace_premium;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [tierColor.withOpacity(0.08), tierColor.withOpacity(0.02)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: tierColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(tierIcon, color: tierColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                '${s.aiTierLabel}: ${tier.label}',
+                style: ThemeConstants.bodyStyle.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: tierColor,
+                ),
+              ),
+              const Spacer(),
+              if (tier != AiTier.professionale)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AiTierUpgradeScreen()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: tierColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      s.aiTierUpgrade,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: tierColor,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _tierLimitChip(Icons.chat_outlined, 'Chat', limits.chat, tierColor),
+              const SizedBox(width: 10),
+              _tierLimitChip(Icons.mic_outlined, 'Voice', limits.voice, tierColor),
+              const SizedBox(width: 10),
+              _tierLimitChip(Icons.functions, s.aiTierTotal, limits.total, tierColor),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tierLimitChip(IconData icon, String label, int limit, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(height: 2),
+            Text(
+              '$limit/${label.toLowerCase()}',
+              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Quota card ────────────────────────────────────────────────────────────
 
   Widget _buildQuotaCard(dynamic s) {
@@ -964,16 +1090,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          _quotaBar(
-            label: s.quotaTranscriptionsToday,
-            used: _voiceCallsToday,
-            limit: 20,
-            resetAt: null,
-            isActive: true,
-            color: ThemeConstants.primaryColor,
-            subtitle: s.quotaFreePlan,
-            s: s,
-          ),
+          Builder(builder: (_) {
+            // Preferisci i dati dal backend; fallback al tracker locale solo se offline.
+            final usage = _quotaData?['usage'] as Map?;
+            final backendVoice = usage != null ? ((usage['voice_today'] ?? 0) as num).toInt() : null;
+            final tier = Provider.of<AuthService>(context, listen: false).currentUser?.aiTier ?? AiTier.free;
+            final allTierLimits = _quotaData?['all_tier_limits'] as Map<String, dynamic>?;
+            final voiceLimit = tier.resolvedLimits(allTierLimits).voice;
+            final personalResetAt = (_quotaData?['personal'] as Map?)?['reset_at'] as String?;
+            return _quotaBar(
+              label: s.quotaTranscriptionsToday,
+              used: backendVoice ?? _voiceCallsToday,
+              limit: voiceLimit,
+              resetAt: personalResetAt,
+              isActive: true,
+              color: ThemeConstants.primaryColor,
+              subtitle: '${tier.label} plan',
+              s: s,
+            );
+          }),
 
           const Divider(height: 28),
 
@@ -1005,15 +1140,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildQuotaSection(Map<String, dynamic> data, dynamic s) {
-    final bool personalKeySet = data['personal_key_set'] == true;
     final String activeKey = data['active_key'] ?? 'system';
     final int dailyLimit = ((data['daily_limit'] ?? 1500) as num).toInt();
 
-    final Map<String, dynamic> personal = (data['personal'] ?? {}) as Map<String, dynamic>;
-    final Map<String, dynamic> system = (data['system'] ?? {}) as Map<String, dynamic>;
-    final int personalUsed = ((personal['requests_today'] ?? 0) as num).toInt();
+    final system = Map<String, dynamic>.from((data['system'] ?? {}) as Map);
+    final usage = Map<String, dynamic>.from((data['usage'] ?? {}) as Map);
+    final tierLimits = Map<String, dynamic>.from((data['tier_limits'] ?? {}) as Map);
+
+    final int chatUsed = ((usage['chat_today'] ?? 0) as num).toInt();
+    final int voiceUsed = ((usage['voice_today'] ?? 0) as num).toInt();
+    final int totalUsed = ((usage['total_today'] ?? 0) as num).toInt();
+
+    final int chatLimit = ((tierLimits['chat'] ?? 10) as num).toInt();
+    final int voiceLimit = ((tierLimits['voice'] ?? 5) as num).toInt();
+    final int totalLimit = ((tierLimits['total'] ?? 15) as num).toInt();
+
     final int systemUsed = ((system['requests_today'] ?? 0) as num).toInt();
-    final String? personalResetAt = personal['reset_at'] as String?;
     final String? systemResetAt = system['reset_at'] as String?;
 
     return Column(
@@ -1048,29 +1190,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 14),
 
-        // System key quota
+        // Quota per tipo (chat / voice / totale)
         _quotaBar(
-          label: s.quotaSystemKeyLabel,
-          used: systemUsed,
-          limit: dailyLimit,
-          resetAt: systemResetAt,
-          isActive: activeKey == 'system',
+          label: 'Chat AI',
+          used: chatUsed,
+          limit: chatLimit,
+          resetAt: null,
+          isActive: true,
+          color: const Color(0xFF4285F4),
+          s: s,
+        ),
+        const SizedBox(height: 10),
+        _quotaBar(
+          label: 'Voice AI',
+          used: voiceUsed,
+          limit: voiceLimit,
+          resetAt: null,
+          isActive: true,
           color: ThemeConstants.primaryColor,
           s: s,
         ),
-        const SizedBox(height: 14),
-
-        // Personal key quota
+        const SizedBox(height: 10),
         _quotaBar(
-          label: personalKeySet ? s.quotaPersonalKeyLabel : s.quotaPersonalKeyNotSetLabel,
-          used: personalUsed,
-          limit: dailyLimit,
-          resetAt: personalResetAt,
-          isActive: activeKey == 'personal',
-          color: ThemeConstants.successColor,
-          dimmed: !personalKeySet,
+          label: s.aiTierTotal,
+          used: totalUsed,
+          limit: totalLimit,
+          resetAt: null,
+          isActive: true,
+          color: ThemeConstants.secondaryColor,
           s: s,
         ),
+
+        if (activeKey == 'system') ...[
+          const SizedBox(height: 14),
+          _quotaBar(
+            label: s.quotaSystemKeyLabel,
+            used: systemUsed,
+            limit: dailyLimit,
+            resetAt: systemResetAt,
+            isActive: true,
+            color: Colors.grey,
+            s: s,
+          ),
+        ],
       ],
     );
   }

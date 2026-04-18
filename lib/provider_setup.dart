@@ -15,6 +15,7 @@ import 'services/voice_feedback_service.dart';
 import 'services/audio_service.dart';
 import 'services/bee_detection_service.dart';
 import 'services/analisi_telaino_service.dart';
+import 'services/subscription_service.dart';
 
 List<SingleChildWidget> providers = [
   // Language service (independent) — must be first so MaterialApp can read it
@@ -79,6 +80,11 @@ List<SingleChildWidget> providers = [
   Provider<VoiceFeedbackService>(
     create: (_) => VoiceFeedbackService(),
     lazy: true,
+  ),
+
+  // Subscription service (RevenueCat) — independent, eager init
+  ChangeNotifierProvider<SubscriptionService>(
+    create: (_) => SubscriptionService(),
   ),
 
   // Chat Service (depends on API) - lazy, created on first access

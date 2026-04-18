@@ -58,6 +58,8 @@ dependencies:
   shimmer: ^3.0.0
   flutter_map_marker_cluster: ^1.2.0
   google_sign_in: ^6.2.1
+  purchases_flutter: ^10.0.0
+  purchases_ui_flutter: ^10.0.0
 
 dev_dependencies:
   flutter_test:

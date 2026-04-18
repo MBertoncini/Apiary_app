@@ -5,4 +5,7 @@
 abstract class AuthTokenProvider {
   Future<String?> getToken();
   Future<bool> refreshToken();
+  /// Called when the session is definitively expired and the user must re-login.
+  /// Implementations should clear stored tokens and reset auth state.
+  Future<void> onSessionExpired() async {}
 }

@@ -1,4 +1,59 @@
 // lib/models/user.dart
+
+/// Tier AI disponibili — corrispondono ai valori nel backend Django.
+enum AiTier {
+  free,
+  apicoltore,
+  professionale;
+
+  static AiTier fromString(String? value) {
+    switch (value) {
+      case 'apicoltore':
+        return AiTier.apicoltore;
+      case 'professionale':
+        return AiTier.professionale;
+      default:
+        return AiTier.free;
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case AiTier.free:
+        return 'Free';
+      case AiTier.apicoltore:
+        return 'Apicoltore';
+      case AiTier.professionale:
+        return 'Professionale';
+    }
+  }
+
+  /// Limiti giornalieri di fallback — usati SOLO se il backend non ha ancora
+  /// risposto. La fonte autoritativa è `GET /ai/quota/` → `all_tier_limits`.
+  static const Map<String, ({int chat, int voice, int total})> _fallbackLimits = {
+    'free':          (chat: 10,  voice: 5,   total: 15),
+    'apicoltore':    (chat: 30,  voice: 30,  total: 60),
+    'professionale': (chat: 200, voice: 100, total: 300),
+  };
+
+  ({int chat, int voice, int total}) get fallbackLimits =>
+      _fallbackLimits[name] ?? (chat: 10, voice: 5, total: 15);
+
+  /// Risolve i limiti: preferisce quelli del backend se disponibili.
+  ({int chat, int voice, int total}) resolvedLimits(
+      Map<String, dynamic>? allTierLimits) {
+    if (allTierLimits != null && allTierLimits.containsKey(name)) {
+      final m = Map<String, dynamic>.from(allTierLimits[name] as Map);
+      return (
+        chat:  (m['chat']  as num?)?.toInt() ?? fallbackLimits.chat,
+        voice: (m['voice'] as num?)?.toInt() ?? fallbackLimits.voice,
+        total: (m['total'] as num?)?.toInt() ?? fallbackLimits.total,
+      );
+    }
+    return fallbackLimits;
+  }
+}
+
 class User {
   final int id;
   final String username;
@@ -9,6 +64,7 @@ class User {
   final DateTime? dateJoined;
   final bool isActive;
   final String geminiApiKey;
+  final AiTier aiTier;
 
   User({
     required this.id,
@@ -20,6 +76,7 @@ class User {
     this.dateJoined,
     required this.isActive,
     this.geminiApiKey = '',
+    this.aiTier = AiTier.free,
   });
 
   // Proprietà calcolata per il nome completo
@@ -48,6 +105,7 @@ class User {
           : null,
       isActive: json['is_active'] ?? true,
       geminiApiKey: json['gemini_api_key'] ?? '',
+      aiTier: AiTier.fromString(json['ai_tier']),
     );
   }
 
@@ -62,6 +120,7 @@ class User {
       'date_joined': dateJoined?.toIso8601String(),
       'is_active': isActive,
       'gemini_api_key': geminiApiKey,
+      'ai_tier': aiTier.name,
     };
   }
 }

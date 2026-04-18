@@ -1197,6 +1197,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.2"
+  purchases_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_flutter
+      sha256: c6dc3f9be475f9dd6ea98bd020c4491c9a37f2c73517d0a6fdefb90897d1309c
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.0.0"
+  purchases_ui_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_ui_flutter
+      sha256: "904114a0b1c5fa60e69ea0444944a905a0c5953c76643e03ea695db7bb99b3a6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.0.0"
   qr:
     dependency: transitive
     description:

@@ -1929,6 +1929,94 @@ class StringsEn extends AppStrings {
   @override String get chatRetrySnackbar => 'Retrying to send the message...';
   @override String get chatHint => 'Write a message...';
   @override String get chatGeneratingChart => 'Generating chart...';
+  @override String get chatQuotaUpgradeHint =>
+      'You can add a personal Gemini key in settings or upgrade your plan.';
+
+  // ── AI Tier ──
+  @override String get aiTierLabel => 'AI Plan';
+  @override String get aiTierUpgrade => 'Upgrade';
+  @override String get aiTierUpgradeComingSoon => 'Plan upgrades will be available soon!';
+  @override String get aiTierTotal => 'Total';
+  @override String get aiTierFreeDesc => 'Chat: 10/day, Voice: 5/day';
+  @override String get aiTierApicoltoreDesc => 'Chat: 30/day, Voice: 30/day';
+  @override String get aiTierProfessionaleDesc => 'Chat: 200/day, Voice: 100/day';
+
+  // ── AI Tier upgrade screen ──
+  @override String get aiUpgradeTitle => 'AI Plans';
+  @override String get aiUpgradeSubtitle => 'Choose the plan that best fits your beekeeping needs';
+  @override String get aiUpgradeCurrentPlan => 'Current plan';
+  @override String get aiUpgradeChatPerDay => 'chat/day';
+  @override String get aiUpgradeVoicePerDay => 'voice/day';
+  @override String get aiUpgradeTotalPerDay => 'total/day';
+  @override String get aiUpgradeFeatureAdvanced => 'Advanced AI analysis';
+  @override String get aiUpgradeContactUs => 'Request upgrade';
+  @override String get aiUpgradeContactEmail => 'Email sent for upgrade request!';
+  @override String get aiUpgradeContactSent => 'We will contact you shortly to activate the plan.';
+  @override String get aiUpgradeFreeNote => 'Perfect to get started and try the AI assistant';
+  @override String get aiUpgradeApicoltoreNote => 'For beekeepers managing multiple hives';
+  @override String get aiUpgradeProfessionaleNote => 'For beekeeping businesses and professionals';
+  @override String get aiUpgradeMostPopular => 'Most popular';
+  @override String get aiUpgradeDowngradeNote => 'To change or downgrade your plan, contact us.';
+  @override String get chatQuotaPreCheckError => 'You have reached the daily message limit. Upgrade your plan or try again tomorrow.';
+  @override String get chatQuotaResetNotice => 'Your quota has been reset. You can send new messages.';
+
+  // ── Subscription / Paywall ──
+  @override String get subPaywallTitle => 'Apiary Pro';
+  @override String get subPaywallSubtitle => 'Unlock the full potential of your AI assistant';
+  @override String get subMonthly => 'Monthly';
+  @override String get subYearly => 'Yearly';
+  @override String get subYearlySave => 'Save';
+  @override String get subRestore => 'Restore purchases';
+  @override String get subRestoreSuccess => 'Purchases restored successfully!';
+  @override String get subRestoreNone => 'No previous purchases found.';
+  @override String get subRestoreError => 'Error restoring purchases.';
+  @override String get subPurchaseSuccess => 'Subscription activated! Welcome to Apiary Pro.';
+  @override String get subPurchaseError => 'Purchase error. Please try again.';
+  @override String get subManage => 'Manage subscription';
+  @override String get subCurrentPlan => 'Current plan';
+  @override String get subFreeDesc => 'Basic AI features with daily limits';
+  @override String get subProMonthlyDesc => 'Full access, billed monthly';
+  @override String get subProYearlyDesc => 'Full access, billed yearly';
+  @override String get subFeatureUnlimitedChat => 'Unlimited AI chat';
+  @override String get subFeatureVoice => 'Unlimited voice input';
+  @override String get subFeatureAdvancedAI => 'Advanced AI analysis';
+  @override String get subCostExplanation => 'Costs will be minimal: just enough to cover the Gemini API key expenses and keep the app running and updated. We want Apiary to remain accessible to all beekeepers.';
+  @override String get subLoading => 'Loading plans...';
+  @override String get subNoProducts => 'No plans available at this time.';
+  @override String subPricePerMonth(String price) => '$price/month';
+  @override String subPricePerYear(String price) => '$price/year';
+  @override String subSavePercent(int percent) => 'Save $percent%';
+  @override String get subFreeTrial => 'Free trial';
+  @override String subFreeTrialDays(int days) => '$days days free';
+  @override String get subThenPrice => 'then';
+  @override String get subBestValue => 'Best value';
+  @override String get subMostPopular => 'Recommended';
+  @override String get subSubscribe => 'Subscribe';
+  @override String get subPerMonth => '/month';
+  @override String get subPerYear => '/year';
+  @override String get subChoosePlan => 'Choose your plan';
+  @override String get subTermsNotice => 'Subscription auto-renews. You can cancel anytime from Play Store settings.';
+  @override String subPackageDuration(String type) {
+    switch (type) {
+      case 'MONTHLY': return 'Monthly';
+      case 'ANNUAL': return 'Yearly';
+      case 'SIX_MONTH': return '6 Months';
+      case 'THREE_MONTH': return '3 Months';
+      case 'TWO_MONTH': return '2 Months';
+      case 'WEEKLY': return 'Weekly';
+      case 'LIFETIME': return 'Lifetime';
+      default: return type;
+    }
+  }
+  @override String get subComingSoon => 'Coming soon';
+  @override String get subComingSoonDesc => 'In-app subscriptions will be available soon. In the meantime, if you have an access code you can activate Pro features.';
+  @override String get subActivateCode => 'Have a code?';
+  @override String get subActivateCodeHint => 'Enter access code';
+  @override String get subActivateBtn => 'Activate';
+  @override String get subActivateSuccess => 'Code activated! Welcome to Apiary Pro.';
+  @override String get subActivateError => 'Activation error. Please try again.';
+  @override String get subActivateInvalid => 'Invalid or expired code.';
+  @override String get subActivating => 'Activating...';
 
   // ── Analisi telaino list screen ──
   @override String get analisiListTitle => 'Frame Analyses';

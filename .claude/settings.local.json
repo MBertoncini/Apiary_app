@@ -38,7 +38,11 @@
       "Bash(flutter pub:*)",
       "Bash(flutter doctor:*)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(xxd \"C:/Progetti GIT Michele/Apiary_app/assets/models/bee_detector.tflite\")"
+      "Bash(xxd \"C:/Progetti GIT Michele/Apiary_app/assets/models/bee_detector.tflite\")",
+      "Bash(C:/bin/flutter/bin/flutter.bat analyze:*)",
+      "Bash(xxd -l 32 \"I:/Progetti Git/Apiary_app/assets/models/bee_detector.tflite\")",
+      "WebFetch(domain:ai.google.dev)",
+      "WebFetch(domain:www.revenuecat.com)"
     ]
   }
 }

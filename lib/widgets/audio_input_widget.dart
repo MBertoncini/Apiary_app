@@ -11,6 +11,7 @@ import '../services/audio_recorder_service.dart';
 import '../services/audio_queue_service.dart';
 import '../services/gemini_audio_processor.dart';
 import '../services/storage_service.dart';
+import '../services/debug_trace.dart';
 
 /// Widget per la modalità "Registra audio → Gemini multimodale" con supporto
 /// per inserimento multiplo (multi-arnia).
@@ -178,9 +179,11 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   /// senza inviare subito a Gemini, dando all'utente la possibilità
   /// di riascoltare prima.
   Future<void> _stopRecording() async {
+    DebugTrace.log('widget: _stopRecording ENTER');
     _durationTimer?.cancel();
     final path = await _recorder.stopRecording();
     if (path == null) {
+      DebugTrace.log('widget: _stopRecording FAIL path=null');
       setState(() {
         _state = _RecState.error;
         _error = 'Registrazione non valida. Riprova.';
@@ -191,6 +194,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     _recordedSeconds = _seconds;
     _playerPosition = Duration.zero;
     _playerDuration = Duration.zero;
+    DebugTrace.log('widget: _stopRecording ok → _saveToQueue');
     await _saveToQueue();
   }
 
@@ -447,7 +451,11 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   // ── Coda audio offline ────────────────────────────────────────────────────
 
   Future<void> _saveToQueue() async {
-    if (_pendingFilePath == null) return;
+    if (_pendingFilePath == null) {
+      DebugTrace.log('widget: _saveToQueue SKIP (pendingFilePath=null)');
+      return;
+    }
+    DebugTrace.log('widget: _saveToQueue ENTER apiarioId=${widget.contextApiarioId}');
     await _audioQueue.addToQueue(
       filePath: _pendingFilePath!,
       apiarioId: widget.contextApiarioId,
@@ -456,6 +464,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     );
     _pendingFilePath = null;
     await _refreshQueueCount();
+    DebugTrace.log('widget: _saveToQueue DONE queueCount=$_queueCount');
     setState(() {
       _state = _RecState.idle;
       _error = null;
@@ -463,8 +472,13 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   }
 
   Future<void> _processQueue() async {
+    DebugTrace.log('widget: _processQueue ENTER (button pressed)');
     final queue = await _audioQueue.getQueue();
-    if (queue.isEmpty) return;
+    DebugTrace.log('widget: _processQueue queue.length=${queue.length}');
+    if (queue.isEmpty) {
+      DebugTrace.log('widget: _processQueue EXIT (queue empty)');
+      return;
+    }
 
     setState(() {
       _state = _RecState.processingQueue;
@@ -481,12 +495,16 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       final apiarioNome = item['apiario_nome'] as String?;
 
       if (filePath == null) {
+        DebugTrace.log('widget: _processQueue item $i filePath=null → skip');
         await _audioQueue.removeFromQueue(id);
         continue;
       }
 
+      DebugTrace.log('widget: _processQueue item ${i + 1}/${queue.length} → gemini');
       widget.processor.setContext(apiarioId, apiarioNome);
       final entry = await widget.processor.processAudioInput(filePath);
+      DebugTrace.log('widget: _processQueue item ${i + 1} result='
+          '${entry == null ? "null" : (entry.isValid() ? "valid" : "partial")}');
 
       if (entry != null && entry.isValid()) {
         await _audioQueue.removeFromQueue(id);
@@ -594,6 +612,9 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // ── Debug trace banner (TEMPORANEO) ───────────────────────────────
+          _buildDebugTracePanel(),
+
           // ── Header ───────────────────────────────────────────────────────
           Row(
             children: [
@@ -1310,6 +1331,89 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       runSpacing: 8,
       alignment: WrapAlignment.center,
       children: buttons,
+    );
+  }
+
+  // ── Debug trace panel (TEMPORANEO) ────────────────────────────────────────
+
+  Widget _buildDebugTracePanel() {
+    return AnimatedBuilder(
+      animation: DebugTrace.instance,
+      builder: (_, __) {
+        final entries = DebugTrace.instance.entries;
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.88),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.bug_report,
+                      color: Colors.greenAccent, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    'TRACE (${entries.length})',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => DebugTrace.instance.clear(),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4),
+                      child: Text('clear',
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              decoration: TextDecoration.underline)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                height: 140,
+                child: entries.isEmpty
+                    ? const Center(
+                        child: Text(
+                          '(nessun evento)',
+                          style: TextStyle(
+                              color: Colors.white38,
+                              fontSize: 10,
+                              fontFamily: 'monospace'),
+                        ),
+                      )
+                    : ListView.builder(
+                        reverse: false,
+                        padding: EdgeInsets.zero,
+                        itemCount: entries.length,
+                        itemBuilder: (_, i) => Text(
+                          entries[i],
+                          style: const TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 10,
+                            height: 1.25,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

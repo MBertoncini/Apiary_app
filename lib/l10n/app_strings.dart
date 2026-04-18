@@ -1971,6 +1971,82 @@ abstract class AppStrings {
   String get chatRetrySnackbar;
   String get chatHint;
   String get chatGeneratingChart;
+  String get chatQuotaUpgradeHint;
+
+  // ── AI Tier ──
+  String get aiTierLabel;
+  String get aiTierUpgrade;
+  String get aiTierUpgradeComingSoon;
+  String get aiTierTotal;
+  String get aiTierFreeDesc;
+  String get aiTierApicoltoreDesc;
+  String get aiTierProfessionaleDesc;
+
+  // ── AI Tier upgrade screen ──
+  String get aiUpgradeTitle;
+  String get aiUpgradeSubtitle;
+  String get aiUpgradeCurrentPlan;
+  String get aiUpgradeChatPerDay;
+  String get aiUpgradeVoicePerDay;
+  String get aiUpgradeTotalPerDay;
+  String get aiUpgradeFeatureAdvanced;
+  String get aiUpgradeContactUs;
+  String get aiUpgradeContactEmail;
+  String get aiUpgradeContactSent;
+  String get aiUpgradeFreeNote;
+  String get aiUpgradeApicoltoreNote;
+  String get aiUpgradeProfessionaleNote;
+  String get aiUpgradeMostPopular;
+  String get aiUpgradeDowngradeNote;
+  String get chatQuotaPreCheckError;
+  String get chatQuotaResetNotice;
+
+  // ── Subscription / Paywall ──────────────────────────────────────────────
+  String get subPaywallTitle;
+  String get subPaywallSubtitle;
+  String get subMonthly;
+  String get subYearly;
+  String get subYearlySave;
+  String get subRestore;
+  String get subRestoreSuccess;
+  String get subRestoreNone;
+  String get subRestoreError;
+  String get subPurchaseSuccess;
+  String get subPurchaseError;
+  String get subManage;
+  String get subCurrentPlan;
+  String get subFreeDesc;
+  String get subProMonthlyDesc;
+  String get subProYearlyDesc;
+  String get subFeatureUnlimitedChat;
+  String get subFeatureVoice;
+  String get subFeatureAdvancedAI;
+  String get subCostExplanation;
+  String get subLoading;
+  String get subNoProducts;
+  String subPricePerMonth(String price);
+  String subPricePerYear(String price);
+  String subSavePercent(int percent);
+  String get subFreeTrial;
+  String subFreeTrialDays(int days);
+  String get subThenPrice;
+  String get subBestValue;
+  String get subMostPopular;
+  String get subSubscribe;
+  String get subPerMonth;
+  String get subPerYear;
+  String get subChoosePlan;
+  String get subTermsNotice;
+  String subPackageDuration(String type);
+  String get subComingSoon;
+  String get subComingSoonDesc;
+  String get subActivateCode;
+  String get subActivateCodeHint;
+  String get subActivateBtn;
+  String get subActivateSuccess;
+  String get subActivateError;
+  String get subActivateInvalid;
+  String get subActivating;
 
   // ── Analisi telaino list screen ──
   String get analisiListTitle;

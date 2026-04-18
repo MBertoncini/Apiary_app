@@ -34,6 +34,11 @@ class _StaticTokenProvider implements AuthTokenProvider {
     } catch (_) {}
     return false;
   }
+
+  @override
+  Future<void> onSessionExpired() async {
+    _token = null;
+  }
 }
 
 class ApiService {
@@ -99,6 +104,10 @@ class ApiService {
     _isRedirectingToLogin = true;
 
     debugPrint('Session expired: redirecting to login');
+
+    // Clear auth state so AuthService is in sync with the UI
+    _authService.onSessionExpired();
+
     navigatorKey.currentState?.pushNamedAndRemoveUntil(
       AppConstants.loginRoute,
       (route) => false,
@@ -139,6 +148,16 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return {};
       return json.decode(utf8.decode(response.bodyBytes));
+    } else if (response.statusCode == 429) {
+      // Quota AI superata — lancia eccezione specifica
+      Map<String, dynamic>? body;
+      try {
+        body = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      } catch (_) {}
+      throw QuotaExceededException(
+        message: body?['error'] as String? ?? 'Quota AI giornaliera esaurita',
+        tierLimits: body?['tier_limits'] as Map<String, dynamic>?,
+      );
     } else {
       throw Exception('Errore API: ${response.statusCode} ${response.body}');
     }
@@ -509,4 +528,16 @@ class ApiService {
       debugPrint('Esempio URL con leading slash: ${_buildUrl("/inviti/ricevuti/")}');
     }
   }
+}
+
+
+/// Eccezione lanciata quando la quota AI giornaliera è esaurita (HTTP 429).
+class QuotaExceededException implements Exception {
+  final String message;
+  final Map<String, dynamic>? tierLimits;
+
+  QuotaExceededException({required this.message, this.tierLimits});
+
+  @override
+  String toString() => message;
 }

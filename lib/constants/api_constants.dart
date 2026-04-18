@@ -116,6 +116,8 @@ class ApiConstants {
   // Endpoint AI
   static const String aiChatUrl = baseUrl + apiPrefix + '/ai/chat/';
   static const String aiQuotaUrl = baseUrl + apiPrefix + '/ai/quota/';
+  static const String aiRequestUpgradeUrl = baseUrl + apiPrefix + '/ai/request-upgrade/';
+  static const String aiActivateCodeUrl = baseUrl + apiPrefix + '/ai/activate-code/';
 
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';
