@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../services/statistiche_service.dart';
 import '../../../services/api_service.dart';
 import '../../../services/ai_quota_local_tracker.dart';
+import '../../../services/ai_quota_service.dart';
 import '../../../services/language_service.dart';
 import '../../../l10n/app_strings.dart';
 import 'risultato_query_widget.dart';
@@ -43,8 +44,17 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_service == null) {
-      _service = StatisticheService(Provider.of<ApiService>(context, listen: false));
-      _tracker.getGroqApiKey().then((key) { if (mounted) setState(() => _groqKey = key); });
+      final quotaService = Provider.of<AiQuotaService>(context, listen: false);
+      _service = StatisticheService(
+        Provider.of<ApiService>(context, listen: false),
+        quotaService: quotaService,
+      );
+      _tracker.getGroqApiKey().then((key) {
+        if (mounted) {
+          setState(() => _groqKey = key);
+          quotaService.setHasPersonalGroqKey(key.isNotEmpty);
+        }
+      });
     }
   }
 
@@ -96,6 +106,9 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
     super.build(context);
     Provider.of<LanguageService>(context);
     final s = _s;
+    // Reattività alla quota: ricostruisce quando il gate stats cambia.
+    final quotaService = context.watch<AiQuotaService>();
+    final statsBlocked = !quotaService.canCall(AiFeature.stats);
     return Column(
       children: [
         Expanded(
@@ -203,36 +216,64 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
           ),
         ),
 
-        // Input field fisso in basso
+        // Input field fisso in basso (con banner quota se bloccata)
         Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
             border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    hintText: s.nlQueryInputHint,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              if (statsBlocked)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
                   ),
-                  onSubmitted: _chiedi,
-                  textInputAction: TextInputAction.send,
+                  child: Row(
+                    children: [
+                      Icon(Icons.hourglass_empty, size: 16, color: Colors.orange.shade700),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          s.quotaStatsExhausted,
+                          style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              FloatingActionButton.small(
-                onPressed: _loading ? null : () => _chiedi(_controller.text),
-                backgroundColor: const Color(0xFFD4A017),
-                child: _loading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send, color: Colors.white),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      enabled: !statsBlocked,
+                      decoration: InputDecoration(
+                        hintText: statsBlocked ? s.nlQueryInputHintExhausted : s.nlQueryInputHint,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                      onSubmitted: statsBlocked ? null : _chiedi,
+                      textInputAction: TextInputAction.send,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FloatingActionButton.small(
+                    onPressed: (_loading || statsBlocked) ? null : () => _chiedi(_controller.text),
+                    backgroundColor: statsBlocked ? Colors.grey.shade400 : const Color(0xFFD4A017),
+                    child: _loading
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Icon(statsBlocked ? Icons.block : Icons.send, color: Colors.white),
+                  ),
+                ],
               ),
             ],
           ),

@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
 import '../config/api_keys.dart';
-import 'ai_quota_local_tracker.dart';
+import 'ai_quota_service.dart';
 import 'voice_language_rules.dart';
 import 'debug_trace.dart';
 
@@ -25,7 +25,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
     'gemini-1.5-flash',
   ];
 
-  final _tracker = AiQuotaLocalTracker();
+  AiQuotaService? _quotaService;
 
   String? _personalApiKey;
   int? _contextApiarioId;
@@ -44,6 +44,13 @@ class GeminiAudioProcessor extends ChangeNotifier {
 
   void setPersonalKey(String? key) {
     _personalApiKey = (key != null && key.isNotEmpty) ? key : null;
+  }
+
+  /// Collega il servizio centralizzato di quota AI. Quando presente, le
+  /// chiamate sono pre-gated e il contatore voice viene aggiornato
+  /// otticamente; su 429 definitivo la feature viene marcata esaurita.
+  void attachQuotaService(AiQuotaService? svc) {
+    _quotaService = svc;
   }
 
   void setLanguage(String languageCode) {
@@ -69,6 +76,17 @@ class GeminiAudioProcessor extends ChangeNotifier {
     final keyInUse = _personalApiKey != null ? 'personal' : 'shared';
     final keyLen = (_personalApiKey ?? ApiKeys.geminiApiKey).length;
     DebugTrace.log('gemini: key=$keyInUse len=$keyLen');
+
+    // Pre-check centralizzato: se la quota voice è esaurita non spediamo.
+    final quota = _quotaService;
+    if (quota != null && !quota.canCall(AiFeature.voice)) {
+      _lastCallWasRateLimit = true;
+      _error = 'Quota AI voce esaurita. Riprova dopo il reset giornaliero.';
+      DebugTrace.log('gemini: PRECHECK BLOCKED by AiQuotaService');
+      notifyListeners();
+      return null;
+    }
+
     _isProcessing = true;
     _error = null;
     _lastCallWasNetworkError = false;
@@ -170,7 +188,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
             return null;
           }
           debugPrint('[GeminiAudio] Used model: $model');
-          _tracker.incrementVoiceCall();
+          _quotaService?.recordOptimisticCall(AiFeature.voice);
           return _parseResponse(responseText);
         } else if (response.statusCode == 429) {
           final isDisabled = response.body.contains('limit: 0') ||
@@ -187,6 +205,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
             continue;
           }
           _lastCallWasRateLimit = true;
+          _quotaService?.markExceeded(AiFeature.voice);
           _error =
               'Limite richieste Gemini esaurito su tutti i modelli. '
               'Attendi qualche minuto e riprova.';
@@ -214,6 +233,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
       }
 
       _lastCallWasRateLimit = true;
+      _quotaService?.markExceeded(AiFeature.voice);
       _error = 'Nessun modello Gemini disponibile. '
           'Aggiorna il piano su ai.google.dev.';
       return null;

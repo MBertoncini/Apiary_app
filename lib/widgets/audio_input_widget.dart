@@ -11,7 +11,9 @@ import '../services/audio_recorder_service.dart';
 import '../services/audio_queue_service.dart';
 import '../services/gemini_audio_processor.dart';
 import '../services/storage_service.dart';
+import '../services/ai_quota_service.dart';
 import '../services/debug_trace.dart';
+import '../services/language_service.dart';
 
 /// Widget per la modalità "Registra audio → Gemini multimodale" con supporto
 /// per inserimento multiplo (multi-arnia).
@@ -596,6 +598,10 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Ascolta il gate centralizzato per disabilitare reattivamente il mic.
+    final quotaService = context.watch<AiQuotaService>();
+    final voiceQuotaExceeded = !quotaService.canCall(AiFeature.voice);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -614,6 +620,9 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         children: [
           // ── Debug trace banner (TEMPORANEO) ───────────────────────────────
           _buildDebugTracePanel(),
+
+          // ── Banner quota voice esaurita ───────────────────────────────────
+          if (voiceQuotaExceeded) _buildQuotaExhaustedBanner(quotaService),
 
           // ── Header ───────────────────────────────────────────────────────
           Row(
@@ -664,7 +673,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           const SizedBox(height: 20),
 
           // ── Area centrale ─────────────────────────────────────────────────
-          _buildCentralArea(),
+          _buildCentralArea(voiceQuotaExceeded),
 
           // ── Messaggio errore ──────────────────────────────────────────────
           if (_state == _RecState.error && _error != null) ...[
@@ -732,7 +741,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
 
   // ── Area centrale per stato ───────────────────────────────────────────────
 
-  Widget _buildCentralArea() {
+  Widget _buildCentralArea(bool voiceQuotaExceeded) {
     switch (_state) {
       case _RecState.processing:
       case _RecState.processingQueue:
@@ -817,7 +826,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
 
       case _RecState.idle:
       case _RecState.error:
-        final active = _state == _RecState.idle;
+        // Quota esaurita → mic disabilitato anche se stato idle.
+        final active = _state == _RecState.idle && !voiceQuotaExceeded;
         return GestureDetector(
           onTap: active ? _startRecording : null,
           child: AnimatedContainer(
@@ -841,7 +851,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
                   : [],
             ),
             child: Icon(
-              Icons.mic,
+              voiceQuotaExceeded ? Icons.mic_off : Icons.mic,
               color:
                   active ? Colors.white : Colors.grey.shade500,
               size: 64,
@@ -849,6 +859,60 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           ),
         );
     }
+  }
+
+  Widget _buildQuotaExhaustedBanner(AiQuotaService quotaService) {
+    final reset = quotaService.timeUntilReset(AiFeature.voice);
+    String resetStr = '';
+    if (reset != null && reset > Duration.zero) {
+      final h = reset.inHours;
+      final m = reset.inMinutes.remainder(60);
+      resetStr = h > 0 ? '${h}h ${m}m' : '${m}m';
+    }
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade300),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.hourglass_empty,
+              size: 16, color: Colors.orange.shade800),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.quotaVoiceExhaustedTitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  resetStr.isNotEmpty
+                      ? s.quotaRetryInWithUpgrade(resetStr)
+                      : s.quotaRetryAfterReset,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Cerchio di playback (stato `recorded`)

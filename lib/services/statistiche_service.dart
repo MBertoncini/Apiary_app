@@ -1,15 +1,20 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'api_service.dart';
 import '../constants/api_constants.dart';
-import 'ai_quota_local_tracker.dart';
+import 'ai_quota_service.dart';
 
 /// Servizio per il modulo Statistiche & AI Analytics.
 /// Gli endpoint statistiche sono sotto /api/stats/ (non /api/v1/).
 class StatisticheService {
   final ApiService _api;
+  AiQuotaService? _quotaService;
 
-  StatisticheService(this._api);
+  StatisticheService(this._api, {AiQuotaService? quotaService})
+      : _quotaService = quotaService;
+
+  /// Collega il servizio centralizzato di quota AI per gating NL query.
+  void attachQuotaService(AiQuotaService? svc) {
+    _quotaService = svc;
+  }
 
   // Cache statica in-memory: dati validi finché non esplicitamente invalidati.
   // Chiave: 'path|param1=val1&...' (params ordinati per stabilità).
@@ -151,13 +156,27 @@ class StatisticheService {
   // -------------------------------------------------------------------------
 
   Future<Map<String, dynamic>> chiediAI(String domanda, {String? groqApiKey}) async {
+    // Pre-check quota: la feature stats è bloccata se il pool condiviso è
+    // esaurito e l'utente non ha configurato una chiave Groq personale.
+    final quota = _quotaService;
+    if (quota != null && !quota.canCall(AiFeature.stats)) {
+      throw QuotaExceededException(
+        message: 'Quota AI statistiche esaurita. Riprova dopo il reset o '
+            'configura una chiave Groq personale.',
+      );
+    }
     final body = <String, dynamic>{'domanda': domanda};
     if (groqApiKey != null && groqApiKey.isNotEmpty) {
       body['groq_api_key'] = groqApiKey;
     }
-    final result = await _postStats('nl-query', body);
-    AiQuotaLocalTracker().incrementStatsCall();
-    return result;
+    try {
+      final result = await _postStats('nl-query', body);
+      _quotaService?.recordOptimisticCall(AiFeature.stats);
+      return result;
+    } on QuotaExceededException {
+      _quotaService?.markExceeded(AiFeature.stats);
+      rethrow;
+    }
   }
 
   // -------------------------------------------------------------------------

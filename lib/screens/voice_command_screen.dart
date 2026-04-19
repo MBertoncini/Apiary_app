@@ -23,6 +23,7 @@ import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../services/voice_language_rules.dart';
 import '../services/bee_vocabulary_corrector.dart';
+import '../services/ai_quota_service.dart';
 import '../l10n/app_strings.dart';
 
 class VoiceCommandScreen extends StatefulWidget {
@@ -213,6 +214,10 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     _speechService = PlatformSpeechService();
     _dataProcessor = RegexDataProcessor();
     _audioProcessor = GeminiAudioProcessor();
+    // Collega il gate centralizzato delle quote AI (pre-check + mark 429).
+    _audioProcessor.attachQuotaService(
+      Provider.of<AiQuotaService>(context, listen: false),
+    );
     final feedbackService = VoiceFeedbackService();
 
     _voiceManager = PlatformVoiceInputManager(

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -9,10 +8,10 @@ import '../constants/api_constants.dart';
 import '../constants/theme_constants.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
-import '../services/chat_service.dart';
 import '../services/language_service.dart';
 import '../services/storage_service.dart';
 import '../services/ai_quota_local_tracker.dart';
+import '../services/ai_quota_service.dart';
 import '../services/voice_settings_service.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/paper_widgets.dart';
@@ -53,12 +52,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Attrezzatura prompt preference
   bool _skipAttrezzaturaPrompt = false;
 
-  // AI quota
-  Map<String, dynamic>? _quotaData;
+  // AI quota: sorgente unica è AiQuotaService (via Provider).
   bool _isLoadingQuota = false;
-  int _voiceCallsToday = 0;
-  int _statsCallsToday = 0;
-  Timer? _resetTimer;
 
   @override
   void initState() {
@@ -92,7 +87,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    _resetTimer?.cancel();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _apiKeyController.dispose();
@@ -161,10 +155,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveGroqApiKey() async {
     final s = Provider.of<LanguageService>(context, listen: false).strings;
     setState(() => _isSavingGroqKey = true);
-    await _quotaTracker.setGroqApiKey(_groqKeyController.text.trim());
+    final trimmed = _groqKeyController.text.trim();
+    await _quotaTracker.setGroqApiKey(trimmed);
+    // Propaga al gate centralizzato: se l'utente imposta una chiave Groq
+    // personale, la feature stats non è più bloccata dal pool di sistema.
+    if (mounted) {
+      Provider.of<AiQuotaService>(context, listen: false)
+          .setHasPersonalGroqKey(trimmed.isNotEmpty);
+    }
     setState(() => _isSavingGroqKey = false);
     if (!mounted) return;
-    final saved = _groqKeyController.text.trim().isNotEmpty;
+    final saved = trimmed.isNotEmpty;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(saved ? s.msgGroqKeySaved : s.msgGroqKeyRemoved),
       backgroundColor: ThemeConstants.successColor,
@@ -172,53 +173,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadLocalQuotas() async {
-    final voice = await _quotaTracker.getVoiceCallsToday();
-    final stats = await _quotaTracker.getStatsCallsToday();
+    // I contatori voice/stats sono ora gestiti da AiQuotaService (backend +
+    // overlay ottimistico). Qui rimane solo la persistenza della chiave Groq.
     final groqKey = await _quotaTracker.getGroqApiKey();
     if (mounted) {
       setState(() {
-        _voiceCallsToday = voice;
-        _statsCallsToday = stats;
         _groqKeyController.text = groqKey;
       });
+      // Sincronizza il gate centralizzato con la presenza della chiave Groq.
+      Provider.of<AiQuotaService>(context, listen: false)
+          .setHasPersonalGroqKey(groqKey.isNotEmpty);
     }
   }
 
   Future<void> _loadQuota() async {
+    // Refresh del profilo (per tier aggiornato) + fetch quota centralizzato.
+    // AiQuotaService gestisce internamente lo scheduling del reset timer.
     setState(() => _isLoadingQuota = true);
-    final chatService = Provider.of<ChatService>(context, listen: false);
-    // Also refresh the user profile so the tier is up-to-date.
     Provider.of<AuthService>(context, listen: false).refreshUserProfile();
-    final data = await chatService.fetchQuota();
-    if (mounted) {
-      setState(() { _quotaData = data; _isLoadingQuota = false; });
-      if (data != null) _scheduleResetRefresh(data);
-    }
-  }
-
-  /// Programma un refresh automatico al momento del prossimo reset lato backend.
-  void _scheduleResetRefresh(Map<String, dynamic> data) {
-    _resetTimer?.cancel();
-    final resets = [
-      (Map<String, dynamic>.from((data['personal'] ?? {}) as Map))['reset_at'] as String?,
-      (Map<String, dynamic>.from((data['system']   ?? {}) as Map))['reset_at'] as String?,
-    ].whereType<String>();
-
-    DateTime? earliest;
-    for (final r in resets) {
-      final normalized = r.endsWith('Z') || r.contains('+') ? r : '${r}Z';
-      final dt = DateTime.tryParse(normalized)?.toLocal();
-      if (dt != null && (earliest == null || dt.isBefore(earliest))) {
-        earliest = dt;
-      }
-    }
-
-    if (earliest != null) {
-      final delay = earliest.difference(DateTime.now());
-      if (delay > Duration.zero) {
-        _resetTimer = Timer(delay, _loadQuota);
-      }
-    }
+    await Provider.of<AiQuotaService>(context, listen: false).refresh();
+    if (mounted) setState(() => _isLoadingQuota = false);
   }
 
   Future<void> _saveVoiceMode(String mode) async {
@@ -913,11 +887,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildAiTierCard(BuildContext context, dynamic s) {
     final authService = Provider.of<AuthService>(context, listen: false);
+    // Reattività al gate centralizzato: usa AiQuotaService come SSOT per
+    // limiti e tier (fallback su enum per partenza a freddo).
+    final quota = context.watch<AiQuotaService>();
     final user = authService.currentUser;
     final tier = user?.aiTier ?? AiTier.free;
-    // Prefer backend tier_limits when available; fall back to enum.
-    final allTierLimits = _quotaData?['all_tier_limits'] as Map<String, dynamic>?;
-    final limits = tier.resolvedLimits(allTierLimits);
+    final limits = tier.resolvedLimits(quota.allTierLimits);
 
     Color tierColor;
     IconData tierIcon;
@@ -1030,6 +1005,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ── Quota card ────────────────────────────────────────────────────────────
 
   Widget _buildQuotaCard(dynamic s) {
+    // Fonte unica: AiQuotaService. Ricostruisce su ogni cambio (refresh
+    // autoritativo, incrementi ottimistici, markExceeded, chiave Groq).
+    final quota = context.watch<AiQuotaService>();
+    final rawData = quota.rawData;
+    final loading = _isLoadingQuota || quota.isLoading;
+
     return PaperCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1043,7 +1024,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: ThemeConstants.subheadingStyle, overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 4),
-              if (_isLoadingQuota)
+              if (loading)
                 const SizedBox(width: 16, height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2))
               else
@@ -1069,18 +1050,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          if (_isLoadingQuota && _quotaData == null)
+          if (loading && rawData == null)
             const SkeletonDashboardContent(height: 110)
-          else if (_quotaData == null)
+          else if (rawData == null)
             Text(s.quotaDataUnavailable,
                 style: ThemeConstants.bodyStyle.copyWith(
                     fontSize: 13, color: ThemeConstants.textSecondaryColor))
           else
-            _buildQuotaSection(_quotaData!, s),
+            _buildQuotaSection(quota, s),
 
           const Divider(height: 28),
 
-          // ── 2. Gemini Audio premium (tracciato localmente) ───────────────
+          // ── 2. Gemini Audio (inserimento vocale premium) ─────────────────
           Row(
             children: [
               Icon(Icons.mic_outlined, color: ThemeConstants.primaryColor, size: 15),
@@ -1091,18 +1072,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           Builder(builder: (_) {
-            // Preferisci i dati dal backend; fallback al tracker locale solo se offline.
-            final usage = _quotaData?['usage'] as Map?;
-            final backendVoice = usage != null ? ((usage['voice_today'] ?? 0) as num).toInt() : null;
-            final tier = Provider.of<AuthService>(context, listen: false).currentUser?.aiTier ?? AiTier.free;
-            final allTierLimits = _quotaData?['all_tier_limits'] as Map<String, dynamic>?;
-            final voiceLimit = tier.resolvedLimits(allTierLimits).voice;
-            final personalResetAt = (_quotaData?['personal'] as Map?)?['reset_at'] as String?;
+            final tier = quota.tier;
+            final voiceLimit = quota.limitFor(AiFeature.voice);
+            final voiceUsed = quota.usedFor(AiFeature.voice);
+            final resetAt = quota.resetAtFor(AiFeature.voice)?.toIso8601String();
             return _quotaBar(
               label: s.quotaTranscriptionsToday,
-              used: backendVoice ?? _voiceCallsToday,
+              used: voiceUsed,
               limit: voiceLimit,
-              resetAt: personalResetAt,
+              resetAt: resetAt,
               isActive: true,
               color: ThemeConstants.primaryColor,
               subtitle: '${tier.label} plan',
@@ -1112,7 +1090,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(height: 28),
 
-          // ── 3. Statistiche NL Query (Groq, tracciato localmente) ─────────
+          // ── 3. Statistiche NL Query (Groq, pool di sistema) ──────────────
           Row(
             children: [
               Icon(Icons.bolt, color: const Color(0xFFF55036), size: 15),
@@ -1124,12 +1102,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           _quotaBar(
             label: s.quotaStatsToday,
-            used: _statsCallsToday,
-            limit: 0,
-            resetAt: null,
+            used: quota.usedFor(AiFeature.stats),
+            limit: quota.limitFor(AiFeature.stats),
+            resetAt: quota.resetAtFor(AiFeature.stats)?.toIso8601String(),
             isActive: true,
             color: const Color(0xFFF55036),
-            subtitle: _groqKeyController.text.isNotEmpty
+            subtitle: quota.hasPersonalGroqKey
                 ? s.quotaUsingGroqPersonal
                 : s.quotaUsingSystemKey,
             s: s,
@@ -1139,24 +1117,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildQuotaSection(Map<String, dynamic> data, dynamic s) {
-    final String activeKey = data['active_key'] ?? 'system';
+  Widget _buildQuotaSection(AiQuotaService quota, dynamic s) {
+    final data = quota.rawData ?? const <String, dynamic>{};
+    final activeKey = quota.activeKey;
     final int dailyLimit = ((data['daily_limit'] ?? 1500) as num).toInt();
 
     final system = Map<String, dynamic>.from((data['system'] ?? {}) as Map);
-    final usage = Map<String, dynamic>.from((data['usage'] ?? {}) as Map);
-    final tierLimits = Map<String, dynamic>.from((data['tier_limits'] ?? {}) as Map);
-
-    final int chatUsed = ((usage['chat_today'] ?? 0) as num).toInt();
-    final int voiceUsed = ((usage['voice_today'] ?? 0) as num).toInt();
-    final int totalUsed = ((usage['total_today'] ?? 0) as num).toInt();
-
-    final int chatLimit = ((tierLimits['chat'] ?? 10) as num).toInt();
-    final int voiceLimit = ((tierLimits['voice'] ?? 5) as num).toInt();
-    final int totalLimit = ((tierLimits['total'] ?? 15) as num).toInt();
-
     final int systemUsed = ((system['requests_today'] ?? 0) as num).toInt();
     final String? systemResetAt = system['reset_at'] as String?;
+
+    // Utilizzo + limiti sempre da AiQuotaService (backend + overlay ottimistico).
+    final int chatUsed = quota.usedFor(AiFeature.chat);
+    final int voiceUsed = quota.usedFor(AiFeature.voice);
+    final int totalUsed = quota.totalUsed;
+
+    final int chatLimit = quota.limitFor(AiFeature.chat);
+    final int voiceLimit = quota.limitFor(AiFeature.voice);
+    final int totalLimit = quota.totalLimit;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

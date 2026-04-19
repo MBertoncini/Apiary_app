@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
 import '../config/api_keys.dart';
 import 'voice_data_processor.dart';
-import 'ai_quota_local_tracker.dart';
+import 'ai_quota_service.dart';
 
 class GeminiDataProcessor extends ChangeNotifier with VoiceDataProcessor {
   static const String _geminiBaseUrl =
@@ -22,13 +22,18 @@ class GeminiDataProcessor extends ChangeNotifier with VoiceDataProcessor {
     'gemini-1.5-flash',        // last resort, very stable
   ];
 
-  final _tracker = AiQuotaLocalTracker();
+  AiQuotaService? _quotaService;
 
   // Chiave personale (sovrascrive ApiKeys.geminiApiKey se impostata)
   String? _personalApiKey;
 
   void setPersonalKey(String? key) {
     _personalApiKey = (key != null && key.isNotEmpty) ? key : null;
+  }
+
+  /// Collega il servizio centralizzato di quota AI per gating voice.
+  void attachQuotaService(AiQuotaService? svc) {
+    _quotaService = svc;
   }
 
   // Contesto sessione
@@ -56,6 +61,15 @@ class GeminiDataProcessor extends ChangeNotifier with VoiceDataProcessor {
   @override
   Future<VoiceEntry?> processVoiceInput(String text) async {
     if (text.isEmpty) return null;
+
+    // Pre-check quota voice centralizzata.
+    final quota = _quotaService;
+    if (quota != null && !quota.canCall(AiFeature.voice)) {
+      _lastCallWasRateLimit = true;
+      _error = 'Quota AI voce esaurita. Riprova dopo il reset giornaliero.';
+      notifyListeners();
+      return null;
+    }
 
     _isProcessing = true;
     _error = null;
@@ -165,7 +179,7 @@ Regole:
             return null;
           }
           debugPrint('[Gemini] Used model: $model');
-          _tracker.incrementVoiceCall();
+          _quotaService?.recordOptimisticCall(AiFeature.voice);
           return _parseGeminiResponse(responseText);
         } else if (response.statusCode == 429) {
           // Check if this model has limit: 0 (permanently disabled on this plan)
@@ -179,6 +193,7 @@ Regole:
           }
           // Genuine rate limit — stop trying
           _lastCallWasRateLimit = true;
+          _quotaService?.markExceeded(AiFeature.voice);
           _error =
               'Limite richieste Gemini ($model). Attendi un minuto e riprova.';
           return null;
@@ -199,6 +214,7 @@ Regole:
 
       // All models exhausted
       _lastCallWasRateLimit = true;
+      _quotaService?.markExceeded(AiFeature.voice);
       _error = 'Nessun modello Gemini disponibile sul piano gratuito. '
           'Aggiorna il piano su ai.google.dev.';
       return null;

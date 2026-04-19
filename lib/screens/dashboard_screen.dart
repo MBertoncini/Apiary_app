@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../services/jokes_service.dart';
 import '../services/chat_service.dart';
+import '../services/ai_quota_service.dart';
 import '../widgets/offline_banner.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/bee_joke_bubble.dart';
@@ -2201,8 +2202,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     foregroundColor: Colors.white,
                     onTap: () {
                     final apiService = Provider.of<ApiService>(context, listen: false);
-                    final chatService = ChatService(apiService);
-                    
+                    final quotaService = Provider.of<AiQuotaService>(context, listen: false);
+                    final chatService = ChatService(apiService, quotaService);
+
                     // Naviga alla ChatScreen con un ChangeNotifierProvider specifico
                     Navigator.push(
                       context,

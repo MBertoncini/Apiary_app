@@ -6,10 +6,8 @@ import '../l10n/app_strings.dart';
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
 import '../services/language_service.dart';
-import 'package:intl/intl.dart';
 import '../widgets/chart_widget.dart';
 import '../utils/chart_exporter.dart';
-import '../widgets/formatted_message_widget.dart';
 import '../widgets/rich_message_widget.dart';
 import 'ai_tier_upgrade_screen.dart';
 class ChatScreen extends StatefulWidget {
@@ -243,13 +241,13 @@ class _ChatScreenState extends State<ChatScreen> {
           
           // Divisore
           Divider(height: 1),
-          
-          // Area di composizione messaggio
+
+          // Area di composizione messaggio (gated se quota esaurita)
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
             ),
-            child: _buildTextComposer(),
+            child: _buildTextComposer(chatService.isQuotaExceeded),
           ),
         ],
       ),
@@ -257,7 +255,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
   
   // Costruisce l'area di input del messaggio
-  Widget _buildTextComposer() {
+  Widget _buildTextComposer(bool quotaExceeded) {
+    final canSend = _isComposing && !quotaExceeded;
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8.0),
       child: Row(
@@ -266,8 +265,9 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: TextField(
               controller: _textController,
+              enabled: !quotaExceeded,
               decoration: InputDecoration(
-                hintText: _s.chatHint,
+                hintText: quotaExceeded ? _s.chatQuotaInputDisabled : _s.chatHint,
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
@@ -276,17 +276,17 @@ class _ChatScreenState extends State<ChatScreen> {
                   _isComposing = text.trim().isNotEmpty;
                 });
               },
-              onSubmitted: _isComposing ? _handleSubmitted : null,
+              onSubmitted: canSend ? _handleSubmitted : null,
             ),
           ),
-          
+
           // Pulsante di invio
           IconButton(
             icon: Icon(Icons.send),
-            color: _isComposing 
-                ? ThemeConstants.primaryColor 
+            color: canSend
+                ? ThemeConstants.primaryColor
                 : ThemeConstants.textSecondaryColor.withOpacity(0.5),
-            onPressed: _isComposing
+            onPressed: canSend
                 ? () => _handleSubmitted(_textController.text)
                 : null,
           ),

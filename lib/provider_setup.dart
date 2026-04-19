@@ -9,6 +9,7 @@ import 'services/storage_service.dart';
 import 'services/sync_service.dart';
 import 'services/mcp_service.dart';
 import 'services/chat_service.dart';
+import 'services/ai_quota_service.dart';
 // Import services
 import 'services/language_service.dart';
 import 'services/voice_feedback_service.dart';
@@ -87,13 +88,31 @@ List<SingleChildWidget> providers = [
     create: (_) => SubscriptionService(),
   ),
 
-  // Chat Service (depends on API) - lazy, created on first access
-  ChangeNotifierProxyProvider<ApiService, ChatService>(
-    create: (context) => ChatService(
+  // AI Quota service (depends on API + Auth) — single source of truth per i
+  // limiti AI (chat / voice / stats). Deve essere registrato PRIMA di
+  // ChatService e degli screen/widget che lo consumano. Propaga il tier
+  // corrente ogni volta che AuthService notifica un nuovo utente.
+  ChangeNotifierProxyProvider2<ApiService, AuthService, AiQuotaService>(
+    create: (context) => AiQuotaService(
       Provider.of<ApiService>(context, listen: false),
     ),
+    update: (context, apiService, authService, previous) {
+      final service = previous ?? AiQuotaService(apiService);
+      final user = authService.currentUser;
+      if (user != null) service.setTier(user.aiTier);
+      return service;
+    },
+  ),
+
+  // Chat Service (depends on API + AiQuotaService) - lazy
+  ChangeNotifierProxyProvider2<ApiService, AiQuotaService, ChatService>(
+    create: (context) => ChatService(
+      Provider.of<ApiService>(context, listen: false),
+      Provider.of<AiQuotaService>(context, listen: false),
+    ),
     lazy: true,
-    update: (context, apiService, previousChat) => previousChat ?? ChatService(apiService),
+    update: (context, apiService, quotaService, previousChat) =>
+        previousChat ?? ChatService(apiService, quotaService),
   ),
 
 ];

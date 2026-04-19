@@ -1931,6 +1931,17 @@ class StringsEn extends AppStrings {
   @override String get chatGeneratingChart => 'Generating chart...';
   @override String get chatQuotaUpgradeHint =>
       'You can add a personal Gemini key in settings or upgrade your plan.';
+  @override String get chatQuotaInputDisabled => 'Quota exceeded — try again after reset';
+
+  // ── AI quota gating (shared) ──
+  @override String get quotaVoiceExhaustedTitle => 'AI voice quota exceeded';
+  @override String quotaRetryInWithUpgrade(String duration) =>
+      'Try again in $duration or upgrade your plan.';
+  @override String get quotaRetryAfterReset =>
+      'Try again after the daily reset or upgrade.';
+  @override String get quotaStatsExhausted =>
+      'Stats AI quota exceeded. Try again after reset or set a personal Groq key in settings.';
+  @override String get nlQueryInputHintExhausted => 'Quota exceeded — try again after reset';
 
   // ── AI Tier ──
   @override String get aiTierLabel => 'AI Plan';

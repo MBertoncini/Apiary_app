@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
 import '../constants/api_constants.dart';
+import 'ai_quota_service.dart';
 import 'api_service.dart';
 
 // Estensione per capitalizzare la prima lettera di una stringa
@@ -14,63 +15,29 @@ extension StringExtension on String {
 
 class ChatService with ChangeNotifier {
   final ApiService _apiService;
-  String _welcomeMessage = "Ciao! Sono ApiarioAI, il tuo assistente per l'apicoltura. Come posso aiutarti oggi?";
+  final AiQuotaService _quotaService;
+  String _welcomeMessage =
+      "Ciao! Sono ApiarioAI, il tuo assistente per l'apicoltura. Come posso aiutarti oggi?";
 
   List<ChatMessage> _messages = [];
   bool _isLoading = false;
   String? _error;
   bool _isProcessingChart = false;
-  bool _isQuotaExceeded = false;
-
-  /// Cached quota data from last fetchQuota() call.
-  Map<String, dynamic>? _lastQuotaData;
-
-  /// When the current quota exceeded flag was set.
-  DateTime? _quotaExceededAt;
 
   List<ChatMessage> get messages => _messages;
   bool get isLoading => _isLoading;
   bool get isProcessingChart => _isProcessingChart;
   String? get error => _error;
-  Map<String, dynamic>? get lastQuotaData => _lastQuotaData;
 
-  /// Limiti per tutti i tier, dal backend. Null se non ancora caricati.
-  Map<String, dynamic>? get allTierLimits =>
-      _lastQuotaData?['all_tier_limits'] as Map<String, dynamic>?;
+  /// Mirror reattivo del gate centralizzato per la chat.
+  bool get isQuotaExceeded => !_quotaService.canCall(AiFeature.chat);
 
-  bool get isQuotaExceeded {
-    if (!_isQuotaExceeded) return false;
-    // Auto-reset usando il reset_at del server (mezzanotte UTC) se disponibile,
-    // altrimenti fallback a confronto data locale.
-    final serverResetAt = (_lastQuotaData?['personal'] as Map?)?['reset_at'] as String?;
-    if (serverResetAt != null) {
-      final normalized = serverResetAt.endsWith('Z') || serverResetAt.contains('+')
-          ? serverResetAt
-          : '${serverResetAt}Z';
-      final resetTime = DateTime.tryParse(normalized);
-      if (resetTime != null && DateTime.now().toUtc().isAfter(resetTime)) {
-        _isQuotaExceeded = false;
-        _quotaExceededAt = null;
-        _error = null;
-        return false;
-      }
-    } else if (_quotaExceededAt != null) {
-      // Fallback: nessun dato server — confronta mezzanotte UTC
-      final now = DateTime.now().toUtc();
-      final setDate = _quotaExceededAt!.toUtc();
-      if (now.year != setDate.year ||
-          now.month != setDate.month ||
-          now.day != setDate.day) {
-        _isQuotaExceeded = false;
-        _quotaExceededAt = null;
-        _error = null;
-        return false;
-      }
-    }
-    return true;
-  }
+  /// Dati grezzi di quota — esposti per retrocompatibilità. Le nuove UI
+  /// dovrebbero consumare direttamente [AiQuotaService].
+  Map<String, dynamic>? get lastQuotaData => _quotaService.rawData;
+  Map<String, dynamic>? get allTierLimits => _quotaService.allTierLimits;
 
-  ChatService(this._apiService) {
+  ChatService(this._apiService, this._quotaService) {
     _messages.add(
       ChatMessage(
         text: _welcomeMessage,
@@ -78,12 +45,23 @@ class ChatService with ChangeNotifier {
         timestamp: DateTime.now(),
       ),
     );
+    _quotaService.addListener(_onQuotaChanged);
+  }
+
+  void _onQuotaChanged() {
+    // Se la quota è cambiata e non siamo più bloccati, pulisci l'errore stale.
+    if (_error != null && _quotaService.canCall(AiFeature.chat)) {
+      _error = null;
+      notifyListeners();
+    } else {
+      // Propaga comunque il cambio stato (bar colorate nella ChatScreen).
+      notifyListeners();
+    }
   }
 
   /// Update the welcome message with the localized version.
   void setWelcomeMessage(String message) {
     _welcomeMessage = message;
-    // Update the first message if it's the welcome
     if (_messages.isNotEmpty && !_messages[0].isUser) {
       _messages[0] = ChatMessage(
         text: message,
@@ -94,27 +72,13 @@ class ChatService with ChangeNotifier {
     }
   }
 
-  /// Returns true if quota is likely exceeded based on cached data.
-  bool _isQuotaLikelyExceeded() {
-    final data = _lastQuotaData;
-    if (data == null) return false;
-    final usage = data['usage'] as Map?;
-    final tierLimits = data['tier_limits'] as Map?;
-    if (usage == null || tierLimits == null) return false;
-    final int totalUsed = ((usage['total_today'] ?? 0) as num).toInt();
-    final int totalLimit = ((tierLimits['total'] ?? 0) as num).toInt();
-    return totalLimit > 0 && totalUsed >= totalLimit;
-  }
-
   /// Invia un messaggio al backend e riceve la risposta AI.
   Future<void> sendMessage(String message, {String? preCheckErrorMsg}) async {
     if (message.trim().isEmpty) return;
 
-    // Pre-check: if quota is likely exhausted, don't waste the request.
-    if (_isQuotaLikelyExceeded() || isQuotaExceeded) {
+    // Pre-check centralizzato: se la quota chat è esaurita non spediamo.
+    if (!_quotaService.canCall(AiFeature.chat)) {
       _error = preCheckErrorMsg ?? 'Quota AI giornaliera esaurita';
-      _isQuotaExceeded = true;
-      _quotaExceededAt ??= DateTime.now();
       notifyListeners();
       return;
     }
@@ -140,6 +104,9 @@ class ChatService with ChangeNotifier {
         ApiConstants.aiChatUrl,
         {'message': message, 'history': history},
       );
+
+      // Incremento ottimistico: il backend ha accettato la chiamata.
+      _quotaService.recordOptimisticCall(AiFeature.chat);
 
       final botText = responseData['response'] as String? ?? '';
 
@@ -206,8 +173,7 @@ class ChatService with ChangeNotifier {
       }
     } on QuotaExceededException catch (e) {
       _error = e.message;
-      _isQuotaExceeded = true;
-      _quotaExceededAt = DateTime.now();
+      _quotaService.markExceeded(AiFeature.chat);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -218,8 +184,6 @@ class ChatService with ChangeNotifier {
   }
 
   Future<void> retryLastUserMessage() async {
-    // Trova l'ultimo messaggio utente e rimuovi esso + eventuali risposte bot successive,
-    // così sendMessage non lo duplica nella lista.
     int idx = _messages.length - 1;
     while (idx >= 0 && !_messages[idx].isUser) idx--;
     if (idx < 0) {
@@ -238,10 +202,7 @@ class ChatService with ChangeNotifier {
     _isProcessingChart = true;
     notifyListeners();
     try {
-      // Chiama il backend per i dati del grafico tramite MCPService se disponibile
-      // Per ora aggiungiamo un placeholder — la logica chart data rimane invariata
-      // perché MCPService non è più iniettato qui. Il ChatScreen gestisce i grafici
-      // attraverso il chartData già passato nel messaggio.
+      // La logica chart data è gestita dal ChatScreen via chartData del messaggio.
     } catch (e) {
       _messages.add(ChatMessage(
         text: 'Errore nella generazione del grafico: $e',
@@ -267,56 +228,27 @@ class ChatService with ChangeNotifier {
 
   void clearError() {
     _error = null;
-    _isQuotaExceeded = false;
-    _quotaExceededAt = null;
     notifyListeners();
   }
 
-  /// Recupera le informazioni sulla quota AI giornaliera dal backend.
-  /// Caches the result for pre-check quota validation.
+  /// Recupera le informazioni sulla quota AI dal backend.
+  /// Delega ad [AiQuotaService.refresh]; mantenuto per retrocompatibilità.
   Future<Map<String, dynamic>?> fetchQuota() async {
-    try {
-      final data = await _apiService.get(ApiConstants.aiQuotaUrl);
-      _lastQuotaData = data as Map<String, dynamic>;
-
-      // If we had quota exceeded but backend says we have room now, auto-clear.
-      if (_isQuotaExceeded) {
-        final usage = _lastQuotaData?['usage'] as Map?;
-        final tierLimits = _lastQuotaData?['tier_limits'] as Map?;
-        if (usage != null && tierLimits != null) {
-          final int totalUsed = ((usage['total_today'] ?? 0) as num).toInt();
-          final int totalLimit = ((tierLimits['total'] ?? 0) as num).toInt();
-          if (totalLimit > 0 && totalUsed < totalLimit) {
-            _isQuotaExceeded = false;
-            _quotaExceededAt = null;
-            _error = null;
-            notifyListeners();
-          }
-        }
-      }
-
-      return _lastQuotaData;
-    } catch (_) {
-      return null;
-    }
+    await _quotaService.refresh();
+    return _quotaService.rawData;
   }
 
   /// Invia una richiesta di upgrade tier AI al backend.
-  Future<Map<String, dynamic>> requestUpgrade(String requestedTier) async {
-    final data = await _apiService.post(
-      ApiConstants.aiRequestUpgradeUrl,
-      {'requested_tier': requestedTier},
-    );
-    return Map<String, dynamic>.from(data as Map);
-  }
+  Future<Map<String, dynamic>> requestUpgrade(String requestedTier) =>
+      _quotaService.requestUpgrade(requestedTier);
 
   /// Attiva un codice tester/promo per sbloccare un tier superiore.
-  /// Il backend valida il codice e aggiorna il tier dell'utente.
-  Future<Map<String, dynamic>> activateCode(String code) async {
-    final data = await _apiService.post(
-      ApiConstants.aiActivateCodeUrl,
-      {'code': code.trim()},
-    );
-    return Map<String, dynamic>.from(data as Map);
+  Future<Map<String, dynamic>> activateCode(String code) =>
+      _quotaService.activateCode(code);
+
+  @override
+  void dispose() {
+    _quotaService.removeListener(_onQuotaChanged);
+    super.dispose();
   }
 }

@@ -1972,6 +1972,14 @@ abstract class AppStrings {
   String get chatHint;
   String get chatGeneratingChart;
   String get chatQuotaUpgradeHint;
+  String get chatQuotaInputDisabled;
+
+  // ── AI quota gating (condiviso) ──
+  String get quotaVoiceExhaustedTitle;
+  String quotaRetryInWithUpgrade(String duration);
+  String get quotaRetryAfterReset;
+  String get quotaStatsExhausted;
+  String get nlQueryInputHintExhausted;
 
   // ── AI Tier ──
   String get aiTierLabel;

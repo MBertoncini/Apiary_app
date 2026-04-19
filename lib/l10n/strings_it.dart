@@ -1898,6 +1898,17 @@ class StringsIt extends AppStrings {
   @override String get chatGeneratingChart => 'Generazione grafico in corso...';
   @override String get chatQuotaUpgradeHint =>
       'Puoi inserire una chiave Gemini personale nelle impostazioni oppure passare a un piano superiore.';
+  @override String get chatQuotaInputDisabled => 'Quota esaurita — riprova dopo il reset';
+
+  // ── AI quota gating (condiviso) ──
+  @override String get quotaVoiceExhaustedTitle => 'Quota voce AI esaurita';
+  @override String quotaRetryInWithUpgrade(String duration) =>
+      'Riprova tra $duration o fai l\'upgrade del piano.';
+  @override String get quotaRetryAfterReset =>
+      'Riprova dopo il reset giornaliero o fai l\'upgrade.';
+  @override String get quotaStatsExhausted =>
+      'Quota AI statistiche esaurita. Riprova dopo il reset o configura una chiave Groq personale nelle impostazioni.';
+  @override String get nlQueryInputHintExhausted => 'Quota esaurita — riprova dopo il reset';
 
   // ── AI Tier ──
   @override String get aiTierLabel => 'Piano AI';
