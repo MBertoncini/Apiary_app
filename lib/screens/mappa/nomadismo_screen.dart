@@ -15,29 +15,29 @@ import '../../services/api_service.dart';
 import '../../services/language_service.dart';
 
 // ── Modello preset miele ──────────────────────────────────────────────────────
+// `nome`, `periodo`, `regioni`, `desc` sono localizzati a runtime via AppStrings.
 class _Preset {
-  final String key, nome, pianta, emoji, periodo, regioni, desc;
+  final String key, pianta, emoji;
   final int taxonKey;
   final Color colore, coloreBordo;
   const _Preset({
-    required this.key, required this.nome, required this.pianta,
-    required this.emoji, required this.periodo, required this.regioni,
-    required this.desc, required this.taxonKey,
+    required this.key, required this.pianta,
+    required this.emoji, required this.taxonKey,
     required this.colore, required this.coloreBordo,
   });
 }
 
 const List<_Preset> _presets = [
-  _Preset(key:'acacia',     nome:'Acacia',      pianta:'Robinia pseudoacacia', emoji:'🌸', periodo:'Apr–Mag', regioni:'Toscana, Umbria, Lazio', desc:'Miele chiaro e delicato',              taxonKey:5352251, colore:Color(0xFFFFF9C4), coloreBordo:Color(0xFFF5C518)),
-  _Preset(key:'castagno',   nome:'Castagno',    pianta:'Castanea sativa',      emoji:'🌰', periodo:'Giu–Lug', regioni:'Appennino, Prealpi',       desc:'Miele scuro e tannico',                taxonKey:5333294, colore:Color(0xFFEFEBE9), coloreBordo:Color(0xFF795548)),
-  _Preset(key:'tiglio',     nome:'Tiglio',      pianta:'Tilia',                emoji:'🍃', periodo:'Giu',     regioni:'Valli alpine, Po',          desc:'Miele profumato, mentolato',           taxonKey:3152041, colore:Color(0xFFC8E6C9), coloreBordo:Color(0xFF388E3C)),
-  _Preset(key:'lavanda',    nome:'Lavanda',     pianta:'Lavandula',            emoji:'💜', periodo:'Lug–Ago', regioni:'Provenza, Alta Valle Pesio', desc:'Miele aromatico e floreale',           taxonKey:2927302, colore:Color(0xFFE1BEE7), coloreBordo:Color(0xFF7B1FA2)),
-  _Preset(key:'sulla',      nome:'Sulla',       pianta:'Hedysarum coronarium', emoji:'🌺', periodo:'Apr–Mag', regioni:'Sicilia, Calabria, Sard.',   desc:'Miele chiaro, tipico del Sud',         taxonKey:2960919, colore:Color(0xFFFFCDD2), coloreBordo:Color(0xFFC62828)),
-  _Preset(key:'corbezzolo', nome:'Corbezzolo',  pianta:'Arbutus unedo',        emoji:'🍓', periodo:'Ott–Nov', regioni:'Sardegna, Maremma',          desc:'Miele amaro e unico',                  taxonKey:2882803, colore:Color(0xFFFFCCBC), coloreBordo:Color(0xFFBF360C)),
-  _Preset(key:'eucalipto',  nome:'Eucalipto',   pianta:'Eucalyptus',           emoji:'🌿', periodo:'Gen–Mar', regioni:'Sardegna, Sicilia',           desc:'Miele balsamico e scuro',              taxonKey:7493935, colore:Color(0xFFB2DFDB), coloreBordo:Color(0xFF00695C)),
-  _Preset(key:'girasole',   nome:'Girasole',    pianta:'Helianthus annuus',    emoji:'🌻', periodo:'Lug–Ago', regioni:'Pianura Padana, Puglia',      desc:'Miele chiaro, cristallizza veloce',    taxonKey:9206251, colore:Color(0xFFFFF9C4), coloreBordo:Color(0xFFF9A825)),
-  _Preset(key:'trifoglio',  nome:'Trifoglio',   pianta:'Trifolium',            emoji:'🍀', periodo:'Mag–Set', regioni:'Prati, tutta Italia',         desc:'Miele millefiori delicato',            taxonKey:2973363, colore:Color(0xFFDCEDC8), coloreBordo:Color(0xFF558B2F)),
-  _Preset(key:'agrumi',     nome:'Agrumi',      pianta:'Citrus',               emoji:'🍊', periodo:'Mar–Apr', regioni:'Sicilia, Calabria, Camp.',    desc:"Miele d'arancio profumato",            taxonKey:3190155, colore:Color(0xFFFFE0B2), coloreBordo:Color(0xFFE65100)),
+  _Preset(key:'acacia',     pianta:'Robinia pseudoacacia', emoji:'🌸', taxonKey:5352251, colore:Color(0xFFFFF9C4), coloreBordo:Color(0xFFF5C518)),
+  _Preset(key:'castagno',   pianta:'Castanea sativa',      emoji:'🌰', taxonKey:5333294, colore:Color(0xFFEFEBE9), coloreBordo:Color(0xFF795548)),
+  _Preset(key:'tiglio',     pianta:'Tilia',                emoji:'🍃', taxonKey:3152041, colore:Color(0xFFC8E6C9), coloreBordo:Color(0xFF388E3C)),
+  _Preset(key:'lavanda',    pianta:'Lavandula',            emoji:'💜', taxonKey:2927302, colore:Color(0xFFE1BEE7), coloreBordo:Color(0xFF7B1FA2)),
+  _Preset(key:'sulla',      pianta:'Hedysarum coronarium', emoji:'🌺', taxonKey:2960919, colore:Color(0xFFFFCDD2), coloreBordo:Color(0xFFC62828)),
+  _Preset(key:'corbezzolo', pianta:'Arbutus unedo',        emoji:'🍓', taxonKey:2882803, colore:Color(0xFFFFCCBC), coloreBordo:Color(0xFFBF360C)),
+  _Preset(key:'eucalipto',  pianta:'Eucalyptus',           emoji:'🌿', taxonKey:7493935, colore:Color(0xFFB2DFDB), coloreBordo:Color(0xFF00695C)),
+  _Preset(key:'girasole',   pianta:'Helianthus annuus',    emoji:'🌻', taxonKey:9206251, colore:Color(0xFFFFF9C4), coloreBordo:Color(0xFFF9A825)),
+  _Preset(key:'trifoglio',  pianta:'Trifolium',            emoji:'🍀', taxonKey:2973363, colore:Color(0xFFDCEDC8), coloreBordo:Color(0xFF558B2F)),
+  _Preset(key:'agrumi',     pianta:'Citrus',               emoji:'🍊', taxonKey:3190155, colore:Color(0xFFFFE0B2), coloreBordo:Color(0xFFE65100)),
 ];
 
 // ── Famiglie mellifere ────────────────────────────────────────────────────────
@@ -62,6 +62,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
   bool      _legendaAperta = false;      // collassata di default
   LatLng?   _analisiCenter;
   List<Map<String, dynamic>> _apiari = [];
+  // ignore: unused_field
   bool      _loadingApiari = true;
   Position? _currentPosition;
   double    _mapRotation = 0;
@@ -212,6 +213,8 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
   // ── Build ───────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // Rebuild on language change so localized text refreshes live.
+    context.watch<LanguageService>();
     return Scaffold(
       appBar: AppBar(
         title: Text(_s.nomadismoTitle, style: GoogleFonts.caveat(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -409,7 +412,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
                 onTap: () => setState(() { _presetAttivo = null; _analisiCenter = null; }),
               ),
               ..._presets.map((p) => _PresetChip(
-                label: '${p.emoji} ${p.nome}',
+                label: '${p.emoji} ${_s.nomadismoPresetNome(p.key)}',
                 selected: _presetAttivo?.key == p.key,
                 colore: p.colore,
                 coloreBordo: p.coloreBordo,
@@ -433,6 +436,7 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
   }
 
   Widget _buildPresetInfo(_Preset p) {
+    final s = _s;
     return Container(
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -450,9 +454,9 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(p.nome, style: GoogleFonts.caveat(fontSize: 16, fontWeight: FontWeight.bold, color: ThemeConstants.textPrimaryColor)),
+                Text(s.nomadismoPresetNome(p.key), style: GoogleFonts.caveat(fontSize: 16, fontWeight: FontWeight.bold, color: ThemeConstants.textPrimaryColor)),
                 Text(p.pianta, style: GoogleFonts.quicksand(fontSize: 11, fontStyle: FontStyle.italic, color: ThemeConstants.textSecondaryColor)),
-                Text(p.desc,   style: GoogleFonts.quicksand(fontSize: 11, color: ThemeConstants.textSecondaryColor)),
+                Text(s.nomadismoPresetDesc(p.key), style: GoogleFonts.quicksand(fontSize: 11, color: ThemeConstants.textSecondaryColor)),
               ],
             ),
           ),
@@ -460,9 +464,9 @@ class _NomadismoScreenState extends State<NomadismoScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(p.periodo, style: GoogleFonts.quicksand(fontSize: 11, fontWeight: FontWeight.bold, color: p.coloreBordo)),
+              Text(s.nomadismoPresetPeriodo(p.key), style: GoogleFonts.quicksand(fontSize: 11, fontWeight: FontWeight.bold, color: p.coloreBordo)),
               const SizedBox(height: 2),
-              Text(p.regioni, style: GoogleFonts.quicksand(fontSize: 10, color: ThemeConstants.textSecondaryColor), textAlign: TextAlign.right, maxLines: 2),
+              Text(s.nomadismoPresetRegioni(p.key), style: GoogleFonts.quicksand(fontSize: 10, color: ThemeConstants.textSecondaryColor), textAlign: TextAlign.right, maxLines: 2),
             ],
           ),
         ],

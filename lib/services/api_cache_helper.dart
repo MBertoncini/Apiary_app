@@ -84,9 +84,8 @@ class ApiCacheHelper {
     Duration maxAge = const Duration(hours: 24),
   }) async {
     try {
-      // Verifica la connessione e se la cache è obsoleta
+      // Verifica la connessione
       final bool isOnline = await isConnected();
-      final bool isCacheOld = await isCacheStale(maxAge: maxAge);
       
       // Se online, prova a recuperare dall'API
       if (isOnline) {

@@ -21,7 +21,6 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
   AppStrings get _s =>
       Provider.of<LanguageService>(context, listen: false).strings;
 
-  bool _isLoading = false;
   bool _isRefreshing = true;
   List<dynamic> _allApiari = [];  // Dati completi (non filtrati)
   String _searchQuery = '';
@@ -89,7 +88,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final currentUserId = authService.currentUser?.id;
     if (currentUserId == null) {
-      if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
+      if (mounted) setState(() { _isRefreshing = false; });
       return;
     }
 
@@ -99,7 +98,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
     if (cachedApiari.isNotEmpty) {
       _allApiari = _filterEditable(List<dynamic>.from(cachedApiari), currentUserId, cachedGruppi)
         ..sort((a, b) => a['nome'].compareTo(b['nome']));
-      if (mounted) setState(() { _isLoading = false; _isRefreshing = true; });
+      if (mounted) setState(() { _isRefreshing = true; });
     } else {
       if (mounted) setState(() { _isRefreshing = true; });
     }
@@ -170,7 +169,7 @@ class _ApiarioListScreenState extends State<ApiarioListScreen> {
       debugPrint('Error fetching apiari from API, using cache: $e');
     }
 
-    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
+  if (mounted) setState(() { _isRefreshing = false; });
   }
 
   List<dynamic> _parseList(dynamic response) {

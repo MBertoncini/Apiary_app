@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class Apiario {
   final int id;
   final String nome;

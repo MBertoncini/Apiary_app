@@ -4,7 +4,6 @@ import '../../../constants/api_constants.dart';
 import '../../../models/contenitore_stoccaggio.dart';
 import '../../../services/api_service.dart';
 import '../../../services/language_service.dart';
-import '../../../l10n/app_strings.dart';
 
 class InvasettaSheet extends StatefulWidget {
   final ApiService apiService;

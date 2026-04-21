@@ -118,6 +118,11 @@ class ApiConstants {
   static const String aiQuotaUrl = baseUrl + apiPrefix + '/ai/quota/';
   static const String aiRequestUpgradeUrl = baseUrl + apiPrefix + '/ai/request-upgrade/';
   static const String aiActivateCodeUrl = baseUrl + apiPrefix + '/ai/activate-code/';
+  // Telemetria chiamate voice: le richieste Gemini partono direttamente dal
+  // client, quindi serve notificare il backend per tenere voice_today
+  // autoritativo. Il backend incrementa il contatore e risponde 429 se la
+  // quota del tier è già esaurita.
+  static const String aiRecordVoiceCallUrl = baseUrl + apiPrefix + '/ai/record-voice-call/';
 
   // Endpoint sincronizzazione
   static const String syncUrl = baseUrl + apiPrefix + '/sync/';

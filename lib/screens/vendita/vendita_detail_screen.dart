@@ -9,7 +9,6 @@ import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/vendita.dart';
-import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 
 class VenditaDetailScreen extends StatefulWidget {

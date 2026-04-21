@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
+import '../services/language_service.dart';
 import '../utils/telaini_utils.dart';
 
 /// Visualizzazione grafica dei telaini dell'arnia + indicatore regina + allarme celle reali.
@@ -20,19 +23,24 @@ class HiveFrameVisualizer extends StatelessWidget {
     'vuoto':        Color(0xFFEEEEEE), // grigio chiaro
   };
 
-  static const Map<String, String> _labels = {
-    'covata':       'Covata',
-    'scorte':       'Scorte',
-    'foglio_cereo': 'F. Cereo',
-    'diaframma':    'Diaframma',
-    'nutritore':    'Nutritore',
-    'vuoto':        'Vuoto',
-  };
+  static String _labelFor(AppStrings s, String type) {
+    switch (type) {
+      case 'covata':       return s.frameLabelCovata;
+      case 'scorte':       return s.frameLabelScorte;
+      case 'misto':        return s.frameLabelCovata;
+      case 'foglio_cereo': return s.frameLabelFoglioCereo;
+      case 'diaframma':    return s.frameLabelDiaframma;
+      case 'nutritore':    return s.frameLabelNutritore;
+      case 'vuoto':        return s.frameLabelVuoto;
+      default:             return type;
+    }
+  }
 
   static Color _colorFor(String type) => _colors[type] ?? const Color(0xFFEEEEEE);
 
-  // ─── legenda statica (chiamata una volta sola per gruppo) ──────
-  static Widget legend() {
+  // ─── legenda (chiamata una volta per gruppo; ora localizzata) ──────
+  static Widget legend(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     const types = ['covata', 'scorte', 'foglio_cereo', 'diaframma', 'nutritore', 'vuoto'];
     return Wrap(
       spacing: 10,
@@ -49,7 +57,7 @@ class HiveFrameVisualizer extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 3),
-          Text(_labels[t]!, style: const TextStyle(fontSize: 10)),
+          Text(_labelFor(s, t), style: const TextStyle(fontSize: 10)),
         ],
       )).toList(),
     );
@@ -83,9 +91,10 @@ class HiveFrameVisualizer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     if (controllo == null) {
       return Text(
-        'Nessun controllo registrato',
+        s.frameNoControllo,
         style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
       );
     }
@@ -117,7 +126,7 @@ class HiveFrameVisualizer extends StatelessWidget {
         const SizedBox(width: 6),
         // ── icona regina ───────────────────────────────────────────
         Tooltip(
-          message: presenzaRegina ? 'Regina presente' : 'Regina assente',
+          message: presenzaRegina ? s.frameReginaPresente : s.frameReginaAssente,
           child: Text(
             '♛',
             style: TextStyle(
@@ -169,8 +178,9 @@ class _QueenCellAlert extends StatelessWidget {
       color = Colors.red.shade800;    fontSize = 14; mark = '!!!';
     }
 
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
     return Tooltip(
-      message: 'Celle reali${numeroCelle > 0 ? ": $numeroCelle" : ""} — rilevate $daysSince giorni fa',
+      message: s.frameCelleRealiTooltip(numeroCelle, daysSince),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
         decoration: BoxDecoration(

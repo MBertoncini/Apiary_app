@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/api_constants.dart';
@@ -8,7 +7,6 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
-import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 
 class SmielaturaDetailScreen extends StatefulWidget {
@@ -48,7 +46,7 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(_s.melariDeleteInvasettTitle),
+        title: Text(_s.smielaturaDetailDeleteTitle),
         content: Text(_s.smielaturaDetailDeleteMsg),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(_s.dialogCancelBtn)),

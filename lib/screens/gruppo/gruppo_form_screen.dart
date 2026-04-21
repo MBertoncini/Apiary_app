@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../constants/app_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../models/gruppo.dart';
 import '../../services/gruppo_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
@@ -33,7 +31,6 @@ class _GruppoFormScreenState extends State<GruppoFormScreen> {
   @override
   void initState() {
     super.initState();
-    final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = Provider.of<ApiService>(context, listen: false);
     final storageService = Provider.of<StorageService>(context, listen: false);
 

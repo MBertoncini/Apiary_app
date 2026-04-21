@@ -35,6 +35,8 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
 
   int? _selectedApiarioId;
   int? _selectedArniaId;
+  int? _selectedColoniaId;
+  bool _isResolvingColonia = false;
   DateTime _dataPosizionamento = DateTime.now();
   int _numeroTelaini = 10;
   int _posizione = 1;
@@ -83,6 +85,7 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
         await _loadArnie(widget.preselectedApiarioId!);
         if (widget.preselectedArniaId != null) {
           setState(() => _selectedArniaId = widget.preselectedArniaId);
+          await _resolveColonia(widget.preselectedArniaId!);
         }
       }
     } catch (e) {
@@ -99,9 +102,30 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
           await _loadArnie(widget.preselectedApiarioId!);
           if (widget.preselectedArniaId != null) {
             setState(() => _selectedArniaId = widget.preselectedArniaId);
+            await _resolveColonia(widget.preselectedArniaId!);
           }
         }
       }
+    }
+  }
+
+  Future<void> _resolveColonia(int arniaId) async {
+    if (!mounted) return;
+    setState(() {
+      _isResolvingColonia = true;
+      _selectedColoniaId = null;
+    });
+    try {
+      final res = await _apiService.get('${ApiConstants.arnieUrl}$arniaId/colonia_attiva/');
+      if (!mounted) return;
+      final id = (res is Map<String, dynamic>) ? res['id'] as int? : null;
+      setState(() {
+        _selectedColoniaId = id;
+        _isResolvingColonia = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isResolvingColonia = false);
     }
   }
 
@@ -149,10 +173,17 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
       );
       return;
     }
+    // Attende la risoluzione della colonia in corso per l'arnia selezionata.
+    if (_isResolvingColonia) {
+      for (var i = 0; i < 20 && _isResolvingColonia && mounted; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    }
     setState(() => _isSaving = true);
 
     try {
       await _apiService.post(ApiConstants.melariUrl, {
+        if (_selectedColoniaId != null) 'colonia': _selectedColoniaId,
         'arnia': _selectedArniaId,
         'numero_telaini': _numeroTelaini,
         'posizione': _posizione,
@@ -364,7 +395,13 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
           .toList(),
       onChanged: _selectedApiarioId == null
           ? null
-          : (id) => setState(() => _selectedArniaId = id),
+          : (id) {
+              setState(() {
+                _selectedArniaId = id;
+                _selectedColoniaId = null;
+              });
+              if (id != null) _resolveColonia(id);
+            },
       validator: (v) => v == null ? s.melarioFormValidateArnia : null,
     );
   }

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -56,19 +55,19 @@ class BackgroundSyncService {
     await service.startService();
   }
   
-  static void stopService() async {
+  static void stopService() {
     final service = FlutterBackgroundService();
-    await service.invoke('stopService');
+    service.invoke('stopService');
   }
-  
-  static void triggerSync() async {
+
+  static void triggerSync() {
     final service = FlutterBackgroundService();
-    await service.invoke('sync');
+    service.invoke('sync');
   }
-  
-  static void setInterval(int minutes) async {
+
+  static void setInterval(int minutes) {
     final service = FlutterBackgroundService();
-    await service.invoke('setInterval', {'minutes': minutes});
+    service.invoke('setInterval', {'minutes': minutes});
   }
 }
 

@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../constants/app_constants.dart';
 import '../../../services/api_service.dart';
 import '../../../services/language_service.dart';
-import '../../../services/storage_service.dart';
 import '../../../widgets/attrezzatura_prompt_dialog.dart';
 
 // ════════════════════════════════════════════════════════════════
@@ -790,6 +788,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
     );
   }
 
+  // ignore: unused_element
   Future<int?> _askNumeroConflict(int current, int suggested) async {
     final _s = Provider.of<LanguageService>(context, listen: false).strings;
     final ctrl = TextEditingController(text: '$suggested');
@@ -1111,7 +1110,7 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   List<Widget> _buildMelariBoxes(int arniaId) {
     if (widget.melariData == null) return [];
     final active = widget.melariData!
-        .where((m) => m['arnia'] == arniaId && m['stato'] == 'posizionato')
+        .where((m) => (m['arnia_id'] ?? m['arnia']) == arniaId && m['stato'] == 'posizionato')
         .toList()
       ..sort((a, b) => ((b['posizione'] as num?)?.toInt() ?? 0)
           .compareTo((a['posizione'] as num?)?.toInt() ?? 0));
@@ -1368,9 +1367,9 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
           el.type == MapElementType.portasciami;
 
       if (isSmallHive) {
-        final num = (el.numero ?? 1) as int;
-        final hex = (el.coloreHex ?? '#8B6914') as String;
-        final active = (el.attiva ?? true) as bool;
+        final num = el.numero ?? 1;
+        final hex = el.coloreHex ?? '#8B6914';
+        final active = el.attiva ?? true;
 
         // Mappa tipo elemento → HiveTipo painter
         final HiveTipo smallTipo;
@@ -1907,19 +1906,16 @@ class _StaticHive extends StatelessWidget {
   final HiveTipo tipo;
   final double cellSize;
   final VoidCallback onTap;
-  final VoidCallback? onLongPress;
 
   const _StaticHive({
     required this.numero, required this.color, required this.isActive,
     required this.isSelected, required this.cellSize, required this.onTap,
     this.tipo = HiveTipo.dadant,
-    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
-    onLongPress: onLongPress,
     child: Stack(clipBehavior: Clip.none, children: [
       _HiveCell(numero: numero, color: color, isActive: isActive,
           isSelected: isSelected, cellSize: cellSize,

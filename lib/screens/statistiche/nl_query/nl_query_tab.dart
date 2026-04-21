@@ -81,6 +81,21 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
       _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     }
 
+    // Rileggi la chiave Groq persistita: può essere stata modificata dalle
+    // impostazioni dopo che questo tab è stato costruito. Senza questa
+    // rilettura il backend non saprebbe della chiave appena salvata e
+    // continuerebbe a usare il pool di sistema.
+    try {
+      final freshKey = await _tracker.getGroqApiKey();
+      if (freshKey != _groqKey && mounted) {
+        setState(() => _groqKey = freshKey);
+        Provider.of<AiQuotaService>(context, listen: false)
+            .setHasPersonalGroqKey(freshKey.isNotEmpty);
+      }
+    } catch (_) {
+      // Non bloccare la chiamata se la lettura dalla cache fallisce.
+    }
+
     try {
       final result = await _service!.chiediAI(domanda, groqApiKey: _groqKey.isNotEmpty ? _groqKey : null);
       setState(() {

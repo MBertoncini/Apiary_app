@@ -53,7 +53,7 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
           final cs = ControlloService(api);
           final raw = await cs.getControlliByColonia(widget.coloniaId);
           _controlli = raw
-              .map((r) => ControlloArnia.fromJson(r as Map<String, dynamic>))
+              .map((r) => ControlloArnia.fromJson(r))
               .toList();
           _controlli.sort((a, b) => b.data.compareTo(a.data));
         } catch (_) {}

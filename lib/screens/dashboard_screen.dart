@@ -44,18 +44,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoadingApiari = true;
   bool _isLoadingTrattamenti = true;
   bool _isLoadingFioriture = true;
-  bool _isLoadingControlli = true;
-  bool _isLoadingRegine = true;
-  bool _isLoadingMelari = true;
-  bool _isLoadingSmielature = true;
 
   String? _apiariError;
   String? _trattamentiError;
   String? _fioritureError;
-  String? _controlliError;
-  String? _regineError;
-  String? _melariError;
-  String? _smielatureError;
 
   // Variabili per funzionalità aggiuntive
   Map<String, dynamic>? _weatherData;
@@ -169,10 +161,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _isLoadingApiari     = false;
       _isLoadingTrattamenti = false;
       _isLoadingFioriture  = false;
-      _isLoadingControlli  = false;
-      _isLoadingRegine     = false;
-      _isLoadingMelari     = false;
-      _isLoadingSmielature = false;
       _prepareCalendarEvents();
       if (mounted) setState(() { _isRefreshing = true; });
     } else {
@@ -181,10 +169,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isLoadingApiari     = true;
         _isLoadingTrattamenti = true;
         _isLoadingFioriture  = true;
-        _isLoadingControlli  = true;
-        _isLoadingRegine     = true;
-        _isLoadingMelari     = true;
-        _isLoadingSmielature = true;
       });
     }
 
@@ -203,10 +187,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_apiari.isNotEmpty)      _apiariError     = null;
     if (_trattamenti.isNotEmpty) _trattamentiError = null;
     if (_fioriture.isNotEmpty)   _fioritureError  = null;
-    if (_controlli.isNotEmpty)   _controlliError  = null;
-    if (_regine.isNotEmpty)      _regineError     = null;
-    if (_melari.isNotEmpty)      _melariError     = null;
-    if (_smielature.isNotEmpty)  _smielatureError = null;
 
     // Salva i dati freschi in cache per la prossima visita
     final saves = <Future>[];
@@ -282,6 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _loadWeatherData() async {
     if (_apiari.isEmpty) return;
 
@@ -309,11 +290,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         _controlli = [];
       }
-      _isLoadingControlli = false;
     } catch (e) {
       debugPrint('Error fetching controlli: $e');
-      _controlliError = e.toString();
-      _isLoadingControlli = false;
     }
   }
 
@@ -327,11 +305,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         _regine = [];
       }
-      _isLoadingRegine = false;
     } catch (e) {
       debugPrint('Error fetching regine: $e');
-      _regineError = e.toString();
-      _isLoadingRegine = false;
     }
   }
 
@@ -345,11 +320,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         _melari = [];
       }
-      _isLoadingMelari = false;
     } catch (e) {
       debugPrint('Error fetching melari: $e');
-      _melariError = e.toString();
-      _isLoadingMelari = false;
     }
   }
 
@@ -363,11 +335,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         _smielature = [];
       }
-      _isLoadingSmielature = false;
     } catch (e) {
       debugPrint('Error fetching smielature: $e');
-      _smielatureError = e.toString();
-      _isLoadingSmielature = false;
     }
   }
 
@@ -591,6 +560,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   // METODI DI UTILITY
   
+  // ignore: unused_element
   String _formatLastSync() {
     return "${_lastSyncTime.day.toString().padLeft(2, '0')}/${_lastSyncTime.month.toString().padLeft(2, '0')}/${_lastSyncTime.year} ${_lastSyncTime.hour.toString().padLeft(2, '0')}:${_lastSyncTime.minute.toString().padLeft(2, '0')}";
   }
@@ -903,7 +873,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     
     final month = _focusedDay.month;
-    final year = _focusedDay.year;
     
     return Column(
       children: [
@@ -1117,7 +1086,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCalendarEventItem(Map<String, dynamic> event) {
     IconData icon;
     Color color = event['color'] ?? ThemeConstants.primaryColor;
-    final bool hasTap = true;
 
     switch (event['type']) {
       case 'trattamento':
@@ -1149,7 +1117,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return InkWell(
-      onTap: hasTap ? () => _navigateFromEvent(event) : null,
+      onTap: () => _navigateFromEvent(event),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         margin: EdgeInsets.only(bottom: 8),
@@ -1171,8 +1139,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-            if (hasTap)
-              Icon(Icons.arrow_forward_ios, size: 14, color: ThemeConstants.textSecondaryColor),
+            Icon(Icons.arrow_forward_ios, size: 14, color: ThemeConstants.textSecondaryColor),
           ],
         ),
       ),
@@ -1181,6 +1148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   // WIDGETS PER LA DASHBOARD
   
+  // ignore: unused_element
   Widget _buildWeatherCard() {
     if (_weatherData == null) {
       return SizedBox.shrink();
@@ -1305,6 +1273,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return alerts;
   }
 
+  // ignore: unused_element
   Widget _buildAlertsWidget() {
     final s = _s;
     final alerts = _generateAlerts(s);

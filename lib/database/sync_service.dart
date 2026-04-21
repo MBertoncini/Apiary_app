@@ -91,8 +91,8 @@ class SyncService {
         apiarioJson.remove('last_updated');
         
         // Invia al server
-        final response = await _apiService.put(
-          '${ApiConstants.apiariUrl}${apiario.id}/', 
+        await _apiService.put(
+          '${ApiConstants.apiariUrl}${apiario.id}/',
           apiarioJson
         );
         
@@ -126,19 +126,20 @@ class SyncService {
     // Invia controlli modificati
     final changedControlli = await _controlloArniaDao.getPendingChanges();
     for (final controllo in changedControlli) {
+      final controlloId = controllo['id'] as int;
       try {
-        final controlloJson = controllo.toJson();
+        final controlloJson = Map<String, dynamic>.from(controllo);
         controlloJson.remove('sync_status');
         controlloJson.remove('last_updated');
-        
+
         await _apiService.put(
-          '${ApiConstants.controlliUrl}${controllo.id}/', 
+          '${ApiConstants.controlliUrl}$controlloId/',
           controlloJson
         );
-        
-        await _controlloArniaDao.markSynced(controllo.id);
+
+        await _controlloArniaDao.markSynced(controlloId);
       } catch (e) {
-        debugPrint('Errore sincronizzazione controllo ${controllo.id}: $e');
+        debugPrint('Errore sincronizzazione controllo $controlloId: $e');
       }
     }
     

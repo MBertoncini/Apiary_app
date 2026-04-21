@@ -3,7 +3,6 @@ import '../models/pagamento.dart';
 import '../models/quota_utente.dart';
 import 'api_service.dart';
 import '../constants/api_constants.dart';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 class PagamentoService {

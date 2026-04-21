@@ -17,12 +17,11 @@ class GeminiAudioProcessor extends ChangeNotifier {
   static const String _geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
-  // Stesso fallback del GeminiDataProcessor testo.
   static const List<String> _modelFallbacks = [
     'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
   ];
 
   AiQuotaService? _quotaService;
@@ -189,26 +188,43 @@ class GeminiAudioProcessor extends ChangeNotifier {
           }
           debugPrint('[GeminiAudio] Used model: $model');
           _quotaService?.recordOptimisticCall(AiFeature.voice);
+          // Telemetria backend per rendere voice_today autoritativo
+          // (Gemini è chiamato direttamente dal client, il backend
+          // altrimenti non vedrebbe mai queste chiamate).
+          unawaited(_quotaService?.recordVoiceCallToBackend(model: model) ??
+              Future.value());
           return _parseResponse(responseText);
         } else if (response.statusCode == 429) {
-          final isDisabled = response.body.contains('limit: 0') ||
-              response.body.contains('"limit":0');
-          debugPrint('[GeminiAudio] 429 on $model (disabled=$isDisabled)');
-          final snippet429 = response.body.length > 200
-              ? '${response.body.substring(0, 200)}…'
-              : response.body;
-          DebugTrace.log('gemini: 429 on $model disabled=$isDisabled body=$snippet429');
-          // Prova sempre i modelli successivi su 429: spesso gemini-2.5-flash
-          // ha quote molto restrittive su account Tier 1 freschi, mentre
-          // 2.0-flash o 1.5-flash hanno quote più ampie.
-          if (model != _modelFallbacks.last) {
+          final body = response.body;
+          final isDisabled =
+              body.contains('limit: 0') || body.contains('"limit":0');
+          // Google distingue due sapori di 429: quota giornaliera esaurita
+          // (PerDay/daily) vs rate-limit burst per-minuto. Il primo va
+          // trattato come esaurimento fino al reset UTC; il secondo come
+          // cool-down breve, per non bloccare l'utente fino a mezzanotte.
+          final isDailyQuota = body.contains('PerDay') ||
+              body.contains('per day') ||
+              body.contains('daily');
+          debugPrint('[GeminiAudio] 429 on $model '
+              '(disabled=$isDisabled daily=$isDailyQuota)');
+          final snippet429 = body.length > 200 ? '${body.substring(0, 200)}…' : body;
+          DebugTrace.log('gemini: 429 on $model '
+              'disabled=$isDisabled daily=$isDailyQuota body=$snippet429');
+          if (isDisabled && model != _modelFallbacks.last) {
             continue;
           }
           _lastCallWasRateLimit = true;
-          _quotaService?.markExceeded(AiFeature.voice);
-          _error =
-              'Limite richieste Gemini esaurito su tutti i modelli. '
-              'Attendi qualche minuto e riprova.';
+          if (isDailyQuota) {
+            _quotaService?.markExceeded(AiFeature.voice);
+            _error = 'Quota giornaliera Gemini esaurita. '
+                'Riprova dopo il reset giornaliero.';
+          } else {
+            final cooldown =
+                _extractRetryDelay(body) ?? const Duration(seconds: 60);
+            _quotaService?.markVoiceBurstCooldown(cooldown);
+            _error = 'Limite momentaneo Gemini. '
+                'Riprova tra ${cooldown.inSeconds}s.';
+          }
           return null;
         } else {
           String reason = '';
@@ -232,10 +248,16 @@ class GeminiAudioProcessor extends ChangeNotifier {
         }
       }
 
-      _lastCallWasRateLimit = true;
-      _quotaService?.markExceeded(AiFeature.voice);
-      _error = 'Nessun modello Gemini disponibile. '
-          'Aggiorna il piano su ai.google.dev.';
+      // Tutti i modelli hanno risposto con errori infrastrutturali
+      // (404 deprecato / 502 / 503): NON è quota giornaliera esaurita.
+      // Marcarla come tale bloccherebbe il mic fino a mezzanotte UTC
+      // anche se il contatore tier è a 0. Trattare come errore transitorio:
+      // cool-down breve (previene hammering del provider) + flag network
+      // error (processQueue fa break senza cancellare gli item in coda).
+      _lastCallWasNetworkError = true;
+      _quotaService?.markVoiceBurstCooldown(const Duration(seconds: 60));
+      _error = 'Servizio Gemini temporaneamente non disponibile. '
+          'Riprova tra poco.';
       return null;
     } catch (e) {
       _error = 'Errore: $e';
@@ -292,5 +314,23 @@ class GeminiAudioProcessor extends ChangeNotifier {
     if (value is int) return value;
     if (value is double) return value.toInt();
     return int.tryParse(value.toString());
+  }
+
+  /// Cerca nel body JSON del 429 un retryDelay stile "42s" o un campo
+  /// "retry_after":N. Ritorna null se non trovato.
+  Duration? _extractRetryDelay(String body) {
+    // Pattern: "retryDelay": "42s"
+    final m1 = RegExp(r'"retryDelay"\s*:\s*"(\d+)s"').firstMatch(body);
+    if (m1 != null) {
+      final s = int.tryParse(m1.group(1)!);
+      if (s != null) return Duration(seconds: s);
+    }
+    // Pattern: "retry_after": 42
+    final m2 = RegExp(r'"retry_after"\s*:\s*(\d+)').firstMatch(body);
+    if (m2 != null) {
+      final s = int.tryParse(m2.group(1)!);
+      if (s != null) return Duration(seconds: s);
+    }
+    return null;
   }
 }

@@ -1,4 +1,5 @@
 // lib/screens/voice_command_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -63,12 +64,22 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     // Carica la modalità vocale e applica la chiave personale.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final user = Provider.of<AuthService>(context, listen: false).currentUser;
+      final quotaService =
+          Provider.of<AiQuotaService>(context, listen: false);
       // La modalità STT usa RegexDataProcessor (offline, zero API).
       // La modalità audio usa GeminiAudioProcessor: applica la chiave
       // personale se inserita, altrimenti usa la chiave condivisa dell'app.
-      if (user != null && user.geminiApiKey.isNotEmpty) {
+      final hasPersonalGemini =
+          user != null && user.geminiApiKey.isNotEmpty;
+      if (hasPersonalGemini) {
         _audioProcessor.setPersonalKey(user.geminiApiKey);
       }
+      // Propaga al quota service: in presenza di chiave personale il gating
+      // voice salta il tier limit (l'utente paga Google direttamente).
+      quotaService.setHasPersonalGeminiKey(hasPersonalGemini);
+      // Refresh opportunistico: se i dati di quota sono stantii li
+      // riallinea al backend prima di mostrare il banner.
+      unawaited(quotaService.refreshIfStale());
       // Sync language to all voice services (STT locale, regex, Gemini prompt).
       _applyLanguageToVoiceServices();
       final mode = await _voiceSettings.getMode();

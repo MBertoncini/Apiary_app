@@ -131,14 +131,6 @@ class QrGeneratorWidget extends StatelessWidget {
                   label: Text(s.qrBtnShare),
                   onPressed: () async {
                     try {
-                      // Crea un widget QR temporaneo
-                      final qrImage = QrImageView(
-                        data: qrData,
-                        version: QrVersions.auto,
-                        size: 300,
-                        backgroundColor: Colors.white,
-                      );
-                      
                       // Salva l'immagine QR
                       final directory = await getTemporaryDirectory();
                       final path = '${directory.path}/qr_code.png';

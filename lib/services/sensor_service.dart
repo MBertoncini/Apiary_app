@@ -49,11 +49,15 @@ class SensorService {
   Stream<SensorData> get sensorDataStream => _sensorDataController.stream;
   
   // Stato
+  // ignore: unused_field
   bool _isLightSensorAvailable = false;
   bool _isMonitoring = false;
   double? _currentLux;
+  // ignore: unused_field
   AccelerometerEvent? _currentAccelerometer;
+  // ignore: unused_field
   GyroscopeEvent? _currentGyroscope;
+  // ignore: unused_field
   UserAccelerometerEvent? _currentUserAccelerometer;
   
   SensorService._internal();

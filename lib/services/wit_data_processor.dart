@@ -85,7 +85,6 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
     try {
       final text = witResponse['text'] as String? ?? originalText;
       final entities = witResponse['entities'] as Map<String, dynamic>? ?? {};
-      final traits = witResponse['traits'] as Map<String, dynamic>? ?? {};
       final intents = witResponse['intents'] as List<dynamic>? ?? [];
       
       debugPrint('Entities estratte: $entities');
@@ -273,7 +272,6 @@ class WitDataProcessor extends ChangeNotifier with VoiceDataProcessor {
         reginaVista: reginaVista,
         uovaFresche: uovaFresche,
         celleReali: celleReali,
-        telainiTotali: telainiTotali,
         telainiCovata: telainiCovata,
         telainiScorte: telainiScorte,
         forzaFamiglia: forzaFamiglia,

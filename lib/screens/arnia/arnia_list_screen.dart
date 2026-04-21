@@ -16,19 +16,19 @@ import '../../database/dao/controllo_arnia_dao.dart';
 import '../../services/controllo_service.dart';
 import '../../widgets/skeleton_widgets.dart';
 
-// ─── Mappa tipo → nome leggibile e icona emoji ───────────────────────────────
-const Map<String, Map<String, String>> _tipiInfo = {
-  'dadant':             {'nome': 'Dadant-Blatt',                    'icona': '🏠'},
-  'langstroth':         {'nome': 'Langstroth',                      'icona': '📦'},
-  'top_bar':            {'nome': 'Top Bar',                         'icona': '🛖'},
-  'warre':              {'nome': 'Warré',                           'icona': '🗼'},
-  'osservazione':       {'nome': 'Osservazione',                    'icona': '🔭'},
-  'pappa_reale':        {'nome': 'Pappa Reale',                     'icona': '👑'},
-  'nucleo_legno':       {'nome': 'Nucleo Legno',                    'icona': '📫'},
-  'nucleo_polistirolo': {'nome': 'Nucleo Polistirolo',              'icona': '📮'},
-  'portasciami':        {'nome': 'Portasciami',                     'icona': '🪤'},
-  'apidea':             {'nome': 'Apidea / Kieler',                 'icona': '🔹'},
-  'mini_plus':          {'nome': 'Mini-Plus',                       'icona': '🔸'},
+// ─── Mappa tipo → icona emoji (nome localizzato via AppStrings.arniaTypeName) ──
+const Map<String, String> _tipiIcon = {
+  'dadant':             '🏠',
+  'langstroth':         '📦',
+  'top_bar':            '🛖',
+  'warre':              '🗼',
+  'osservazione':       '🔭',
+  'pappa_reale':        '👑',
+  'nucleo_legno':       '📫',
+  'nucleo_polistirolo': '📮',
+  'portasciami':        '🪤',
+  'apidea':             '🔹',
+  'mini_plus':          '🔸',
 };
 
 // ─── Categorie di arnie ───────────────────────────────────────────────────────
@@ -312,7 +312,7 @@ class _ApiarioGroupWidgetState extends State<ApiarioGroupWidget> {
             // Legenda telaini
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: HiveFrameVisualizer.legend(),
+              child: HiveFrameVisualizer.legend(context),
             ),
 
             // Sezioni per categoria
@@ -458,10 +458,11 @@ class _ArniaListItemState extends State<ArniaListItem> {
   @override
   Widget build(BuildContext context) {
     final arniaColor = _colorFromHex(widget.arnia.coloreHex);
-    final tipoInfo = _tipiInfo[widget.arnia.tipoArnia];
-    final tipoLabel = tipoInfo != null
-        ? '${tipoInfo['icona']} ${tipoInfo['nome']}'
-        : widget.arnia.tipoArnia;
+    final tipoIcona = _tipiIcon[widget.arnia.tipoArnia];
+    final tipoNome = _s.arniaTypeName(widget.arnia.tipoArnia);
+    final tipoLabel = tipoIcona != null
+        ? '$tipoIcona $tipoNome'
+        : tipoNome;
 
     return InkWell(
       onTap: () => Navigator.of(context)

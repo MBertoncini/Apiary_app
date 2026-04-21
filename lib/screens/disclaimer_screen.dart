@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/storage_service.dart';
-import '../l10n/app_strings.dart';
 import '../services/language_service.dart';
 
 class DisclaimerScreen extends StatefulWidget {

@@ -82,6 +82,16 @@ abstract class AppStrings {
   String get voiceAudioPremiumSheetBody;
   String get voiceAudioPremiumSheetActivate;
 
+  // ── Voice input: extended access block (settings) ──
+  String get voiceExtendedAccessTitle;
+  String get voiceExtendedAccessDesc;
+  String get voiceExtendedAccessCta;
+
+  // ── Advanced API options block (settings, collapsed by default) ──
+  String get settingsAdvancedOptions;
+  String get settingsAdvancedOptionsSubtitle;
+  String get settingsAdvancedOptionsDesc;
+
   // Equipment prompt (after hive creation)
   String get sectionEquipmentPrompt;
   String get settingsAttrezzaturaPrompt;
@@ -770,7 +780,12 @@ abstract class AppStrings {
   String get melariRemoveMelarioMsg;
   String melariDeleteMelarioMsg(int id);
   String get melariDeleteMelarioOk;
+  String melariDeleteMelarioError(String e);
+  String melariRemoveMelarioError(String e);
   String get melariConfirmBtn;
+  String get melariMiniMapTitle;
+  String get melariMiniMapNoLayout;
+  String get melariMiniMapTapHint;
   // Melario form
   String get melarioFormTitle;
   String get melarioFormSectionId;
@@ -818,6 +833,7 @@ abstract class AppStrings {
   String get smielaturaFormUpdatedOk;
   // Smielatura detail
   String get smielaturaDetailTitle;
+  String get smielaturaDetailDeleteTitle;
   String get smielaturaDetailDeleteMsg;
   String get smielaturaDetailDeletedOk;
   String get smielaturaDetailNotFound;
@@ -1980,6 +1996,11 @@ abstract class AppStrings {
   String get quotaRetryAfterReset;
   String get quotaStatsExhausted;
   String get nlQueryInputHintExhausted;
+  String get voiceQueuePreflightTitle;
+  String voiceQueuePreflightMessage(int available, int total);
+  String get voiceQueuePreflightProceed;
+  String get voiceQueuePreflightCancel;
+  String get voiceQueuePreflightExhausted;
 
   // ── AI Tier ──
   String get aiTierLabel;
@@ -2413,4 +2434,81 @@ abstract class AppStrings {
   String get chatWelcomeMessage;
   String get chatTitle;
   String get chatChartDefaultTitle;
+
+  // ── Hive frame visualizer ──
+  String get frameLabelCovata;
+  String get frameLabelScorte;
+  String get frameLabelFoglioCereo;
+  String get frameLabelDiaframma;
+  String get frameLabelNutritore;
+  String get frameLabelVuoto;
+  String get frameNoControllo;
+  String get frameReginaPresente;
+  String get frameReginaAssente;
+  String frameCelleRealiTooltip(int numero, int days);
+
+  // ── Hive type names (dadant, nucleo_polistirolo, …) ──
+  String arniaTypeName(String key);
+
+  // ── Audio input widget ──
+  String get audioInputStatusRecording;
+  String audioInputStatusExtending(String dur);
+  String get audioInputStatusProcessing;
+  String audioInputStatusProcessingQueue(int cur, int total);
+  String get audioInputStatusError;
+  String get audioInputStatusSaving;
+  String get audioInputStatusIdlePrompt;
+  String get audioInputStatusIdleNext;
+  String get audioInputStatusIdleSend;
+  String get audioInputGeminiProcessing;
+  String audioInputQueueProgress(int cur, int total);
+  String get audioInputListening;
+  String get audioInputListenBeforeSend;
+  String get audioInputErrStartMic;
+  String get audioInputErrRecInvalid;
+  String get audioInputErrExtInvalid;
+  String get audioInputErrNoArniaDetected;
+  String get audioInputErrNoArniaQueue;
+  String get audioInputErrExtract;
+  String get audioInputErrUnknown;
+  String audioInputRecFailed(int idx, int total, String err);
+  String get audioInputSelectArnia;
+  String get audioInputChooseArnia;
+  String audioInputArniaItem(int n);
+  String audioInputBatchHeader(int n);
+  String audioInputSessionHeader(int n);
+  String audioInputRecordingItem(int n);
+  String get audioInputAbandonTitle;
+  String get audioInputAbandonMsgSingle;
+  String audioInputAbandonMsgMulti(int n);
+  String get audioInputBtnBack;
+  String get audioInputBtnDeleteAll;
+  String get audioInputBtnAddAudioWithNum;
+  String get audioInputBtnDiscard;
+  String get audioInputBtnRetry;
+  String get audioInputBtnSaveQueue;
+  String audioInputBtnSendAll(int n);
+  String audioInputBtnStopReview(int n);
+  String get audioInputBtnAbandon;
+  String get audioInputHintPressMicToStart;
+  String get audioInputHintRecordNext;
+
+  // ── Voice context banner ──
+  String get voiceContextSelect;
+  String voiceContextSelected(String name);
+  String get voiceContextNoApiari;
+  String get voiceContextSheetTitle;
+  String get voiceContextSheetHint;
+  String get voiceContextSetDefault;
+  String get voiceContextRemoveDefault;
+  String get voiceContextOffline;
+
+  // ── Controllo form contextual hint ──
+  String get controlloFormIntroHint;
+
+  // ── Nomadismo presets (melliferous plants) ──
+  String nomadismoPresetNome(String key);
+  String nomadismoPresetPeriodo(String key);
+  String nomadismoPresetRegioni(String key);
+  String nomadismoPresetDesc(String key);
 }

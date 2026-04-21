@@ -10,7 +10,7 @@ class DatabaseHelper {
 
   static Database? _database;
   final String _databaseName = "apiario_manager.db";
-  final int _databaseVersion = 6;
+  final int _databaseVersion = 7;
 
   // Tabelle
   final String tableApiari = 'apiari';
@@ -239,15 +239,20 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE $tableMelari (
         id INTEGER PRIMARY KEY,
-        arnia INTEGER NOT NULL,
-        arnia_numero INTEGER NOT NULL,
-        apiario_id INTEGER NOT NULL,
-        apiario_nome TEXT NOT NULL,
+        colonia INTEGER,
+        arnia INTEGER,
+        arnia_numero INTEGER,
+        apiario_id INTEGER,
+        apiario_nome TEXT,
         numero_telaini INTEGER NOT NULL,
         posizione INTEGER NOT NULL,
         data_posizionamento TEXT NOT NULL,
         data_rimozione TEXT,
         stato TEXT NOT NULL,
+        tipo_melario TEXT NOT NULL DEFAULT 'standard',
+        stato_favi TEXT NOT NULL DEFAULT 'costruiti',
+        escludi_regina INTEGER NOT NULL DEFAULT 1,
+        peso_stimato REAL,
         note TEXT,
         sync_status TEXT NOT NULL,
         last_updated INTEGER NOT NULL,
@@ -416,6 +421,28 @@ class DatabaseHelper {
         );
       } catch (_) {
         // colonna già presente (es. fresh install su v6): ignora
+      }
+    }
+    if (oldVersion < 7) {
+      // Allinea tabella melari al modello aggiornato (colonia FK + campi extra).
+      // SQLite non supporta ALTER COLUMN: le colonne NOT NULL preesistenti
+      // (arnia, arnia_numero, apiario_id, apiario_nome) restano tali sui vecchi
+      // install, ma i nuovi campi sono additivi e non rompono il sync.
+      final toAdd = <String, String>{
+        'colonia': 'INTEGER',
+        'tipo_melario': "TEXT NOT NULL DEFAULT 'standard'",
+        'stato_favi': "TEXT NOT NULL DEFAULT 'costruiti'",
+        'escludi_regina': 'INTEGER NOT NULL DEFAULT 1',
+        'peso_stimato': 'REAL',
+      };
+      for (final entry in toAdd.entries) {
+        try {
+          await db.execute(
+            'ALTER TABLE $tableMelari ADD COLUMN ${entry.key} ${entry.value};'
+          );
+        } catch (_) {
+          // colonna già presente: ignora
+        }
       }
     }
   }

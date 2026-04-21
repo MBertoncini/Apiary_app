@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class ControlloArnia {
   final int id;
   /// ID della colonia ispezionata (FK primario post-refactor).

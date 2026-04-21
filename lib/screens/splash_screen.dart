@@ -11,7 +11,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 import 'whats_new/whats_new_screen.dart' show getAppBuildNumber, getLastSeenBuildNumber;
-import '../l10n/app_strings.dart';
 import '../services/language_service.dart';
 
 

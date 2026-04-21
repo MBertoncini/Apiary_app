@@ -143,6 +143,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await authService.updateProfile({'gemini_api_key': key});
     setState(() => _isSavingApiKey = false);
     if (!mounted) return;
+    if (ok) {
+      // Propaga al gate centralizzato: con chiave Gemini personale la voice
+      // feature non è più bloccata dal tier limit locale.
+      Provider.of<AiQuotaService>(context, listen: false)
+          .setHasPersonalGeminiKey(key.isNotEmpty);
+    }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(ok
           ? (key.isEmpty ? s.msgApiKeyRemoved : s.msgApiKeySaved)
@@ -416,173 +422,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildLanguageCard(s),
             const SizedBox(height: 16),
 
-            // ── AI ASSISTANT ─────────────────────────────────────────────
-            PaperCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.smart_toy_outlined, color: ThemeConstants.secondaryColor, size: 20),
-                      const SizedBox(width: 8),
-                      Text(s.sectionAiApiKeys, style: ThemeConstants.subheadingStyle),
-                    ],
-                  ),
-                  // ── Piano AI attuale ────────────────────────────────────
-                  const SizedBox(height: 12),
-                  _buildAiTierCard(context, s),
-                  const Divider(height: 24),
-
-                  // ── Gemini (ApiarioAI chat + Inserimento vocale) ──────────
-                  Row(
-                    children: [
-                      Icon(Icons.auto_awesome, color: const Color(0xFF4285F4), size: 16),
-                      const SizedBox(width: 6),
-                      Text(s.geminiSectionLabel,
-                          style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: ThemeConstants.primaryColor.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ThemeConstants.primaryColor.withOpacity(0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          s.geminiDescription,
-                          style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          s.geminiHowToGet,
-                          style: ThemeConstants.bodyStyle.copyWith(
-                            fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _apiKeyController,
-                    obscureText: _apiKeyObscured,
-                    decoration: InputDecoration(
-                      labelText: 'Gemini API Key',
-                      hintText: 'AIzaSy...',
-                      isDense: true,
-                      suffixIcon: IconButton(
-                        icon: Icon(_apiKeyObscured ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                        onPressed: () => setState(() => _apiKeyObscured = !_apiKeyObscured),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: DiaryButton(
-                          label: _isSavingApiKey ? s.btnSaving : s.btnSaveKey,
-                          onPressed: _isSavingApiKey ? null : _saveApiKey,
-                          icon: _isSavingApiKey ? null : Icons.key,
-                          color: ThemeConstants.primaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: DiaryButton(
-                          label: s.btnRemove,
-                          onPressed: () { _apiKeyController.clear(); _saveApiKey(); },
-                          icon: Icons.delete_outline,
-                          color: ThemeConstants.secondaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // ── Groq (Statistiche NL Query) ───────────────────────────
-                  const Divider(height: 28),
-                  Row(
-                    children: [
-                      Icon(Icons.bolt, color: const Color(0xFFF55036), size: 16),
-                      const SizedBox(width: 6),
-                      Text(s.groqSectionLabel,
-                          style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF55036).withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFF55036).withOpacity(0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          s.groqDescription,
-                          style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          s.groqHowToGet,
-                          style: ThemeConstants.bodyStyle.copyWith(
-                            fontSize: 11, color: ThemeConstants.textSecondaryColor, fontStyle: FontStyle.italic),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _groqKeyController,
-                    obscureText: _groqKeyObscured,
-                    decoration: InputDecoration(
-                      labelText: 'Groq API Key',
-                      hintText: 'gsk_...',
-                      isDense: true,
-                      suffixIcon: IconButton(
-                        icon: Icon(_groqKeyObscured ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                        onPressed: () => setState(() => _groqKeyObscured = !_groqKeyObscured),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: DiaryButton(
-                          label: _isSavingGroqKey ? s.btnSaving : s.btnSaveKey,
-                          onPressed: _isSavingGroqKey ? null : _saveGroqApiKey,
-                          icon: _isSavingGroqKey ? null : Icons.key,
-                          color: const Color(0xFFF55036),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: DiaryButton(
-                          label: s.btnRemove,
-                          onPressed: () { _groqKeyController.clear(); _saveGroqApiKey(); },
-                          icon: Icons.delete_outline,
-                          color: ThemeConstants.secondaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            // ── INSERIMENTO VOCALE ───────────────────────────────────────
+            // Card unificata: stato (tier + contatore), modalità (STT/Audio),
+            // accesso esteso (CTA solo per tier < Professionale).
+            _buildVoiceInputCard(s),
             const SizedBox(height: 16),
 
-            // ── INSERIMENTO VOCALE ────────────────────────────────────────
-            _buildVoiceModeCard(s),
+            // ── OPZIONI AVANZATE (chiavi API personali, collapsed) ───────
+            _buildAdvancedOptionsCard(s),
             const SizedBox(height: 16),
 
-            // ── QUOTA AI ──────────────────────────────────────────────────
+            // ── QUOTA AI DETTAGLIATA ─────────────────────────────────────
             _buildQuotaCard(s),
             const SizedBox(height: 16),
 
@@ -762,9 +612,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── Voice mode card ───────────────────────────────────────────────────────
+  // ── Voice input unified card ──────────────────────────────────────────────
+  // Blocco 1: Stato (tier + contatore voice + reset)
+  // Blocco 2: Modalità (STT locale / Gemini Audio)
+  // Blocco 3: Accesso esteso (CTA solo se tier < Professionale)
 
-  Widget _buildVoiceModeCard(dynamic s) {
+  Widget _buildVoiceInputCard(dynamic s) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final quota = context.watch<AiQuotaService>();
+    final user = authService.currentUser;
+    final tier = user?.aiTier ?? AiTier.free;
+    final voiceUsed = quota.usedFor(AiFeature.voice);
+    final voiceLimit = quota.limitFor(AiFeature.voice);
+    final resetAtStr = quota.resetAtFor(AiFeature.voice)?.toIso8601String();
+    final hasPersonalKey = quota.hasPersonalGeminiKey;
+
+    Color tierColor;
+    IconData tierIcon;
+    switch (tier) {
+      case AiTier.free:
+        tierColor = Colors.grey.shade600;
+        tierIcon = Icons.eco_outlined;
+        break;
+      case AiTier.apicoltore:
+        tierColor = ThemeConstants.primaryColor;
+        tierIcon = Icons.hive;
+        break;
+      case AiTier.professionale:
+        tierColor = const Color(0xFFFFB300);
+        tierIcon = Icons.workspace_premium;
+        break;
+    }
+
     return PaperCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,7 +663,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ── STT locale ──────────────────────────────────────────────────
+          // ─── Blocco 1: STATO ──────────────────────────────────────────
+          _buildVoiceStateBlock(
+            s: s,
+            tier: tier,
+            tierColor: tierColor,
+            tierIcon: tierIcon,
+            used: voiceUsed,
+            limit: voiceLimit,
+            resetAtStr: resetAtStr,
+            hasPersonalKey: hasPersonalKey,
+          ),
+          const SizedBox(height: 16),
+
+          // ─── Blocco 2: MODALITÀ ───────────────────────────────────────
           _buildVoiceModeOption(
             value: VoiceSettingsService.modeStt,
             icon: Icons.text_fields,
@@ -792,8 +684,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: s.voiceModeSttSubtitle,
           ),
           const SizedBox(height: 10),
-
-          // ── Audio Gemini ─────────────────────────────────────────────────
           _buildVoiceModeOption(
             value: VoiceSettingsService.modeAudio,
             icon: Icons.graphic_eq,
@@ -802,9 +692,159 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: s.voiceModeAudioSubtitle,
             badge: 'Gemini Audio',
           ),
+
+          // ─── Blocco 3: ACCESSO ESTESO (solo se tier < Professionale) ──
+          if (tier != AiTier.professionale) ...[
+            const Divider(height: 28),
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const AiTierUpgradeScreen()),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.vpn_key_outlined,
+                        color: ThemeConstants.secondaryColor, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.voiceExtendedAccessTitle,
+                            style: ThemeConstants.bodyStyle.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            s.voiceExtendedAccessDesc,
+                            style: ThemeConstants.bodyStyle.copyWith(
+                              fontSize: 11,
+                              color: ThemeConstants.textSecondaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        color: ThemeConstants.textSecondaryColor, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  // Blocco stato: tier badge + progress voice + reset label.
+  Widget _buildVoiceStateBlock({
+    required dynamic s,
+    required AiTier tier,
+    required Color tierColor,
+    required IconData tierIcon,
+    required int used,
+    required int limit,
+    required String? resetAtStr,
+    required bool hasPersonalKey,
+  }) {
+    final bool hasLimit = limit > 0;
+    final double fraction = hasLimit ? (used / limit).clamp(0.0, 1.0) : 0.0;
+    final Color barColor = hasPersonalKey
+        ? ThemeConstants.successColor
+        : (fraction >= 0.9
+            ? ThemeConstants.errorColor
+            : (fraction >= 0.7 ? ThemeConstants.primaryColor : tierColor));
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [tierColor.withOpacity(0.08), tierColor.withOpacity(0.02)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: tierColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(tierIcon, color: tierColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${s.aiTierLabel}: ${tier.label}',
+                  style: ThemeConstants.bodyStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: tierColor,
+                  ),
+                ),
+              ),
+              Text(
+                hasPersonalKey
+                    ? '∞'
+                    : (hasLimit ? '$used / $limit' : '$used'),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: tierColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: hasPersonalKey ? 1.0 : (hasLimit ? fraction : 0.0),
+              minHeight: 6,
+              backgroundColor: ThemeConstants.dividerColor,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                hasPersonalKey ? barColor.withOpacity(0.35) : barColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hasPersonalKey
+                ? s.quotaUsingPersonalKey
+                : _formatVoiceResetLabel(resetAtStr, s),
+            style: ThemeConstants.bodyStyle.copyWith(
+              fontSize: 11,
+              color: ThemeConstants.textSecondaryColor,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatVoiceResetLabel(String? resetAt, dynamic s) {
+    if (resetAt == null) return s.quotaResetMidnight;
+    final normalized =
+        resetAt.endsWith('Z') || resetAt.contains('+') ? resetAt : '${resetAt}Z';
+    final resetTime = DateTime.tryParse(normalized)?.toLocal();
+    if (resetTime == null) return s.quotaResetMidnight;
+    final diff = resetTime.difference(DateTime.now());
+    if (diff.isNegative) return s.quotaResetSoon;
+    if (diff.inHours >= 1) {
+      return s.quotaResetInHoursMinutes(diff.inHours, diff.inMinutes.remainder(60));
+    }
+    return s.quotaResetInMinutes(diff.inMinutes);
   }
 
   Widget _buildVoiceModeOption({
@@ -883,122 +923,241 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── AI Tier card ──────────────────────────────────────────────────────────
+  // ── Advanced options card (collapsed) ─────────────────────────────────────
+  // Contiene le chiavi API personali (Gemini per chat+voce, Groq per stats).
+  // Quando una chiave è impostata, i limiti del tier non si applicano più.
 
-  Widget _buildAiTierCard(BuildContext context, dynamic s) {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    // Reattività al gate centralizzato: usa AiQuotaService come SSOT per
-    // limiti e tier (fallback su enum per partenza a freddo).
-    final quota = context.watch<AiQuotaService>();
-    final user = authService.currentUser;
-    final tier = user?.aiTier ?? AiTier.free;
-    final limits = tier.resolvedLimits(quota.allTierLimits);
+  Widget _buildAdvancedOptionsCard(dynamic s) {
+    final hasGemini = _apiKeyController.text.trim().isNotEmpty;
+    final hasGroq = _groqKeyController.text.trim().isNotEmpty;
+    final activeCount = (hasGemini ? 1 : 0) + (hasGroq ? 1 : 0);
 
-    Color tierColor;
-    IconData tierIcon;
-    switch (tier) {
-      case AiTier.free:
-        tierColor = Colors.grey;
-        tierIcon = Icons.eco_outlined;
-        break;
-      case AiTier.apicoltore:
-        tierColor = ThemeConstants.primaryColor;
-        tierIcon = Icons.hive;
-        break;
-      case AiTier.professionale:
-        tierColor = const Color(0xFFFFB300);
-        tierIcon = Icons.workspace_premium;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [tierColor.withOpacity(0.08), tierColor.withOpacity(0.02)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: tierColor.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return PaperCard(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          leading: Icon(Icons.tune,
+              color: ThemeConstants.secondaryColor, size: 22),
+          title: Row(
             children: [
-              Icon(tierIcon, color: tierColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                '${s.aiTierLabel}: ${tier.label}',
-                style: ThemeConstants.bodyStyle.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: tierColor,
-                ),
+              Expanded(
+                child: Text(s.settingsAdvancedOptions,
+                    style: ThemeConstants.subheadingStyle),
               ),
-              const Spacer(),
-              if (tier != AiTier.professionale)
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const AiTierUpgradeScreen()),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: tierColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      s.aiTierUpgrade,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: tierColor,
-                      ),
+              if (activeCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: ThemeConstants.successColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$activeCount',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: ThemeConstants.successColor,
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _tierLimitChip(Icons.chat_outlined, 'Chat', limits.chat, tierColor),
-              const SizedBox(width: 10),
-              _tierLimitChip(Icons.mic_outlined, 'Voice', limits.voice, tierColor),
-              const SizedBox(width: 10),
-              _tierLimitChip(Icons.functions, s.aiTierTotal, limits.total, tierColor),
-            ],
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              s.settingsAdvancedOptionsSubtitle,
+              style: ThemeConstants.bodyStyle.copyWith(
+                fontSize: 12,
+                color: ThemeConstants.textSecondaryColor,
+              ),
+            ),
           ),
-        ],
+          children: [
+            // Disclaimer
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: ThemeConstants.secondaryColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: ThemeConstants.secondaryColor.withOpacity(0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 16,
+                      color: ThemeConstants.secondaryColor.withOpacity(0.8)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s.settingsAdvancedOptionsDesc,
+                      style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Gemini key (chat + voce)
+            _buildGeminiKeyBlock(s),
+            const Divider(height: 28),
+
+            // Groq key (statistiche)
+            _buildGroqKeyBlock(s),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _tierLimitChip(IconData icon, String label, int limit, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Column(
+  Widget _buildGeminiKeyBlock(dynamic s) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(height: 2),
-            Text(
-              '$limit/${label.toLowerCase()}',
-              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+            Icon(Icons.auto_awesome, color: const Color(0xFF4285F4), size: 16),
+            const SizedBox(width: 6),
+            Text(s.geminiSectionLabel,
+                style: ThemeConstants.bodyStyle
+                    .copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          s.geminiDescription,
+          style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          s.geminiHowToGet,
+          style: ThemeConstants.bodyStyle.copyWith(
+              fontSize: 11,
+              color: ThemeConstants.textSecondaryColor,
+              fontStyle: FontStyle.italic),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _apiKeyController,
+          obscureText: _apiKeyObscured,
+          onChanged: (_) => setState(() {}), // refresh active badge
+          decoration: InputDecoration(
+            labelText: 'Gemini API Key',
+            hintText: 'AIzaSy...',
+            isDense: true,
+            suffixIcon: IconButton(
+              icon: Icon(_apiKeyObscured
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined),
+              onPressed: () =>
+                  setState(() => _apiKeyObscured = !_apiKeyObscured),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Flexible(
+              child: DiaryButton(
+                label: _isSavingApiKey ? s.btnSaving : s.btnSaveKey,
+                onPressed: _isSavingApiKey ? null : _saveApiKey,
+                icon: _isSavingApiKey ? null : Icons.key,
+                color: ThemeConstants.primaryColor,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: DiaryButton(
+                label: s.btnRemove,
+                onPressed: () {
+                  _apiKeyController.clear();
+                  _saveApiKey();
+                },
+                icon: Icons.delete_outline,
+                color: ThemeConstants.secondaryColor,
+              ),
             ),
           ],
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildGroqKeyBlock(dynamic s) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.bolt, color: const Color(0xFFF55036), size: 16),
+            const SizedBox(width: 6),
+            Text(s.groqSectionLabel,
+                style: ThemeConstants.bodyStyle
+                    .copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          s.groqDescription,
+          style: ThemeConstants.bodyStyle.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          s.groqHowToGet,
+          style: ThemeConstants.bodyStyle.copyWith(
+              fontSize: 11,
+              color: ThemeConstants.textSecondaryColor,
+              fontStyle: FontStyle.italic),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _groqKeyController,
+          obscureText: _groqKeyObscured,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            labelText: 'Groq API Key',
+            hintText: 'gsk_...',
+            isDense: true,
+            suffixIcon: IconButton(
+              icon: Icon(_groqKeyObscured
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined),
+              onPressed: () =>
+                  setState(() => _groqKeyObscured = !_groqKeyObscured),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Flexible(
+              child: DiaryButton(
+                label: _isSavingGroqKey ? s.btnSaving : s.btnSaveKey,
+                onPressed: _isSavingGroqKey ? null : _saveGroqApiKey,
+                icon: _isSavingGroqKey ? null : Icons.key,
+                color: const Color(0xFFF55036),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: DiaryButton(
+                label: s.btnRemove,
+                onPressed: () {
+                  _groqKeyController.clear();
+                  _saveGroqApiKey();
+                },
+                icon: Icons.delete_outline,
+                color: ThemeConstants.secondaryColor,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1076,6 +1235,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final voiceLimit = quota.limitFor(AiFeature.voice);
             final voiceUsed = quota.usedFor(AiFeature.voice);
             final resetAt = quota.resetAtFor(AiFeature.voice)?.toIso8601String();
+            final subtitle = quota.hasPersonalGeminiKey
+                ? s.quotaUsingPersonalKey
+                : '${tier.label} plan';
             return _quotaBar(
               label: s.quotaTranscriptionsToday,
               used: voiceUsed,
@@ -1083,7 +1245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               resetAt: resetAt,
               isActive: true,
               color: ThemeConstants.primaryColor,
-              subtitle: '${tier.label} plan',
+              subtitle: subtitle,
               s: s,
             );
           }),
@@ -1118,22 +1280,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildQuotaSection(AiQuotaService quota, dynamic s) {
-    final data = quota.rawData ?? const <String, dynamic>{};
     final activeKey = quota.activeKey;
-    final int dailyLimit = ((data['daily_limit'] ?? 1500) as num).toInt();
 
-    final system = Map<String, dynamic>.from((data['system'] ?? {}) as Map);
-    final int systemUsed = ((system['requests_today'] ?? 0) as num).toInt();
-    final String? systemResetAt = system['reset_at'] as String?;
-
-    // Utilizzo + limiti sempre da AiQuotaService (backend + overlay ottimistico).
+    // Questa sezione è dedicata alla Chat AI (Apiario AI Assistant).
+    // Le quote di Voice (Gemini Audio) e Stats (Groq NL query) hanno sezioni
+    // dedicate dopo questa: niente Voice AI / Total qui per non duplicare.
     final int chatUsed = quota.usedFor(AiFeature.chat);
-    final int voiceUsed = quota.usedFor(AiFeature.voice);
-    final int totalUsed = quota.totalUsed;
-
     final int chatLimit = quota.limitFor(AiFeature.chat);
-    final int voiceLimit = quota.limitFor(AiFeature.voice);
-    final int totalLimit = quota.totalLimit;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1167,49 +1320,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 14),
 
-        // Quota per tipo (chat / voice / totale)
         _quotaBar(
           label: 'Chat AI',
           used: chatUsed,
           limit: chatLimit,
-          resetAt: null,
+          resetAt: quota.resetAtFor(AiFeature.chat)?.toIso8601String(),
           isActive: true,
           color: const Color(0xFF4285F4),
           s: s,
         ),
-        const SizedBox(height: 10),
-        _quotaBar(
-          label: 'Voice AI',
-          used: voiceUsed,
-          limit: voiceLimit,
-          resetAt: null,
-          isActive: true,
-          color: ThemeConstants.primaryColor,
-          s: s,
-        ),
-        const SizedBox(height: 10),
-        _quotaBar(
-          label: s.aiTierTotal,
-          used: totalUsed,
-          limit: totalLimit,
-          resetAt: null,
-          isActive: true,
-          color: ThemeConstants.secondaryColor,
-          s: s,
-        ),
-
-        if (activeKey == 'system') ...[
-          const SizedBox(height: 14),
-          _quotaBar(
-            label: s.quotaSystemKeyLabel,
-            used: systemUsed,
-            limit: dailyLimit,
-            resetAt: systemResetAt,
-            isActive: true,
-            color: Colors.grey,
-            s: s,
-          ),
-        ],
       ],
     );
   }

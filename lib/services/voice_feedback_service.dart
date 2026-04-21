@@ -33,8 +33,7 @@ class VoiceFeedbackService {
   // Inizializzazione
   Future<void> initialize() async {
     // Verifica se la vibrazione è supportata
-    final hasVibrator = await Vibration.hasVibrator() ?? false;
-    _vibrationEnabled = hasVibrator;
+    _vibrationEnabled = await Vibration.hasVibrator();
   }
   
   // === METODI PER VIBRAZIONE ===

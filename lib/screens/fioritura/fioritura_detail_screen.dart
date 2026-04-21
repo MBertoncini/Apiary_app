@@ -26,7 +26,6 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
 
   late FiorituraService _service;
   Fioritura? _fioritura;
-  List<FiorituraConferma> _conferme = [];
   bool _isRefreshing = true;
 
   // per il form conferma
@@ -57,7 +56,6 @@ class _FiorituraDetailScreenState extends State<FiorituraDetailScreen> {
       if (mounted) {
         setState(() {
           _fioritura = f;
-          _conferme = conferme;
           _isRefreshing = false;
           // Precompila il mio voto se già confermato
           if (f.confermaDaMe) {

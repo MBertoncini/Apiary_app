@@ -11,7 +11,6 @@ import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
 import '../../services/language_service.dart';
 import '../../widgets/error_widget.dart';
-import '../../widgets/loading_widget.dart';
 
 class AttrezzaturaDetailScreen extends StatefulWidget {
   final int attrezzaturaId;

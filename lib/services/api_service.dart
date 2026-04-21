@@ -418,8 +418,8 @@ class ApiService {
   }
   
   // Rimuovi un melario
-  Future<dynamic> removeMelario(int melarioId) async {
-    return await post('${ApiConstants.melariUrl}$melarioId/rimuovi/', {});
+  Future<dynamic> removeMelario(int melarioId, {Map<String, dynamic>? data}) async {
+    return await post('${ApiConstants.melariUrl}$melarioId/rimuovi/', data ?? {});
   }
   
   // Invia un melario in smielatura

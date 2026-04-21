@@ -15,9 +15,7 @@ final authStateProvider = StateNotifierProvider<AuthStateNotifier, AuthState>((r
 });
 
 class AuthStateNotifier extends StateNotifier<AuthState> implements AuthTokenProvider {
-  final Ref _ref;
-  
-  AuthStateNotifier(this._ref) : super(AuthState.initial()) {
+  AuthStateNotifier(Ref ref) : super(AuthState.initial()) {
     _tryAutoLogin();
   }
   
@@ -63,6 +61,9 @@ class AuthStateNotifier extends StateNotifier<AuthState> implements AuthTokenPro
   Future<String?> getToken() async {
     return state.token;
   }
+
+  @override
+  Future<void> onSessionExpired() async => logout();
 
   Future<void> _verifyToken() async {
     try {

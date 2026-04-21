@@ -292,7 +292,7 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.schedule,
+              Icon(Icons.vpn_key_outlined,
                   size: 20, color: ThemeConstants.primaryColor),
               const SizedBox(width: 8),
               Text(

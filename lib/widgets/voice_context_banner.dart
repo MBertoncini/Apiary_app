@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../services/language_service.dart';
+import '../l10n/app_strings.dart';
 import '../constants/theme_constants.dart';
 
 class VoiceContextBanner extends StatefulWidget {
@@ -23,6 +25,9 @@ class VoiceContextBanner extends StatefulWidget {
 class _VoiceContextBannerState extends State<VoiceContextBanner> {
   static const _prefKeyDefaultApiarioId = 'voice_default_apiario_id';
   static const _prefKeyDefaultApiarioNome = 'voice_default_apiario_nome';
+
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
 
   final StorageService _storage = StorageService();
   List<Map<String, dynamic>> _apiari = [];
@@ -125,9 +130,10 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
   }
 
   void _showApiarioSheet() {
+    final s = _s;
     if (_apiari.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nessun apiario disponibile')),
+        SnackBar(content: Text(s.voiceContextNoApiari)),
       );
       return;
     }
@@ -145,7 +151,7 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Text(
-                'Seleziona apiario',
+                s.voiceContextSheetTitle,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -156,7 +162,7 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                'Tocca la puntina per impostare un apiario predefinito.',
+                s.voiceContextSheetHint,
                 style: TextStyle(
                   fontSize: 12,
                   color: ThemeConstants.textSecondaryColor,
@@ -193,8 +199,8 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
                             size: 20,
                           ),
                           tooltip: isDefault
-                              ? 'Rimuovi predefinito'
-                              : 'Imposta come predefinito',
+                              ? s.voiceContextRemoveDefault
+                              : s.voiceContextSetDefault,
                           onPressed: id == null
                               ? null
                               : () async {
@@ -235,6 +241,9 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
   @override
   Widget build(BuildContext context) {
     final hasSelection = _selectedId != null;
+    // Rebuild on language change so localized text refreshes live.
+    context.watch<LanguageService>();
+    final s = _s;
 
     return GestureDetector(
       onTap: _showApiarioSheet,
@@ -262,8 +271,8 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
             Expanded(
               child: Text(
                 hasSelection
-                    ? 'Apiario: $_selectedNome'
-                    : 'Seleziona apiario...',
+                    ? s.voiceContextSelected(_selectedNome ?? '')
+                    : s.voiceContextSelect,
                 style: TextStyle(
                   color: hasSelection
                       ? ThemeConstants.primaryColor
@@ -293,9 +302,9 @@ class _VoiceContextBannerState extends State<VoiceContextBanner> {
                   color: Colors.red,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'OFFLINE',
-                  style: TextStyle(
+                child: Text(
+                  s.voiceContextOffline,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,

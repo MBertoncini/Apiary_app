@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/theme_constants.dart';
-import '../utils/date_formatters.dart';
 
 class ApiarioCardWidget extends StatelessWidget {
   final Map<String, dynamic> apiario;

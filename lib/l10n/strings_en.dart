@@ -86,13 +86,28 @@ class StringsEn extends AppStrings {
       'Audio is analysed by Gemini in one step: '
       'more accurate in noisy environments and with free-form speech. '
       'Requires an internet connection.';
-  @override String get voiceAudioPremiumSheetTitle => 'Premium feature';
+  @override String get voiceAudioPremiumSheetTitle => 'AI audio mode';
   @override String get voiceAudioPremiumSheetBody =>
-      'Gemini Audio mode sends your recording to Google Gemini AI '
-      'for intelligent transcription and structured data extraction.\n\n'
-      '🎉 During beta it is included for free for all users.\n\n'
-      'In the future it may become part of a paid plan.';
-  @override String get voiceAudioPremiumSheetActivate => 'Activate';
+      'Gemini Audio mode sends your recording to Google Gemini '
+      'for more accurate transcription and structured data extraction.\n\n'
+      'During the testing phase it is available with a daily limit '
+      'that depends on your account tier.';
+  @override String get voiceAudioPremiumSheetActivate => 'Use this mode';
+
+  // ── Voice input: extended access block (settings) ──
+  @override String get voiceExtendedAccessTitle => 'Extended access';
+  @override String get voiceExtendedAccessDesc =>
+      'The app is in testing phase. Higher tiers are currently '
+      'available via access code.';
+  @override String get voiceExtendedAccessCta => 'See details';
+
+  // ── Advanced API options block (settings, collapsed) ──
+  @override String get settingsAdvancedOptions => 'Advanced options';
+  @override String get settingsAdvancedOptionsSubtitle =>
+      'Personal API keys';
+  @override String get settingsAdvancedOptionsDesc =>
+      'When you provide your own key, tier limits no longer apply '
+      'and usage remains billed to you by the provider.';
 
   // Equipment prompt
   @override String get sectionEquipmentPrompt => 'Equipment';
@@ -767,7 +782,12 @@ class StringsEn extends AppStrings {
   @override String get melariRemoveMelarioMsg => 'Confirm removing this super?';
   @override String melariDeleteMelarioMsg(int id) => 'Delete super #$id?';
   @override String get melariDeleteMelarioOk => 'Super deleted';
+  @override String melariDeleteMelarioError(String e) => 'Super deletion error: $e';
+  @override String melariRemoveMelarioError(String e) => 'Super removal error: $e';
   @override String get melariConfirmBtn => 'Confirm';
+  @override String get melariMiniMapTitle => 'Hive positions';
+  @override String get melariMiniMapNoLayout => 'No layout: open the apiary map to place hives';
+  @override String get melariMiniMapTapHint => 'Tap a hive to highlight it';
   // Melario form
   @override String get melarioFormTitle => 'New Super';
   @override String get melarioFormSectionId => 'Identification & Traceability';
@@ -795,13 +815,14 @@ class StringsEn extends AppStrings {
   @override String get smielaturaFormValidateNumero => 'Enter a valid number';
   @override String get smielaturaFormValidateQuantitaMax => 'Quantity cannot exceed 99999.99 kg';
   @override String get smielaturaFormSelectMelarioMsg => 'Select at least one super';
-  @override String get smielaturaFormNoMelariDisp => 'No supers in "in extraction" state for this apiary';
+  @override String get smielaturaFormNoMelariDisp => 'No supers in "in extraction" state for this apiary. To make one available, open a placed super from the Supers screen and tap "Remove".';
   @override String get smielaturaFormBtnCreate => 'REGISTER';
   @override String get smielaturaFormBtnUpdate => 'UPDATE';
   @override String get smielaturaFormCreatedOk => 'Extraction registered';
   @override String get smielaturaFormUpdatedOk => 'Extraction updated';
   // Smielatura detail
   @override String get smielaturaDetailTitle => 'Extraction Detail';
+  @override String get smielaturaDetailDeleteTitle => 'Delete extraction';
   @override String get smielaturaDetailDeleteMsg => 'Are you sure you want to delete this extraction?';
   @override String get smielaturaDetailDeletedOk => 'Extraction deleted';
   @override String get smielaturaDetailNotFound => 'Extraction not found';
@@ -1942,6 +1963,14 @@ class StringsEn extends AppStrings {
   @override String get quotaStatsExhausted =>
       'Stats AI quota exceeded. Try again after reset or set a personal Groq key in settings.';
   @override String get nlQueryInputHintExhausted => 'Quota exceeded — try again after reset';
+  @override String get voiceQueuePreflightTitle => 'Quota running out';
+  @override String voiceQueuePreflightMessage(int available, int total) =>
+      'You have $available voice AI calls available but there are $total recordings in queue. '
+      'Only the first $available will be sent; the rest will stay in queue for the next reset.';
+  @override String get voiceQueuePreflightProceed => 'Proceed';
+  @override String get voiceQueuePreflightCancel => 'Cancel';
+  @override String get voiceQueuePreflightExhausted =>
+      'Voice AI quota already exhausted. Try again after the daily reset.';
 
   // ── AI Tier ──
   @override String get aiTierLabel => 'AI Plan';
@@ -1991,7 +2020,7 @@ class StringsEn extends AppStrings {
   @override String get subFeatureUnlimitedChat => 'Unlimited AI chat';
   @override String get subFeatureVoice => 'Unlimited voice input';
   @override String get subFeatureAdvancedAI => 'Advanced AI analysis';
-  @override String get subCostExplanation => 'Costs will be minimal: just enough to cover the Gemini API key expenses and keep the app running and updated. We want Apiary to remain accessible to all beekeepers.';
+  @override String get subCostExplanation => 'The app is run as a personal project and is currently in testing phase. Tier limits are set to keep external API key costs sustainable and to keep Apiary accessible to all beekeepers.';
   @override String get subLoading => 'Loading plans...';
   @override String get subNoProducts => 'No plans available at this time.';
   @override String subPricePerMonth(String price) => '$price/month';
@@ -2019,12 +2048,12 @@ class StringsEn extends AppStrings {
       default: return type;
     }
   }
-  @override String get subComingSoon => 'Coming soon';
-  @override String get subComingSoonDesc => 'In-app subscriptions will be available soon. In the meantime, if you have an access code you can activate Pro features.';
-  @override String get subActivateCode => 'Have a code?';
+  @override String get subComingSoon => 'Extended access';
+  @override String get subComingSoonDesc => 'The app is in testing phase. Higher tiers are currently available via access code, reserved for testers helping us improve the app. If you have one, you can enter it below.';
+  @override String get subActivateCode => 'Have an access code?';
   @override String get subActivateCodeHint => 'Enter access code';
   @override String get subActivateBtn => 'Activate';
-  @override String get subActivateSuccess => 'Code activated! Welcome to Apiary Pro.';
+  @override String get subActivateSuccess => 'Code activated! Your tier has been updated.';
   @override String get subActivateError => 'Activation error. Please try again.';
   @override String get subActivateInvalid => 'Invalid or expired code.';
   @override String get subActivating => 'Activating...';
@@ -2491,4 +2520,162 @@ class StringsEn extends AppStrings {
   @override String get chatWelcomeMessage => 'Hello! I\'m ApiarioAI, your beekeeping assistant. How can I help you today?';
   @override String get chatTitle => 'ApiarioAI Assistant';
   @override String get chatChartDefaultTitle => 'Chart';
+
+  // ── Hive frame visualizer ──
+  @override String get frameLabelCovata => 'Brood';
+  @override String get frameLabelScorte => 'Stores';
+  @override String get frameLabelFoglioCereo => 'Wax foundation';
+  @override String get frameLabelDiaframma => 'Dummy board';
+  @override String get frameLabelNutritore => 'Feeder';
+  @override String get frameLabelVuoto => 'Empty';
+  @override String get frameNoControllo => 'No inspection recorded';
+  @override String get frameReginaPresente => 'Queen present';
+  @override String get frameReginaAssente => 'Queen absent';
+  @override String frameCelleRealiTooltip(int numero, int days) =>
+      'Queen cells${numero > 0 ? ": $numero" : ""} — detected $days days ago';
+
+  // ── Hive type names ──
+  @override String arniaTypeName(String key) {
+    switch (key) {
+      case 'dadant':             return 'Dadant-Blatt';
+      case 'langstroth':         return 'Langstroth';
+      case 'top_bar':            return 'Top Bar';
+      case 'warre':              return 'Warré';
+      case 'osservazione':       return 'Observation hive';
+      case 'pappa_reale':        return 'Royal jelly hive';
+      case 'nucleo_legno':       return 'Wooden nucleus';
+      case 'nucleo_polistirolo': return 'Polystyrene nucleus';
+      case 'portasciami':        return 'Swarm trap';
+      case 'apidea':             return 'Apidea / Kieler';
+      case 'mini_plus':          return 'Mini-Plus';
+      default:                   return key;
+    }
+  }
+
+  // ── Audio input widget ──
+  @override String get audioInputStatusRecording => 'Recording…';
+  @override String audioInputStatusExtending(String dur) => 'Extending audio… (+$dur)';
+  @override String get audioInputStatusProcessing => 'Sending to Gemini…';
+  @override String audioInputStatusProcessingQueue(int cur, int total) =>
+      'Processing queue: $cur/$total…';
+  @override String get audioInputStatusError => 'Processing error';
+  @override String get audioInputStatusSaving => 'Saving to session…';
+  @override String get audioInputStatusIdlePrompt => 'Press to start recording';
+  @override String get audioInputStatusIdleNext => 'Record the next hive';
+  @override String get audioInputStatusIdleSend => 'Record the next hives or send everything to Gemini';
+  @override String get audioInputGeminiProcessing => 'Gemini is processing…';
+  @override String audioInputQueueProgress(int cur, int total) => 'Queue: $cur/$total…';
+  @override String get audioInputListening => 'Listening…';
+  @override String get audioInputListenBeforeSend => 'Listen before sending';
+  @override String get audioInputErrStartMic =>
+      'Unable to start recording. Check microphone permission.';
+  @override String get audioInputErrRecInvalid => 'Invalid recording. Try again.';
+  @override String get audioInputErrExtInvalid => 'Invalid extension. Try again.';
+  @override String get audioInputErrNoArniaDetected =>
+      'Hive number not detected in the audio. Select the hive from the menu or add audio with the number.';
+  @override String get audioInputErrNoArniaQueue =>
+      'Hive number not detected in a recording. Select the hive from the menu or add audio with the number.';
+  @override String get audioInputErrExtract =>
+      'Unable to extract data from the audio. Try again.';
+  @override String get audioInputErrUnknown => 'unknown error';
+  @override String audioInputRecFailed(int idx, int total, String err) =>
+      'Recording $idx/$total not processed: $err';
+  @override String get audioInputSelectArnia => 'Select hive:';
+  @override String get audioInputChooseArnia => 'Choose hive…';
+  @override String audioInputArniaItem(int n) => 'Hive $n';
+  @override String audioInputBatchHeader(int n) => 'Batch: $n ${n == 1 ? 'hive' : 'hives'}';
+  @override String audioInputSessionHeader(int n) => 'Session: $n recording(s) to send';
+  @override String audioInputRecordingItem(int n) => 'Recording $n';
+  @override String get audioInputAbandonTitle => 'Cancel session?';
+  @override String get audioInputAbandonMsgSingle => 'The current recording will be deleted.';
+  @override String audioInputAbandonMsgMulti(int n) =>
+      'All $n recording(s) of the session will be deleted.';
+  @override String get audioInputBtnBack => 'BACK';
+  @override String get audioInputBtnDeleteAll => 'DELETE ALL';
+  @override String get audioInputBtnAddAudioWithNum => 'Add audio with hive number';
+  @override String get audioInputBtnDiscard => 'Discard';
+  @override String get audioInputBtnRetry => 'Retry';
+  @override String get audioInputBtnSaveQueue => 'Save to queue';
+  @override String audioInputBtnSendAll(int n) => 'Send all to Gemini ($n)';
+  @override String audioInputBtnStopReview(int n) => 'STOP – Review ($n)';
+  @override String get audioInputBtnAbandon => 'Cancel session';
+  @override String get audioInputHintPressMicToStart => 'Press the microphone to start';
+  @override String get audioInputHintRecordNext => 'Record the next hive';
+
+  // ── Voice context banner ──
+  @override String get voiceContextSelect => 'Select apiary…';
+  @override String voiceContextSelected(String name) => 'Apiary: $name';
+  @override String get voiceContextNoApiari => 'No apiary available';
+  @override String get voiceContextSheetTitle => 'Select apiary';
+  @override String get voiceContextSheetHint =>
+      'Tap the pin to set a default apiary.';
+  @override String get voiceContextSetDefault => 'Set as default';
+  @override String get voiceContextRemoveDefault => 'Remove default';
+  @override String get voiceContextOffline => 'OFFLINE';
+
+  // ── Controllo form contextual hint ──
+  @override String get controlloFormIntroHint =>
+      '📋 Record the hive state: brood frames (red), stores (yellow) and queen presence. The more details you enter, the better you can monitor the colony\'s health.';
+
+  // ── Nomadismo presets ──
+  @override String nomadismoPresetNome(String key) {
+    switch (key) {
+      case 'acacia':     return 'Acacia';
+      case 'castagno':   return 'Chestnut';
+      case 'tiglio':     return 'Linden';
+      case 'lavanda':    return 'Lavender';
+      case 'sulla':      return 'Sulla';
+      case 'corbezzolo': return 'Strawberry tree';
+      case 'eucalipto':  return 'Eucalyptus';
+      case 'girasole':   return 'Sunflower';
+      case 'trifoglio':  return 'Clover';
+      case 'agrumi':     return 'Citrus';
+      default:           return key;
+    }
+  }
+  @override String nomadismoPresetPeriodo(String key) {
+    switch (key) {
+      case 'acacia':     return 'Apr–May';
+      case 'castagno':   return 'Jun–Jul';
+      case 'tiglio':     return 'Jun';
+      case 'lavanda':    return 'Jul–Aug';
+      case 'sulla':      return 'Apr–May';
+      case 'corbezzolo': return 'Oct–Nov';
+      case 'eucalipto':  return 'Jan–Mar';
+      case 'girasole':   return 'Jul–Aug';
+      case 'trifoglio':  return 'May–Sep';
+      case 'agrumi':     return 'Mar–Apr';
+      default:           return '';
+    }
+  }
+  @override String nomadismoPresetRegioni(String key) {
+    switch (key) {
+      case 'acacia':     return 'Tuscany, Umbria, Lazio';
+      case 'castagno':   return 'Apennines, Prealps';
+      case 'tiglio':     return 'Alpine valleys, Po';
+      case 'lavanda':    return 'Provence, Alta Valle Pesio';
+      case 'sulla':      return 'Sicily, Calabria, Sard.';
+      case 'corbezzolo': return 'Sardinia, Maremma';
+      case 'eucalipto':  return 'Sardinia, Sicily';
+      case 'girasole':   return 'Po Valley, Apulia';
+      case 'trifoglio':  return 'Meadows, all Italy';
+      case 'agrumi':     return 'Sicily, Calabria, Camp.';
+      default:           return '';
+    }
+  }
+  @override String nomadismoPresetDesc(String key) {
+    switch (key) {
+      case 'acacia':     return 'Light and delicate honey';
+      case 'castagno':   return 'Dark and tannic honey';
+      case 'tiglio':     return 'Fragrant, minty honey';
+      case 'lavanda':    return 'Aromatic and floral honey';
+      case 'sulla':      return 'Light honey, typical of the South';
+      case 'corbezzolo': return 'Bitter and unique honey';
+      case 'eucalipto':  return 'Balsamic and dark honey';
+      case 'girasole':   return 'Light honey, crystallizes quickly';
+      case 'trifoglio':  return 'Delicate wildflower honey';
+      case 'agrumi':     return 'Fragrant orange blossom honey';
+      default:           return '';
+    }
+  }
 }

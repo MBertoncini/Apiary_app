@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/maturatore.dart';
 import '../../../services/language_service.dart';
-import '../../../l10n/app_strings.dart';
 
 class MaturatoreCard extends StatelessWidget {
   final Maturatore maturatore;

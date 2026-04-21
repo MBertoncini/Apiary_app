@@ -13,13 +13,11 @@ class GeminiDataProcessor extends ChangeNotifier with VoiceDataProcessor {
   static const String _geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
-  // Models in priority order — first available wins.
-  // gemini-2.0-flash has limit: 0 on the free tier (disabled).
   static const List<String> _modelFallbacks = [
-    'gemini-2.5-flash',        // 5 RPM free tier, stable
-    'gemini-3-flash-preview',  // 5 RPM free tier
-    'gemini-3.1-flash-lite',   // fastest/cheapest 3.x
-    'gemini-1.5-flash',        // last resort, very stable
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
   ];
 
   AiQuotaService? _quotaService;
@@ -180,22 +178,40 @@ Regole:
           }
           debugPrint('[Gemini] Used model: $model');
           _quotaService?.recordOptimisticCall(AiFeature.voice);
+          // Telemetria backend: Gemini è chiamato direttamente dal client,
+          // serve notificare il server per rendere voice_today autoritativo
+          // e sopravvivere al refresh() (che altrimenti azzera l'overlay).
+          unawaited(_quotaService?.recordVoiceCallToBackend(model: model) ??
+              Future.value());
           return _parseGeminiResponse(responseText);
         } else if (response.statusCode == 429) {
-          // Check if this model has limit: 0 (permanently disabled on this plan)
-          bool isDisabled = response.body.contains('limit: 0') ||
-              response.body.contains('"limit":0');
-          debugPrint(
-              '[Gemini] 429 on $model (disabled=$isDisabled): ${response.body}');
-          if (isDisabled) {
-            // Try next model in fallback list
+          final body = response.body;
+          final isDisabled =
+              body.contains('limit: 0') || body.contains('"limit":0');
+          final isDailyQuota = body.contains('PerDay') ||
+              body.contains('per day') ||
+              body.contains('daily');
+          debugPrint('[Gemini] 429 on $model '
+              '(disabled=$isDisabled daily=$isDailyQuota): $body');
+          // Se il modello ha limit:0 passa al prossimo fallback, ma se era
+          // già l'ultimo della lista tratta il 429 come tutti gli altri
+          // (altrimenti la funzione uscirebbe dal loop senza marcare la
+          // quota o impostare _error, lasciando l'utente senza feedback).
+          if (isDisabled && model != _modelFallbacks.last) {
             continue;
           }
-          // Genuine rate limit — stop trying
           _lastCallWasRateLimit = true;
-          _quotaService?.markExceeded(AiFeature.voice);
-          _error =
-              'Limite richieste Gemini ($model). Attendi un minuto e riprova.';
+          if (isDailyQuota) {
+            _quotaService?.markExceeded(AiFeature.voice);
+            _error = 'Quota giornaliera Gemini esaurita. '
+                'Riprova dopo il reset giornaliero.';
+          } else {
+            final cooldown =
+                _extractRetryDelay(body) ?? const Duration(seconds: 60);
+            _quotaService?.markVoiceBurstCooldown(cooldown);
+            _error = 'Limite momentaneo Gemini ($model). '
+                'Riprova tra ${cooldown.inSeconds}s.';
+          }
           return null;
         } else {
           String geminiReason = '';
@@ -208,15 +224,23 @@ Regole:
               '${geminiReason.isNotEmpty ? ': $geminiReason' : ''}';
           debugPrint(
               'Gemini ${response.statusCode} body: ${response.body}');
+          // Modello non trovato (404) o temporaneamente non disponibile
+          // (502/503): prova il prossimo fallback. Per errori client
+          // (400/401/ecc.) cambiare modello non aiuta — esci subito.
+          final status = response.statusCode;
+          if (status == 404 || status == 503 || status == 502) continue;
           return null;
         }
       }
 
-      // All models exhausted
-      _lastCallWasRateLimit = true;
-      _quotaService?.markExceeded(AiFeature.voice);
-      _error = 'Nessun modello Gemini disponibile sul piano gratuito. '
-          'Aggiorna il piano su ai.google.dev.';
+      // Usciti dal loop senza successo: i modelli hanno risposto con
+      // errori infrastrutturali (o limit:0 su tutti con isDisabled). NON
+      // marcare la quota esaurita — bloccherebbe il mic fino a mezzanotte
+      // UTC anche quando il contatore tier è a 0. Trattare come transitorio.
+      _lastCallWasNetworkError = true;
+      _quotaService?.markVoiceBurstCooldown(const Duration(seconds: 60));
+      _error = 'Servizio Gemini temporaneamente non disponibile. '
+          'Riprova tra poco.';
       return null;
     } catch (e) {
       _error = 'Errore: $e';
@@ -275,6 +299,20 @@ Regole:
     if (value is int) return value;
     if (value is double) return value.toInt();
     return int.tryParse(value.toString());
+  }
+
+  Duration? _extractRetryDelay(String body) {
+    final m1 = RegExp(r'"retryDelay"\s*:\s*"(\d+)s"').firstMatch(body);
+    if (m1 != null) {
+      final s = int.tryParse(m1.group(1)!);
+      if (s != null) return Duration(seconds: s);
+    }
+    final m2 = RegExp(r'"retry_after"\s*:\s*(\d+)').firstMatch(body);
+    if (m2 != null) {
+      final s = int.tryParse(m2.group(1)!);
+      if (s != null) return Duration(seconds: s);
+    }
+    return null;
   }
 
   void clearError() {

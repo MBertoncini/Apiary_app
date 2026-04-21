@@ -86,13 +86,29 @@ class StringsIt extends AppStrings {
       'L\'audio viene analizzato da Gemini in un unico passaggio: '
       'più preciso in ambienti rumorosi e con terminologia libera. '
       'Richiede connessione.';
-  @override String get voiceAudioPremiumSheetTitle => 'Funzionalità premium';
+  @override String get voiceAudioPremiumSheetTitle => 'Modalità audio AI';
   @override String get voiceAudioPremiumSheetBody =>
-      'La modalità Gemini Audio invia la registrazione a Google Gemini AI '
-      'per una trascrizione e strutturazione intelligente del controllo.\n\n'
-      '🎉 Durante la beta è inclusa gratuitamente per tutti gli utenti.\n\n'
-      'In futuro potrebbe diventare parte di un piano a pagamento.';
-  @override String get voiceAudioPremiumSheetActivate => 'Attiva';
+      'La modalità Gemini Audio invia la registrazione a Google Gemini '
+      'per una trascrizione più accurata e una strutturazione intelligente '
+      'del controllo.\n\n'
+      'Durante la fase di test è disponibile con un limite giornaliero '
+      'che dipende dal tier del tuo account.';
+  @override String get voiceAudioPremiumSheetActivate => 'Usa questa modalità';
+
+  // ── Voice input: extended access block (settings) ──
+  @override String get voiceExtendedAccessTitle => 'Accesso esteso';
+  @override String get voiceExtendedAccessDesc =>
+      'L\'app è in fase di test. I tier superiori sono attualmente '
+      'disponibili tramite codice di accesso.';
+  @override String get voiceExtendedAccessCta => 'Vedi dettagli';
+
+  // ── Advanced API options block (settings, collapsed) ──
+  @override String get settingsAdvancedOptions => 'Opzioni avanzate';
+  @override String get settingsAdvancedOptionsSubtitle =>
+      'Chiavi API personali';
+  @override String get settingsAdvancedOptionsDesc =>
+      'Inserendo una chiave tua, i limiti del tier non si applicano più '
+      'e l\'utilizzo resta a tuo carico sul provider.';
 
   // Equipment prompt
   @override String get sectionEquipmentPrompt => 'Attrezzatura';
@@ -737,7 +753,12 @@ class StringsIt extends AppStrings {
   @override String get melariRemoveMelarioMsg => 'Confermi di voler rimuovere questo melario?';
   @override String melariDeleteMelarioMsg(int id) => 'Eliminare il melario #$id?';
   @override String get melariDeleteMelarioOk => 'Melario eliminato';
+  @override String melariDeleteMelarioError(String e) => 'Errore eliminazione melario: $e';
+  @override String melariRemoveMelarioError(String e) => 'Errore rimozione melario: $e';
   @override String get melariConfirmBtn => 'Conferma';
+  @override String get melariMiniMapTitle => 'Posizione arnie';
+  @override String get melariMiniMapNoLayout => 'Nessun layout: apri la mappa apiario per posizionare le arnie';
+  @override String get melariMiniMapTapHint => 'Tocca un\'arnia per evidenziarla';
   // Melario form
   @override String get melarioFormTitle => 'Nuovo Melario';
   @override String get melarioFormSectionId => 'Identificazione e Tracciabilità';
@@ -765,13 +786,14 @@ class StringsIt extends AppStrings {
   @override String get smielaturaFormValidateNumero => 'Inserisci un numero valido';
   @override String get smielaturaFormValidateQuantitaMax => 'La quantità non può superare 99999.99 kg';
   @override String get smielaturaFormSelectMelarioMsg => 'Seleziona almeno un melario';
-  @override String get smielaturaFormNoMelariDisp => 'Nessun melario in stato "in smielatura" per questo apiario';
+  @override String get smielaturaFormNoMelariDisp => 'Nessun melario in stato "in smielatura" per questo apiario. Per renderne uno disponibile, dalla schermata Melari apri il melario posizionato e scegli "Rimuovi".';
   @override String get smielaturaFormBtnCreate => 'REGISTRA';
   @override String get smielaturaFormBtnUpdate => 'AGGIORNA';
   @override String get smielaturaFormCreatedOk => 'Smielatura registrata';
   @override String get smielaturaFormUpdatedOk => 'Smielatura aggiornata';
   // Smielatura detail
   @override String get smielaturaDetailTitle => 'Dettaglio Smielatura';
+  @override String get smielaturaDetailDeleteTitle => 'Elimina smielatura';
   @override String get smielaturaDetailDeleteMsg => 'Sei sicuro di voler eliminare questa smielatura?';
   @override String get smielaturaDetailDeletedOk => 'Smielatura eliminata';
   @override String get smielaturaDetailNotFound => 'Smielatura non trovata';
@@ -1909,6 +1931,14 @@ class StringsIt extends AppStrings {
   @override String get quotaStatsExhausted =>
       'Quota AI statistiche esaurita. Riprova dopo il reset o configura una chiave Groq personale nelle impostazioni.';
   @override String get nlQueryInputHintExhausted => 'Quota esaurita — riprova dopo il reset';
+  @override String get voiceQueuePreflightTitle => 'Quota in esaurimento';
+  @override String voiceQueuePreflightMessage(int available, int total) =>
+      'Hai $available chiamate AI voce disponibili ma ci sono $total registrazioni in coda. '
+      'Verranno inviate solo le prime $available; le restanti resteranno in coda per il prossimo reset.';
+  @override String get voiceQueuePreflightProceed => 'Procedi';
+  @override String get voiceQueuePreflightCancel => 'Annulla';
+  @override String get voiceQueuePreflightExhausted =>
+      'Quota voce AI già esaurita. Riprova dopo il reset giornaliero.';
 
   // ── AI Tier ──
   @override String get aiTierLabel => 'Piano AI';
@@ -1958,7 +1988,7 @@ class StringsIt extends AppStrings {
   @override String get subFeatureUnlimitedChat => 'Chat AI senza limiti';
   @override String get subFeatureVoice => 'Inserimento vocale illimitato';
   @override String get subFeatureAdvancedAI => 'Analisi AI avanzate';
-  @override String get subCostExplanation => 'I costi saranno minimi: servono a coprire le spese della chiave API Gemini e a mantenere l\'app attiva e aggiornata. Vogliamo che Apiary resti accessibile a tutti gli apicoltori.';
+  @override String get subCostExplanation => 'L\'app è portata avanti come progetto personale ed è in fase di test. I limiti dei tier servono a mantenere sostenibili i costi delle chiavi API esterne e a tenere Apiary accessibile a tutti gli apicoltori.';
   @override String get subLoading => 'Caricamento piani...';
   @override String get subNoProducts => 'Nessun piano disponibile al momento.';
   @override String subPricePerMonth(String price) => '$price/mese';
@@ -1986,12 +2016,12 @@ class StringsIt extends AppStrings {
       default: return type;
     }
   }
-  @override String get subComingSoon => 'Prossimamente';
-  @override String get subComingSoonDesc => 'Gli abbonamenti in-app saranno disponibili a breve. Nel frattempo, se hai un codice di accesso puoi attivare le funzionalità Pro.';
-  @override String get subActivateCode => 'Hai un codice?';
+  @override String get subComingSoon => 'Accesso esteso';
+  @override String get subComingSoonDesc => 'L\'app è in fase di test. I tier superiori sono attualmente disponibili tramite codice di accesso, riservato a chi sta collaborando ai test. Se ne hai uno, puoi inserirlo qui sotto.';
+  @override String get subActivateCode => 'Hai un codice di accesso?';
   @override String get subActivateCodeHint => 'Inserisci codice di accesso';
   @override String get subActivateBtn => 'Attiva';
-  @override String get subActivateSuccess => 'Codice attivato! Benvenuto in Apiary Pro.';
+  @override String get subActivateSuccess => 'Codice attivato! Il tuo tier è stato aggiornato.';
   @override String get subActivateError => 'Errore durante l\'attivazione. Riprova.';
   @override String get subActivateInvalid => 'Codice non valido o scaduto.';
   @override String get subActivating => 'Attivazione in corso...';
@@ -2453,4 +2483,162 @@ class StringsIt extends AppStrings {
   @override String get chatWelcomeMessage => 'Ciao! Sono ApiarioAI, il tuo assistente per l\'apicoltura. Come posso aiutarti oggi?';
   @override String get chatTitle => 'ApiarioAI Assistant';
   @override String get chatChartDefaultTitle => 'Grafico';
+
+  // ── Hive frame visualizer ──
+  @override String get frameLabelCovata => 'Covata';
+  @override String get frameLabelScorte => 'Scorte';
+  @override String get frameLabelFoglioCereo => 'F. Cereo';
+  @override String get frameLabelDiaframma => 'Diaframma';
+  @override String get frameLabelNutritore => 'Nutritore';
+  @override String get frameLabelVuoto => 'Vuoto';
+  @override String get frameNoControllo => 'Nessun controllo registrato';
+  @override String get frameReginaPresente => 'Regina presente';
+  @override String get frameReginaAssente => 'Regina assente';
+  @override String frameCelleRealiTooltip(int numero, int days) =>
+      'Celle reali${numero > 0 ? ": $numero" : ""} — rilevate $days giorni fa';
+
+  // ── Hive type names ──
+  @override String arniaTypeName(String key) {
+    switch (key) {
+      case 'dadant':             return 'Dadant-Blatt';
+      case 'langstroth':         return 'Langstroth';
+      case 'top_bar':            return 'Top Bar';
+      case 'warre':              return 'Warré';
+      case 'osservazione':       return 'Osservazione';
+      case 'pappa_reale':        return 'Pappa Reale';
+      case 'nucleo_legno':       return 'Nucleo Legno';
+      case 'nucleo_polistirolo': return 'Nucleo Polistirolo';
+      case 'portasciami':        return 'Portasciami';
+      case 'apidea':             return 'Apidea / Kieler';
+      case 'mini_plus':          return 'Mini-Plus';
+      default:                   return key;
+    }
+  }
+
+  // ── Audio input widget ──
+  @override String get audioInputStatusRecording => 'Registrazione in corso…';
+  @override String audioInputStatusExtending(String dur) => 'Aggiunta audio in corso… (+$dur)';
+  @override String get audioInputStatusProcessing => 'Invio a Gemini…';
+  @override String audioInputStatusProcessingQueue(int cur, int total) =>
+      'Elaborazione coda: $cur/$total…';
+  @override String get audioInputStatusError => 'Errore elaborazione';
+  @override String get audioInputStatusSaving => 'Salvataggio in sessione…';
+  @override String get audioInputStatusIdlePrompt => 'Premi per iniziare la registrazione';
+  @override String get audioInputStatusIdleNext => 'Registra la prossima arnia';
+  @override String get audioInputStatusIdleSend => 'Registra le prossime arnie o invia tutto a Gemini';
+  @override String get audioInputGeminiProcessing => 'Gemini sta elaborando…';
+  @override String audioInputQueueProgress(int cur, int total) => 'Coda: $cur/$total…';
+  @override String get audioInputListening => 'In ascolto…';
+  @override String get audioInputListenBeforeSend => 'Ascolta prima di inviare';
+  @override String get audioInputErrStartMic =>
+      'Impossibile avviare la registrazione. Verifica il permesso microfono.';
+  @override String get audioInputErrRecInvalid => 'Registrazione non valida. Riprova.';
+  @override String get audioInputErrExtInvalid => 'Estensione non valida. Riprova.';
+  @override String get audioInputErrNoArniaDetected =>
+      'Numero arnia non rilevato dall\'audio. Seleziona l\'arnia dal menu oppure aggiungi audio con il numero.';
+  @override String get audioInputErrNoArniaQueue =>
+      'Numero arnia non rilevato in una registrazione. Seleziona l\'arnia dal menu oppure aggiungi audio con il numero.';
+  @override String get audioInputErrExtract =>
+      'Non è stato possibile estrarre dati dall\'audio. Riprova.';
+  @override String get audioInputErrUnknown => 'errore sconosciuto';
+  @override String audioInputRecFailed(int idx, int total, String err) =>
+      'Registrazione $idx/$total non elaborata: $err';
+  @override String get audioInputSelectArnia => 'Seleziona arnia:';
+  @override String get audioInputChooseArnia => 'Scegli arnia…';
+  @override String audioInputArniaItem(int n) => 'Arnia $n';
+  @override String audioInputBatchHeader(int n) => 'Batch: $n ${n == 1 ? 'arnia' : 'arnie'}';
+  @override String audioInputSessionHeader(int n) => 'Sessione: $n registrazione/i da inviare';
+  @override String audioInputRecordingItem(int n) => 'Registrazione $n';
+  @override String get audioInputAbandonTitle => 'Annulla sessione?';
+  @override String get audioInputAbandonMsgSingle => 'La registrazione corrente verrà eliminata.';
+  @override String audioInputAbandonMsgMulti(int n) =>
+      'Verranno eliminate tutte le $n registrazione/i della sessione.';
+  @override String get audioInputBtnBack => 'INDIETRO';
+  @override String get audioInputBtnDeleteAll => 'ELIMINA TUTTO';
+  @override String get audioInputBtnAddAudioWithNum => 'Aggiungi audio con n° arnia';
+  @override String get audioInputBtnDiscard => 'Scarta';
+  @override String get audioInputBtnRetry => 'Riprova';
+  @override String get audioInputBtnSaveQueue => 'Salva in coda';
+  @override String audioInputBtnSendAll(int n) => 'Invia tutto a Gemini ($n)';
+  @override String audioInputBtnStopReview(int n) => 'STOP – Rivedi ($n)';
+  @override String get audioInputBtnAbandon => 'Annulla sessione';
+  @override String get audioInputHintPressMicToStart => 'Premi il microfono per iniziare';
+  @override String get audioInputHintRecordNext => 'Registra la prossima arnia';
+
+  // ── Voice context banner ──
+  @override String get voiceContextSelect => 'Seleziona apiario…';
+  @override String voiceContextSelected(String name) => 'Apiario: $name';
+  @override String get voiceContextNoApiari => 'Nessun apiario disponibile';
+  @override String get voiceContextSheetTitle => 'Seleziona apiario';
+  @override String get voiceContextSheetHint =>
+      'Tocca la puntina per impostare un apiario predefinito.';
+  @override String get voiceContextSetDefault => 'Imposta come predefinito';
+  @override String get voiceContextRemoveDefault => 'Rimuovi predefinito';
+  @override String get voiceContextOffline => 'OFFLINE';
+
+  // ── Controllo form contextual hint ──
+  @override String get controlloFormIntroHint =>
+      '📋 Registra lo stato dell\'arnia: telaini di covata (rossi), scorte (gialli) e presenza della regina. Più dettagli inserisci, meglio puoi monitorare la salute della colonia.';
+
+  // ── Nomadismo presets ──
+  @override String nomadismoPresetNome(String key) {
+    switch (key) {
+      case 'acacia':     return 'Acacia';
+      case 'castagno':   return 'Castagno';
+      case 'tiglio':     return 'Tiglio';
+      case 'lavanda':    return 'Lavanda';
+      case 'sulla':      return 'Sulla';
+      case 'corbezzolo': return 'Corbezzolo';
+      case 'eucalipto':  return 'Eucalipto';
+      case 'girasole':   return 'Girasole';
+      case 'trifoglio':  return 'Trifoglio';
+      case 'agrumi':     return 'Agrumi';
+      default:           return key;
+    }
+  }
+  @override String nomadismoPresetPeriodo(String key) {
+    switch (key) {
+      case 'acacia':     return 'Apr–Mag';
+      case 'castagno':   return 'Giu–Lug';
+      case 'tiglio':     return 'Giu';
+      case 'lavanda':    return 'Lug–Ago';
+      case 'sulla':      return 'Apr–Mag';
+      case 'corbezzolo': return 'Ott–Nov';
+      case 'eucalipto':  return 'Gen–Mar';
+      case 'girasole':   return 'Lug–Ago';
+      case 'trifoglio':  return 'Mag–Set';
+      case 'agrumi':     return 'Mar–Apr';
+      default:           return '';
+    }
+  }
+  @override String nomadismoPresetRegioni(String key) {
+    switch (key) {
+      case 'acacia':     return 'Toscana, Umbria, Lazio';
+      case 'castagno':   return 'Appennino, Prealpi';
+      case 'tiglio':     return 'Valli alpine, Po';
+      case 'lavanda':    return 'Provenza, Alta Valle Pesio';
+      case 'sulla':      return 'Sicilia, Calabria, Sard.';
+      case 'corbezzolo': return 'Sardegna, Maremma';
+      case 'eucalipto':  return 'Sardegna, Sicilia';
+      case 'girasole':   return 'Pianura Padana, Puglia';
+      case 'trifoglio':  return 'Prati, tutta Italia';
+      case 'agrumi':     return 'Sicilia, Calabria, Camp.';
+      default:           return '';
+    }
+  }
+  @override String nomadismoPresetDesc(String key) {
+    switch (key) {
+      case 'acacia':     return 'Miele chiaro e delicato';
+      case 'castagno':   return 'Miele scuro e tannico';
+      case 'tiglio':     return 'Miele profumato, mentolato';
+      case 'lavanda':    return 'Miele aromatico e floreale';
+      case 'sulla':      return 'Miele chiaro, tipico del Sud';
+      case 'corbezzolo': return 'Miele amaro e unico';
+      case 'eucalipto':  return 'Miele balsamico e scuro';
+      case 'girasole':   return 'Miele chiaro, cristallizza veloce';
+      case 'trifoglio':  return 'Miele millefiori delicato';
+      case 'agrumi':     return 'Miele d\'arancio profumato';
+      default:           return '';
+    }
+  }
 }

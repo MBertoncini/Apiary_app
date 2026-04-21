@@ -13,6 +13,7 @@ import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/offline_banner.dart';
+import 'widgets/melari_apiario_mini_map.dart';
 
 class MelariScreen extends StatefulWidget {
   @override
@@ -29,11 +30,17 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   List<Map<String, dynamic>> _smielature = [];
   List<Invasettamento> _invasettamenti = [];
   List<Arnia> _arnie = [];
+  // ignore: unused_field
   bool _isLoading = true;
   bool _isRefreshing = true;
   String? _errorMessage;
   // null = tutti; '' = personali; non-empty = nome gruppo
   String? _filtroGruppo;
+
+  // Mini-mappa: arnia evidenziata e chiavi per scroll-to
+  int? _highlightedArniaId;
+  final Map<int, GlobalKey> _arniaColumnKeys = {};
+  final Map<int, ScrollController> _apiarioHScrollCtrls = {};
 
   @override
   void initState() {
@@ -48,7 +55,32 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _tabController.dispose();
+    for (final c in _apiarioHScrollCtrls.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void _scrollToArniaColumn(int arniaId, ScrollController ctrl,
+      List<Arnia> orderedArnie) {
+    final key = _arniaColumnKeys[arniaId];
+    final ctx = key?.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        alignment: 0.2,
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+    // Fallback: stima posizione per indice
+    final idx = orderedArnie.indexWhere((a) => a.id == arniaId);
+    if (idx < 0 || !ctrl.hasClients) return;
+    const colWidth = _superW + 20 + 20; // width + right padding
+    final target = (idx * colWidth).clamp(0.0, ctrl.position.maxScrollExtent);
+    ctrl.animateTo(target,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
   Future<void> _refreshAll() async {
@@ -376,6 +408,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
   // ==================== INVASETTAMENTO TAB ====================
 
+  // ignore: unused_element
   Widget _buildInvasettamentoTab() {
     final filtered = _invasettamenti
         .where((inv) => _matchesFiltro(inv.apiarioGruppoNome))
@@ -600,7 +633,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             // Build a combined ordered list of Arnia objects
             final arnieToShow = [...arnieInApiario];
             for (final extraId in extraIds) {
-              final m = _melari.firstWhere((m) => m.arnia == extraId, orElse: () => _melari.first);
+              final melariForId = _melari.where((m) => m.arnia == extraId);
+              if (melariForId.isEmpty) continue;
+              final m = melariForId.first;
               arnieToShow.add(Arnia(
                 id: extraId, apiario: apiarioId, apiarioNome: apiarioNomi[apiarioId] ?? '',
                 numero: m.arniaNumero ?? 0, colore: '', coloreHex: '#F5A623',
@@ -609,6 +644,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             }
             arnieToShow.sort((a, b) => a.numero.compareTo(b.numero));
 
+            final hScrollCtrl = _apiarioHScrollCtrls.putIfAbsent(
+                apiarioId, () => ScrollController());
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -622,13 +659,30 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 ),
                 Divider(color: ThemeConstants.primaryColor.withOpacity(0.3)),
                 const SizedBox(height: 8),
+                MelariApiarioMiniMap(
+                  apiarioId: apiarioId,
+                  arnie: arnieToShow,
+                  melariByArnia: melariByArnia,
+                  highlightedArniaId: _highlightedArniaId != null &&
+                          arnieToShow.any((a) => a.id == _highlightedArniaId)
+                      ? _highlightedArniaId
+                      : null,
+                  onArniaTap: (id) {
+                    setState(() => _highlightedArniaId = id);
+                    _scrollToArniaColumn(id, hScrollCtrl, arnieToShow);
+                  },
+                ),
                 SingleChildScrollView(
+                  controller: hScrollCtrl,
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: arnieToShow.map((arnia) {
                       final melariOnArnia = melariByArnia[arnia.id] ?? [];
+                      final key = _arniaColumnKeys.putIfAbsent(
+                          arnia.id, () => GlobalKey());
                       return Padding(
+                        key: key,
                         padding: const EdgeInsets.only(right: 20),
                         child: _buildHiveCol(arnia, melariOnArnia, apiarioId),
                       );
@@ -660,49 +714,68 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       arniaColor = const Color(0xFFF5A623);
     }
 
-    return SizedBox(
-      width: _superW + 20,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Add melario button
-          _buildAddSuperBtn(arnia.id, apiarioId),
-          const SizedBox(height: 4),
-          // Melari stacked
-          ...activeMelari.map((m) => Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: _buildMelarioBox(m),
-          )),
-          // Queen excluder
-          if (hasQE) ...[
-            _buildQEBar(),
-            const SizedBox(height: 2),
+    final isHighlighted = _highlightedArniaId == arnia.id;
+
+    return GestureDetector(
+      onTap: () => setState(() {
+        _highlightedArniaId =
+            _highlightedArniaId == arnia.id ? null : arnia.id;
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: _superW + 20,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: BoxDecoration(
+          color: isHighlighted
+              ? ThemeConstants.primaryColor.withOpacity(0.10)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: isHighlighted
+              ? Border.all(color: ThemeConstants.primaryColor, width: 1.6)
+              : Border.all(color: Colors.transparent, width: 1.6),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Add melario button
+            _buildAddSuperBtn(arnia.id, apiarioId),
+            const SizedBox(height: 4),
+            // Melari stacked
+            ...activeMelari.map((m) => Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: _buildMelarioBox(m),
+            )),
+            // Queen excluder
+            if (hasQE) ...[
+              _buildQEBar(),
+              const SizedBox(height: 2),
+            ],
+            // Nido
+            _buildNidoBox(),
+            const SizedBox(height: 3),
+            // Base board
+            Container(
+              width: _superW + 10,
+              height: 8,
+              decoration: BoxDecoration(
+                color: const Color(0xFF3D200A),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Legs
+            SizedBox(
+              width: _superW - 18,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [_buildLeg(), _buildLeg()],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Label
+            _buildArniaLabel(arnia.numero, arniaColor, activeMelari.length),
           ],
-          // Nido
-          _buildNidoBox(),
-          const SizedBox(height: 3),
-          // Base board
-          Container(
-            width: _superW + 10,
-            height: 8,
-            decoration: BoxDecoration(
-              color: const Color(0xFF3D200A),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          // Legs
-          SizedBox(
-            width: _superW - 18,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [_buildLeg(), _buildLeg()],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Label
-          _buildArniaLabel(arnia.numero, arniaColor, activeMelari.length),
-        ],
+        ),
       ),
     );
   }
@@ -1045,17 +1118,20 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               Navigator.pop(ctx);
               try {
                 final peso = double.tryParse(pesoCtrl.text);
-                await _apiService.patch(
-                  '${ApiConstants.melariUrl}${m.id}/',
-                  {
-                    'stato': 'in_smielatura',
+                await _apiService.removeMelario(
+                  m.id,
+                  data: {
                     'data_rimozione': DateTime.now().toIso8601String().split('T')[0],
                     if (peso != null) 'peso_stimato': peso,
                   },
                 );
                 _refreshAll();
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteInvasettError(e.toString()))));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_s.melariRemoveMelarioError(e.toString()))),
+                  );
+                }
               }
             },
             child: Text(_s.melariConfirmBtn),
@@ -1079,10 +1155,16 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               Navigator.pop(ctx);
               try {
                 await _apiService.delete('${ApiConstants.melariUrl}${m.id}/');
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteMelarioOk)));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteMelarioOk)));
+                }
                 _refreshAll();
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.melariDeleteInvasettError(e.toString()))));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_s.melariDeleteMelarioError(e.toString()))),
+                  );
+                }
               }
             },
             child: Text(_s.btnDelete),

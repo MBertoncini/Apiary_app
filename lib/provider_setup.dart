@@ -99,7 +99,15 @@ List<SingleChildWidget> providers = [
     update: (context, apiService, authService, previous) {
       final service = previous ?? AiQuotaService(apiService);
       final user = authService.currentUser;
-      if (user != null) service.setTier(user.aiTier);
+      if (user != null) {
+        service.setTier(user.aiTier);
+        // Propaga il flag chiave Gemini personale: consente al gating di
+        // saltare il tier limit quando l'utente paga Google direttamente.
+        service.setHasPersonalGeminiKey(user.geminiApiKey.isNotEmpty);
+        // Dopo login/profile refresh riallinea al backend se i dati di
+        // quota sono vecchi (o non ancora caricati).
+        service.refreshIfStale();
+      }
       return service;
     },
   ),

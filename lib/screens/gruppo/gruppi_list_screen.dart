@@ -21,7 +21,6 @@ class GruppiListScreen extends StatefulWidget {
 }
 
 class _GruppiListScreenState extends State<GruppiListScreen> {
-  bool _isLoading = true;
   bool _isRefreshing = false;
   bool _cacheChecked = false;
   List<Gruppo> _gruppi = [];
@@ -49,7 +48,6 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
     final cachedGruppi = await _storageService.getStoredData('gruppi');
     if (cachedGruppi.isNotEmpty) {
       _gruppi = cachedGruppi.map((e) => Gruppo.fromJson(e as Map<String, dynamic>)).toList();
-      _isLoading = false;
     }
     if (mounted) setState(() { _isRefreshing = true; _cacheChecked = true; });
 
@@ -97,7 +95,7 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
       debugPrint('Errore caricamento gruppi: $e');
     }
 
-    if (mounted) setState(() { _isLoading = false; _isRefreshing = false; });
+    if (mounted) setState(() { _isRefreshing = false; });
   }
 
   void _navigateToGruppoDetail(int gruppoId) {
@@ -120,10 +118,6 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
   }
 
   Future<void> _handleInvito(InvitoGruppo invito, bool accept) async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final s = Provider.of<LanguageService>(context, listen: false).strings;
       if (accept) {
@@ -156,9 +150,6 @@ class _GruppiListScreenState extends State<GruppiListScreen> {
           backgroundColor: ThemeConstants.errorColor,
         ),
       );
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 

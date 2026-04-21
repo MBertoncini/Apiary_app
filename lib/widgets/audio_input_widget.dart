@@ -1,6 +1,7 @@
 // lib/widgets/audio_input_widget.dart
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../services/storage_service.dart';
 import '../services/ai_quota_service.dart';
 import '../services/debug_trace.dart';
 import '../services/language_service.dart';
+import '../l10n/app_strings.dart';
 
 /// Widget per la modalità "Registra audio → Gemini multimodale" con supporto
 /// per inserimento multiplo (multi-arnia).
@@ -46,7 +48,8 @@ class AudioInputWidget extends StatefulWidget {
 
 enum _RecState { idle, recording, recorded, extending, processing, processingQueue, error }
 
-class _AudioInputWidgetState extends State<AudioInputWidget> {
+class _AudioInputWidgetState extends State<AudioInputWidget>
+    with SingleTickerProviderStateMixin {
   final AudioRecorderService _recorder = AudioRecorderService();
   final AudioQueueService _audioQueue = AudioQueueService();
   final AudioPlayer _player = AudioPlayer();
@@ -83,9 +86,21 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   VoiceEntry? _partialEntry;
   List<Map<String, dynamic>> _availableArnie = [];
 
+  // Debug trace panel: collassato di default come icona bug gialla.
+  // Tap → vibra + espande; re-tap → collassa.
+  bool _debugTraceExpanded = false;
+  late final AnimationController _bugShakeController;
+
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   @override
   void initState() {
     super.initState();
+    _bugShakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
     _refreshQueueCount();
     _playerStateSub = _player.onPlayerStateChanged.listen((s) {
       if (mounted) setState(() {
@@ -111,6 +126,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     _positionSub?.cancel();
     _durationSub?.cancel();
     _player.dispose();
+    _bugShakeController.dispose();
     // Pulisce i file pendenti non ancora salvati né processati
     if (_pendingFilePath != null) {
       AudioQueueService.deleteFile(_pendingFilePath!);
@@ -159,8 +175,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     if (!ok) {
       setState(() {
         _state = _RecState.error;
-        _error = 'Impossibile avviare la registrazione. '
-            'Verifica il permesso microfono.';
+        _error = _s.audioInputErrStartMic;
       });
       return;
     }
@@ -188,7 +203,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       DebugTrace.log('widget: _stopRecording FAIL path=null');
       setState(() {
         _state = _RecState.error;
-        _error = 'Registrazione non valida. Riprova.';
+        _error = _s.audioInputErrRecInvalid;
       });
       return;
     }
@@ -209,8 +224,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     if (!ok) {
       setState(() {
         _state = _RecState.error;
-        _error = 'Impossibile avviare la registrazione. '
-            'Verifica il permesso microfono.';
+        _error = _s.audioInputErrStartMic;
       });
       return;
     }
@@ -232,7 +246,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     if (newPath == null) {
       setState(() {
         _state = _RecState.error;
-        _error = 'Estensione non valida. Riprova.';
+        _error = _s.audioInputErrExtInvalid;
       });
       return;
     }
@@ -320,8 +334,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       setState(() {
         _partialEntry = entry.copyWith(audioFilePath: filePath);
         _state = _RecState.error;
-        _error = 'Numero arnia non rilevato dall\'audio. '
-            'Seleziona l\'arnia dal menu oppure aggiungi audio con il numero.';
+        _error = _s.audioInputErrNoArniaDetected;
         // _pendingFilePath rimane per "Continua registrazione"
       });
       return false;
@@ -330,8 +343,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         _partialEntry = null;
         _availableArnie = [];
         _state = _RecState.error;
-        _error = widget.processor.error ??
-            'Non è stato possibile estrarre dati dall\'audio. Riprova.';
+        _error = widget.processor.error ?? _s.audioInputErrExtract;
         // _pendingFilePath rimane valorizzato per "Riprova"
       });
       return false;
@@ -405,26 +417,26 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     if (!hasData) return;
 
     final count = _entries.length + _queueCount;
+    final s = _s;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Annulla sessione?'),
+        title: Text(s.audioInputAbandonTitle),
         content: Text(
           count == 0
-              ? 'La registrazione corrente verrà eliminata.'
-              : 'Verranno eliminate tutte le $count registrazione/i '
-                  'della sessione.',
+              ? s.audioInputAbandonMsgSingle
+              : s.audioInputAbandonMsgMulti(count),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('INDIETRO'),
+            child: Text(s.audioInputBtnBack),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('ELIMINA TUTTO',
-                style: TextStyle(color: Colors.white)),
+            child: Text(s.audioInputBtnDeleteAll,
+                style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -475,6 +487,12 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
 
   Future<void> _processQueue() async {
     DebugTrace.log('widget: _processQueue ENTER (button pressed)');
+    // Leggo i provider prima di qualsiasi await per evitare uso di context
+    // attraverso async gaps (analyzer: use_build_context_synchronously).
+    final quotaService =
+        Provider.of<AiQuotaService>(context, listen: false);
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+
     final queue = await _audioQueue.getQueue();
     DebugTrace.log('widget: _processQueue queue.length=${queue.length}');
     if (queue.isEmpty) {
@@ -482,14 +500,59 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       return;
     }
 
+    // Pre-flight quota check: evita di consumare chiamate Gemini oltre il
+    // limite residuo. Il just-in-time check nel processor può perdere colpi
+    // se `AiQuotaService.refresh()` azzera l'overlay ottimistico a metà coda.
+    await quotaService.refreshIfStale();
+    if (!mounted) return;
+    final remaining = quotaService.remainingFor(AiFeature.voice);
+    int effectiveCount = queue.length;
+    if (remaining != -1) {
+      if (remaining <= 0) {
+        DebugTrace.log('widget: _processQueue BLOCKED remaining=0');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(s.voiceQueuePreflightExhausted),
+            backgroundColor: Colors.red.shade700,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+      if (queue.length > remaining) {
+        DebugTrace.log(
+            'widget: _processQueue PREFLIGHT queue=${queue.length} remaining=$remaining');
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(s.voiceQueuePreflightTitle),
+            content: Text(
+                s.voiceQueuePreflightMessage(remaining, queue.length)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(s.voiceQueuePreflightCancel),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(s.voiceQueuePreflightProceed),
+              ),
+            ],
+          ),
+        );
+        if (confirm != true || !mounted) return;
+        effectiveCount = remaining;
+      }
+    }
+
     setState(() {
       _state = _RecState.processingQueue;
-      _queueTotalCount = queue.length;
+      _queueTotalCount = effectiveCount;
       _queueProcessedCount = 0;
       _error = null;
     });
 
-    for (int i = 0; i < queue.length; i++) {
+    for (int i = 0; i < effectiveCount; i++) {
       final item = queue[i];
       final id = item['id'] as String;
       final filePath = item['file_path'] as String?;
@@ -502,7 +565,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         continue;
       }
 
-      DebugTrace.log('widget: _processQueue item ${i + 1}/${queue.length} → gemini');
+      DebugTrace.log('widget: _processQueue item ${i + 1}/$effectiveCount → gemini');
       widget.processor.setContext(apiarioId, apiarioNome);
       final entry = await widget.processor.processAudioInput(filePath);
       DebugTrace.log('widget: _processQueue item ${i + 1} result='
@@ -524,8 +587,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           _partialEntry = entry.copyWith(audioFilePath: filePath);
           _pendingFilePath = filePath;
           _state = _RecState.error;
-          _error = 'Numero arnia non rilevato in una registrazione. '
-              'Seleziona l\'arnia dal menu oppure aggiungi audio con il numero.';
+          _error = s.audioInputErrNoArniaQueue;
           _queueProcessedCount++;
         });
         break; // attende la risoluzione manuale prima di continuare
@@ -537,8 +599,11 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Registrazione ${i + 1}/${ queue.length} non elaborata: '
-                '${widget.processor.error ?? 'errore sconosciuto'}',
+                s.audioInputRecFailed(
+                  i + 1,
+                  effectiveCount,
+                  widget.processor.error ?? s.audioInputErrUnknown,
+                ),
               ),
               backgroundColor: Colors.red.shade700,
               duration: const Duration(seconds: 4),
@@ -550,7 +615,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         setState(() => _queueProcessedCount++);
       }
 
-      if (i < queue.length - 1 &&
+      if (i < effectiveCount - 1 &&
           !widget.processor.lastCallWasRateLimit &&
           !widget.processor.lastCallWasNetworkError) {
         await Future.delayed(const Duration(seconds: 5));
@@ -601,6 +666,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     // Ascolta il gate centralizzato per disabilitare reattivamente il mic.
     final quotaService = context.watch<AiQuotaService>();
     final voiceQuotaExceeded = !quotaService.canCall(AiFeature.voice);
+    // Rebuild on language change so localized text refreshes live.
+    context.watch<LanguageService>();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -756,8 +823,9 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
                 const SizedBox(height: 14),
                 Text(
                   _state == _RecState.processingQueue
-                      ? 'Coda: $_queueProcessedCount/$_queueTotalCount…'
-                      : 'Gemini sta elaborando…',
+                      ? _s.audioInputQueueProgress(
+                          _queueProcessedCount, _queueTotalCount)
+                      : _s.audioInputGeminiProcessing,
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
@@ -997,7 +1065,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         ),
         const SizedBox(height: 8),
         Text(
-          isPlaying ? 'In ascolto…' : 'Ascolta prima di inviare',
+          isPlaying ? _s.audioInputListening : _s.audioInputListenBeforeSend,
           style: TextStyle(
               fontSize: 12, color: Colors.indigo.shade400),
         ),
@@ -1020,7 +1088,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Seleziona arnia:',
+            _s.audioInputSelectArnia,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -1042,13 +1110,13 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
                   borderRadius: BorderRadius.circular(6),
                   borderSide: BorderSide(color: Colors.amber.shade400)),
             ),
-            hint: const Text('Scegli arnia…',
-                style: TextStyle(fontSize: 13)),
+            hint: Text(_s.audioInputChooseArnia,
+                style: const TextStyle(fontSize: 13)),
             items: _availableArnie.map((a) {
               final num = a['numero'] as int? ?? 0;
               return DropdownMenuItem<Map<String, dynamic>>(
                 value: a,
-                child: Text('Arnia $num',
+                child: Text(_s.audioInputArniaItem(num),
                     style: const TextStyle(fontSize: 13)),
               );
             }).toList(),
@@ -1075,7 +1143,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
                   size: 15, color: ThemeConstants.primaryColor),
               const SizedBox(width: 6),
               Text(
-                'Batch: ${_entries.length} arni${_entries.length == 1 ? 'a' : 'e'}',
+                _s.audioInputBatchHeader(_entries.length),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1091,8 +1159,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
               children: _entries.asMap().entries.map((e) {
                 final entry = e.value;
                 final label = entry.arniaNumero != null
-                    ? 'Arnia ${entry.arniaNumero}'
-                    : 'Entry ${e.key + 1}';
+                    ? _s.audioInputArniaItem(entry.arniaNumero!)
+                    : _s.audioInputRecordingItem(e.key + 1);
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: Chip(
@@ -1133,7 +1201,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
                   size: 15, color: Colors.orange.shade700),
               const SizedBox(width: 6),
               Text(
-                'Sessione: ${_queueItems.length} registrazione/i da inviare',
+                _s.audioInputSessionHeader(_queueItems.length),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1164,7 +1232,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
             final durStr =
                 durSec != null ? _formatDuration(durSec) : null;
             final label = [
-              'Registrazione ${idx + 1}',
+              _s.audioInputRecordingItem(idx + 1),
               if (timeStr != null) timeStr,
               if (durStr != null) durStr,
             ].join(' · ');
@@ -1243,8 +1311,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           buttons.add(OutlinedButton.icon(
             onPressed: _startExtending,
             icon: const Icon(Icons.mic, size: 16, color: Colors.amber),
-            label: const Text('Aggiungi audio con n° arnia',
-                style: TextStyle(color: Colors.amber)),
+            label: Text(_s.audioInputBtnAddAudioWithNum,
+                style: const TextStyle(color: Colors.amber)),
             style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.amber)),
           ));
@@ -1252,8 +1320,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
             onPressed: _discardRecording,
             icon: const Icon(Icons.delete_outline,
                 size: 16, color: Colors.red),
-            label: const Text('Scarta',
-                style: TextStyle(color: Colors.red)),
+            label: Text(_s.audioInputBtnDiscard,
+                style: const TextStyle(color: Colors.red)),
             style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.red)),
           ));
@@ -1266,7 +1334,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
               await _processFile(path);
             },
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Riprova'),
+            label: Text(_s.audioInputBtnRetry),
             style: ElevatedButton.styleFrom(
               backgroundColor: ThemeConstants.primaryColor,
               foregroundColor: Colors.white,
@@ -1279,8 +1347,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
               onPressed: _saveToQueue,
               icon: const Icon(Icons.save_outlined,
                   color: Colors.orange, size: 16),
-              label: const Text('Salva in coda',
-                  style: TextStyle(color: Colors.orange)),
+              label: Text(_s.audioInputBtnSaveQueue,
+                  style: const TextStyle(color: Colors.orange)),
               style: OutlinedButton.styleFrom(
                   side:
                       const BorderSide(color: Colors.orange)),
@@ -1290,8 +1358,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
             onPressed: _discardRecording,
             icon: const Icon(Icons.delete_outline,
                 size: 16, color: Colors.red),
-            label: const Text('Scarta',
-                style: TextStyle(color: Colors.red)),
+            label: Text(_s.audioInputBtnDiscard,
+                style: const TextStyle(color: Colors.red)),
             style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.red)),
           ));
@@ -1303,7 +1371,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
               _error = null;
             }),
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Riprova'),
+            label: Text(_s.audioInputBtnRetry),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.grey.shade200,
               foregroundColor: Colors.black87,
@@ -1318,7 +1386,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
           buttons.add(ElevatedButton.icon(
             onPressed: _processQueue,
             icon: const Icon(Icons.auto_awesome, size: 18),
-            label: Text('Invia tutto a Gemini ($_queueCount)'),
+            label: Text(_s.audioInputBtnSendAll(_queueCount)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade700,
               foregroundColor: Colors.white,
@@ -1349,7 +1417,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       buttons.add(ElevatedButton.icon(
         onPressed: _goToVerification,
         icon: const Icon(Icons.stop_circle_outlined, size: 20),
-        label: Text('STOP – Rivedi (${_entries.length})'),
+        label: Text(_s.audioInputBtnStopReview(_entries.length)),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green.shade700,
           foregroundColor: Colors.white,
@@ -1371,7 +1439,7 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
         onPressed: _abandonSession,
         icon: Icon(Icons.cancel_outlined,
             size: 16, color: Colors.red.shade400),
-        label: Text('Annulla sessione',
+        label: Text(_s.audioInputBtnAbandon,
             style: TextStyle(color: Colors.red.shade600)),
         style: OutlinedButton.styleFrom(
             side: BorderSide(color: Colors.red.shade300)),
@@ -1382,8 +1450,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
       // Nessun bottone → hint "Premi per registrare"
       return Text(
         _entries.isEmpty && _queueCount == 0
-            ? 'Premi il microfono per iniziare'
-            : 'Registra la prossima arnia',
+            ? _s.audioInputHintPressMicToStart
+            : _s.audioInputHintRecordNext,
         style: TextStyle(
             fontSize: 13,
             color: ThemeConstants.textSecondaryColor),
@@ -1398,21 +1466,95 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
     );
   }
 
-  // ── Debug trace panel (TEMPORANEO) ────────────────────────────────────────
+  // ── Debug trace panel (collassato di default) ────────────────────────────
+
+  void _toggleDebugTrace() {
+    // Anima il bug (vibrazione) ogni volta che l'utente tocca l'icona.
+    _bugShakeController.forward(from: 0);
+    setState(() => _debugTraceExpanded = !_debugTraceExpanded);
+  }
 
   Widget _buildDebugTracePanel() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBugToggle(),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            alignment: Alignment.topLeft,
+            child: _debugTraceExpanded
+                ? _buildDebugTraceLog()
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBugToggle() {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_bugShakeController, DebugTrace.instance]),
+      builder: (_, __) {
+        // Sin-based shake con decadimento: oscilla di ±6px e si ferma.
+        final t = _bugShakeController.value;
+        final decay = (1 - t);
+        final dx = math.sin(t * math.pi * 6) * 6 * decay;
+        final entries = DebugTrace.instance.entries;
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: _toggleDebugTrace,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Transform.translate(
+                  offset: Offset(dx, 0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.bug_report,
+                          color: Colors.amber, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${entries.length}',
+                        style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDebugTraceLog() {
     return AnimatedBuilder(
       animation: DebugTrace.instance,
       builder: (_, __) {
         final entries = DebugTrace.instance.entries;
         return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: const EdgeInsets.only(top: 4),
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.88),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
+            border: Border.all(
+                color: Colors.amber.withValues(alpha: 0.5)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1421,12 +1563,12 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
               Row(
                 children: [
                   const Icon(Icons.bug_report,
-                      color: Colors.greenAccent, size: 14),
+                      color: Colors.amber, size: 14),
                   const SizedBox(width: 4),
                   Text(
                     'TRACE (${entries.length})',
                     style: const TextStyle(
-                      color: Colors.greenAccent,
+                      color: Colors.amber,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
@@ -1516,24 +1658,25 @@ class _AudioInputWidgetState extends State<AudioInputWidget> {
   }
 
   String _statusText() {
+    final s = _s;
     switch (_state) {
       case _RecState.recording:
-        return 'Registrazione in corso…';
+        return s.audioInputStatusRecording;
       case _RecState.extending:
-        return 'Aggiunta audio in corso… (+${_formatDuration(_seconds)})';
+        return s.audioInputStatusExtending(_formatDuration(_seconds));
       case _RecState.processing:
-        return 'Invio a Gemini…';
+        return s.audioInputStatusProcessing;
       case _RecState.processingQueue:
-        return 'Elaborazione coda: $_queueProcessedCount/$_queueTotalCount…';
+        return s.audioInputStatusProcessingQueue(
+            _queueProcessedCount, _queueTotalCount);
       case _RecState.error:
-        return 'Errore elaborazione';
+        return s.audioInputStatusError;
       case _RecState.recorded:
-        return 'Salvataggio in sessione…';
+        return s.audioInputStatusSaving;
       case _RecState.idle:
-        if (_entries.isNotEmpty) return 'Registra la prossima arnia';
-        if (_queueCount > 0)
-          return 'Registra le prossime arnie o invia tutto a Gemini';
-        return 'Premi per iniziare la registrazione';
+        if (_entries.isNotEmpty) return s.audioInputStatusIdleNext;
+        if (_queueCount > 0) return s.audioInputStatusIdleSend;
+        return s.audioInputStatusIdlePrompt;
     }
   }
 }

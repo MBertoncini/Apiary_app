@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
@@ -217,19 +218,21 @@ class ExportService {
                     4: const pw.FlexColumnWidth(1),
                     5: const pw.FlexColumnWidth(3),
                   },
-                  header: _buildTableHeader(),
-                  children: controlli.map<pw.TableRow>((controllo) {
-                    return pw.TableRow(
-                      children: [
-                        _buildTableCell(DateFormatter.formatDate(controllo.data)),
-                        _buildTableCell(controllo.telainiScorte.toString()),
-                        _buildTableCell(controllo.telainiCovata.toString()),
-                        _buildTableCell(controllo.presenzaRegina ? 'Sì' : 'No'),
-                        _buildTableCell(controllo.problemiSanitari ? 'Sì' : 'No'),
-                        _buildTableCell(controllo.note ?? '-'),
-                      ],
-                    );
-                  }).toList(),
+                  children: [
+                    _buildTableHeader(),
+                    ...controlli.map<pw.TableRow>((controllo) {
+                      return pw.TableRow(
+                        children: [
+                          _buildTableCell(DateFormatter.formatDate(controllo.data)),
+                          _buildTableCell(controllo.telainiScorte.toString()),
+                          _buildTableCell(controllo.telainiCovata.toString()),
+                          _buildTableCell(controllo.presenzaRegina ? 'Sì' : 'No'),
+                          _buildTableCell(controllo.problemiSanitari ? 'Sì' : 'No'),
+                          _buildTableCell(controllo.note ?? '-'),
+                        ],
+                      );
+                    }),
+                  ],
                 ),
         ],
       ),

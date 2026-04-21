@@ -28,6 +28,7 @@ class GruppoDetailScreen extends StatefulWidget {
 
 class _GruppoDetailScreenState extends State<GruppoDetailScreen>
     with TickerProviderStateMixin {
+  // ignore: unused_field
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _cacheChecked = false;

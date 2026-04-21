@@ -37,7 +37,6 @@ class ArniaDetailScreen extends StatefulWidget {
 }
 
 class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTickerProviderStateMixin {
-  bool _isLoading = false;
   bool _isRefreshing = false;
   Map<String, dynamic>? _arnia;
   Map<String, dynamic>? _apiario;
@@ -163,8 +162,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
 
         // Carica melari
         final allMelari = await storageService.getStoredData('melari');
-        _melari = allMelari.where((m) => m['arnia'] == widget.arniaId).toList();
-        _melari.sort((a, b) => b['data_posizionamento'].compareTo(a['data_posizionamento']));
+        _melari = allMelari
+            .where((m) => (m['arnia_id'] ?? m['arnia']) == widget.arniaId)
+            .toList();
+        _melari.sort((a, b) {
+          final da = (a['data_posizionamento'] ?? '') as String;
+          final db = (b['data_posizionamento'] ?? '') as String;
+          return db.compareTo(da);
+        });
 
         // Carica analisi telaini
         try {

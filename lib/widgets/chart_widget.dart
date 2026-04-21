@@ -12,7 +12,6 @@ class ChartWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chartType = chartData['chart_type'] ?? 'line';
-    final title = chartData['title'] ?? 'Grafico';
     final data = chartData['data'] ?? [];
     
     if (data.isEmpty) {

@@ -1,6 +1,5 @@
 // widgets/bee_joke_bubble.dart
 import 'package:flutter/material.dart';
-import '../services/jokes_service.dart';
 
 class BeeJokeBubble extends StatelessWidget {
   final VoidCallback onTap;

@@ -544,7 +544,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
             children: [
               ContextualHint(
                 prefKey: 'controllo_form_v1',
-                message: '📋 Registra lo stato dell\'arnia: telaini di covata (rossi), scorte (gialli) e presenza della regina. Più dettagli inserisci, meglio puoi monitorare la salute della colonia.',
+                message: _s.controlloFormIntroHint,
               ),
               // Banner modalità offline
               if (!_isOnline)

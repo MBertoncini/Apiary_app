@@ -32,7 +32,6 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   AppStrings get _s =>
       Provider.of<LanguageService>(context, listen: false).strings;
 
-  bool _isLoading = false;
   bool _isRefreshing = false;
   Map<String, dynamic>? _apiario;
   List<dynamic> _arnie = [];

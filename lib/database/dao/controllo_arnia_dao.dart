@@ -1,5 +1,4 @@
 import '../database_helper.dart';
-import '../../models/controllo_arnia.dart';
 
 class ControlloArniaDao {
   final DatabaseHelper _dbHelper = DatabaseHelper();

@@ -172,14 +172,17 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
           )));
         }
       }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_isEditing ? _s.smielaturaFormUpdatedOk : _s.smielaturaFormCreatedOk)),
       );
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaFormError(e.toString()))));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaFormError(e.toString()))));
+      }
     } finally {
-      setState(() { _isLoading = false; });
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
@@ -212,7 +215,12 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                     DropdownButtonFormField<int>(
                       value: _selectedApiarioId,
                       decoration: InputDecoration(labelText: s.smielaturaFormLblApiario, border: const OutlineInputBorder()),
-                      items: _apiari.map((a) => DropdownMenuItem<int>(value: a['id'], child: Text(a['nome']))).toList(),
+                      items: _apiari
+                          .map((a) => DropdownMenuItem<int>(
+                                value: a['id'] as int?,
+                                child: Text(a['nome']?.toString() ?? '${s.labelApiario} ${a["id"]}'),
+                              ))
+                          .toList(),
                       onChanged: (val) => setState(() {
                         _selectedApiarioId = val;
                         _selectedMelariIds.clear();

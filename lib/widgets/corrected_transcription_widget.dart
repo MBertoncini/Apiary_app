@@ -136,7 +136,6 @@ class _CorrectionChipState extends State<_CorrectionChip>
   @override
   Widget build(BuildContext context) {
     final fontSize = widget.baseStyle.fontSize ?? 15;
-    final textColor = widget.baseStyle.color ?? ThemeConstants.textPrimaryColor;
 
     return AnimatedBuilder(
       animation: _ctrl,

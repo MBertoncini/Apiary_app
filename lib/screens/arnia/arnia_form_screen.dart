@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../models/arnia.dart';
-import '../../models/apiario.dart';  // Import the Apiario model
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';  // Import StorageService
 import '../../widgets/attrezzatura_prompt_dialog.dart';
@@ -40,7 +39,6 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
 
   // Campi del form
   int? _apiarioId;
-  String? _apiarioNome;
   int _numero = 1;
   String _colore = 'bianco';
   String _coloreHex = '#FFFFFF';
@@ -49,18 +47,19 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
   String _note = '';
   bool _attiva = true;
 
+  // Nomi localizzati via AppStrings.arniaTypeName; qui solo id + icona.
   static const List<Map<String, String>> _tipiArnia = [
-    {'id': 'dadant',             'nome': 'Dadant-Blatt',                     'icona': '🏠'},
-    {'id': 'langstroth',         'nome': 'Langstroth',                       'icona': '📦'},
-    {'id': 'top_bar',            'nome': 'Top Bar (Kenyana)',                 'icona': '🛖'},
-    {'id': 'warre',              'nome': 'Warré',                            'icona': '🗼'},
-    {'id': 'osservazione',       'nome': 'Arnia da Osservazione',            'icona': '🔭'},
-    {'id': 'pappa_reale',        'nome': 'Pappa Reale / Allevamento Regine', 'icona': '👑'},
-    {'id': 'nucleo_legno',       'nome': 'Nucleo in Legno',                  'icona': '📫'},
-    {'id': 'nucleo_polistirolo', 'nome': 'Nucleo in Polistirolo',            'icona': '📮'},
-    {'id': 'portasciami',        'nome': 'Portasciami / Prendisciame',       'icona': '📦'},
-    {'id': 'apidea',             'nome': 'Apidea / Kieler',                  'icona': '🔹'},
-    {'id': 'mini_plus',          'nome': 'Mini-Plus',                        'icona': '🔸'},
+    {'id': 'dadant',             'icona': '🏠'},
+    {'id': 'langstroth',         'icona': '📦'},
+    {'id': 'top_bar',            'icona': '🛖'},
+    {'id': 'warre',              'icona': '🗼'},
+    {'id': 'osservazione',       'icona': '🔭'},
+    {'id': 'pappa_reale',        'icona': '👑'},
+    {'id': 'nucleo_legno',       'icona': '📫'},
+    {'id': 'nucleo_polistirolo', 'icona': '📮'},
+    {'id': 'portasciami',        'icona': '📦'},
+    {'id': 'apidea',             'icona': '🔹'},
+    {'id': 'mini_plus',          'icona': '🔸'},
   ];
   
   // Opzioni per il colore
@@ -88,7 +87,6 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
     // Se siamo in modalità modifica, carica i dati dell'arnia
     if (widget.arnia != null) {
       _apiarioId = widget.arnia!.apiario;
-      _apiarioNome = widget.arnia!.apiarioNome;
       _numero = widget.arnia!.numero;
       _colore = widget.arnia!.colore;
       _coloreHex = widget.arnia!.coloreHex;
@@ -183,17 +181,15 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
       setState(() {
         _colore = newValue;
         // Aggiorna il colore hex basato sulla selezione
-        Map<String, dynamic>? selectedColor;
+        Map<String, dynamic> selectedColor;
         try {
           selectedColor = _coloriDisponibili.firstWhere((color) => color['id'] == newValue);
         } catch (e) {
           // Se non trova corrispondenza, usa un colore di default
           selectedColor = {'hex': '#6c757d'};
         }
-        
-        if (selectedColor != null) {
-          _coloreHex = selectedColor['hex'];
-        }
+
+        _coloreHex = selectedColor['hex'];
       });
     }
   }
@@ -203,12 +199,6 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
     if (newValue != null) {
       setState(() {
         _apiarioId = newValue;
-        try {
-          final apiario = _apiari.firstWhere((a) => a['id'] == newValue);
-          _apiarioNome = apiario['nome'];
-        } catch (e) {
-          _apiarioNome = 'Apiario $newValue';
-        }
         _numeriUsati = {};
       });
       _loadNumeriUsati(newValue);
@@ -418,7 +408,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                           items: _tipiArnia.map((t) {
                             return DropdownMenuItem<String>(
                               value: t['id'],
-                              child: Text('${t['icona']}  ${t['nome']}'),
+                              child: Text('${t['icona']}  ${s.arniaTypeName(t['id']!)}'),
                             );
                           }).toList(),
                           onChanged: (v) { if (v != null) setState(() => _tipoArnia = v); },

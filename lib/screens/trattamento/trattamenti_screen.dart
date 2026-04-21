@@ -25,6 +25,7 @@ class _TrattamentiScreenState extends State<TrattamentiScreen> with SingleTicker
   late TabController _tabController;
   late ApiService _apiService;
   List<TrattamentoSanitario> _trattamenti = [];
+  // ignore: unused_field
   bool _isLoading = true;
   bool _isRefreshing = true;
   // null = tutti; '' = personali; non-empty = nome gruppo
