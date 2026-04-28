@@ -1,7 +1,7 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/statistiche_service.dart';
-import '../../../services/api_service.dart';
 import '../../../services/ai_quota_local_tracker.dart';
 import '../../../services/ai_quota_service.dart';
 import '../../../services/language_service.dart';
@@ -45,10 +45,7 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
     super.didChangeDependencies();
     if (_service == null) {
       final quotaService = Provider.of<AiQuotaService>(context, listen: false);
-      _service = StatisticheService(
-        Provider.of<ApiService>(context, listen: false),
-        quotaService: quotaService,
-      );
+      _service = context.read<StatisticheService>();
       _tracker.getGroqApiKey().then((key) {
         if (mounted) {
           setState(() => _groqKey = key);
@@ -103,14 +100,24 @@ class _NLQueryTabState extends State<NLQueryTab> with AutomaticKeepAliveClientMi
         _loading = false;
       });
     } catch (e) {
-      String msg = e.toString();
+      final raw = e.toString();
       final s = _s;
-      if (msg.contains('504') || msg.contains('timeout') || msg.contains('lento')) {
+      String msg;
+      if (raw.contains('504') || raw.contains('timeout') || raw.contains('lento')) {
         msg = s.nlQueryErrLento;
-      } else if (msg.contains('400') || msg.contains('sicura') || msg.contains('non posso')) {
+      } else if (raw.contains('400') || raw.contains('sicura') || raw.contains('non posso')) {
         msg = s.nlQueryErrRifiuto;
+      } else if (raw.contains('401') || raw.contains('403')) {
+        // Sessione scaduta o permessi insufficienti.
+        msg = s.nlQueryErrSessione;
+      } else if (raw.contains('500') || raw.contains('502') || raw.contains('503')) {
+        msg = s.nlQueryErrServizio;
       } else {
         msg = s.nlQueryErrGenerico;
+      }
+      // In debug mode mostra anche il dettaglio raw per accelerare il triage.
+      if (kDebugMode) {
+        msg = '$msg\n[debug] $raw';
       }
       setState(() { _error = msg; _loading = false; });
     }

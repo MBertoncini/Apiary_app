@@ -430,6 +430,25 @@ class TrattamentoListItem extends StatelessWidget {
             Expanded(child: deleteButton),
           ],
         );
+      case 'annullato':
+        return Row(
+          children: [
+            // "Ripristina" = annulla l'annullamento (annullato → programmato)
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.restore, size: 16),
+                label: Text(s.trattamentiBtnRipristina),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ).merge(_compactButtonStyle),
+                onPressed: () => _changeStato(context, 'programmato'),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(child: deleteButton),
+          ],
+        );
       default:
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,

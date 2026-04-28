@@ -15,9 +15,12 @@ class ProduzioneAnnualeWidget extends StatefulWidget {
 }
 
 class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
+  static const List<int> _anniOptions = [3, 5, 10];
+
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+  int _anni = 3;
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
@@ -30,7 +33,7 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
   Future<void> _load({bool forceRefresh = false}) async {
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await widget.service.getProduzioneAnnuale(forceRefresh: forceRefresh);
+      final data = await widget.service.getProduzioneAnnuale(anni: _anni, forceRefresh: forceRefresh);
       setState(() { _data = data; _loading = false; });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
@@ -46,15 +49,30 @@ class _ProduzioneAnnualeWidgetState extends State<ProduzioneAnnualeWidget> {
       error: _error,
       onRetry: () => _load(forceRefresh: true),
       loadingHeight: 200,
+      headerTrailing: DropdownButton<int>(
+        value: _anni,
+        isDense: true,
+        underline: const SizedBox.shrink(),
+        style: const TextStyle(fontSize: 13, color: Colors.black87),
+        items: _anniOptions
+            .map((n) => DropdownMenuItem<int>(value: n, child: Text('$n')))
+            .toList(),
+        onChanged: (v) {
+          if (v == null || v == _anni) return;
+          setState(() => _anni = v);
+          _load(forceRefresh: true);
+        },
+      ),
       child: _data != null ? _buildChart() : const SizedBox.shrink(),
     );
   }
 
   Widget _buildChart() {
-    final anni = List<String>.from(_data!['anni'] ?? []);
-    final kgList = List<double>.from((_data!['kg'] as List).map((v) => (v as num).toDouble()));
+    final anni = List<String>.from(_data?['anni'] ?? const []);
+    final kgRaw = (_data?['kg'] as List?) ?? const [];
+    final kgList = kgRaw.map((v) => (v is num ? v.toDouble() : 0.0)).toList();
 
-    if (anni.isEmpty) {
+    if (anni.isEmpty || kgList.isEmpty) {
       return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardProdTipoNessuno)));
     }
 

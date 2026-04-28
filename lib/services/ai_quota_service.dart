@@ -40,7 +40,7 @@ enum AiQuotaBlock {
 ///
 /// Unica fonte di verità per limiti, utilizzo, reset e blocchi per chat,
 /// voice (Gemini) e stats (Groq / NL query). I singoli service (ChatService,
-/// GeminiAudioProcessor, GeminiDataProcessor, StatisticheService) devono:
+/// GeminiAudioProcessor, StatisticheService) devono:
 ///
 /// 1. Chiamare [canCall] PRIMA di emettere la richiesta.
 /// 2. Chiamare [recordOptimisticCall] dopo un 200 OK (se il backend non
@@ -91,6 +91,13 @@ class AiQuotaService extends ChangeNotifier {
   /// Cool-down breve per rate-limit burst del provider (per-minute), che
   /// **non** va marcato come quota giornaliera esaurita.
   DateTime? _voiceBurstCooldownUntil;
+
+  /// True mentre [_flushPendingVoice] sta replayando la coda. In quella
+  /// finestra il backend sta incrementando `voice_today` ma i record
+  /// pending sono ancora contati dall'overlay locale, generando un
+  /// conteggio doppio nel counter UI fino al GET successivo. Per evitarlo
+  /// escludiamo `_pendingVoiceCalls.length` da [usedFor] durante il flush.
+  bool _flushInProgress = false;
 
   Timer? _resetTimer;
   Future<void>? _inFlightRefresh;
@@ -205,15 +212,27 @@ class AiQuotaService extends ChangeNotifier {
             backend = _intFrom(usage['stats_today']);
           } else {
             final system = _quotaData?['system'] as Map?;
-            backend = system != null
-                ? _intFrom(system['requests_today'])
-                : _intFrom(usage['stats_today']);
+            // Preferisce system.requests_today se disponibile, altrimenti
+            // fallback al contatore personale (se presente) o 0.
+            if (system != null && system.containsKey('requests_today')) {
+              backend = _intFrom(system['requests_today']);
+            } else {
+              backend = _intFrom(usage['stats_today']);
+            }
           }
           break;
       }
+    } else if (feature == AiFeature.stats && !_hasPersonalGroqKey) {
+      // Se _quotaData è parziale o null, prova a leggere comunque il sistema
+      final system = _quotaData?['system'] as Map?;
+      if (system != null) {
+        backend = _intFrom(system['requests_today']);
+      }
     }
     final pending =
-        feature == AiFeature.voice ? _pendingVoiceCalls.length : 0;
+        feature == AiFeature.voice && !_flushInProgress
+            ? _pendingVoiceCalls.length
+            : 0;
     return backend + (_optimistic[feature] ?? 0) + pending;
   }
 
@@ -224,7 +243,7 @@ class AiQuotaService extends ChangeNotifier {
     return backend +
         (_optimistic[AiFeature.chat] ?? 0) +
         (_optimistic[AiFeature.voice] ?? 0) +
-        _pendingVoiceCalls.length;
+        (_flushInProgress ? 0 : _pendingVoiceCalls.length);
   }
 
   int remainingFor(AiFeature feature) {
@@ -321,12 +340,118 @@ class AiQuotaService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Aggiorna i contatori stats/sistema dopo una NL query riuscita.
+  /// Se il backend ha incluso i nuovi valori nella risposta, sincronizza
+  /// lo stato locale per evitare flickering durante il refresh.
+  void recordStatsCall(Map<String, dynamic> data) {
+    bool changed = false;
+    _quotaData ??= <String, dynamic>{};
+    
+    final usageMap = Map<String, dynamic>.from(
+        (_quotaData?['usage'] as Map?) ?? const <String, dynamic>{});
+    final systemMap = Map<String, dynamic>.from(
+        (_quotaData?['system'] as Map?) ?? const <String, dynamic>{});
+
+    // 1. Contatore personale stats_today
+    final int? newStats = _intFromMaybe(data['stats_today']) ??
+        (data['usage'] is Map ? _intFromMaybe(data['usage']['stats_today']) : null);
+    if (newStats != null) {
+      final current = _intFrom(usageMap['stats_today']);
+      if (newStats > current) {
+        usageMap['stats_today'] = newStats;
+        _quotaData!['usage'] = usageMap;
+        changed = true;
+      }
+    }
+
+    // 2. Contatore pool di sistema requests_today
+    final int? newSystem = _intFromMaybe(data['requests_today']) ??
+        (data['system'] is Map ? _intFromMaybe(data['system']['requests_today']) : null);
+    if (newSystem != null) {
+      final current = _intFrom(systemMap['requests_today']);
+      if (newSystem > current) {
+        systemMap['requests_today'] = newSystem;
+        _quotaData!['system'] = systemMap;
+        changed = true;
+      }
+    }
+
+    // Decrementa l'overlay ottimistico se abbiamo ricevuto una conferma
+    final currentOpt = _optimistic[AiFeature.stats] ?? 0;
+    if (currentOpt > 0) {
+      _optimistic[AiFeature.stats] = currentOpt - 1;
+      changed = true;
+    }
+
+    if (changed) {
+      _maybeMarkOnLimit(AiFeature.stats);
+      notifyListeners();
+    }
+  }
+
   /// Se l'utilizzo corrente ha raggiunto/superato il limite, imposta il mark
   /// di esaurimento. Scade naturalmente al prossimo reset giornaliero.
   void _maybeMarkOnLimit(AiFeature feature) {
     final limit = limitFor(feature);
     if (limit > 0 && usedFor(feature) >= limit) {
       _markedExceededAt[feature] ??= DateTime.now().toUtc();
+    }
+  }
+
+  /// Notifica al backend che è stata effettuata una chiamata chat (Gemini
+  /// viene invocato direttamente dal client). Usa l'endpoint esistente
+  /// aiChatUrl ma segnala che è solo per registrazione quota.
+  Future<void> recordChatCallToBackend({String? model}) async {
+    try {
+      final payload = <String, dynamic>{
+        'record_only': true,
+        'message': 'Client-side Gemini call'
+      };
+      if (model != null) payload['model'] = model;
+      
+      final data = await _apiService.post(
+        ApiConstants.aiChatUrl,
+        payload,
+      );
+      
+      if (data is Map && data.isNotEmpty) {
+        final usageMap = data['usage'];
+        final int? newCount = _intFromMaybe(data['chat_today']) ??
+            (usageMap is Map ? _intFromMaybe(usageMap['chat_today']) : null);
+            
+        if (newCount != null) {
+          final currentUsage = Map<String, dynamic>.from(
+              (_quotaData?['usage'] as Map?) ?? const <String, dynamic>{});
+          
+          final currentChat = _intFrom(currentUsage['chat_today']);
+          final mergedChat = newCount > currentChat ? newCount : currentChat;
+          currentUsage['chat_today'] = mergedChat;
+          
+          // Sincronizza anche il totale
+          final currentTotal = _intFrom(currentUsage['total_today']);
+          final int? backendTotal = _intFromMaybe(data['total_today']) ??
+              (usageMap is Map ? _intFromMaybe(usageMap['total_today']) : null);
+          
+          final chatDelta = mergedChat - currentChat;
+          final bumpedTotal = currentTotal + (chatDelta > 0 ? chatDelta : 0);
+          final nextTotal = backendTotal != null && backendTotal > bumpedTotal
+              ? backendTotal
+              : bumpedTotal;
+              
+          currentUsage['total_today'] = nextTotal;
+          _quotaData ??= <String, dynamic>{};
+          _quotaData!['usage'] = currentUsage;
+          
+          // Decrementa l'overlay ottimistico
+          final currentOpt = _optimistic[AiFeature.chat] ?? 0;
+          _optimistic[AiFeature.chat] = currentOpt > 0 ? currentOpt - 1 : 0;
+          
+          _maybeMarkOnLimit(AiFeature.chat);
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('[AiQuotaService] recordChatCallToBackend error: $e');
     }
   }
 
@@ -339,7 +464,22 @@ class AiQuotaService extends ChangeNotifier {
   /// Se il backend risponde con i contatori aggiornati, sincronizza
   /// `_quotaData` e azzera l'overlay ottimistico della feature voice.
   /// Se risponde 429 (tier esaurito), marca la feature come esaurita.
+  ///
+  /// Skip se l'utente ha una chiave Gemini personale: paga Google
+  /// direttamente, non deve consumare il pool di tier né inflater
+  /// `voice_today` / `total_today` (che mostrerebbero il banner paywall
+  /// con valori non reali).
   Future<void> recordVoiceCallToBackend({String? model}) async {
+    if (_hasPersonalGeminiKey) {
+      // Decrementa comunque l'overlay ottimistico così l'UI non resta
+      // con un counter "fantasma" dopo una chiamata andata a buon fine.
+      final currentOpt = _optimistic[AiFeature.voice] ?? 0;
+      if (currentOpt > 0) {
+        _optimistic[AiFeature.voice] = currentOpt - 1;
+        notifyListeners();
+      }
+      return;
+    }
     try {
       final payload = <String, dynamic>{};
       if (model != null) payload['model'] = model;
@@ -576,29 +716,34 @@ class AiQuotaService extends ChangeNotifier {
   /// per un nuovo tentativo al prossimo refresh.
   Future<void> _flushPendingVoice() async {
     if (_pendingVoiceCalls.isEmpty) return;
+    _flushInProgress = true;
     final snapshot =
         List<Map<String, dynamic>>.from(_pendingVoiceCalls);
     _pendingVoiceCalls.clear();
     final failed = <Map<String, dynamic>>[];
     bool hit429 = false;
-    for (final call in snapshot) {
-      try {
-        final payload = <String, dynamic>{};
-        final model = call['model'];
-        if (model is String && model.isNotEmpty) {
-          payload['model'] = model;
+    try {
+      for (final call in snapshot) {
+        try {
+          final payload = <String, dynamic>{};
+          final model = call['model'];
+          if (model is String && model.isNotEmpty) {
+            payload['model'] = model;
+          }
+          await _apiService.post(ApiConstants.aiRecordVoiceCallUrl, payload);
+        } on QuotaExceededException {
+          hit429 = true;
+        } catch (e) {
+          failed.add(call);
         }
-        await _apiService.post(ApiConstants.aiRecordVoiceCallUrl, payload);
-      } on QuotaExceededException {
-        hit429 = true;
-      } catch (e) {
-        failed.add(call);
       }
-    }
-    _pendingVoiceCalls.addAll(failed);
-    await _savePendingVoice();
-    if (hit429) {
-      markExceeded(AiFeature.voice);
+      _pendingVoiceCalls.addAll(failed);
+      await _savePendingVoice();
+      if (hit429) {
+        markExceeded(AiFeature.voice);
+      }
+    } finally {
+      _flushInProgress = false;
     }
   }
 

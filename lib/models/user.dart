@@ -20,11 +20,11 @@ enum AiTier {
   String get label {
     switch (this) {
       case AiTier.free:
-        return 'Free';
+        return 'Base (Test)';
       case AiTier.apicoltore:
-        return 'Apicoltore';
+        return 'Sostenitore';
       case AiTier.professionale:
-        return 'Professionale';
+        return 'Tester Avanzato';
     }
   }
 

@@ -38,6 +38,8 @@ class VoiceEntry {
   final String? note;
   final bool? reginaColorata;
   final String? coloreRegina;
+  final bool? sostituzione_scatola;
+  final String? nome_trattamento;
 
   /// Path del file audio originale (solo modalità "Registra audio").
   /// Rimane valorizzato finché il controllo non è salvato nel DB;
@@ -70,6 +72,8 @@ class VoiceEntry {
     this.note,
     this.reginaColorata,
     this.coloreRegina,
+    this.sostituzione_scatola,
+    this.nome_trattamento,
     this.audioFilePath,
   });
   
@@ -99,6 +103,8 @@ class VoiceEntry {
     String? note,
     bool? reginaColorata,
     String? coloreRegina,
+    bool? sostituzione_scatola,
+    String? nome_trattamento,
     String? audioFilePath,
   }) {
     return VoiceEntry(
@@ -126,6 +132,8 @@ class VoiceEntry {
       note: note ?? this.note,
       reginaColorata: reginaColorata ?? this.reginaColorata,
       coloreRegina: coloreRegina ?? this.coloreRegina,
+      sostituzione_scatola: sostituzione_scatola ?? this.sostituzione_scatola,
+      nome_trattamento: nome_trattamento ?? this.nome_trattamento,
       audioFilePath: audioFilePath ?? this.audioFilePath,
     );
   }
@@ -180,6 +188,8 @@ class VoiceEntry {
       note: json['note'],
       reginaColorata: json['regina_colorata'],
       coloreRegina: json['colore_regina'],
+      sostituzione_scatola: json['sostituzione_scatola'],
+      nome_trattamento: json['nome_trattamento'],
       audioFilePath: json['audio_file_path'] as String?,
     );
   }
@@ -213,6 +223,8 @@ class VoiceEntry {
     if (note != null) jsonMap['note'] = note;
     if (reginaColorata != null) jsonMap['regina_colorata'] = reginaColorata;
     if (coloreRegina != null) jsonMap['colore_regina'] = coloreRegina;
+    if (sostituzione_scatola != null) jsonMap['sostituzione_scatola'] = sostituzione_scatola;
+    if (nome_trattamento != null) jsonMap['nome_trattamento'] = nome_trattamento;
     if (audioFilePath != null) jsonMap['audio_file_path'] = audioFilePath;
 
     return jsonMap;

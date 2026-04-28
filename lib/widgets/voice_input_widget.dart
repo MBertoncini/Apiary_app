@@ -94,10 +94,6 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (widget.showBatchMode) ...[
-                const SizedBox(width: 8),
-                _BatchSwitch(voiceManager: voiceManager),
-              ],
             ],
           ),
 
@@ -500,13 +496,9 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget> {
     if (voiceManager.isProcessing) return 'Elaborazione...';
     if (voiceManager.isAwaitingTrigger) return 'In attesa del segnale vocale';
     if (voiceManager.isListening) {
-      return voiceManager.isBatchMode
-          ? 'In ascolto – modalità multipla'
-          : 'In ascolto';
+      return 'In ascolto – modalità multipla';
     }
-    return voiceManager.isBatchMode
-        ? 'Premi per inserimento multiplo'
-        : 'Premi per iniziare';
+    return 'Premi per inserimento multiplo';
   }
 }
 
@@ -608,37 +600,6 @@ class _StatusIcon extends StatelessWidget {
     }
     return Icon(Icons.mic_none,
         size: 18, color: ThemeConstants.textSecondaryColor);
-  }
-}
-
-class _BatchSwitch extends StatelessWidget {
-  final PlatformVoiceInputManager voiceManager;
-  const _BatchSwitch({required this.voiceManager});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Multiplo',
-          style: TextStyle(
-              fontSize: 13, color: ThemeConstants.textSecondaryColor),
-        ),
-        Switch(
-          value: voiceManager.isBatchMode,
-          onChanged: (value) {
-            if (value) {
-              voiceManager.startListening(batchMode: true);
-            } else {
-              voiceManager.exitBatchMode();
-            }
-          },
-          activeColor: ThemeConstants.primaryColor,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ],
-    );
   }
 }
 

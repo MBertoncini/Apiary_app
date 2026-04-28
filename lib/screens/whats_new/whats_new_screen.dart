@@ -7,17 +7,28 @@ import '../../l10n/app_strings.dart';
 import '../../services/language_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHANGELOG — aggiorna questa mappa prima di ogni release
+// CHANGELOG - aggiorna questa mappa prima di ogni release
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
+  9: _ReleaseNotes(
+    version: '1.0.1',
+    buildNumber: 10,
+    date: '27 Aprile 2026',
+    notes: [
+      _Note('🎙️', 'Nuovo', 'Audio multimodale - registrazione migliorata con gestione batch e code offline per i comandi vocali'),
+      _Note('🔑', 'Nuovo', 'Personal Key - i tester e gli utenti esperti possono ora configurare la propria chiave API Gemini nelle impostazioni'),
+      _Note('🍯', 'Miglioramento', 'Database Melari - upgrade v7 con nuovi campi per peso stimato, escludi-regina e stato dei favi'),
+      _Note('📈', 'Miglioramento', 'Dashboard Statistiche - aggiunto widget "Andamento Covata" e ottimizzazione della cache per caricamenti più rapidi'),
+    ],
+  ),
   8: _ReleaseNotes(
     version: '1.0.1',
     buildNumber: 8,
     date: 'Aprile 2026',
     notes: [
-      _Note('🗺️', 'Nuovo', 'Nomadismo — pianifica gli spostamenti dell\'apiario con mappa interattiva e suggerimenti fioriture'),
-      _Note('🌿', 'Nuovo', 'Mappa vegetazione OSM — visualizza le fioriture selvatiche attorno ai tuoi apiari'),
+      _Note('🗺️', 'Nuovo', 'Nomadismo - pianifica gli spostamenti dell\'apiario con mappa interattiva e suggerimenti fioriture'),
+      _Note('🌿', 'Nuovo', 'Mappa vegetazione OSM - visualizza le fioriture selvatiche attorno ai tuoi apiari'),
       _Note('🎤', 'Miglioramento', 'Comandi vocali più precisi con migliore gestione del contesto arnia'),
       _Note('⚡', 'Miglioramento', 'Schermata di dettaglio apiario più veloce con caricamento scheletro'),
       _Note('🔧', 'Fix', 'Risolto problema di sincronizzazione controlli dopo aggiornamento offline'),
@@ -25,8 +36,8 @@ const Map<int, _ReleaseNotes> _changelog = {
   ),
   // ── Template per release future ────────────────────────────────────────────
   // 9: _ReleaseNotes(
-  //   version: '1.0.2',
-  //   buildNumber: 9,
+  //   version: '1.0.1',
+  //   buildNumber: 11,
   //   date: 'Maggio 2026',
   //   notes: [
   //     _Note('✨', 'Nuovo', 'Descrizione funzionalità'),

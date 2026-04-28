@@ -452,6 +452,9 @@ abstract class AppStrings {
   String get trattamentiBtnAnnullaStatus;
   String get trattamentiBtnCompleta;
   String get trattamentiBtnInterrompi;
+  String get trattamentiBtnRipristina;
+  String get trattamentoRestoredOk;
+  String trattamentoRestoreError(String e);
   String get trattamentiDeleteTitle;
   String get trattamentiDeletedOk;
   String trattamentiDeleteError(String e);
@@ -477,6 +480,7 @@ abstract class AppStrings {
   String get trattamentoDetailDeleteMsg;
   String get trattamentoDetailTooltipEdit;
   String get trattamentoDetailTooltipDelete;
+  String get trattamentoDetailTooltipRestore;
   String get trattamentoDetailDeletedOk;
   String trattamentoDetailDeleteError(String e);
   String trattamentoDetailArniaLabel(String id);
@@ -1654,6 +1658,8 @@ abstract class AppStrings {
   String get pagamentoSaldo;
   String get pagamentiTooltipRegistraSaldo;
   String pagamentiSaldoDesc(String da, String a);
+  String pagamentiBilancioWarnSommaQuote(String sum);
+  String get pagamentiBilancioWarnMembriSenzaQuota;
 
   // ── Pagamento detail screen ──
   String get pagamentoDetailTitle;
@@ -1675,7 +1681,10 @@ abstract class AppStrings {
   String get pagamentoFormLabelImporto;
   String get pagamentoFormValidImportoRequired;
   String get pagamentoFormValidImportoInvalid;
+  String get pagamentoFormValidImportoPositivo;
   String get pagamentoFormValidDescRequired;
+  String get pagamentoFormValidDestinatarioDiverso;
+  String get pagamentoFormErrAuth;
   String get pagamentoFormLabelGruppo;
   String get pagamentoFormNoGruppo;
   String get pagamentoFormLabelChiPaga;
@@ -1709,6 +1718,14 @@ abstract class AppStrings {
   String get quoteValidIdRequired;
   String get quoteValidIdInvalid;
   String get quoteValidPercRange;
+  String get quoteAddLabelUtente;
+  String get quoteValidUtenteRequired;
+  String get quoteAddNoMembriDisponibili;
+  String quoteAddErrCaricamentoMembri(String e);
+  String quoteValidSommaSupera100(String sum);
+  String quoteConfirmSommaNon100Title(String sum);
+  String get quoteConfirmSommaNon100Msg;
+  String get quoteConfirmSommaNon100Continue;
   String get quoteLabelFiltroGruppo;
   String get quoteTuttiGruppi;
   String get quoteTooltipAdd;
@@ -1733,6 +1750,7 @@ abstract class AppStrings {
   String get dashboardTitleProduzionePerTipo;
   String get dashboardTitleTrattamenti;
   String get dashboardTitleAndamentoScorte;
+  String get dashboardTitleAndamentoCovata;
   String get dashboardTitlePerformanceRegine;
   String get dashboardTitleQuoteGruppo;
   String dashboardTitleBilancio(int anno);
@@ -1744,6 +1762,15 @@ abstract class AppStrings {
   String get dashboardSaluteCritica;
   String dashboardSaluteTotale(int n);
   String dashboardSaluteCritiche(String list);
+  String get dashboardSaluteInfoTitle;
+  String get dashboardSaluteInfoIntro;
+  String get dashboardSaluteInfoOttima;
+  String get dashboardSaluteInfoAttenzione;
+  String get dashboardSaluteInfoCritica;
+  String get dashboardSaluteInfoSuggerimento;
+  String get dashboardSaluteListaVuota;
+  String dashboardSaluteListaTitolo(String stato);
+  String get dashboardSaluteApiarioPrefisso;
 
   // ── Regine statistiche widget ──
   String get dashboardRegineAttive;
@@ -1772,6 +1799,7 @@ abstract class AppStrings {
 
   // ── Fioriture vicine widget ──
   String get dashboardFioritureNessuna;
+  String get dashboardFioritureFiltroTutti;
 
   // ── Attrezzature widget ──
   String get dashboardAttrezzatureNessuna;
@@ -1786,12 +1814,22 @@ abstract class AppStrings {
   // ── Andamento scorte widget ──
   String get dashboardScorteNessuno;
 
+  // ── Andamento covata widget ──
+  String get dashboardCovataNessuno;
+
   // ── Produzione tipo widget ──
   String get dashboardProdTipoNessuno;
   String dashboardProdTipoTotale(String kg);
 
   // ── Quote gruppo widget ──
   String get dashboardQuoteGruppoSoloCoord;
+  String get dashboardQuoteGruppoNessunaSpesa;
+  String get dashboardQuoteGruppoQuoteIncomplete;
+  String get dashboardQuoteGruppoLabelDovuto;
+  String get dashboardQuoteGruppoLabelPagato;
+  String get dashboardQuoteGruppoLabelSpeso;
+  String get dashboardQuoteGruppoLabelCopertura;
+  String get dashboardQuoteGruppoSelezionaGruppo;
 
   // ── NL Query tab ──
   String get nlQuerySuggerite;
@@ -1807,6 +1845,8 @@ abstract class AppStrings {
   String get nlQueryErrLento;
   String get nlQueryErrRifiuto;
   String get nlQueryErrGenerico;
+  String get nlQueryErrSessione;
+  String get nlQueryErrServizio;
   String get nlQueryInputHint;
 
   // ── Risultato query widget ──
@@ -1914,6 +1954,9 @@ abstract class AppStrings {
   String get voiceVerifTooltipPausa;
   String get voiceVerifTooltipRiproduci;
   String get voiceVerifTooltipStop;
+  String get trattamentoTitle;
+  String get trattamentoFormNomeProdotto;
+  String get voiceVerifInfoCreazioneArnia;
 
   // ── Voice command screen ──
   String get voiceCommandTitle;
@@ -1955,8 +1998,14 @@ abstract class AppStrings {
   String get voiceTutorialStep1Body;
   String get voiceTutorialStep2Title;
   String get voiceTutorialStep2Body;
+  String get voiceTutorialStep2BodyStt;
+  String get voiceTutorialStep2BodyAudio;
   String get voiceTutorialStep3Title;
+  String get voiceTutorialStep3TitleStt;
+  String get voiceTutorialStep3TitleAudio;
   String get voiceTutorialStep3Body;
+  String get voiceTutorialStep3BodyStt;
+  String get voiceTutorialStep3BodyAudio;
   String get voiceTutorialStep4Title;
   String get voiceTutorialStep4Body;
   String get voiceTutorialExamplesTitle;
@@ -1966,6 +2015,8 @@ abstract class AppStrings {
   String get voiceTutorialMultiStopKeyword;
   String get voiceTutorialMultiStopDesc;
   String get voiceTutorialOfflineMsg;
+  String get voiceTutorialOfflineMsgStt;
+  String get voiceTutorialOfflineMsgAudio;
   String get voiceTutorialBtnStart;
 
   // ── Common shared ──

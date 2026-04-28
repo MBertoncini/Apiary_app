@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
 import '../config/api_keys.dart';
+import '../constants/gemini_constants.dart';
 import 'ai_quota_service.dart';
 import 'voice_language_rules.dart';
 import 'debug_trace.dart';
@@ -14,16 +15,6 @@ import 'debug_trace.dart';
 /// Gemini trascrive e struttura i dati in un unico passaggio, eliminando
 /// la dipendenza dal riconoscimento vocale locale.
 class GeminiAudioProcessor extends ChangeNotifier {
-  static const String _geminiBaseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models';
-
-  static const List<String> _modelFallbacks = [
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-3-flash-preview',
-    'gemini-3.1-flash-lite-preview',
-  ];
-
   AiQuotaService? _quotaService;
 
   String? _personalApiKey;
@@ -148,9 +139,9 @@ class GeminiAudioProcessor extends ChangeNotifier {
         }
       });
 
-      for (final model in _modelFallbacks) {
+      for (final model in kGeminiModelFallbacks) {
         final uri = Uri.parse(
-            '$_geminiBaseUrl/$model:generateContent'
+            '$kGeminiBaseUrl/$model:generateContent'
             '?key=${_personalApiKey ?? ApiKeys.geminiApiKey}');
 
         DebugTrace.log('gemini: POST model=$model');
@@ -210,7 +201,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
           final snippet429 = body.length > 200 ? '${body.substring(0, 200)}…' : body;
           DebugTrace.log('gemini: 429 on $model '
               'disabled=$isDisabled daily=$isDailyQuota body=$snippet429');
-          if (isDisabled && model != _modelFallbacks.last) {
+          if (isDisabled && model != kGeminiModelFallbacks.last) {
             continue;
           }
           _lastCallWasRateLimit = true;
@@ -282,7 +273,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
         apiarioId: _contextApiarioId,
         apiarioNome: _contextApiarioNome,
         arniaNumero: _parseInt(json['arnia_numero']),
-        tipoComando: 'controllo',
+        tipoComando: json['tipo_comando'] as String? ?? 'controllo',
         data: DateTime.now(),
         presenzaRegina: json['presenza_regina'] as bool?,
         reginaVista: json['regina_vista'] as bool?,
@@ -301,6 +292,8 @@ class GeminiAudioProcessor extends ChangeNotifier {
         note: json['note'] as String?,
         reginaColorata: json['regina_colorata'] as bool?,
         coloreRegina: json['colore_regina'] as String?,
+        sostituzione_scatola: json['sostituzione_scatola'] as bool?,
+        nome_trattamento: json['nome_trattamento'] as String?,
       );
     } catch (e) {
       _error = 'Errore nel parsing JSON di Gemini: $e';

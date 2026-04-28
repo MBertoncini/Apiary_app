@@ -10,6 +10,7 @@ import 'services/sync_service.dart';
 import 'services/mcp_service.dart';
 import 'services/chat_service.dart';
 import 'services/ai_quota_service.dart';
+import 'services/statistiche_service.dart';
 // Import services
 import 'services/language_service.dart';
 import 'services/voice_feedback_service.dart';
@@ -112,15 +113,42 @@ List<SingleChildWidget> providers = [
     },
   ),
 
-  // Chat Service (depends on API + AiQuotaService) - lazy
-  ChangeNotifierProxyProvider2<ApiService, AiQuotaService, ChatService>(
+  // Statistiche Service (depends on ApiService + AiQuotaService + AuthService)
+  // — singleton app-wide. Senza questo i tab Dashboard/QueryBuilder/NLQuery
+  // creavano istanze separate con cache statica condivisa ma quota gating
+  // incompleto. La dipendenza da AuthService serve a invalidare la cache su
+  // logout: senza, l'utente B vedrebbe i dati di utente A finché non fa
+  // pull-to-refresh.
+  ProxyProvider3<ApiService, AiQuotaService, AuthService, StatisticheService>(
+    update: (_, api, quota, auth, prev) {
+      final svc = prev ?? StatisticheService(api, quotaService: quota);
+      svc.attachQuotaService(quota);
+      if (auth.currentUser == null) {
+        svc.clearAllCache();
+      }
+      return svc;
+    },
+  ),
+
+  // Chat Service (depends on AiQuotaService + MCPService) - lazy
+  ChangeNotifierProxyProvider2<AiQuotaService, MCPService, ChatService>(
     create: (context) => ChatService(
-      Provider.of<ApiService>(context, listen: false),
       Provider.of<AiQuotaService>(context, listen: false),
+      Provider.of<MCPService>(context, listen: false),
     ),
     lazy: true,
-    update: (context, apiService, quotaService, previousChat) =>
-        previousChat ?? ChatService(apiService, quotaService),
+    update: (context, quotaService, mcpService, previousChat) {
+      final chat = previousChat ?? ChatService(quotaService, mcpService);
+
+      // Propaga la chiave personale se presente nell'utente corrente
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = authService.currentUser;
+      if (user != null) {
+        chat.setPersonalKey(user.geminiApiKey);
+      }
+
+      return chat;
+    },
   ),
 
 ];

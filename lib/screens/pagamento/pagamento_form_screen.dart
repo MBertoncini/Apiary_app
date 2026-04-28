@@ -203,12 +203,21 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
       final pagamentoService = PagamentoService(apiService);
       final auth = Provider.of<AuthService>(context, listen: false);
 
+      final utenteId = _selectedPagatoDaId ?? auth.currentUser?.id;
+      if (utenteId == null) {
+        setState(() {
+          _errorMessage = _s.pagamentoFormErrAuth;
+          _isLoading = false;
+        });
+        return;
+      }
+
       final importo = double.parse(_importoController.text.replaceAll(',', '.'));
       final data = {
         'importo': importo,
         'descrizione': _descrizioneController.text,
         'data': DateFormat('yyyy-MM-dd').format(_selectedDate),
-        'utente': _selectedPagatoDaId ?? auth.currentUser!.id,
+        'utente': utenteId,
         'gruppo': _selectedGruppo?.id,
         if (_isSaldoPagamento && _selectedDestinatarioId != null)
           'destinatario': _selectedDestinatarioId,
@@ -284,8 +293,12 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                             if (value == null || value.isEmpty) {
                               return s.pagamentoFormValidImportoRequired;
                             }
-                            if (double.tryParse(value.replaceAll(',', '.')) == null) {
+                            final parsed = double.tryParse(value.replaceAll(',', '.'));
+                            if (parsed == null) {
                               return s.pagamentoFormValidImportoInvalid;
+                            }
+                            if (parsed <= 0) {
+                              return s.pagamentoFormValidImportoPositivo;
                             }
                             return null;
                           },
@@ -375,7 +388,12 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                                 child: Text(m['username'] as String),
                               )),
                             ],
-                            onChanged: (val) => setState(() { _selectedPagatoDaId = val; }),
+                            onChanged: (val) => setState(() {
+                              _selectedPagatoDaId = val;
+                              if (_selectedDestinatarioId != null && _selectedDestinatarioId == val) {
+                                _selectedDestinatarioId = null;
+                              }
+                            }),
                           ),
                           const SizedBox(height: 16),
 
@@ -416,6 +434,9 @@ class _PagamentoFormScreenState extends State<PagamentoFormScreen> {
                               validator: (val) {
                                 if (_isSaldoPagamento && val == null) {
                                   return s.pagamentoFormValidDestinatarioRequired;
+                                }
+                                if (_isSaldoPagamento && val != null && val == _selectedPagatoDaId) {
+                                  return s.pagamentoFormValidDestinatarioDiverso;
                                 }
                                 return null;
                               },

@@ -53,14 +53,14 @@ class StringsIt extends AppStrings {
 
   // AI API Keys section
   @override String get sectionAiApiKeys => 'Chiavi API IA';
-  @override String get geminiSectionLabel => 'Gemini — ApiarioAI & Inserimento Vocale';
+  @override String get geminiSectionLabel => 'Gemini - ApiarioAI & Inserimento Vocale';
   @override String get geminiDescription =>
       '• Senza chiave personale l\'app usa la chiave di sistema condivisa (quota condivisa).\n'
       '• Con la tua chiave ottieni quota indipendente: 20 richieste/giorno (piano gratuito Gemini 2.5 Flash).\n'
       '• Usata per: chat ApiarioAI + trascrizione vocale.\n'
       '• La chiave viene salvata sul server in modo sicuro.';
   @override String get geminiHowToGet => 'Ottienila su aistudio.google.com → "Get API key"';
-  @override String get groqSectionLabel => 'Groq — Statistiche NL Query';
+  @override String get groqSectionLabel => 'Groq - Statistiche NL Query';
   @override String get groqDescription =>
       '• Usata per le query AI nelle Statistiche (domande in linguaggio naturale).\n'
       '• Senza chiave il backend usa la chiave di sistema condivisa.\n'
@@ -81,7 +81,7 @@ class StringsIt extends AppStrings {
       'Il microfono del dispositivo trascrive il testo; '
       'i dati vengono estratti localmente senza connessione né API. '
       'Consigliato per uso quotidiano.';
-  @override String get voiceModeAudioTitle => 'Registra audio — Gemini AI (premium)';
+  @override String get voiceModeAudioTitle => 'Registra audio - Gemini AI (premium)';
   @override String get voiceModeAudioSubtitle =>
       'L\'audio viene analizzato da Gemini in un unico passaggio: '
       'più preciso in ambienti rumorosi e con terminologia libera. '
@@ -116,7 +116,7 @@ class StringsIt extends AppStrings {
   @override String get settingsAttrezzaturaPromptSub => 'Mostra popup dopo creazione arnie';
 
   // AI Quota section
-  @override String get sectionQuota => 'Quota AI — Uso giornaliero';
+  @override String get sectionQuota => 'Quota AI - Uso giornaliero';
   @override String get quotaRefreshTooltip => 'Aggiorna';
   @override String get quotaDataUnavailable => 'Dati non disponibili (offline o errore di rete)';
   @override String get quotaTranscriptionsToday => 'Registrazioni audio oggi';
@@ -196,7 +196,7 @@ class StringsIt extends AppStrings {
   @override String get labelNo => 'No';
   @override String get msgErrorLoading => 'Errore durante il caricamento dei dati';
   @override String msgErrorGeneric(String e) => 'Errore: $e';
-  @override String get msgOfflineMode => 'Modalità offline — dati aggiornati all\'ultimo accesso';
+  @override String get msgOfflineMode => 'Modalità offline - dati aggiornati all\'ultimo accesso';
   @override String get dialogConfirmDeleteTitle => 'Conferma eliminazione';
   @override String get dialogConfirmDeleteBtn => 'ELIMINA';
   @override String get dialogCancelBtn => 'ANNULLA';
@@ -403,7 +403,7 @@ class StringsIt extends AppStrings {
   @override String get arniaDetailChangeMotivoAltro => 'Altro';
   // Cambio tipo sheet
   @override String get arniaDetailChangeTypeMsg =>
-      'La famiglia rimane invariata — cambia solo il modello della cassetta.';
+      'La famiglia rimane invariata - cambia solo il modello della cassetta.';
   // Delete confirm dialogs
   @override String arniaDetailDeleteMsg(String num) =>
       'Sei sicuro di voler eliminare "Arnia $num"?\n\n'
@@ -445,6 +445,9 @@ class StringsIt extends AppStrings {
   @override String get trattamentiBtnAnnullaStatus => 'Annulla';
   @override String get trattamentiBtnCompleta => 'Completa';
   @override String get trattamentiBtnInterrompi => 'Interrompi';
+  @override String get trattamentiBtnRipristina => 'Ripristina';
+  @override String get trattamentoRestoredOk => 'Trattamento ripristinato';
+  @override String trattamentoRestoreError(String e) => 'Errore durante il ripristino: $e';
   @override String get trattamentiDeleteTitle => 'Elimina Trattamento';
   @override String get trattamentiDeletedOk => 'Trattamento eliminato con successo';
   @override String trattamentiDeleteError(String e) => 'Errore durante l\'eliminazione: $e';
@@ -464,6 +467,7 @@ class StringsIt extends AppStrings {
   @override String get trattamentoDetailDeleteMsg => 'Sei sicuro di voler eliminare questo trattamento?';
   @override String get trattamentoDetailTooltipEdit => 'Modifica';
   @override String get trattamentoDetailTooltipDelete => 'Elimina';
+  @override String get trattamentoDetailTooltipRestore => 'Ripristina';
   @override String get trattamentoDetailDeletedOk => 'Trattamento eliminato';
   @override String trattamentoDetailDeleteError(String e) => 'Errore eliminazione: $e';
   @override String trattamentoDetailArniaLabel(String id) => 'Arnia $id';
@@ -480,7 +484,7 @@ class StringsIt extends AppStrings {
   @override String get trattamentoDetailLblFineBlocko => 'Fine blocco';
   @override String get trattamentoDetailLblMetodoBlocko => 'Metodo';
   @override String get trattamentoDetailLblNoteBlocko => 'Note blocco';
-  @override String get trattamentoFormOfflineMsg => 'Modalità offline — dati aggiornati all\'ultimo accesso';
+  @override String get trattamentoFormOfflineMsg => 'Modalità offline - dati aggiornati all\'ultimo accesso';
   @override String get trattamentoFormNewProductTitle => 'Nuovo prodotto';
   @override String get trattamentoFormLblProductName => 'Nome prodotto *';
   @override String get trattamentoFormHintProductName => 'Es. Acido ossalico, ApiLife VAR...';
@@ -812,7 +816,7 @@ class StringsIt extends AppStrings {
   @override String smielaturaFormMelarioStato(String stato) => 'Stato: $stato';
   @override String get smielaturaFormSelectApiarioMsg => 'Seleziona un apiario';
   @override String smielaturaFormError(String e) => 'Errore caricamento dati: $e';
-  @override String get smielaturaFormOfflineMsg => 'Modalità offline — dati aggiornati all\'ultimo accesso';
+  @override String get smielaturaFormOfflineMsg => 'Modalità offline - dati aggiornati all\'ultimo accesso';
   // Invasettamento form
   @override String get invasettamentoFormTitleNew => 'Nuovo Invasettamento';
   @override String get invasettamentoFormTitleEdit => 'Modifica Invasettamento';
@@ -848,7 +852,7 @@ class StringsIt extends AppStrings {
   @override String get dashCloseSearchTooltip => 'Chiudi ricerca';
   @override String dashWelcomeUser(String name) => 'Benvenuto, $name';
   @override String get dashContextualHint =>
-      '👋 Qui trovi il riepilogo di tutte le attività — arnie, controlli recenti e raccolti. Tocca una sezione per entrare.';
+      '👋 Qui trovi il riepilogo di tutte le attività - arnie, controlli recenti e raccolti. Tocca una sezione per entrare.';
   @override String get dashCalendarTitle => 'Calendario attività';
   @override String get dashCalendarToday => 'Oggi';
   @override String get dashCalendarPrevWeek => 'Settimana precedente';
@@ -865,7 +869,7 @@ class StringsIt extends AppStrings {
   @override String get dashCalendarLegendSmielature => 'Smielature';
   @override String get dashCalendarLegendSospensione => 'Sospensione';
   @override String get dashCalendarLegendBloccoCovata => 'Blocco covata';
-  @override String dashCalendarTodayDate(String date) => 'Oggi — $date';
+  @override String dashCalendarTodayDate(String date) => 'Oggi - $date';
   @override String dashCalendarDateEvents(String date) => 'Eventi del $date';
   @override String get dashCalendarNoEventsToday => 'Nessuna attività prevista per oggi.';
   @override String get dashCalendarNoEvents => 'Nessun evento per questa giornata.';
@@ -877,7 +881,7 @@ class StringsIt extends AppStrings {
   @override String get dashEventFioritura => 'Fioritura';
   @override String dashEventControlloArnia(String num) => 'Controllo arnia $num';
   @override String get dashEventReginaIntrodotta => 'Regina introdotta';
-  @override String get dashEventArniaSep => ' — arnia ';
+  @override String get dashEventArniaSep => ' - arnia ';
   @override String get dashEventMelarioPosizionato => 'Melario posizionato';
   @override String get dashEventMelarioRimosso => 'Melario rimosso';
   @override String get dashEventSmielatura => 'Smielatura';
@@ -987,7 +991,7 @@ class StringsIt extends AppStrings {
   @override String forgotPasswordSuccessBody(String email) =>
       'Abbiamo inviato le istruzioni per reimpostare la password a:\n$email\n\nControlla anche la cartella spam.';
   @override String get forgotPasswordBtnBackToLogin => 'TORNA AL LOGIN';
-  @override String get forgotPasswordBtnRetry => 'Non ho ricevuto l\'email — riprova';
+  @override String get forgotPasswordBtnRetry => 'Non ho ricevuto l\'email - riprova';
 
   // ── Colonia screens ───────────────────────────────────────────────────────
   @override String get coloniaDetailTitle => 'Colonia';
@@ -1128,7 +1132,7 @@ class StringsIt extends AppStrings {
   @override String get venditeTitle => 'Vendite';
   @override String get venditeTabVendite => 'Vendite';
   @override String get venditeTabClienti => 'Clienti';
-  @override String get venditeOfflineMsg => 'Modalità offline — dati aggiornati all\'ultimo accesso';
+  @override String get venditeOfflineMsg => 'Modalità offline - dati aggiornati all\'ultimo accesso';
   @override String get venditeNoVendite => 'Nessuna vendita registrata';
   @override String get venditeNoClienti => 'Nessun cliente registrato';
   @override String get venditeErrLoading => 'Errore nel caricamento';
@@ -1181,7 +1185,7 @@ class StringsIt extends AppStrings {
   @override String get attrezzaturaFormLblCondividi => 'Condividi con gruppo';
   @override String get attrezzaturaFormSubCondividi => 'Le spese verranno condivise con i membri del gruppo';
   @override String get attrezzaturaFormLblChiHaPagato => 'Chi ha pagato?';
-  @override String get attrezzaturaFormHintIoStesso => '— io stesso —';
+  @override String get attrezzaturaFormHintIoStesso => '- io stesso -';
   @override String get attrezzaturaFormHelperChiPaga => 'Indica il membro del gruppo che ha effettivamente sostenuto la spesa';
   @override String get attrezzaturaFormLblNote => 'Note';
   @override String get attrezzaturaFormInfoPagamento => 'Se inserisci un prezzo di acquisto, verrà creato automaticamente un pagamento.';
@@ -1279,7 +1283,7 @@ class StringsIt extends AppStrings {
   @override String get venditaFormBtnUsaClienteReg => 'Usa cliente registrato';
   @override String get venditaFormBtnNomeLibero => 'Nome libero';
   @override String get venditaFormLblClienteReg => 'Cliente registrato';
-  @override String get venditaFormHintNessuno => '— nessuno —';
+  @override String get venditaFormHintNessuno => '- nessuno -';
   @override String get venditaFormLblAcquirenteNome => 'Nome acquirente *';
   @override String get venditaFormValidateNome => 'Inserisci il nome';
   @override String get venditaFormValidateAcquirente => 'Inserisci il nome dell\'acquirente';
@@ -1290,7 +1294,7 @@ class StringsIt extends AppStrings {
   @override String get venditaFormBtnAddArticolo => 'Aggiungi articolo';
   @override String venditaFormTotale(String amount) => 'Totale: $amount €';
   @override String get venditaFormLblCondividi => 'Condividi con gruppo';
-  @override String get venditaFormHintSoloPersonale => '— solo personale —';
+  @override String get venditaFormHintSoloPersonale => '- solo personale -';
   @override String get venditaFormCreatedOk => 'Vendita registrata';
   @override String get venditaFormUpdatedOk => 'Vendita aggiornata';
   @override String venditaFormArticoloLabel(int n) => 'Articolo $n';
@@ -1319,7 +1323,7 @@ class StringsIt extends AppStrings {
   @override String get venditaCatAltro => 'Altro';
   @override String get venditaDetailTitle => 'Dettaglio Vendita';
   @override String get venditaDetailNotFound => 'Vendita non trovata';
-  @override String get venditaDetailOfflineMsg => 'Modalità offline — dati aggiornati all\'ultimo accesso';
+  @override String get venditaDetailOfflineMsg => 'Modalità offline - dati aggiornati all\'ultimo accesso';
   @override String get venditaDetailDeleteTitle => 'Conferma eliminazione';
   @override String get venditaDetailDeleteMsg => 'Eliminare questa vendita?';
   @override String get venditaDetailDeletedOk => 'Vendita eliminata';
@@ -1341,7 +1345,7 @@ class StringsIt extends AppStrings {
   @override String get clienteFormLblIndirizzo => 'Indirizzo';
   @override String get clienteFormLblNote => 'Note';
   @override String get clienteFormLblCondividi => 'Condividi con gruppo';
-  @override String get clienteFormHintSoloPersonale => '— solo personale —';
+  @override String get clienteFormHintSoloPersonale => '- solo personale -';
   @override String get clienteFormBtnCreate => 'CREA CLIENTE';
   @override String get clienteFormBtnUpdate => 'AGGIORNA';
   @override String get clienteFormCreatedOk => 'Cliente creato';
@@ -1585,6 +1589,8 @@ class StringsIt extends AppStrings {
   @override String get pagamentoSaldo => 'Saldo';
   @override String get pagamentiTooltipRegistraSaldo => 'Registra pagamento di saldo';
   @override String pagamentiSaldoDesc(String da, String a) => 'Saldo bilancio: $da → $a';
+  @override String pagamentiBilancioWarnSommaQuote(String sum) => 'Le quote del gruppo sommano $sum%, non 100%. Il bilancio potrebbe non essere accurato.';
+  @override String get pagamentiBilancioWarnMembriSenzaQuota => 'Alcuni membri hanno effettuato pagamenti senza avere una quota assegnata. Aggiungi una quota dal pannello "Gestisci".';
 
   // ── Pagamento detail screen ──
   @override String get pagamentoDetailTitle => 'Dettaglio Pagamento';
@@ -1606,11 +1612,14 @@ class StringsIt extends AppStrings {
   @override String get pagamentoFormLabelImporto => 'Importo (€)';
   @override String get pagamentoFormValidImportoRequired => 'Inserisci l\'importo';
   @override String get pagamentoFormValidImportoInvalid => 'Inserisci un importo valido';
+  @override String get pagamentoFormValidImportoPositivo => 'L\'importo deve essere maggiore di zero';
   @override String get pagamentoFormValidDescRequired => 'Inserisci una descrizione';
+  @override String get pagamentoFormValidDestinatarioDiverso => 'Il destinatario deve essere diverso dal pagante';
+  @override String get pagamentoFormErrAuth => 'Sessione scaduta. Effettua di nuovo l\'accesso.';
   @override String get pagamentoFormLabelGruppo => 'Gruppo (opzionale)';
   @override String get pagamentoFormNoGruppo => 'Nessun gruppo';
   @override String get pagamentoFormLabelChiPaga => 'Chi ha pagato?';
-  @override String get pagamentoFormIoStesso => '— io stesso —';
+  @override String get pagamentoFormIoStesso => '- io stesso -';
   @override String get pagamentoFormHelperChiPaga => 'Indica il membro che ha effettivamente sostenuto la spesa';
   @override String get pagamentoFormSaldoTitle => 'Pagamento di saldo';
   @override String get pagamentoFormSaldoSubtitle => 'Denaro trasferito direttamente tra due membri per saldare il bilancio';
@@ -1640,6 +1649,14 @@ class StringsIt extends AppStrings {
   @override String get quoteValidIdRequired => 'Inserisci l\'ID utente';
   @override String get quoteValidIdInvalid => 'ID utente non valido';
   @override String get quoteValidPercRange => 'La percentuale deve essere tra 0 e 100';
+  @override String get quoteAddLabelUtente => 'Membro del gruppo';
+  @override String get quoteValidUtenteRequired => 'Seleziona un membro';
+  @override String get quoteAddNoMembriDisponibili => 'Tutti i membri del gruppo hanno già una quota. Modifica una quota esistente per redistribuire.';
+  @override String quoteAddErrCaricamentoMembri(String e) => 'Errore caricamento membri del gruppo: $e';
+  @override String quoteValidSommaSupera100(String sum) => 'La somma delle quote del gruppo supererebbe il 100% ($sum%). Riduci una quota esistente prima di aggiungerne una nuova.';
+  @override String quoteConfirmSommaNon100Title(String sum) => 'Somma quote: $sum%';
+  @override String get quoteConfirmSommaNon100Msg => 'La somma delle quote del gruppo non è 100%. Il calcolo del bilancio potrebbe non distribuire correttamente le spese. Vuoi salvare comunque?';
+  @override String get quoteConfirmSommaNon100Continue => 'Salva comunque';
   @override String get quoteLabelFiltroGruppo => 'Filtra per gruppo';
   @override String get quoteTuttiGruppi => 'Tutti i gruppi';
   @override String get quoteTooltipAdd => 'Aggiungi Quota';
@@ -1657,13 +1674,14 @@ class StringsIt extends AppStrings {
   // ── Dashboard widget titles ──
   @override String get dashboardTitleProduzione => 'Produzione Miele per Anno';
   @override String get dashboardTitleSaluteArnie => 'Salute degli Alveari';
-  @override String get dashboardTitleRegineStats => 'Regine — Statistiche';
+  @override String get dashboardTitleRegineStats => 'Regine - Statistiche';
   @override String get dashboardTitleFrequenzaControlli => 'Frequenza Controlli';
   @override String get dashboardTitleFioritureVicine => 'Fioriture Vicine';
   @override String get dashboardTitleAttrezzature => 'Riepilogo Attrezzature';
   @override String get dashboardTitleProduzionePerTipo => 'Produzione per Tipo di Miele';
   @override String get dashboardTitleTrattamenti => 'Trattamenti Sanitari nel Tempo';
   @override String get dashboardTitleAndamentoScorte => 'Andamento Scorte';
+  @override String get dashboardTitleAndamentoCovata => 'Andamento Covata';
   @override String get dashboardTitlePerformanceRegine => 'Performance Regine';
   @override String get dashboardTitleQuoteGruppo => 'Quote Gruppo';
   @override String dashboardTitleBilancio(int anno) => 'Bilancio $anno';
@@ -1675,6 +1693,15 @@ class StringsIt extends AppStrings {
   @override String get dashboardSaluteCritica => 'Critica';
   @override String dashboardSaluteTotale(int n) => 'Totale: $n arnie';
   @override String dashboardSaluteCritiche(String list) => 'Critiche: $list';
+  @override String get dashboardSaluteInfoTitle => 'Salute degli alveari';
+  @override String get dashboardSaluteInfoIntro => 'Stato calcolato sull\'ultimo controllo registrato negli ultimi 90 giorni.';
+  @override String get dashboardSaluteInfoOttima => 'Controllo recente, regina presente, nessun problema sanitario.';
+  @override String get dashboardSaluteInfoAttenzione => 'Controllo recente, ma manca la regina o sono stati segnalati problemi sanitari.';
+  @override String get dashboardSaluteInfoCritica => 'Nessun controllo registrato negli ultimi 90 giorni: l\'arnia va ispezionata.';
+  @override String get dashboardSaluteInfoSuggerimento => 'Tocca una fetta del grafico o una voce della legenda per vedere quali arnie rientrano in ciascuna categoria.';
+  @override String get dashboardSaluteListaVuota => 'Nessuna arnia in questa categoria.';
+  @override String dashboardSaluteListaTitolo(String stato) => 'Arnie - $stato';
+  @override String get dashboardSaluteApiarioPrefisso => 'Apiario:';
 
   // ── Regine statistiche widget ──
   @override String get dashboardRegineAttive => 'Regine attive';
@@ -1703,6 +1730,7 @@ class StringsIt extends AppStrings {
 
   // ── Fioriture vicine widget ──
   @override String get dashboardFioritureNessuna => 'Nessuna fioritura nel raggio di 5 km';
+  @override String get dashboardFioritureFiltroTutti => 'Tutti gli apiari';
 
   // ── Attrezzature widget ──
   @override String get dashboardAttrezzatureNessuna => 'Nessuna attrezzatura registrata';
@@ -1717,12 +1745,22 @@ class StringsIt extends AppStrings {
   // ── Andamento scorte widget ──
   @override String get dashboardScorteNessuno => 'Nessun dato scorte disponibile';
 
+  // ── Andamento covata widget ──
+  @override String get dashboardCovataNessuno => 'Nessun dato covata disponibile';
+
   // ── Produzione tipo widget ──
   @override String get dashboardProdTipoNessuno => 'Nessuna smielatura registrata';
   @override String dashboardProdTipoTotale(String kg) => 'Totale: $kg kg';
 
   // ── Quote gruppo widget ──
   @override String get dashboardQuoteGruppoSoloCoord => 'Visibile solo ai coordinatori di gruppo';
+  @override String get dashboardQuoteGruppoNessunaSpesa => 'Nessuna spesa registrata per il periodo selezionato';
+  @override String get dashboardQuoteGruppoQuoteIncomplete => 'Le percentuali delle quote non sommano a 100%';
+  @override String get dashboardQuoteGruppoLabelDovuto => 'Dovuto';
+  @override String get dashboardQuoteGruppoLabelPagato => 'Pagato';
+  @override String get dashboardQuoteGruppoLabelSpeso => 'Speso';
+  @override String get dashboardQuoteGruppoLabelCopertura => 'Copertura';
+  @override String get dashboardQuoteGruppoSelezionaGruppo => 'Seleziona gruppo';
 
   // ── NL Query tab ──
   @override String get nlQuerySuggerite => 'Domande suggerite:';
@@ -1738,6 +1776,8 @@ class StringsIt extends AppStrings {
   @override String get nlQueryErrLento => 'Il server AI è lento, riprova tra poco';
   @override String get nlQueryErrRifiuto => 'Non posso rispondere a questa domanda';
   @override String get nlQueryErrGenerico => 'Errore: si prega di riprovare';
+  @override String get nlQueryErrSessione => 'Sessione scaduta. Effettua nuovamente l\'accesso.';
+  @override String get nlQueryErrServizio => 'Servizio AI temporaneamente non disponibile.';
   @override String get nlQueryInputHint => 'Fai una domanda sui tuoi dati…';
 
   // ── Risultato query widget ──
@@ -1824,7 +1864,7 @@ class StringsIt extends AppStrings {
   @override String voiceVerifRecordOf(int current, int total) => 'Record $current di $total';
   @override String get voiceVerifSectionPosizione => 'Posizione';
   @override String get voiceVerifSectionRegistrazione => 'Registrazione originale';
-  @override String get voiceVerifAudioLabel => 'Audio originale — premi per ascoltare';
+  @override String get voiceVerifAudioLabel => 'Audio originale - premi per ascoltare';
   @override String get voiceVerifSectionGenerali => 'Informazioni generali';
   @override String get voiceVerifLblTipo => 'Tipo';
   @override String get voiceVerifSectionRegina => 'Regina';
@@ -1845,6 +1885,9 @@ class StringsIt extends AppStrings {
   @override String get voiceVerifTooltipPausa => 'Pausa';
   @override String get voiceVerifTooltipRiproduci => 'Riproduci';
   @override String get voiceVerifTooltipStop => 'Stop';
+  @override String get trattamentoTitle => 'Trattamento';
+  @override String get trattamentoFormNomeProdotto => 'Nome prodotto';
+  @override String get voiceVerifInfoCreazioneArnia => 'Verrà creata una nuova arnia vuota in questo apiario. Potrai aggiungerci una colonia in seguito.';
 
   // ── Voice command screen ──
   @override String get voiceCommandTitle => 'Inserimento vocale';
@@ -1883,20 +1926,28 @@ class StringsIt extends AppStrings {
   @override String get voiceTutorialTitle => 'Inserimento vocale';
   @override String get voiceTutorialSubtitle => 'Come registrare un\'ispezione a mani libere';
   @override String get voiceTutorialStep1Title => 'Seleziona l\'apiario';
-  @override String get voiceTutorialStep1Body => 'Tocca il banner arancione in cima e scegli l\'apiario su cui stai lavorando. Da quel momento basterà dire solo il numero dell\'arnia — non serve ripeterlo ogni volta.';
+  @override String get voiceTutorialStep1Body => 'Tocca il banner arancione in cima e scegli l\'apiario su cui stai lavorando. Da quel momento basterà dire solo il numero dell\'arnia - non serve ripeterlo ogni volta.';
   @override String get voiceTutorialStep2Title => 'Parla chiaramente';
   @override String get voiceTutorialStep2Body => 'Premi il pulsante microfono e descrivi l\'ispezione come faresti con un collega. Non serve una sintassi precisa: l\'AI capisce il linguaggio naturale.';
-  @override String get voiceTutorialStep3Title => 'Gemini interpreta il testo';
-  @override String get voiceTutorialStep3Body => 'Il testo riconosciuto viene inviato a Gemini AI che estrae automaticamente: numero arnia, telaini, stato regina, problemi sanitari e altro ancora.';
-  @override String get voiceTutorialStep4Title => 'Verifica e salva';
-  @override String get voiceTutorialStep4Body => 'Controlla i dati interpretati nella schermata di verifica, modifica eventuali errori e premi Salva.';
-  @override String get voiceTutorialExamplesTitle => 'Esempi di frasi';
-  @override String get voiceTutorialMultiTitle => 'Modalità multipla (più arnie di seguito)';
-  @override String get voiceTutorialMultiNextKeyword => '"avanti" / "ok" / "vai" / "continua"';
-  @override String get voiceTutorialMultiNextDesc => 'registra l\'arnia successiva';
+  @override String get voiceTutorialStep2BodyStt => 'Premi il microfono e descrivi l\'ispezione. In questa modalità puoi registrare più arnie di seguito usando i comandi vocali per passare alla successiva senza toccare il telefono.';
+  @override String get voiceTutorialStep2BodyAudio => 'Premi il microfono e parla liberamente come faresti con un collega. L\'AI Gemini è in grado di comprendere discorsi complessi e terminologia libera senza bisogno di parole fisse.';
+  @override String get voiceTutorialStep3Title => 'Gemini interpreta i dati';
+  @override String get voiceTutorialStep3TitleStt => 'Trascrizione intelligente';
+  @override String get voiceTutorialStep3TitleAudio => 'Analisi audio multimodale';
+  @override String get voiceTutorialStep3Body => 'Le tue parole vengono inviate a Gemini AI che estrae automaticamente: numero arnia, telaini, stato regina, problemi sanitari e altro ancora.';
+  @override String get voiceTutorialStep3BodyStt => 'La trascrizione prodotta con lo speech to text integrato nel telefono viene analizzata tramite regole predefinite (regex). È più veloce ed economico, ma potrebbe non riconoscere espressioni non standard.';
+  @override String get voiceTutorialStep3BodyAudio => 'L\'intera registrazione audio viene analizzata da un modello AI avanzato (Gemini Pro) che trascrive ed estrae i dati. Offre massima flessibilità nel capire il linguaggio naturale.';
+  @override String get voiceTutorialStep4Title => 'Revisione finale';
+  @override String get voiceTutorialStep4Body => 'Controlla i dati interpretati nella schermata di verifica, correggi eventuali dettagli e conferma il salvataggio.';
+  @override String get voiceTutorialExamplesTitle => 'Esempi di cosa dire';
+  @override String get voiceTutorialMultiTitle => 'Comandi vocali (Mani Libere)';
+  @override String get voiceTutorialMultiNextKeyword => '"avanti" / "ok" / "vai" / "prossima"';
+  @override String get voiceTutorialMultiNextDesc => 'passa all\'arnia successiva';
   @override String get voiceTutorialMultiStopKeyword => '"stop" / "fine" / "basta" / "finito"';
-  @override String get voiceTutorialMultiStopDesc => 'termina il batch e vai alla revisione';
-  @override String get voiceTutorialOfflineMsg => 'Senza connessione usa "Salva per dopo": le trascrizioni vengono messe in coda e puoi elaborarle non appena torni online.';
+  @override String get voiceTutorialMultiStopDesc => 'termina la sessione e vai alla revisione';
+  @override String get voiceTutorialOfflineMsg => 'Senza connessione usa "Salva per dopo": le registrazioni restano in coda e potrai elaborarle quando torni online.';
+  @override String get voiceTutorialOfflineMsgStt => 'Se sei offline puoi comunque registrare: le trascrizioni verranno messe in coda e processate da Gemini appena tornerai online.';
+  @override String get voiceTutorialOfflineMsgAudio => 'Questa modalità richiede CONNESSIONE per l\'analisi. Se sei offline le registrazioni verranno salvate localmente per essere inviate in seguito.';
   @override String get voiceTutorialBtnStart => 'Inizia a registrare';
 
   // ── Common shared ──
@@ -1920,7 +1971,7 @@ class StringsIt extends AppStrings {
   @override String get chatGeneratingChart => 'Generazione grafico in corso...';
   @override String get chatQuotaUpgradeHint =>
       'Puoi inserire una chiave Gemini personale nelle impostazioni oppure passare a un piano superiore.';
-  @override String get chatQuotaInputDisabled => 'Quota esaurita — riprova dopo il reset';
+  @override String get chatQuotaInputDisabled => 'Quota esaurita - riprova dopo il reset';
 
   // ── AI quota gating (condiviso) ──
   @override String get quotaVoiceExhaustedTitle => 'Quota voce AI esaurita';
@@ -1930,7 +1981,7 @@ class StringsIt extends AppStrings {
       'Riprova dopo il reset giornaliero o fai l\'upgrade.';
   @override String get quotaStatsExhausted =>
       'Quota AI statistiche esaurita. Riprova dopo il reset o configura una chiave Groq personale nelle impostazioni.';
-  @override String get nlQueryInputHintExhausted => 'Quota esaurita — riprova dopo il reset';
+  @override String get nlQueryInputHintExhausted => 'Quota esaurita - riprova dopo il reset';
   @override String get voiceQueuePreflightTitle => 'Quota in esaurimento';
   @override String voiceQueuePreflightMessage(int available, int total) =>
       'Hai $available chiamate AI voce disponibili ma ci sono $total registrazioni in coda. '
@@ -1969,27 +2020,27 @@ class StringsIt extends AppStrings {
   @override String get chatQuotaResetNotice => 'La quota è stata ripristinata. Puoi inviare nuovi messaggi.';
 
   // ── Subscription / Paywall ──
-  @override String get subPaywallTitle => 'Apiary Pro';
-  @override String get subPaywallSubtitle => 'Sblocca tutto il potenziale dell\'assistente AI';
+  @override String get subPaywallTitle => 'Fase di Test & Open Source';
+  @override String get subPaywallSubtitle => 'Contribuisci allo sviluppo del progetto';
   @override String get subMonthly => 'Mensile';
   @override String get subYearly => 'Annuale';
   @override String get subYearlySave => 'Risparmia';
-  @override String get subRestore => 'Ripristina acquisti';
-  @override String get subRestoreSuccess => 'Acquisti ripristinati con successo!';
-  @override String get subRestoreNone => 'Nessun acquisto precedente trovato.';
-  @override String get subRestoreError => 'Errore nel ripristino degli acquisti.';
-  @override String get subPurchaseSuccess => 'Abbonamento attivato! Benvenuto in Apiary Pro.';
-  @override String get subPurchaseError => 'Errore durante l\'acquisto. Riprova.';
-  @override String get subManage => 'Gestisci abbonamento';
+  @override String get subRestore => 'Ripristina';
+  @override String get subRestoreSuccess => 'Accesso ripristinato!';
+  @override String get subRestoreNone => 'Nessun codice trovato.';
+  @override String get subRestoreError => 'Errore nel ripristino.';
+  @override String get subPurchaseSuccess => 'Grazie per il tuo contributo!';
+  @override String get subPurchaseError => 'Errore. Riprova.';
+  @override String get subManage => 'Gestisci accesso';
   @override String get subCurrentPlan => 'Piano attuale';
-  @override String get subFreeDesc => 'Funzionalità AI di base con limiti giornalieri';
-  @override String get subProMonthlyDesc => 'Accesso completo, fatturazione mensile';
-  @override String get subProYearlyDesc => 'Accesso completo, fatturazione annuale';
-  @override String get subFeatureUnlimitedChat => 'Chat AI senza limiti';
-  @override String get subFeatureVoice => 'Inserimento vocale illimitato';
-  @override String get subFeatureAdvancedAI => 'Analisi AI avanzate';
-  @override String get subCostExplanation => 'L\'app è portata avanti come progetto personale ed è in fase di test. I limiti dei tier servono a mantenere sostenibili i costi delle chiavi API esterne e a tenere Apiary accessibile a tutti gli apicoltori.';
-  @override String get subLoading => 'Caricamento piani...';
+  @override String get subFreeDesc => 'Funzionalità base gratuite per tutti';
+  @override String get subProMonthlyDesc => 'Accesso completo tramite contributo';
+  @override String get subProYearlyDesc => 'Accesso completo tramite contributo';
+  @override String get subFeatureUnlimitedChat => 'Test intensivo ApiarioAI';
+  @override String get subFeatureVoice => 'Sperimentazione Inserimento Vocale';
+  @override String get subFeatureAdvancedAI => 'Codice Open Source & Feedback';
+  @override String get subCostExplanation => 'Apiary è un progetto Open Source nato per passione. Poiché l\'utilizzo dell\'IA comporta costi vivi per le API (Google Gemini, Groq), i tier di accesso ci permettono di mantenere il server attivo e continuare lo sviluppo senza pubblicità.';
+  @override String get subLoading => 'Caricamento...';
   @override String get subNoProducts => 'Nessun piano disponibile al momento.';
   @override String subPricePerMonth(String price) => '$price/mese';
   @override String subPricePerYear(String price) => '$price/anno';
@@ -2149,7 +2200,7 @@ class StringsIt extends AppStrings {
   @override String get nomadismoSoloApiari => '🗺️ Solo apiari';
   @override String get nomadismoBtnTocca => 'Tocca la mappa…';
   @override String get nomadismoBtnAnalizza => 'Analizza punto (5 km)';
-  @override String get nomadismoFloraTitle => 'Flora mellifera — raggio 5 km';
+  @override String get nomadismoFloraTitle => 'Flora mellifera - raggio 5 km';
   @override String get nomadismoNessunaSpecie => 'Nessuna specie trovata.';
   @override String get nomadismoAltrePiante => 'Altre piante';
   @override String get nomadismoGbifFooter => 'Dati GBIF · osservazioni 2010–2025 · raggio 5 km';
@@ -2187,9 +2238,9 @@ class StringsIt extends AppStrings {
   @override String get onboardingBtnCreate => 'Crea il mio primo apiario';
   @override String get onboardingBtnExplore => 'Esplora prima';
   @override String get onboardingStep1Title => 'Benvenuto in Apiary';
-  @override String get onboardingStep1Desc => 'Il tuo diario digitale da apicoltore. Registra, monitora e gestisci tutto ciò che riguarda le tue api — dai controlli alle vendite, dalla genealogia delle regine all\'analisi AI dei telai.';
+  @override String get onboardingStep1Desc => 'Il tuo diario digitale da apicoltore. Registra, monitora e gestisci tutto ciò che riguarda le tue api - dai controlli alle vendite, dalla genealogia delle regine all\'analisi AI dei telai.';
   @override String get onboardingStep2Title => 'I tuoi Apiari';
-  @override String get onboardingStep2Desc => 'Un apiario è la tua postazione fisica — un campo, un bosco, un terreno. Dentro ogni apiario trovi le tue arnie. Puoi avere più apiari in luoghi diversi e gestirli tutti da qui.';
+  @override String get onboardingStep2Desc => 'Un apiario è la tua postazione fisica - un campo, un bosco, un terreno. Dentro ogni apiario trovi le tue arnie. Puoi avere più apiari in luoghi diversi e gestirli tutti da qui.';
   @override String get onboardingStep3Title => 'Arnie & Controlli';
   @override String get onboardingStep3Desc => 'Ogni arnia ha la sua storia: regina, trattamenti, melari, raccolti. Registra i controlli periodici per tenere traccia della forza della colonia, della presenza della regina e dello stato sanitario.';
   @override String get onboardingStep4Title => 'Funzioni Avanzate';
@@ -2368,7 +2419,7 @@ class StringsIt extends AppStrings {
   @override String get mapLabelColor => 'Colore';
   @override String get mapBtnAdd => 'Aggiungi';
   @override String mapNucleoTitle(String num) => 'Nucleo $num';
-  @override String get mapNucleoLegacyHint => 'Elemento legacy — rimuovilo dalla mappa se non più in uso.';
+  @override String get mapNucleoLegacyHint => 'Elemento legacy - rimuovilo dalla mappa se non più in uso.';
   @override String get mapRemoveFromMap => 'Rimuovi dalla mappa';
   @override String get mapNumberConflictTitle => 'Numero già esistente';
   @override String mapNumberConflictMsg(String current) => 'L\'arnia numero $current esiste già.\nScegli un numero per la nuova arnia:';
@@ -2396,9 +2447,9 @@ class StringsIt extends AppStrings {
   @override String get mapLabelInactiveFem => 'inattiva';
 
   // ── Colony data in arnia detail ──
-  @override String get arniaColoniaVuota => 'Arnia vuota — nessuna colonia attiva';
+  @override String get arniaColoniaVuota => 'Arnia vuota - nessuna colonia attiva';
   @override String get arniaInsediaColonia => 'Insedia colonia';
-  @override String arniaColoniaHeader(int id, String date) => 'Colonia #$id — dal $date';
+  @override String arniaColoniaHeader(int id, String date) => 'Colonia #$id - dal $date';
   @override String arniaColoniaRegina(String razza, String origine) => 'Regina: $razza · $origine';
   @override String get arniaMenuStoriaColonie => 'Storia colonie';
   @override String get arniaMenuInsediaNuovaColonia => 'Insedia nuova colonia';
@@ -2426,19 +2477,19 @@ class StringsIt extends AppStrings {
   @override String voiceCommandGeminiError(String detail) => 'Gemini: $detail';
 
   // ── Guide sections ──
-  @override String get guidaSection1Title => 'Primi Passi — Creare il primo apiario';
-  @override String get guidaSection2Title => 'Arnie & Controlli — Registrare un\'ispezione';
-  @override String get guidaSection3Title => 'Regine — Gestire e tracciare le regine';
-  @override String get guidaSection4Title => 'Melari & Raccolti — Dal melario alla cantina';
-  @override String get guidaSection5Title => 'Funzioni AI — Chat, voce, analisi telaino';
-  @override String get guidaSection6Title => 'Collaborazione — Condividere con altri apicoltori';
-  @override String get guidaSection7Title => 'Esportazioni — PDF e CSV';
+  @override String get guidaSection1Title => 'Primi Passi - Creare il primo apiario';
+  @override String get guidaSection2Title => 'Arnie & Controlli - Registrare un\'ispezione';
+  @override String get guidaSection3Title => 'Regine - Gestire e tracciare le regine';
+  @override String get guidaSection4Title => 'Melari & Raccolti - Dal melario alla cantina';
+  @override String get guidaSection5Title => 'Funzioni AI - Chat, voce, analisi telaino';
+  @override String get guidaSection6Title => 'Collaborazione - Condividere con altri apicoltori';
+  @override String get guidaSection7Title => 'Esportazioni - PDF e CSV';
   @override List<String> get guidaSection1Items => [
     'Tocca il menu e vai su Apiari → Nuovo Apiario',
     'Inserisci nome, posizione sulla mappa e tipo di apiario',
-    'Salva — il tuo apiario è pronto',
+    'Salva - il tuo apiario è pronto',
     'Dall\'interno dell\'apiario, tocca + per aggiungere le arnie',
-    '💡 Dai nomi descrittivi alle arnie (es: "Arnia 1 — Ligustica") per ritrovarle facilmente.',
+    '💡 Dai nomi descrittivi alle arnie (es: "Arnia 1 - Ligustica") per ritrovarle facilmente.',
   ];
   @override List<String> get guidaSection2Items => [
     'Entra nell\'arnia che vuoi controllare',
@@ -2448,7 +2499,7 @@ class StringsIt extends AppStrings {
     '💡 Forza colonia: 1 = debolissima, 5 = media, 10 = fortissima che occupa tutti i favi.',
   ];
   @override List<String> get guidaSection3Items => [
-    'Ogni arnia può avere una regina associata — aggiungila dalla scheda dell\'arnia',
+    'Ogni arnia può avere una regina associata - aggiungila dalla scheda dell\'arnia',
     'Registra: data nascita, razza, colore marcatura, origine',
     'Visualizza l\'albero genealogico per tracciare discendenze',
     'Usa Confronta Regine per valutare le prestazioni',
@@ -2461,9 +2512,9 @@ class StringsIt extends AppStrings {
     'Dall\'invasettamento, traccia i vasetti prodotti e il peso finale',
   ];
   @override List<String> get guidaSection5Items => [
-    '🗨️ Chat AI — Tocca il widget chat per fare domande all\'assistente Gemini',
-    '🎤 Controllo Vocale — Parla e l\'app trascrive automaticamente l\'ispezione',
-    '📷 Analisi Telaino — Carica una foto del telaio per rilevare api, covata e celle reali',
+    '🗨️ Chat AI - Tocca il widget chat per fare domande all\'assistente Gemini',
+    '🎤 Controllo Vocale - Parla e l\'app trascrive automaticamente l\'ispezione',
+    '📷 Analisi Telaino - Carica una foto del telaio per rilevare api, covata e celle reali',
     '💡 Per l\'analisi telaino usa luce naturale diffusa e tieni il telaio parallelo alla fotocamera.',
   ];
   @override List<String> get guidaSection6Items => [
@@ -2495,7 +2546,7 @@ class StringsIt extends AppStrings {
   @override String get frameReginaPresente => 'Regina presente';
   @override String get frameReginaAssente => 'Regina assente';
   @override String frameCelleRealiTooltip(int numero, int days) =>
-      'Celle reali${numero > 0 ? ": $numero" : ""} — rilevate $days giorni fa';
+      'Celle reali${numero > 0 ? ": $numero" : ""} - rilevate $days giorni fa';
 
   // ── Hive type names ──
   @override String arniaTypeName(String key) {

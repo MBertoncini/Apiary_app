@@ -49,6 +49,7 @@ app.*.map.json
 
 # Secret API keys — never commit
 lib/config/api_keys.dart
+env.json
 
 # Firebase config — contains project keys, keep out of VCS
 android/app/google-services.json

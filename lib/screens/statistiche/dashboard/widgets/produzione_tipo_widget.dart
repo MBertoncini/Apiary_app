@@ -55,8 +55,8 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
   }
 
   Widget _buildContent() {
-    final tipi = _data!['tipi'] as List;
-    final totale = (_data!['totale_kg'] as num).toDouble();
+    final tipi = (_data?['tipi'] as List?) ?? const [];
+    final totale = (_data?['totale_kg'] as num?)?.toDouble() ?? 0.0;
 
     if (tipi.isEmpty) {
       return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardProdTipoNessuno)));
@@ -72,11 +72,13 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
             PieChartData(
               pieTouchData: PieTouchData(enabled: false),
               sections: tipi.asMap().entries.map((entry) {
-                final t = entry.value;
+                final t = entry.value as Map?;
+                final kg = (t?['kg'] as num?)?.toDouble() ?? 0.0;
+                final perc = (t?['percentuale'] as num?)?.toDouble() ?? 0.0;
                 return PieChartSectionData(
-                  value: (t['kg'] as num).toDouble(),
+                  value: kg,
                   color: _colors[entry.key % _colors.length],
-                  title: '${(t['percentuale'] as num).toStringAsFixed(0)}%',
+                  title: '${perc.toStringAsFixed(0)}%',
                   radius: 55,
                   titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                 );
@@ -95,14 +97,15 @@ class _ProduzionePerTipoWidgetState extends State<ProduzionePerTipoWidget> {
               Text(_s.dashboardProdTipoTotale(totale.toStringAsFixed(1)), style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               ...tipi.asMap().entries.take(6).map((entry) {
-                final t = entry.value;
+                final t = entry.value as Map?;
+                final kg = (t?['kg'] as num?)?.toDouble() ?? 0.0;
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(children: [
                     Container(width: 10, height: 10, color: _colors[entry.key % _colors.length]),
                     const SizedBox(width: 6),
-                    Expanded(child: Text(t['tipo_miele'] ?? 'N/D', style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
-                    Text('${(t['kg'] as num).toStringAsFixed(1)} kg', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Expanded(child: Text(t?['tipo_miele']?.toString() ?? 'N/D', style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                    Text('${kg.toStringAsFixed(1)} kg', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   ]),
                 );
               }),

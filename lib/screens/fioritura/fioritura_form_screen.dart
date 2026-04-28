@@ -179,8 +179,8 @@ class _FiorituraFormScreenState extends State<FiorituraFormScreen> {
         'data_fine': _dataFine != null
             ? '${_dataFine!.year}-${_dataFine!.month.toString().padLeft(2, '0')}-${_dataFine!.day.toString().padLeft(2, '0')}'
             : null,
-        'latitudine': _lat,
-        'longitudine': _lng,
+        'latitudine': double.parse(_lat!.toStringAsFixed(6)),
+        'longitudine': double.parse(_lng!.toStringAsFixed(6)),
         'raggio': int.tryParse(_raggioCtrl.text) ?? 500,
         'note': _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
         'pubblica': _pubblica,

@@ -49,8 +49,8 @@ class _AttrezzatureWidgetState extends State<AttrezzatureWidget> {
   }
 
   Widget _buildContent() {
-    final categorie = _data!['per_categoria'] as List;
-    final totale = (_data!['valore_totale_inventario'] as num).toDouble();
+    final categorie = (_data?['per_categoria'] as List?) ?? const [];
+    final totale = (_data?['valore_totale_inventario'] as num?)?.toDouble() ?? 0.0;
 
     if (categorie.isEmpty) {
       return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardAttrezzatureNessuna)));
@@ -79,7 +79,7 @@ class _AttrezzatureWidgetState extends State<AttrezzatureWidget> {
               children: [
                 Expanded(flex: 3, child: Text(c['categoria'] ?? 'N/D', style: const TextStyle(fontSize: 13))),
                 Expanded(flex: 1, child: Text('${c['count']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('€${(c['valore_totale'] as num).toStringAsFixed(0)}', style: const TextStyle(fontSize: 13), textAlign: TextAlign.right)),
+                Expanded(flex: 2, child: Text('€${((c['valore_totale'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}', style: const TextStyle(fontSize: 13), textAlign: TextAlign.right)),
               ],
             ),
           );

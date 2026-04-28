@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/statistiche_service.dart';
-import '../../../services/api_service.dart';
 import '../../../services/language_service.dart';
 import '../../../l10n/app_strings.dart';
 import '../nl_query/risultato_query_widget.dart';
@@ -50,7 +49,7 @@ class _QueryBuilderTabState extends State<QueryBuilderTab> with AutomaticKeepAli
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _service ??= StatisticheService(Provider.of<ApiService>(context, listen: false));
+    _service ??= context.read<StatisticheService>();
   }
 
   Future<void> _eseguiQuery() async {

@@ -11,6 +11,7 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
+import '../../utils/pagamento_categoria.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
@@ -45,6 +46,34 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     super.dispose();
   }
 
+  /// Parse difensivo di una lista cache: salta silenziosamente le entry
+  /// che lanciano FormatException (schema obsoleto, campi mancanti, ecc).
+  /// Logga il numero di entry skippate per visibilità in debug.
+  List<T> _safeParseList<T>(
+    List<dynamic> raw,
+    T Function(Map<String, dynamic>) parser,
+    String typeName,
+  ) {
+    final out = <T>[];
+    int skipped = 0;
+    for (final e in raw) {
+      if (e is! Map<String, dynamic>) {
+        skipped++;
+        continue;
+      }
+      try {
+        out.add(parser(e));
+      } catch (err) {
+        skipped++;
+        debugPrint('Cache $typeName entry skippata: $err');
+      }
+    }
+    if (skipped > 0) {
+      debugPrint('Cache parse $typeName: ${out.length} ok, $skipped skip');
+    }
+    return out;
+  }
+
   Future<void> _loadData() async {
     setState(() { _errorMessage = null; });
 
@@ -52,12 +81,25 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     final apiService = Provider.of<ApiService>(context, listen: false);
     final pagamentoService = PagamentoService(apiService);
 
-    // Phase 1: cache
+    // Phase 1: cache. Parse difensivo: una entry corrotta (es. schema
+    // vecchio dopo aggiornamento app) non deve azzerare l'intera lista.
     final cachedPagamenti = await storageService.getStoredData('pagamenti');
     final cachedQuote = await storageService.getStoredData('quote');
     if (cachedPagamenti.isNotEmpty || cachedQuote.isNotEmpty) {
-      if (cachedPagamenti.isNotEmpty) _pagamenti = cachedPagamenti.map((e) => Pagamento.fromJson(e as Map<String, dynamic>)).toList();
-      if (cachedQuote.isNotEmpty) _quote = cachedQuote.map((e) => QuotaUtente.fromJson(e as Map<String, dynamic>)).toList();
+      if (cachedPagamenti.isNotEmpty) {
+        _pagamenti = _safeParseList<Pagamento>(
+          cachedPagamenti,
+          Pagamento.fromJson,
+          'Pagamento',
+        );
+      }
+      if (cachedQuote.isNotEmpty) {
+        _quote = _safeParseList<QuotaUtente>(
+          cachedQuote,
+          QuotaUtente.fromJson,
+          'QuotaUtente',
+        );
+      }
       if (mounted) setState(() { _isRefreshing = true; });
     } else {
       if (mounted) setState(() { _isRefreshing = true; });
@@ -139,10 +181,11 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     );
   }
 
-  bool _isAttrezzaturaPagamento(Pagamento pagamento) {
-    final desc = pagamento.descrizione.toLowerCase();
-    return desc.contains('attrezzatura') || desc.contains('manutenzione');
-  }
+  /// Locale code da usare per i NumberFormat (es. 'it', 'en'). Si basa
+  /// sulla lingua UI corrente, così i numeri rispettano le convenzioni
+  /// dell'utente (1.000,00 vs 1,000.00). Il simbolo € è fisso.
+  String get _currencyLocale =>
+      Provider.of<LanguageService>(context, listen: false).locale.toString();
 
   Widget _buildPagamentiTab() {
     final s = _s;
@@ -178,7 +221,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       );
     }
 
-    final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '\u20AC');
+    final formatCurrency = NumberFormat.currency(locale: _currencyLocale, symbol: '\u20AC');
     final formatDate = DateFormat('dd/MM/yyyy');
 
     return RefreshIndicator(
@@ -224,8 +267,9 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
           // Lista pagamenti
           ...List.generate(_pagamenti.length, (index) {
             final pagamento = _pagamenti[index];
-            final isAttrezzatura = _isAttrezzaturaPagamento(pagamento);
-            final isSaldo = pagamento.isSaldo;
+            final categoria = PagamentoCategorizer.categorize(pagamento);
+            final isAttrezzatura = categoria == PagamentoCategoria.attrezzatura;
+            final isSaldo = categoria == PagamentoCategoria.saldo;
 
             Color leadingColor = isSaldo
                 ? Colors.blue
@@ -355,7 +399,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       );
     }
 
-    final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '\u20AC');
+    final formatCurrency = NumberFormat.currency(locale: _currencyLocale, symbol: '\u20AC');
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -384,34 +428,69 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     final pagamentiRegolari = pagamentiGruppo.where((p) => !p.isSaldo).toList();
 
     final double totalePagamentiGruppo = pagamentiRegolari.fold(0.0, (sum, p) => sum + p.importo);
+    final double sommaQuote = quoteGruppo.fold(0.0, (sum, q) => sum + q.percentuale);
 
+    // Mappe utente_id → username (per ricostruire i nomi dei membri senza quota)
+    // e percentuale (default 0 per chi non ha quota).
+    final Map<int, String> usernameById = {};
+    final Map<int, double> percentualeById = {};
+    for (final q in quoteGruppo) {
+      usernameById[q.utente] = q.utenteUsername;
+      percentualeById[q.utente] = q.percentuale;
+    }
+    for (final p in pagamentiGruppo) {
+      usernameById.putIfAbsent(p.utente, () => p.utenteUsername);
+      if (p.destinatario != null) {
+        usernameById.putIfAbsent(
+          p.destinatario!,
+          () => p.destinatarioUsername ?? '—',
+        );
+      }
+    }
+
+    // Set di tutti gli utente_id che partecipano al bilancio del gruppo:
+    // chi ha una quota, chi ha pagato, chi ha inviato/ricevuto un saldo.
+    final Set<int> utentiCoinvolti = {
+      ...quoteGruppo.map((q) => q.utente),
+      ...pagamentiRegolari.map((p) => p.utente),
+      ...pagamentiSaldo.map((p) => p.utente),
+      ...pagamentiSaldo.where((p) => p.destinatario != null).map((p) => p.destinatario!),
+    };
+
+    bool hasMembriSenzaQuota = false;
     final List<Map<String, dynamic>> bilancioMembri = [];
 
-    for (var quota in quoteGruppo) {
+    for (final utenteId in utentiCoinvolti) {
+      final percentuale = percentualeById[utenteId] ?? 0.0;
+      if (!percentualeById.containsKey(utenteId)) {
+        hasMembriSenzaQuota = true;
+      }
+
       final double totalePagato = pagamentiRegolari
-          .where((p) => p.utente == quota.utente)
+          .where((p) => p.utente == utenteId)
           .fold(0.0, (sum, p) => sum + p.importo);
 
-      final double dovuto = totalePagamentiGruppo * (quota.percentuale / 100.0);
+      final double dovuto = totalePagamentiGruppo * (percentuale / 100.0);
       double saldo = totalePagato - dovuto;
 
       // Aggiusta il saldo con i pagamenti di saldo: chi paga migliora il suo saldo,
       // chi riceve riduce il suo credito
-      for (var sp in pagamentiSaldo) {
-        if (sp.utente == quota.utente) {
+      for (final sp in pagamentiSaldo) {
+        if (sp.utente == utenteId) {
           saldo += sp.importo; // il pagante ha saldato il debito
-        } else if (sp.destinatario == quota.utente) {
+        } else if (sp.destinatario == utenteId) {
           saldo -= sp.importo; // il destinatario ha ricevuto, il suo credito scende
         }
       }
 
       bilancioMembri.add({
-        'utenteId': quota.utente,
-        'username': quota.utenteUsername,
-        'percentuale': quota.percentuale,
+        'utenteId': utenteId,
+        'username': usernameById[utenteId] ?? '—',
+        'percentuale': percentuale,
         'totalePagato': totalePagato,
         'dovuto': dovuto,
         'saldo': saldo,
+        'senzaQuota': !percentualeById.containsKey(utenteId),
       });
     }
 
@@ -463,6 +542,14 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
               s.pagamentiBilancioTotale(formatCurrency.format(totalePagamentiGruppo)),
               style: TextStyle(color: ThemeConstants.textSecondaryColor, fontSize: 14),
             ),
+            if ((sommaQuote - 100.0).abs() > 0.01) ...[
+              const SizedBox(height: 8),
+              _buildWarningBanner(s.pagamentiBilancioWarnSommaQuote(sommaQuote.toStringAsFixed(2))),
+            ],
+            if (hasMembriSenzaQuota) ...[
+              const SizedBox(height: 8),
+              _buildWarningBanner(s.pagamentiBilancioWarnMembriSenzaQuota),
+            ],
             const Divider(height: 24),
 
             for (var membro in bilancioMembri) ...[
@@ -551,6 +638,30 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
     );
   }
 
+  Widget _buildWarningBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.orange.withOpacity(0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMembroBilancioRow(Map<String, dynamic> membro, NumberFormat formatCurrency) {
     final s = _s;
     final double saldo = membro['saldo'];
@@ -597,15 +708,21 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: ThemeConstants.primaryColor.withOpacity(0.15),
+                  color: membro['senzaQuota'] == true
+                      ? Colors.orange.withOpacity(0.15)
+                      : ThemeConstants.primaryColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${membro['percentuale']}%',
+                  membro['senzaQuota'] == true
+                      ? '— %'
+                      : '${membro['percentuale']}%',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: ThemeConstants.secondaryColor,
+                    color: membro['senzaQuota'] == true
+                        ? Colors.orange.shade800
+                        : ThemeConstants.secondaryColor,
                   ),
                 ),
               ),

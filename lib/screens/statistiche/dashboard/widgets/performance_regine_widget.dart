@@ -50,7 +50,7 @@ class _PerformanceRegineWidgetState extends State<PerformanceRegineWidget> {
   }
 
   Widget _buildContent() {
-    final regine = _data!['regine'] as List;
+    final regine = (_data?['regine'] as List?) ?? const [];
     if (regine.isEmpty) {
       return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardPerformanceNoRegine)));
     }
@@ -94,7 +94,7 @@ class _PerformanceRegineWidgetState extends State<PerformanceRegineWidget> {
   }
 
   Widget _scoreCell(dynamic val) {
-    final v = val as int?;
+    final v = val is num ? val.toInt() : null;
     return Padding(
       padding: const EdgeInsets.all(6),
       child: Text(

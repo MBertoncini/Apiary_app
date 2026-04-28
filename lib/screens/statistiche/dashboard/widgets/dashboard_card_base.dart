@@ -13,6 +13,7 @@ class DashboardCardBase extends StatelessWidget {
   final VoidCallback onRetry;
   final Widget child;
   final double loadingHeight;
+  final Widget? headerTrailing;
 
   const DashboardCardBase({
     super.key,
@@ -23,6 +24,7 @@ class DashboardCardBase extends StatelessWidget {
     required this.onRetry,
     required this.child,
     this.loadingHeight = 160,
+    this.headerTrailing,
   });
 
   @override
@@ -44,6 +46,7 @@ class DashboardCardBase extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (headerTrailing != null) headerTrailing!,
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 18),
                   onPressed: onRetry,

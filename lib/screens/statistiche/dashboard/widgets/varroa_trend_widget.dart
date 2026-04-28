@@ -51,8 +51,8 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
   }
 
   Widget _buildChart() {
-    final mesi = List<String>.from(_data!['mesi'] ?? []);
-    final serie = _data!['serie'] as List;
+    final mesi = List<String>.from(_data?['mesi'] ?? const []);
+    final serie = (_data?['serie'] as List?) ?? const [];
 
     if (mesi.isEmpty || serie.isEmpty) {
       return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardVarroaNessuno)));
@@ -61,7 +61,8 @@ class _VarroaTrendWidgetState extends State<VarroaTrendWidget> {
     final colors = [Colors.red, Colors.blue, Colors.green, Colors.orange, Colors.purple];
     final linee = serie.asMap().entries.map((entry) {
       final s = entry.value;
-      final valori = List<double>.from((s['valori'] as List).map((v) => (v as num).toDouble()));
+      final valoriRaw = (s is Map ? s['valori'] as List? : null) ?? const [];
+      final valori = valoriRaw.map((v) => (v is num ? v.toDouble() : 0.0)).toList();
       return LineChartBarData(
         spots: valori.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
         isCurved: true,

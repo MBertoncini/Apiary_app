@@ -89,36 +89,92 @@ class _QuoteScreenState extends State<QuoteScreen> {
   Future<void> _editQuota(QuotaUtente quota) async {
     final percentuale = await _showEditDialog(quota);
 
-    if (percentuale != null) {
-      setState(() {
-        _isLoading = true;
-      });
+    if (percentuale == null) return;
 
-      try {
-        final apiService = Provider.of<ApiService>(context, listen: false);
-        final pagamentoService = PagamentoService(apiService);
-
-        await pagamentoService.updateQuota(
-          quota.id,
-          {
-            'percentuale': percentuale,
-            'utente': quota.utente,
-            'gruppo': quota.gruppo,
-          }
-        );
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_s.quoteUpdatedOk)),
-        );
-
-        _loadDati();
-      } catch (e) {
-        setState(() {
-          _errorMessage = _s.quoteErrUpdate(e.toString());
-          _isLoading = false;
-        });
-      }
+    if (!await _validateGroupSum(
+      gruppoId: quota.gruppo,
+      newPercentuale: percentuale,
+      excludeQuotaId: quota.id,
+    )) {
+      return;
     }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final pagamentoService = PagamentoService(apiService);
+
+      await pagamentoService.updateQuota(
+        quota.id,
+        {
+          'percentuale': percentuale,
+          'utente': quota.utente,
+          'gruppo': quota.gruppo,
+        }
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.quoteUpdatedOk)),
+      );
+
+      _loadDati();
+    } catch (e) {
+      setState(() {
+        _errorMessage = _s.quoteErrUpdate(e.toString());
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Restituisce true se la somma è valida o l'utente ha confermato.
+  /// Restituisce false (e non procede col salvataggio) se la somma supererebbe
+  /// 100% o se l'utente ha annullato la conferma per somma != 100.
+  Future<bool> _validateGroupSum({
+    required int? gruppoId,
+    required double newPercentuale,
+    int? excludeQuotaId,
+  }) async {
+    if (gruppoId == null) return true;
+    final altreQuote = _quote.where(
+      (q) => q.gruppo == gruppoId && q.id != excludeQuotaId,
+    );
+    final sommaAltre = altreQuote.fold<double>(0, (s, q) => s + q.percentuale);
+    final sommaTotale = sommaAltre + newPercentuale;
+
+    // Tolleranza arrotondamento: 0.01%.
+    if (sommaTotale > 100.0 + 0.01) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.quoteValidSommaSupera100(sommaTotale.toStringAsFixed(2)))),
+      );
+      return false;
+    }
+
+    if ((sommaTotale - 100.0).abs() > 0.01) {
+      final s = _s;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(s.quoteConfirmSommaNon100Title(sommaTotale.toStringAsFixed(2))),
+          content: Text(s.quoteConfirmSommaNon100Msg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(s.dialogCancelBtn),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(s.quoteConfirmSommaNon100Continue),
+            ),
+          ],
+        ),
+      );
+      return confirmed == true;
+    }
+
+    return true;
   }
 
   Future<double?> _showEditDialog(QuotaUtente quota) async {
@@ -228,6 +284,23 @@ class _QuoteScreenState extends State<QuoteScreen> {
     }
   }
 
+  /// Carica la lista dei membri di un gruppo dal backend.
+  /// Ritorna lista di {id, username}. Throws on errore di rete.
+  Future<List<Map<String, dynamic>>> _fetchMembriGruppo(int gruppoId) async {
+    final apiService = Provider.of<ApiService>(context, listen: false);
+    final response = await apiService.get('/gruppi/$gruppoId/membri/');
+    final List<dynamic> list = response is List
+        ? response
+        : (response is Map ? (response['results'] as List? ?? const []) : const []);
+    return list
+        .where((m) => m is Map && m['utente'] is int)
+        .map((m) => {
+              'id': m['utente'] as int,
+              'username': (m['utente_username'] as String?) ?? '—',
+            })
+        .toList();
+  }
+
   Future<void> _addQuota() async {
     if (_selectedGruppo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -236,10 +309,46 @@ class _QuoteScreenState extends State<QuoteScreen> {
       return;
     }
 
-    // Mostra dialog per inserire nuova quota
-    final quota = await _showAddDialog();
+    final gruppoId = _selectedGruppo!.id;
+
+    // Carica i membri del gruppo dal backend (single source of truth: l'API).
+    // Niente input testuale di ID, niente match locale fragile.
+    final List<Map<String, dynamic>> membri;
+    try {
+      membri = await _fetchMembriGruppo(gruppoId);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.quoteAddErrCaricamentoMembri(e.toString()))),
+      );
+      return;
+    }
+
+    // Filtra membri che hanno già una quota in questo gruppo: una quota per
+    // utente per gruppo è il vincolo del modello (la formula del bilancio
+    // assume quote distinte per utente).
+    final utentiConQuota = _quote
+        .where((q) => q.gruppo == gruppoId)
+        .map((q) => q.utente)
+        .toSet();
+    final membriDisponibili = membri.where((m) => !utentiConQuota.contains(m['id'])).toList();
+
+    if (membriDisponibili.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.quoteAddNoMembriDisponibili)),
+      );
+      return;
+    }
+
+    final quota = await _showAddDialog(membriDisponibili);
 
     if (quota != null) {
+      if (!await _validateGroupSum(
+        gruppoId: quota['gruppo'] as int?,
+        newPercentuale: (quota['percentuale'] as num?)?.toDouble() ?? 0.0,
+      )) {
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
@@ -264,89 +373,91 @@ class _QuoteScreenState extends State<QuoteScreen> {
     }
   }
 
-  Future<Map<String, dynamic>?> _showAddDialog() async {
+  Future<Map<String, dynamic>?> _showAddDialog(List<Map<String, dynamic>> membriDisponibili) async {
     final s = _s;
     final percentualeController = TextEditingController();
-    final utenteIdController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    int? selectedUtenteId = membriDisponibili.length == 1
+        ? membriDisponibili.first['id'] as int
+        : null;
 
     return showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(s.quoteAddTitle),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: utenteIdController,
-                decoration: InputDecoration(
-                  labelText: s.quoteLabelIdUtente,
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(s.quoteAddTitle),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<int>(
+                  value: selectedUtenteId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: s.quoteAddLabelUtente,
+                    prefixIcon: const Icon(Icons.person),
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: membriDisponibili
+                      .map((m) => DropdownMenuItem<int>(
+                            value: m['id'] as int,
+                            child: Text(m['username'] as String, overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  validator: (val) => val == null ? s.quoteValidUtenteRequired : null,
+                  onChanged: (val) => setDialogState(() => selectedUtenteId = val),
                 ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return s.quoteValidIdRequired;
-                  }
-                  final id = int.tryParse(value);
-                  if (id == null || id <= 0) {
-                    return s.quoteValidIdInvalid;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: percentualeController,
-                decoration: InputDecoration(
-                  labelText: s.quoteLabelPercentuale,
-                  border: OutlineInputBorder(),
-                  suffixText: '%',
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: percentualeController,
+                  decoration: InputDecoration(
+                    labelText: s.quoteLabelPercentuale,
+                    border: const OutlineInputBorder(),
+                    suffixText: '%',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return s.quoteValidPercRequired;
+                    }
+                    final perc = double.tryParse(value.replaceAll(',', '.'));
+                    if (perc == null) {
+                      return s.quoteValidPercInvalid;
+                    }
+                    if (perc <= 0 || perc > 100) {
+                      return s.quoteValidPercRange;
+                    }
+                    return null;
+                  },
                 ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return s.quoteValidPercRequired;
-                  }
-                  final perc = double.tryParse(value.replaceAll(',', '.'));
-                  if (perc == null) {
-                    return s.quoteValidPercInvalid;
-                  }
-                  if (perc <= 0 || perc > 100) {
-                    return s.quoteValidPercRange;
-                  }
-                  return null;
-                },
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(s.dialogCancelBtn),
+            ),
+            TextButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+
+                final percentuale = double.tryParse(percentualeController.text.replaceAll(',', '.'));
+
+                Navigator.pop(
+                  context,
+                  {
+                    'percentuale': percentuale,
+                    'utente': selectedUtenteId,
+                    'gruppo': _selectedGruppo!.id,
+                  },
+                );
+              },
+              child: Text(s.btnAdd),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(s.dialogCancelBtn),
-          ),
-          TextButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-
-              final percentuale = double.tryParse(percentualeController.text.replaceAll(',', '.'));
-              final utenteId = int.tryParse(utenteIdController.text);
-
-              Navigator.pop(
-                context,
-                {
-                  'percentuale': percentuale,
-                  'utente': utenteId,
-                  'gruppo': _selectedGruppo!.id,
-                }
-              );
-            },
-            child: Text(s.btnAdd),
-          ),
-        ],
       ),
     );
   }

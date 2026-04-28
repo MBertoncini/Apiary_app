@@ -1,6 +1,6 @@
 # Apiary Manager — Flutter App
 
-> A comprehensive mobile application for professional beekeeping management: hives, queens, inspections, honey production, treatments, and AI-powered features.
+> Mobile app for professional beekeeping: apiaries, hives, queens, inspections, honey production, treatments, equipment, sales, and AI-powered assistants.
 
 ---
 
@@ -10,106 +10,110 @@
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
-- [Key Features](#key-features)
+- [Domain Modules](#domain-modules)
 - [Data Storage Strategy](#data-storage-strategy)
-- [AI & Voice Features](#ai--voice-features)
+- [AI Stack](#ai-stack)
+- [Subscriptions & AI Tiers](#subscriptions--ai-tiers)
+- [Localization](#localization)
 - [Backend Integration](#backend-integration)
 - [Getting Started](#getting-started)
+- [Configuration & Secrets](#configuration--secrets)
 - [Build & Release](#build--release)
+- [Related Repositories](#related-repositories)
 
 ---
 
 ## Overview
 
-Apiary Manager is a Flutter mobile application that pairs with a Django REST backend to give beekeepers a fully offline-capable tool for managing every aspect of their apiaries. The app syncs data bidirectionally with the server, works seamlessly offline, and includes advanced features like AI-powered bee detection, voice command input, and QR-code navigation.
+Apiary Manager is a Flutter mobile app paired with a Django REST backend. It is offline-capable, syncs bidirectionally, and bundles three AI surfaces (chat, voice entry, frame analysis) gated by a tiered subscription system backed by RevenueCat.
 
 | Property | Value |
 |---|---|
-| **Platform** | Flutter (Android, iOS, Web, Linux, macOS) |
+| **Platform** | Flutter (Android primary; iOS, Web, Linux, macOS supported) |
 | **Dart SDK** | ≥ 3.0.0 < 4.0.0 |
 | **Android Min SDK** | API 21 (Android 5.0) |
-| **iOS Min SDK** | iOS 11+ |
-| **App Version** | 1.0.0+1 |
-| **Backend** | Django 4.2 + DRF @ PythonAnywhere |
+| **App Version** | 1.0.2+10 |
+| **Backend** | Django 4.2 + DRF @ `cible99.pythonanywhere.com` |
+| **Local DB schema** | v7 |
 
 ---
 
 ## Tech Stack
 
-### Core Framework
+### Core
 
 | Layer | Technology |
 |---|---|
 | Language | Dart 3+ |
-| UI Framework | Flutter |
-| State Management | Provider + Riverpod (hybrid) |
+| UI | Flutter (Material 3) |
+| State management | Provider + Riverpod (hybrid) |
 
 ### Dependencies
 
 | Category | Packages |
 |---|---|
 | **Networking** | `http`, `connectivity_plus`, `cached_network_image` |
-| **Local Storage** | `sqflite`, `shared_preferences`, `path_provider` |
-| **Maps & Location** | `flutter_map`, `latlong2`, `geolocator` |
-| **Charts** | `fl_chart` |
+| **Local storage** | `sqflite`, `shared_preferences`, `path_provider` |
+| **Maps & location** | `flutter_map`, `flutter_map_marker_cluster`, `latlong2`, `geolocator` |
+| **Charts & UI** | `fl_chart`, `shimmer`, `flutter_speed_dial`, `flutter_svg`, `google_fonts` |
 | **Media** | `image_picker`, `flutter_image_compress`, `screenshot` |
-| **Voice / Audio** | `speech_to_text`, `google_speech`, `flutter_sound`, `audioplayers` |
-| **ML / AI** | `tflite_flutter` (YOLOv8-seg bee detector) |
-| **QR / Barcode** | `mobile_scanner`, `qr_flutter` |
-| **Notifications** | `flutter_local_notifications` |
+| **Voice & audio** | `speech_to_text`, `google_speech`, `flutter_sound`, `audioplayers` |
+| **ML** | `tflite_flutter` (YOLOv8-seg bee detector) |
+| **QR / barcode** | `mobile_scanner`, `qr_flutter` |
+| **Payments** | `purchases_flutter`, `purchases_ui_flutter` (RevenueCat) |
+| **Auth** | `google_sign_in` |
+| **Notifications** | `flutter_local_notifications`, `flutter_timezone` |
+| **Background work** | `flutter_background_service`, `flutter_background_service_android` |
 | **Permissions** | `permission_handler` |
-| **Export** | `pdf`, `csv`, `share_plus` |
-| **UI Extras** | `google_fonts`, `flutter_svg`, `flutter_speed_dial` |
-| **Background** | `flutter_background_service` |
+| **Export** | `pdf`, `printing`, `csv`, `share_plus` |
 | **Sensors** | `sensors_plus`, `vibration` |
-| **Internationalization** | `intl`, `flutter_localizations` |
+| **i18n** | `flutter_localizations`, `intl` |
 
-### Custom Fonts
-
-- **Caveat** — Regular, Bold
-- **Quicksand** — Regular, Medium, Bold
-- **Poppins** — Regular, Medium, SemiBold, Bold
+### Custom fonts
+Caveat, Quicksand, Poppins.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      Flutter App                        │
-│                                                         │
-│  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌─────────┐  │
-│  │ Screens │  │ Widgets  │  │Providers│  │  Utils  │  │
-│  └────┬────┘  └────┬─────┘  └────┬────┘  └─────────┘  │
-│       │             │             │                      │
-│  ┌────▼─────────────▼─────────────▼────────────────┐   │
-│  │                  Services Layer                   │   │
-│  │  ApiService · AuthService · StorageService       │   │
-│  │  SyncService · ControlloService · VoiceServices  │   │
-│  │  BeeDetectionService · NotificationService ...   │   │
-│  └────┬─────────────────────────────────────┬───────┘   │
-│       │                                     │            │
-│  ┌────▼──────────┐                ┌─────────▼────────┐  │
-│  │  SharedPrefs  │                │  SQLite (sqflite) │  │
-│  │  (apiari,     │                │  (controlli,      │  │
-│  │   arnie,      │                │   analisi         │  │
-│  │   melari,     │                │   telaini)        │  │
-│  │   regine)     │                │                   │  │
-│  └───────────────┘                └──────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-                          │  REST API (JWT)
-                          ▼
-           ┌──────────────────────────────┐
-           │  Django 4.2 + DRF Backend    │
-           │  cible99.pythonanywhere.com  │
-           └──────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        Flutter App                           │
+│                                                              │
+│   Screens ─┬─ Widgets ──── Providers (Provider + Riverpod)   │
+│            │                                                 │
+│            ▼                                                 │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │                   Services Layer                    │   │
+│   │  ApiService · AuthService · StorageService          │   │
+│   │  SyncService · ControlloService · ColoniaService    │   │
+│   │  AiQuotaService · ChatService · MCPService          │   │
+│   │  BeeDetectionService · VoiceDataProcessor           │   │
+│   │  SubscriptionService (RevenueCat)                   │   │
+│   │  StatisticheService · MeteoService · ...            │   │
+│   └────────────┬─────────────────────────────┬──────────┘   │
+│                │                             │              │
+│   ┌────────────▼──────────┐    ┌─────────────▼──────────┐   │
+│   │    SharedPreferences  │    │     SQLite (v7)         │   │
+│   │  apiari, arnie,       │    │  controlli,             │   │
+│   │  melari, regine, ...  │    │  analisi_telaini,       │   │
+│   │                       │    │  colonie, ...           │   │
+│   └───────────────────────┘    └─────────────────────────┘   │
+└────────────┬─────────────────────────────────┬───────────────┘
+             │ REST (token auth)               │ direct API
+             ▼                                 ▼
+   ┌──────────────────────┐    ┌────────────────────────────┐
+   │  Django 4.2 + DRF    │    │  Gemini API (v1beta)       │
+   │  PythonAnywhere      │    │  + RevenueCat (entitlements)│
+   └──────────────────────┘    └────────────────────────────┘
 ```
 
-### State Management Strategy
+### State management
 
-The app uses a **hybrid approach**:
-- **Riverpod** — for reactive, scoped UI state (screens that need fine-grained reactivity)
-- **Provider** — for global singleton services (auth, storage, connectivity)
+- **Riverpod** — reactive UI state on screens that need fine-grained rebuilds.
+- **Provider** — global singleton services (auth, API, sync, subscription, AI quota).
+
+`provider_setup.dart` wires everything: `LanguageService` → `ConnectivityService` → `StorageService` → `AuthService` → `ApiService` → `SyncService` → `MCPService` → `BeeDetectionService` → `AnalisiTelainoService` → `AudioService` → `VoiceFeedbackService` → `SubscriptionService` → `AiQuotaService` → `StatisticheService` → `ChatService`.
 
 ---
 
@@ -117,219 +121,229 @@ The app uses a **hybrid approach**:
 
 ```
 lib/
-├── main.dart                   # App entry point
-├── app.dart                    # MaterialApp + routing
+├── main.dart                   # Entry point — RC bootstrap, edge-to-edge UI
+├── app.dart                    # MaterialApp shell (legacy, see main.dart)
 ├── provider_setup.dart         # Service & provider wiring
 │
-├── config/                     # App-level configuration
-│   └── google_credentials.dart
+├── config/                     # api_keys.dart (gitignored), google_credentials.dart
+├── constants/                  # api_constants, theme_constants, gemini_constants,
+│                               #  app_constants, piante_mellifere
+├── l10n/                       # AppStrings + strings_it / strings_en (custom i18n)
 │
-├── constants/                  # API URLs, theme colours, enums
-│
-├── models/                     # Pure Dart data classes
-│   ├── apiario.dart
-│   ├── arnia.dart
-│   ├── controllo_arnia.dart    # Inspection with telaini config (JSON)
-│   ├── regina.dart
-│   ├── melario.dart
-│   ├── smielatura.dart
-│   ├── fioritura.dart
-│   ├── trattamento.dart
-│   ├── attrezzatura.dart
-│   ├── pagamento.dart
-│   ├── vendita.dart
-│   ├── analisi_telaino.dart
-│   ├── gruppo.dart
-│   ├── voice_entry.dart
-│   └── ...
+├── models/                     # Pure Dart data classes (~25)
+│   ├── apiario, arnia, colonia, controllo_arnia, regina
+│   ├── melario, smielatura, invasettamento, maturatore,
+│   │   contenitore_stoccaggio, preferenza_maturazione
+│   ├── fioritura, fioritura_conferma, trattamento, tipo_trattamento
+│   ├── attrezzatura, manutenzione, spesa_attrezzatura
+│   ├── pagamento, vendita, cliente, gruppo, quota_utente
+│   ├── analisi_telaino, voice_entry, chat_message
+│   ├── osm_vegetazione, user
 │
 ├── database/                   # SQLite layer
-│   ├── database_helper.dart    # DB init, schema, PRAGMA helpers
+│   ├── database_helper.dart    # v7 schema + onUpgrade migrations
 │   └── dao/
-│       ├── controllo_arnia_dao.dart   # ← _convertBools() applied here
-│       ├── analisi_telaino_dao.dart
-│       └── ...
+│       ├── apiario_dao.dart, arnia_dao.dart, colonia_dao.dart
+│       ├── controllo_arnia_dao.dart   # _convertBools() guard
+│       └── analisi_telaino_dao.dart
 │
 ├── services/                   # Business logic & I/O
-│   ├── api_service.dart               # HTTP client, pagination, offline cache
-│   ├── auth_service.dart              # JWT login/register/logout
-│   ├── storage_service.dart           # SharedPreferences wrapper
-│   ├── api_cache_helper.dart          # Offline fallback cache
-│   ├── sync_service.dart              # Manual bidirectional sync
-│   ├── background_sync_service.dart   # Periodic background sync
-│   ├── connectivity_service.dart
-│   ├── controllo_service.dart         # Controlli → SQLite DAO
-│   ├── analisi_telaino_service.dart
-│   ├── attrezzatura_service.dart      # Auto-payment on cost > 0
-│   ├── pagamento_service.dart
-│   ├── fioritura_service.dart
-│   ├── gruppo_service.dart
-│   ├── bee_detection_service.dart     # TFLite inference
-│   ├── voice_data_processor.dart      # Voice → structured data (Gemini)
-│   ├── voice_feedback_service.dart
-│   ├── voice_queue_service.dart
-│   ├── platform_voice_input_manager.dart
-│   ├── gemini_data_processor.dart
-│   ├── bee_vocabulary_corrector.dart
-│   ├── export_service.dart            # PDF / CSV
-│   ├── mobile_scanner_service.dart
-│   ├── qr_navigator_service.dart
-│   ├── notification_service.dart
-│   ├── location_service.dart
-│   ├── camera_service.dart
-│   └── ...
+│   ├── api_service, api_cache_helper, sync_service, background_sync_service
+│   ├── auth_service, auth_token_provider, storage_service, connectivity_service
+│   ├── controllo_service, colonia_service, regina_service
+│   ├── analisi_telaino_service, attrezzatura_service, pagamento_service
+│   ├── fioritura_service, gruppo_service, statistiche_service
+│   ├── notification_service, location_service, locations_service, meteo_service
+│   ├── osm_vegetazione_service, sensor_service, mobile_scanner_service, qr_*_service
+│   ├── export_service, language_service, jokes_service
+│   │
+│   │  # AI / voice / subscription
+│   ├── chat_service               # Gemini chat (direct), function calling
+│   ├── mcp_service                # tool layer over backend REST
+│   ├── ai_quota_service           # quota & tier gating (single source of truth)
+│   ├── ai_quota_local_tracker     # offline counters
+│   ├── bee_detection_service      # YOLOv8-seg TFLite inference
+│   ├── voice_data_processor       # voice → structured fields (Gemini)
+│   ├── gemini_audio_processor     # direct audio → text via Gemini
+│   ├── voice_feedback_service, voice_queue_service, voice_settings_service
+│   ├── voice_language_rules, bee_vocabulary_corrector
+│   ├── platform_speech_service, platform_voice_input_manager
+│   ├── audio_service, audio_recorder_service, audio_queue_service
+│   └── subscription_service       # RevenueCat wrapper
 │
-├── screens/                    # UI screens (35+), domain-organised
-│   ├── auth/                   # Login, Register
-│   ├── apiario/                # List, Detail, Form, Map widget
-│   ├── arnia/                  # List, Detail, Form
-│   ├── controllo/              # Inspection form
-│   ├── regina/                 # List, Detail, Form
-│   ├── melario/                # Melario, Smielatura, Invasettamento
-│   ├── nucleo/                 # Nucleo detail
-│   ├── fioritura/              # List, Detail, Form, Confirmation
-│   ├── attrezzatura/           # Equipment + Maintenance + Expenses
-│   ├── pagamento/              # Payments, Quotes
-│   ├── vendita/                # Sales, Clients
-│   ├── trattamento/            # Treatments
-│   ├── gruppo/                 # Collaborative groups & invitations
-│   ├── analisi_telaino/        # Telaino AI analysis
-│   ├── mappa/                  # Full map view
-│   └── (root)/                 # Dashboard, Settings, Splash, Chat,
-│                               #  VoiceCommand, MobileScanner
+├── screens/                    # 40+ screens, domain-organised
+│   ├── auth/, splash_screen, onboarding/
+│   ├── apiario/, arnia/, colonia/, regina/, controllo/
+│   ├── melario/, nucleo/, cantina/  (maturatori + contenitori + invasettamenti)
+│   ├── fioritura/, trattamento/, attrezzatura/
+│   ├── pagamento/, vendita/, gruppo/
+│   ├── analisi_telaino/, mappa/
+│   ├── statistiche/             # 3 tabs: dashboard, query_builder, nl_query
+│   ├── ai_tier_upgrade_screen   # paywall + tester code activation
+│   ├── chat_screen              # Gemini-powered AI chat
+│   ├── voice_command_screen, voice_entry_verification_screen,
+│   │   voice_transcript_review_screen
+│   ├── settings_screen, dashboard_screen
+│   ├── help/, donazione/, whats_new/
+│   ├── disclaimer_screen, privacy_policy_screen
+│   └── mobile_scanner_wrapper_screen
 │
-├── widgets/                    # Reusable components (15+)
-│   ├── app_drawer.dart
-│   ├── loading_indicator.dart
-│   ├── google_voice_input_widget.dart
-│   └── ...
+├── widgets/                    # ~25 reusable widgets
+│   ├── drawer_widget, app_card widgets, error_widget (canonical)
+│   ├── skeleton_widgets        # Skeleton{ListView,DetailHeader,DashboardContent}
+│   ├── loading_widget, retry_button_widget, offline_banner, sync_status_widget
+│   ├── voice_input_widget, audio_input_widget, voice_animations,
+│   │   voice_context_banner, corrected_transcription_widget
+│   ├── chart_widget, weather_widget, qr_generator_widget
+│   ├── attrezzatura_prompt_dialog, hive_frame_visualizer,
+│   │   beehive_illustrations, paper_widgets
+│   └── bee_joke_bubble, contextual_hint, field_help_icon
 │
 ├── providers/                  # Riverpod providers
+│   └── apiario_provider, auth_provider, connectivity_provider, sync_provider
 │
-└── utils/                      # Helpers, formatters, validators
-```
-
-### Assets
-
-```
-assets/
-├── fonts/          # Caveat, Quicksand, Poppins (TTF)
-├── images/
-│   ├── backgrounds/
-│   ├── icons/
-│   └── illustrations/
-├── sounds/         # Voice feedback audio files
-└── models/
-    └── bee_detector.tflite   # YOLOv8-seg quantised model
+└── utils/                      # Helpers, formatters, route generator
 ```
 
 ---
 
-## Key Features
+## Domain Modules
 
-### Apiary Management
-- Full CRUD for **apiari** (apiaries) and **arnie** (hives)
-- Hive status tracking, colour-coding, and geo-location
-- Interactive **map** view using `flutter_map` (OpenStreetMap tiles)
+### Apiaries & hives
+CRUD, color coding, geo-location, clustered map view (`flutter_map_marker_cluster`).
 
-### Queen Monitoring
-- Queen genealogy and status tracking
-- Automatic queen fetch from server on every arnia load
+### Colonie
+First-class entity separate from arnia (a hive can host different colonies over time).
 
-### Hive Inspections (`controllo_arnia`)
-- Structured inspection forms (telaini, health, weight, notes)
-- Telaini config stored as JSON within the inspection record
-- Full offline support via SQLite
+### Inspections (`controllo_arnia`)
+Structured forms with telaini config persisted as JSON. Stored in SQLite via `ControlloArniaDao`.
 
-### Honey Production
-- Melario lifecycle (create → harvest → jar)
-- Smielatura (extraction) and Invasettamento (jarring) workflows
-- Export to PDF/CSV
+### Queens (regine)
+Genealogy and status; refreshed from server on every arnia load.
 
-### Treatments & Flowering
-- Sanitary treatment scheduling and history
-- Flowering event tracking and confirmation by multiple users
+### Honey production & cantina
+Full lifecycle: melario → smielatura → maturatore → contenitore → invasettamento (jarring), with maturation preferences.
 
-### Payments & Sales
-- Automatic payment creation when adding equipment/maintenance with cost > 0
-- Sales tracking with client management and invoice export
+### Treatments, flowering, equipment, sales, payments, groups
+CRUD plus auto-payment generation when an attrezzatura/manutenzione has cost > 0; multi-user collaborative groups with invitations.
 
-### Collaborative Groups
-- Multi-user apiaries with invitation system
-- Shared data, role-based access
+### Statistiche (3 tabs)
+- **Dashboard** — 12 cards (`DashboardCardBase`): produzione, varroa trend, salute arnie, andamento covata/scorte, performance regine, attrezzature, bilancio, frequenza controlli, fioriture vicine, quote gruppo, regine, etc.
+- **Query Builder** — point-and-click filters over apiari/arnie data.
+- **NL Query** — natural-language questions answered by Gemini through the MCP tool layer.
+
+### AI chat
+Conversational assistant for the apiary with function-calling tools.
+
+### Voice entry
+Free-form speech → structured inspection records.
+
+### Frame analysis
+On-device YOLOv8-seg detection of bees / drones / queens / royal cells from a frame photo.
 
 ---
 
 ## Data Storage Strategy
 
-The app maintains **two independent local stores** — mixing them is a common source of bugs:
+Two **independent** local stores — mixing them is a recurring source of bugs:
 
-| Store | Used for | Access pattern |
+| Store | Used for | Access |
 |---|---|---|
-| **SharedPreferences** | Apiari, Arnie, Melari, Regine | `StorageService.getStoredData('key')` |
-| **SQLite (sqflite)** | Controlli, Analisi Telaini | `ControlloService` / `ControlloArniaDao` |
+| **SharedPreferences** | apiari, arnie, melari, regine | `StorageService.getStoredData('key')` |
+| **SQLite (v7)** | controlli, analisi_telaini, colonie, apiari/arnie DAOs | `*Dao` / `ControlloService` |
 
-### Critical Patterns
+### Critical patterns
 
-**SQLite Bool/Int pitfall** — sqflite persists Dart `bool` as `INTEGER` 0/1. Every DAO read method applies `_convertBools()` before returning data. Skipping this causes `TypeError: type 'int' is not a subtype of type 'bool'` at runtime.
-
-**Schema-safe sync** — `syncFromServer()` calls `DatabaseHelper.getTableColumns()` (via `PRAGMA table_info`) to strip server fields absent from the local schema. This prevents `DatabaseException` when the backend adds columns before the app migration runs.
-
-**Offline-first cache** — `ApiService` tries the network first, falls back to `ApiCacheHelper` when offline, and persists successful responses for future offline use.
+- **Bool/int pitfall** — sqflite persists `bool` as `INTEGER` 0/1. Every read in `ControlloArniaDao` runs `_convertBools()`; without it, UI code crashes with `TypeError: type 'int' is not a subtype of type 'bool'`.
+- **Schema-safe sync** — `syncFromServer()` and `insert()` use `DatabaseHelper.getTableColumns()` (`PRAGMA table_info`) to strip server fields absent from the local schema, so backend column additions don't break the app before the next migration.
+- **Offline-first cache** — `ApiService` tries network first, falls back to `ApiCacheHelper` when offline, and persists successful responses for later offline reads.
 
 ---
 
-## AI & Voice Features
+## AI Stack
 
-### Bee Detector (`bee_detection_service.dart`)
-- Model: **YOLOv8-seg** quantised to TFLite (`assets/models/bee_detector.tflite`)
-- Classes detected: `bees (0)`, `drone (1)`, `queenbees (2)`, `royal cell (3)`
-- Used in `AnalisiTelainoScreen` to count frame contents from camera photos
+### 1. Gemini chat (direct from client)
 
-### Voice Command Pipeline
+`ChatService(AiQuotaService, MCPService)` calls Gemini's `v1beta/models/{model}:generateContent` directly with function-calling tools provided by `MCPService`. Tools translate to authenticated REST calls against the Django backend.
+
+- Model fallback chain in `lib/constants/gemini_constants.dart`: `gemini-2.5-flash` → `gemini-2.5-flash-lite` → `gemini-3-flash-preview` → `gemini-3.1-flash-lite-preview`.
+- System prompt is enriched with a per-user apiary/hive snapshot via `MCPService.prepareContext()` (cached 60 s).
+- Telemetry/quota: `AiQuotaService.recordChatCallToBackend()` posts `record_only:true` to `/api/v1/ai/chat/`.
+- A user can supply a **personal Gemini key** in Settings (`User.geminiApiKey`); when set, `ChatService.setPersonalKey()` skips the tier limit.
+
+### 2. Voice pipeline
+
 ```
-Microphone input
-      │
-      ▼
-speech_to_text / google_speech   ← BeeVocabularyCorrecto applies domain correction
-      │
-      ▼
-VoiceDataProcessor (Gemini API)  ← extracts structured fields from free-form speech
-      │
-      ▼
-VoiceEntryVerificationScreen     ← user reviews & confirms parsed data
-      │
-      ▼
-StorageService / ControlloService
+mic → speech_to_text / google_speech / gemini_audio_processor
+  → BeeVocabularyCorrector  (domain term correction)
+  → VoiceDataProcessor      (Gemini → structured fields)
+  → VoiceEntryVerificationScreen (user confirms parsed data)
+  → ControlloService / StorageService
 ```
 
-### AI Integrations
-- **Gemini API** — natural language → structured beekeeping data extraction
-- **Google Speech-to-Text** — high-accuracy STT with Italian bee-vocabulary correction
-- **Wit.ai** — alternative NLU backend (configurable)
+### 3. Bee detector
+
+YOLOv8-seg quantised to TFLite at `assets/models/bee_detector.tflite`. Classes: `bees(0)`, `drone(1)`, `queenbees(2)`, `royal cell(3)`. Used by `AnalisiTelainoScreen` to count frame contents from a camera photo.
+
+---
+
+## Subscriptions & AI Tiers
+
+The app gates AI features (chat / voice / stats NL queries) by tier. Tiers are defined in `lib/models/user.dart`:
+
+| Tier | Label | Fallback daily limits (chat / voice / total) |
+|---|---|---|
+| `free` | Base (Test) | 10 / 5 / 15 |
+| `apicoltore` | Sostenitore | 30 / 30 / 60 |
+| `professionale` | Tester Avanzato | 200 / 100 / 300 |
+
+Authoritative limits come from the backend (`GET /api/v1/ai/quota/` → `all_tier_limits`); local values are only fallbacks.
+
+### Upgrade paths
+
+1. **RevenueCat in-app purchase** — `SubscriptionService` (entitlement: `Apiary Pro`) maps active products to tiers (`yearly` → `professionale`, otherwise `apicoltore`). Lifecycle: `init()` at app start, `login()` after auth, `logout()` on sign-out.
+2. **Tester code** — entered in `AiTierUpgradeScreen`; backend validates and bumps `User.ai_tier`.
+3. **Personal Gemini key** — bypasses the tier rate limiter for chat (the user pays Google directly).
+
+`AiQuotaService` is the single source of truth for quota state; `ChatService`, statistiche tabs, and the upgrade screen all read from it.
+
+---
+
+## Localization
+
+Custom in-app i18n, no ARB / `.arb` files:
+
+- `lib/l10n/app_strings.dart` — abstract base class with one getter per string.
+- `lib/l10n/strings_it.dart`, `lib/l10n/strings_en.dart` — concrete implementations.
+- `LanguageService` (Provider) exposes the active `AppStrings` instance and persists the choice.
+
+Adding a language: create one new `strings_<code>.dart` extending `AppStrings`, register it in `LanguageService._setFromCode()`. No widget changes needed.
 
 ---
 
 ## Backend Integration
 
-The Django backend exposes a DRF REST API with JWT authentication.
+DRF REST API with token authentication.
 
-### Key Endpoints
+### Key endpoints
 
-| Resource | List / Create | Retrieve / Update / Delete |
-|---|---|---|
-| Apiari | `GET/POST /api/v1/apiari/` | `GET/PUT/DELETE /api/v1/apiari/{id}/` |
-| Arnie | `GET/POST /api/v1/arnie/` | `GET/PUT/DELETE /api/v1/arnie/{id}/` |
-| Controlli | `GET/POST /api/v1/controlli/` | `GET /api/v1/arnie/{id}/controlli/` |
-| Regine | `POST /api/v1/regine/` | `GET /api/v1/arnie/{id}/regina/` |
-| Melari | `GET/POST /api/v1/melari/` | `GET/PUT/DELETE /api/v1/melari/{id}/` |
-| Analisi Telaini | `GET/POST /api/v1/analisi-telaini/` | — |
-| Trattamenti | `GET/POST /api/v1/trattamenti/` | — |
-| Fioriture | `GET/POST /api/v1/fioriture/` | — |
-| Pagamenti | `GET/POST /api/v1/pagamenti/` | — |
-| Vendite | `GET/POST /api/v1/vendite/` | — |
+| Resource | Endpoint pattern |
+|---|---|
+| Apiari | `/api/v1/apiari/`, `/api/v1/apiari/{id}/` |
+| Arnie | `/api/v1/arnie/`, `/api/v1/arnie/{id}/` |
+| Controlli | `/api/v1/controlli/`, `/api/v1/arnie/{id}/controlli/` |
+| Regine | `/api/v1/regine/`, `/api/v1/arnie/{id}/regina/` |
+| Analisi telaini | `/api/v1/analisi-telaini/` |
+| Melari / smielature | `/api/v1/melari/`, `/api/v1/smielature/` |
+| Trattamenti / fioriture | `/api/v1/trattamenti/`, `/api/v1/fioriture/` |
+| Pagamenti / vendite | `/api/v1/pagamenti/`, `/api/v1/vendite/` |
+| Gruppi | `/api/v1/gruppi/` |
+| Profile | `GET/PATCH /api/v1/users/me/` (exposes `gemini_api_key`, `ai_tier`) |
+| AI quota | `GET /api/v1/ai/quota/`, `POST /api/v1/ai/chat/` |
 
-Authentication header: `Authorization: Token <jwt_token>`
+Auth header: `Authorization: Token <token>`.
+
+> Note: `arniaReginaUrl` constant in `api_constants.dart` uses singular `/arnia/` which is **wrong**; production code uses the plural `arnieUrl`.
 
 ---
 
@@ -338,65 +352,80 @@ Authentication header: `Authorization: Token <jwt_token>`
 ### Prerequisites
 
 - Flutter SDK ≥ 3.0.0
-- Android Studio / Xcode (for device builds)
-- Access to the Django backend (or run it locally)
+- Android Studio / Xcode
+- Backend reachable (PythonAnywhere prod or local dev)
 
 ### Setup
 
 ```bash
-# 1. Clone the repository
 git clone <repo-url>
 cd Apiary_app
 
-# 2. Install dependencies
 flutter pub get
 
-# 3. Configure the API base URL
-#    Edit lib/constants/api_constants.dart
-#    Set: const String baseUrl = 'https://cible99.pythonanywhere.com';
+# Configure API base URL
+#   Edit lib/constants/api_constants.dart
 
-# 4. (Optional) Add Google Cloud credentials for Speech-to-Text
-#    Edit lib/config/google_credentials.dart
+# Provide secrets (see "Configuration & Secrets")
+cp lib/config/api_keys.dart.example lib/config/api_keys.dart
+cp env.example.json env.json     # if you prefer --dart-define-from-file
 
-# 5. Run the app
+# (Optional) Google Cloud STT credentials
+#   Edit lib/config/google_credentials.dart
+
 flutter run
+# or:
+flutter run --dart-define-from-file=env.json
 ```
+
+---
+
+## Configuration & Secrets
+
+Two ways to provide the Gemini key — both are gitignored:
+
+| Method | File | Used by |
+|---|---|---|
+| Source file | `lib/config/api_keys.dart` (from `.example`) | `ApiKeys.geminiApiKey` |
+| Build-time | `env.json` (from `env.example.json`) | `--dart-define-from-file=env.json` |
+
+`.gitignore` already excludes `lib/config/api_keys.dart`, `env.json`, and `android/app/google-services.json`.
+
+The RevenueCat Google Play API key is currently embedded as a constant in `lib/services/subscription_service.dart` (test key). Replace before shipping production builds.
 
 ---
 
 ## Build & Release
 
 ```bash
-# Debug run
-flutter run
+flutter run                         # debug
 
-# Run tests
-flutter test
+flutter test                        # tests
 
-# Android release APK
-flutter build apk --release
+flutter build apk --release         # Android APK
+flutter build appbundle --release   # Play Store bundle
+flutter build ios --release         # iOS
+flutter build web --release         # Web
 
-# Android App Bundle (for Play Store)
-flutter build appbundle --release
-
-# iOS release
-flutter build ios --release
-
-# Web
-flutter build web --release
+# With build-time secrets:
+flutter build appbundle --release --dart-define-from-file=env.json
 ```
+
+Launcher icons & splash are managed by `flutter_launcher_icons` and `flutter_native_splash` (config in `pubspec.yaml`).
 
 ---
 
 ## Related Repositories
 
-| Repository | Description |
+| Repo | Description |
 |---|---|
-| `Apiary` | Django 4.2 + DRF backend — deployed on PythonAnywhere |
+| `Apiary` | Django 4.2 + DRF backend (deployed on PythonAnywhere) |
 | `Apiary_app` | This Flutter mobile application |
+
+See `LEGGIMI_PROGETTO.md` in the repo root for the full project documentation (Italian).
 
 ---
 
 ## License
 
-MIT License — see `LICENSE` for details.
+MIT — see `LICENSE`.

@@ -35,8 +35,10 @@ class FiorituraService {
     required double lng,
     double raggioKm = 20,
   }) async {
+    final cleanLat = lat.toStringAsFixed(6);
+    final cleanLng = lng.toStringAsFixed(6);
     final response = await _apiService
-        .get('fioriture/vicine/?lat=$lat&lng=$lng&raggio_km=$raggioKm');
+        .get('fioriture/vicine/?lat=$cleanLat&lng=$cleanLng&raggio_km=$raggioKm');
     final List<dynamic> list =
         response is List ? response : (response['results'] ?? []);
     return list.map((j) => Fioritura.fromJson(j)).toList();

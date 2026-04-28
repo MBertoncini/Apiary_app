@@ -50,8 +50,8 @@ class _FrequenzaControlliWidgetState extends State<FrequenzaControlliWidget> {
   }
 
   Widget _buildContent() {
-    final media = _data!['media_giorni_tra_controlli'];
-    final arnie = _data!['arnie'] as List;
+    final media = _data?['media_giorni_tra_controlli'];
+    final arnie = (_data?['arnie'] as List?) ?? const [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

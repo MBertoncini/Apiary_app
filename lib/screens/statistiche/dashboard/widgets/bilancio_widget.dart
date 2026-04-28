@@ -18,19 +18,21 @@ class _BilancioWidgetState extends State<BilancioWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+  late int _anno;
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   void initState() {
     super.initState();
+    _anno = DateTime.now().year;
     _load();
   }
 
   Future<void> _load({bool forceRefresh = false}) async {
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await widget.service.getBilancioEconomico(forceRefresh: forceRefresh);
+      final data = await widget.service.getBilancioEconomico(anno: _anno, forceRefresh: forceRefresh);
       setState(() { _data = data; _loading = false; });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
@@ -39,22 +41,41 @@ class _BilancioWidgetState extends State<BilancioWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final currentYear = DateTime.now().year;
+    final anni = List<int>.generate(5, (i) => currentYear - i);
     return DashboardCardBase(
       icon: const Icon(Icons.euro, color: Color(0xFFD4A017)),
-      title: _s.dashboardTitleBilancio(_data?['anno'] as int? ?? DateTime.now().year),
+      title: _s.dashboardTitleBilancio(_data?['anno'] as int? ?? _anno),
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
       loadingHeight: 270,
+      headerTrailing: DropdownButton<int>(
+        value: _anno,
+        isDense: true,
+        underline: const SizedBox.shrink(),
+        style: const TextStyle(fontSize: 13, color: Colors.black87),
+        items: anni
+            .map((y) => DropdownMenuItem<int>(value: y, child: Text('$y')))
+            .toList(),
+        onChanged: (v) {
+          if (v == null || v == _anno) return;
+          setState(() => _anno = v);
+          _load(forceRefresh: true);
+        },
+      ),
       child: _data != null ? _buildContent() : const SizedBox.shrink(),
     );
   }
 
   Widget _buildContent() {
-    final entrate = List<double>.from((_data!['entrate'] as List).map((v) => (v as num).toDouble()));
-    final uscite = List<double>.from((_data!['uscite'] as List).map((v) => (v as num).toDouble()));
-    final mesi = List<String>.from(_data!['mesi'] ?? []);
-    final saldo = (_data!['saldo_totale'] as num).toDouble();
+    // Cast difensivi: cache stats può contenere {} su errore parziale.
+    final entrateRaw = (_data?['entrate'] as List?) ?? const [];
+    final usciteRaw = (_data?['uscite'] as List?) ?? const [];
+    final entrate = entrateRaw.map((v) => (v is num ? v.toDouble() : 0.0)).toList();
+    final uscite = usciteRaw.map((v) => (v is num ? v.toDouble() : 0.0)).toList();
+    final mesi = List<String>.from(_data?['mesi'] ?? const []);
+    final saldo = (_data?['saldo_totale'] as num?)?.toDouble() ?? 0.0;
 
     final maxY = [...entrate, ...uscite].fold(0.0, (max, v) => v > max ? v : max) * 1.2;
 

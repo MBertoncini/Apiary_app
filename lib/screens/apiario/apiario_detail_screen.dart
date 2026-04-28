@@ -88,6 +88,11 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         final allFioriture = await storageService.getStoredData('fioriture');
         _fioriture = allFioriture.where((f) => f['apiario'] == widget.apiarioId).toList();
 
+        final allMelari = await storageService.getStoredData('melari');
+        _melari = allMelari
+            .where((m) => m['apiario_id'] == widget.apiarioId && m['stato'] == 'posizionato')
+            .toList();
+
         // Mostra subito i dati dalla cache (inclusi telaini da SQLite), poi aggiorna dal server
         await _loadUltimiControlli(syncServer: false);
         if (mounted) setState(() {});
@@ -141,6 +146,25 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
           debugPrint('Error fetching trattamenti from API: $e');
         }
 
+        // Aggiorna sempre da server: melari
+        try {
+          final melariData = await apiService.get('${ApiConstants.melariUrl}?apiario_id=${widget.apiarioId}');
+          List<dynamic> fetched = [];
+          if (melariData is List) {
+            fetched = melariData;
+          } else if (melariData is Map && melariData.containsKey('results')) {
+            fetched = melariData['results'] as List;
+          }
+          
+          _melari = fetched.where((m) => m['stato'] == 'posizionato').toList();
+          // Aggiorna cache unendo con melari degli altri apiari
+          final allMelari = await storageService.getStoredData('melari');
+          final others = allMelari.where((m) => m['apiario_id'] != widget.apiarioId).toList();
+          await storageService.saveData('melari', [...others, ...fetched]);
+        } catch (e) {
+          debugPrint('Error fetching melari from server: $e');
+        }
+
       } else {
         // Se non troviamo l'apiario in locale, prova a caricarlo dal server
         final apiarioData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/');
@@ -151,39 +175,17 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         _arnie = arnieData;
 
         await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
+        
+        final melariData = await apiService.get('${ApiConstants.melariUrl}?apiario_id=${widget.apiarioId}');
+        if (melariData is List) {
+          _melari = melariData.where((m) => m['stato'] == 'posizionato').toList();
+        } else if (melariData is Map && melariData.containsKey('results')) {
+          _melari = (melariData['results'] as List).where((m) => m['stato'] == 'posizionato').toList();
+        }
       }
       
       // Ordina arnie per numero
       _arnie.sort((a, b) => a['numero'].compareTo(b['numero']));
-
-      // Carica melari: prima da cache locale, poi aggiorna dal server
-      try {
-        final allMelari = await storageService.getStoredData('melari');
-        _melari = allMelari
-            .where((m) => m['apiario_id'] == widget.apiarioId && m['stato'] == 'posizionato')
-            .toList();
-        if (mounted) setState(() {});
-      } catch (e) {
-        debugPrint('Error loading melari from cache: $e');
-      }
-      try {
-        final melariData = await apiService.get('${ApiConstants.melariUrl}?apiario_id=${widget.apiarioId}');
-        List<dynamic> fetched = [];
-        if (melariData is List) {
-          fetched = melariData;
-        } else if (melariData is Map && melariData.containsKey('results')) {
-          fetched = melariData['results'] as List;
-        }
-        if (fetched.isNotEmpty) {
-          _melari = fetched.where((m) => m['stato'] == 'posizionato').toList();
-          // Aggiorna cache unendo con melari degli altri apiari
-          final allMelari = await storageService.getStoredData('melari');
-          final others = allMelari.where((m) => m['apiario_id'] != widget.apiarioId).toList();
-          await storageService.saveData('melari', [...others, ...fetched]);
-        }
-      } catch (e) {
-        debugPrint('Error fetching melari from server: $e');
-      }
 
       // Ordina trattamenti per data (più recenti prima)
       _trattamenti.sort((a, b) => b['data_inizio'].compareTo(a['data_inizio']));

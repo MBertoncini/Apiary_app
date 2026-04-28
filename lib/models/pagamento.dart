@@ -27,15 +27,39 @@ class Pagamento {
   bool get isSaldo => destinatario != null;
 
   factory Pagamento.fromJson(Map<String, dynamic> json) {
+    // Campi critici: senza id, utente, data o importo non possiamo
+    // mostrare il pagamento né farlo entrare nel bilancio. Fail-fast con
+    // FormatException così il loop di parse della cache lo skippa.
+    final id = json['id'];
+    final utente = json['utente'];
+    final data = json['data'];
+    final importoRaw = json['importo'];
+    if (id is! int) {
+      throw FormatException('Pagamento.fromJson: id mancante o invalido', json);
+    }
+    if (utente is! int) {
+      throw FormatException('Pagamento.fromJson: utente mancante o invalido', json);
+    }
+    if (data is! String || data.isEmpty) {
+      throw FormatException('Pagamento.fromJson: data mancante', json);
+    }
+    if (importoRaw == null) {
+      throw FormatException('Pagamento.fromJson: importo nullo', json);
+    }
+    final importo = double.tryParse(importoRaw.toString());
+    if (importo == null) {
+      throw FormatException('Pagamento.fromJson: importo non parsabile ($importoRaw)', json);
+    }
+
     return Pagamento(
-      id: json['id'],
-      utente: json['utente'],
+      id: id,
+      utente: utente,
       utenteUsername: json['utente_username'] ?? 'Sconosciuto',
       destinatario: json['destinatario'],
       destinatarioUsername: json['destinatario_username'],
-      importo: double.tryParse(json['importo'].toString()) ?? 0.0,
-      data: json['data'],
-      descrizione: json['descrizione'],
+      importo: importo,
+      data: data,
+      descrizione: (json['descrizione'] as String?) ?? '',
       gruppo: json['gruppo'],
       gruppoNome: json['gruppo_nome'],
     );

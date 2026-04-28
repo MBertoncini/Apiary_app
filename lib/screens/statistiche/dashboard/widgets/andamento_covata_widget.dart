@@ -6,15 +6,15 @@ import '../../../../services/language_service.dart';
 import '../../../../l10n/app_strings.dart';
 import 'dashboard_card_base.dart';
 
-class AndamentoScorteWidget extends StatefulWidget {
+class AndamentoCovataWidget extends StatefulWidget {
   final StatisticheService service;
-  const AndamentoScorteWidget({super.key, required this.service});
+  const AndamentoCovataWidget({super.key, required this.service});
 
   @override
-  State<AndamentoScorteWidget> createState() => _AndamentoScorteWidgetState();
+  State<AndamentoCovataWidget> createState() => _AndamentoCovataWidgetState();
 }
 
-class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
+class _AndamentoCovataWidgetState extends State<AndamentoCovataWidget> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
@@ -28,22 +28,23 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
   Future<void> _load({bool forceRefresh = false}) async {
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await widget.service.getAndamentoScorte(forceRefresh: forceRefresh);
+      final data = await widget.service.getAndamentoCovata(forceRefresh: forceRefresh);
       setState(() { _data = data; _loading = false; });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
-  static const _colors = [Color(0xFFD4A017), Colors.blue, Colors.green, Colors.red, Colors.purple];
+  static const _accent = Color(0xFFC0392B);
+  static const _colors = [_accent, Colors.deepOrange, Colors.orange, Colors.brown, Colors.pink];
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
   @override
   Widget build(BuildContext context) {
     return DashboardCardBase(
-      icon: const Icon(Icons.trending_up, color: Color(0xFFD4A017)),
-      title: _s.dashboardTitleAndamentoScorte,
+      icon: const Icon(Icons.egg, color: _accent),
+      title: _s.dashboardTitleAndamentoCovata,
       loading: _loading,
       error: _error,
       onRetry: () => _load(forceRefresh: true),
@@ -55,7 +56,7 @@ class _AndamentoScorteWidgetState extends State<AndamentoScorteWidget> {
   Widget _buildChart() {
     final arnie = (_data?['arnie'] as List?) ?? const [];
     if (arnie.isEmpty) {
-      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardScorteNessuno)));
+      return Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_s.dashboardCovataNessuno)));
     }
 
     final lines = arnie.take(5).toList().asMap().entries.map((entry) {

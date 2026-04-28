@@ -61,6 +61,26 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
     }
   }
 
+  Future<void> _restoreTrattamento() async {
+    final s = _s;
+    try {
+      await _apiService.patch(
+        '${ApiConstants.trattamentiUrl}${widget.trattamentoId}/',
+        {'stato': 'programmato'},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.trattamentoRestoredOk)));
+        _loadTrattamento();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.trattamentoRestoreError(e.toString()))));
+      }
+    }
+  }
+
   Future<void> _deleteTrattamento() async {
     final s = _s;
     final confirmed = await showDialog<bool>(
@@ -113,6 +133,8 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
         return Colors.blue;
       case 'completato':
         return Colors.green;
+      case 'annullato':
+        return Colors.red;
       default:
         return Colors.grey;
     }
@@ -143,12 +165,20 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
     Provider.of<LanguageService>(context); // rebuild on language change
     final s = _s;
     final stato = _trattamento?['stato'] as String?;
-    final canEdit = stato == 'in_corso' || stato == 'programmato';
+    final canEdit =
+        stato == 'in_corso' || stato == 'programmato' || stato == 'annullato';
+    final canRestore = stato == 'annullato';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(s.trattamentoDetailTitle),
         actions: [
+          if (_trattamento != null && canRestore)
+            IconButton(
+              icon: const Icon(Icons.restore),
+              tooltip: s.trattamentoDetailTooltipRestore,
+              onPressed: _restoreTrattamento,
+            ),
           if (_trattamento != null && canEdit)
             IconButton(
               icon: const Icon(Icons.edit),

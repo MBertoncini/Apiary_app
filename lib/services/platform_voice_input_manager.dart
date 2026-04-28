@@ -24,7 +24,7 @@ class PlatformVoiceInputManager with ChangeNotifier {
   final List<String> _lastBatchFailedTranscriptions = [];
   bool _isListening = false;
   bool _isProcessing = false;
-  bool _isBatchMode = false;
+  bool _isBatchMode = true;
   bool _isAwaitingTrigger = false;
   bool _batchStopRequested = false;
   String? _error;
@@ -251,16 +251,6 @@ class PlatformVoiceInputManager with ChangeNotifier {
     if (_speechService.isListening) _speechService.stopListening();
     notifyListeners();
   }
-
-  /// Disable batch mode and stop any active listening/trigger session.
-  void exitBatchMode() {
-    _isBatchMode = false;
-    _isAwaitingTrigger = false;
-    _triggerRestartTimer?.cancel();
-    if (_isListening || _speechService.isListening) _speechService.stopListening();
-    _isListening = false;
-    notifyListeners();
-  }
   
   // Listen for changes in the data processor
   void _onDataProcessorChanged() {
@@ -272,7 +262,7 @@ class PlatformVoiceInputManager with ChangeNotifier {
   }
 
   // Start listening
-  Future<bool> startListening({bool batchMode = false}) async {
+  Future<bool> startListening({bool batchMode = true}) async {
     if (_isListening) return true;
 
     // If we were waiting for a trigger word, cancel that session first
@@ -302,10 +292,10 @@ class PlatformVoiceInputManager with ChangeNotifier {
     _continuousBuffer = '';
     _silentRestartCount = 0;
     _failedTranscription = null;
-    _isBatchMode = batchMode;
+    _isBatchMode = true; // Always batch mode
 
-    // Start batch if in batch mode
-    if (batchMode && _currentBatch.isEmpty) {
+    // Start batch if current is empty
+    if (_currentBatch.isEmpty) {
       _currentBatch = VoiceEntryBatch();
     }
     
@@ -315,7 +305,6 @@ class PlatformVoiceInputManager with ChangeNotifier {
       await _feedbackService.vibrateStart();
     } catch (e) {
       debugPrint('Errore durante il feedback: $e');
-      // Continue even if feedback fails
     }
     
     // Start listening
@@ -323,16 +312,6 @@ class PlatformVoiceInputManager with ChangeNotifier {
     
     if (success) {
       _isListening = true;
-      
-      // In standard mode, set a timeout to auto-stop after 30 seconds
-      if (!batchMode) {
-        _autoStopTimer?.cancel();
-        _autoStopTimer = Timer(Duration(seconds: 30), () {
-          if (_isListening) {
-            stopListening();
-          }
-        });
-      }
     } else {
       _error = _speechService.error ?? 'Non è stato possibile avviare il riconoscimento vocale';
       try {
@@ -354,7 +333,6 @@ class PlatformVoiceInputManager with ChangeNotifier {
     }
     if (!_isListening) return;
 
-    _autoStopTimer?.cancel();
     _isListening = false;
     _handlingEngineStop = false;
 
@@ -368,7 +346,6 @@ class PlatformVoiceInputManager with ChangeNotifier {
     await _speechService.stopListening();
 
     // Give the engine a brief moment to deliver the final result after stop().
-    // On Android the last word is often still "in flight" when stop() returns.
     await Future.delayed(const Duration(milliseconds: 300));
 
     // Combine whatever was in the buffer with any in-flight transcription
@@ -395,64 +372,23 @@ class PlatformVoiceInputManager with ChangeNotifier {
     }
   }
 
-  /// Route a completed transcription either to the pending queue (batch mode)
-  /// or directly to Gemini (single mode).
+  /// Route a completed transcription to the pending queue.
   Future<void> _processText(String transcription) async {
     if (transcription.isEmpty) return;
 
     // Apply vocabulary correction before any downstream processing.
     final corrected = BeeVocabularyCorrector().correctText(transcription);
 
-    if (_isBatchMode) {
-      // ── Batch mode: queue corrected text, no Gemini call yet ────────────
-      _pendingTranscriptions.add(corrected);
-      _speechService.clearTranscription();
-      debugPrint('[VoiceManager] Queued transcription #${_pendingTranscriptions.length}: "$transcription"');
-      try {
-        await _feedbackService.playSuccessSound();
-        await _feedbackService.vibrateSuccess();
-      } catch (_) {}
-      notifyListeners();
-      _startTriggerMode();
-      return;
-    }
-
-    // ── Single mode: process immediately through Gemini ──────────────────
-    _isProcessing = true;
-    notifyListeners();
-
+    // ── Batch mode: queue corrected text, no Gemini call yet ────────────
+    _pendingTranscriptions.add(corrected);
+    _speechService.clearTranscription();
+    debugPrint('[VoiceManager] Queued transcription #${_pendingTranscriptions.length}: "$transcription"');
     try {
-      final entry = await _dataProcessor.processVoiceInput(corrected);
-
-      if (entry != null && entry.isValid()) {
-        try {
-          await _feedbackService.playSuccessSound();
-          await _feedbackService.vibrateSuccess();
-        } catch (_) {}
-        _currentBatch.add(entry);
-        _failedTranscription = null;
-        _speechService.clearTranscription();
-      } else {
-        // Preserve corrected transcription so "Salva per dopo" can access it
-        _failedTranscription = corrected;
-        _error ??= 'Non è stato possibile interpretare il comando vocale';
-        try {
-          await _feedbackService.playErrorSound();
-          await _feedbackService.vibrateError();
-        } catch (_) {}
-      }
-    } catch (e) {
-      // Preserve corrected transcription so "Salva per dopo" can access it
-      _failedTranscription = corrected;
-      _error = 'Errore nel processamento: $e';
-      try {
-        await _feedbackService.playErrorSound();
-        await _feedbackService.vibrateError();
-      } catch (_) {}
-    } finally {
-      _isProcessing = false;
-      notifyListeners();
-    }
+      await _feedbackService.playSuccessSound();
+      await _feedbackService.vibrateSuccess();
+    } catch (_) {}
+    notifyListeners();
+    _startTriggerMode();
   }
 
   /// Process all queued batch transcriptions through Gemini.

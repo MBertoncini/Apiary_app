@@ -741,11 +741,30 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             // Add melario button
             _buildAddSuperBtn(arnia.id, apiarioId),
             const SizedBox(height: 4),
-            // Melari stacked
-            ...activeMelari.map((m) => Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: _buildMelarioBox(m),
-            )),
+            // Melari stacked with ReorderableListView
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              proxyDecorator: (child, index, animation) {
+                return Material(
+                  elevation: 0,
+                  color: Colors.transparent,
+                  child: child,
+                );
+              },
+              onReorder: (oldIndex, newIndex) {
+                if (newIndex > oldIndex) newIndex -= 1;
+                final items = List<Melario>.from(activeMelari);
+                final item = items.removeAt(oldIndex);
+                items.insert(newIndex, item);
+                _updateMelariPositions(items);
+              },
+              children: activeMelari.map((m) => Padding(
+                key: ValueKey(m.id),
+                padding: const EdgeInsets.only(bottom: 2),
+                child: _buildMelarioBox(m),
+              )).toList(),
+            ),
             // Queen excluder
             if (hasQE) ...[
               _buildQEBar(),
@@ -1172,6 +1191,50 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         ],
       ),
     );
+  }
+
+  Future<void> _updateMelariPositions(List<Melario> reorderedList) async {
+    // 1. Aggiornamento ottimistico dello stato locale
+    setState(() {
+      for (int i = 0; i < reorderedList.length; i++) {
+        final m = reorderedList[i];
+        final newPos = reorderedList.length - i;
+        final idx = _melari.indexWhere((element) => element.id == m.id);
+        if (idx != -1) {
+          _melari[idx] = _melari[idx].copyWith(posizione: newPos);
+        }
+      }
+    });
+
+    // 2. Sincronizzazione con il server
+    try {
+      final futures = <Future>[];
+      for (int i = 0; i < reorderedList.length; i++) {
+        final m = reorderedList[i];
+        final newPos = reorderedList.length - i;
+        // Invia PATCH solo se la posizione è effettivamente cambiata sul server
+        // Nota: m.posizione qui è quella vecchia prima dell'aggiornamento ottimistico
+        // se reorderedList è una copia scattata prima del setState.
+        // Ma qui reorderedList contiene i melari con le vecchie posizioni.
+        if (m.posizione != newPos) {
+          futures.add(_apiService.patch('${ApiConstants.melariUrl}${m.id}/', {'posizione': newPos}));
+        }
+      }
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+        // Salva nello storage locale dopo il successo
+        final storageService = Provider.of<StorageService>(context, listen: false);
+        await storageService.saveData('melari', _melari.map((m) => m.toJson()).toList());
+      }
+    } catch (e) {
+      debugPrint('Errore durante l\'aggiornamento posizioni melari: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore nel salvataggio dell\'ordine: $e')),
+        );
+        _refreshAll(); // Rollback ricaricando i dati
+      }
+    }
   }
 }
 

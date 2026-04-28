@@ -39,6 +39,19 @@ class AnalisiTelainoDao {
     await _dbHelper.markSynced(_dbHelper.tableAnalisiTelaini, id);
   }
 
+  /// Marca un record come definitivamente fallito (es. 4xx dal server) per
+  /// impedire retry infiniti su record corrotti. La colonna last_error non
+  /// esiste a schema, quindi il dettaglio viene perso ma loggato.
+  Future<void> markFailed(int id) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      _dbHelper.tableAnalisiTelaini,
+      {'sync_status': 'failed'},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> syncFromServer(List<Map<String, dynamic>> records) async {
     await _dbHelper.batchInsertOrUpdate(_dbHelper.tableAnalisiTelaini, records);
   }

@@ -50,10 +50,10 @@ class _RegineStatisticheWidgetState extends State<RegineStatisticheWidget> {
   }
 
   Widget _buildContent() {
-    final totale = _data!['sostituzioni_totali'] ?? 0;
-    final attive = _data!['regine_attive'] ?? 0;
-    final durata = _data!['durata_media_mesi'];
-    final perMotivo = _data!['per_motivo'] as List;
+    final totale = (_data?['sostituzioni_totali'] as num?)?.toInt() ?? 0;
+    final attive = (_data?['regine_attive'] as num?)?.toInt() ?? 0;
+    final durata = _data?['durata_media_mesi'];
+    final perMotivo = (_data?['per_motivo'] as List?) ?? const [];
 
     return Column(
       children: [

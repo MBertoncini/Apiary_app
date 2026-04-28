@@ -159,7 +159,10 @@ class ApiService {
         tierLimits: body?['tier_limits'] as Map<String, dynamic>?,
       );
     } else {
-      throw Exception('Errore API: ${response.statusCode} ${response.body}');
+      throw HttpStatusException(
+        statusCode: response.statusCode,
+        body: response.body,
+      );
     }
   }
 
@@ -540,4 +543,19 @@ class QuotaExceededException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// Eccezione che porta con sé lo status HTTP per consentire ai chiamanti
+/// di distinguere 4xx (errore client, non riprovabile) da 5xx (transitorio).
+class HttpStatusException implements Exception {
+  final int statusCode;
+  final String body;
+
+  HttpStatusException({required this.statusCode, required this.body});
+
+  bool get isClientError => statusCode >= 400 && statusCode < 500;
+  bool get isServerError => statusCode >= 500 && statusCode < 600;
+
+  @override
+  String toString() => 'Errore API: $statusCode $body';
 }

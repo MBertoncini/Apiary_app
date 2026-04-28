@@ -17,11 +17,25 @@ class QuotaUtente {
   });
 
   factory QuotaUtente.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final utente = json['utente'];
+    if (id is! int) {
+      throw FormatException('QuotaUtente.fromJson: id mancante o invalido', json);
+    }
+    if (utente is! int) {
+      throw FormatException('QuotaUtente.fromJson: utente mancante o invalido', json);
+    }
+    final percRaw = json['percentuale'];
+    final percentuale = percRaw == null ? null : double.tryParse(percRaw.toString());
+    if (percentuale == null) {
+      throw FormatException('QuotaUtente.fromJson: percentuale invalida ($percRaw)', json);
+    }
+
     return QuotaUtente(
-      id: json['id'],
-      utente: json['utente'],
+      id: id,
+      utente: utente,
       utenteUsername: json['utente_username'] ?? 'Sconosciuto',
-      percentuale: double.tryParse(json['percentuale'].toString()) ?? 0.0,
+      percentuale: percentuale,
       gruppo: json['gruppo'],
       gruppoNome: json['gruppo_nome'],
     );

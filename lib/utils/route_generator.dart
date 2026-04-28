@@ -418,7 +418,6 @@ class RouteGenerator {
       case AppConstants.donazioneRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => const DonazioneScreen());
 
-      // Route for voice input with Wit.ai - Updated to use the new class
       case AppConstants.voiceCommandRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => VoiceCommandScreen());
 

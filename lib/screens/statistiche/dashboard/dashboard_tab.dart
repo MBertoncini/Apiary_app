@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/statistiche_service.dart';
-import '../../../services/api_service.dart';
 import 'widgets/salute_arnie_widget.dart';
 import 'widgets/produzione_widget.dart';
 import 'widgets/frequenza_controlli_widget.dart';
@@ -12,6 +12,7 @@ import 'widgets/bilancio_widget.dart';
 import 'widgets/quote_gruppo_widget.dart';
 import 'widgets/fioriture_vicine_widget.dart';
 import 'widgets/andamento_scorte_widget.dart';
+import 'widgets/andamento_covata_widget.dart';
 import 'widgets/produzione_tipo_widget.dart';
 import 'widgets/attrezzature_widget.dart';
 
@@ -26,7 +27,7 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
   @override
   bool get wantKeepAlive => true;
 
-  late final StatisticheService _service;
+  late StatisticheService _service;
   bool _initialized = false;
   int _refreshKey = 0;
   bool _preloading = true;
@@ -38,6 +39,7 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
     'bilancio_economico',
     'frequenza_controlli',
     'andamento_scorte',
+    'andamento_covata',
     'regine_statistiche',
     'performance_regine',
     'varroa_trend',
@@ -50,29 +52,39 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-      _service = StatisticheService(Provider.of<ApiService>(context, listen: false));
+      _service = context.read<StatisticheService>();
       _initialized = true;
       _preloadAll();
     }
   }
 
   /// Carica tutti i dati in parallelo prima di mostrare la lista.
-  /// Così ogni widget trova la cache già popolata al momento della costruzione
-  /// → nessuna transizione skeleton→contenuto durante lo scroll → nessun effetto calamita.
-  Future<void> _preloadAll() async {
+  /// Il preload da solo non basta a evitare l'effetto calamita: i widget figli
+  /// fanno comunque uno setState(_loading=true) → await → setState(_loading=false)
+  /// che mostra lo skeleton per un frame anche con cache hit. Se la ListView è
+  /// lazy (.separated/.builder), gli item scrollati fuori vengono distrutti e
+  /// quando rientrano nel viewport rifanno il flash skeleton→contenuto con
+  /// altezze diverse, spingendo il viewport in basso. Per questo sotto usiamo
+  /// `ListView(children: ...)` eager: lo State dei 12 widget viene preservato.
+  Future<void> _preloadAll({bool forceRefresh = false}) async {
+    // Allinea il preload di quote_gruppo al gruppoId persistito dal widget,
+    // così la chiamata centra la stessa cache key e il widget non rifà rete.
+    final prefs = await SharedPreferences.getInstance();
+    final quoteGruppoId = prefs.getInt(kQuoteGruppoSelectedIdKey);
     await Future.wait([
-      _service.getSaluteArnie().catchError((_) => <String, dynamic>{}),
-      _service.getProduzioneAnnuale().catchError((_) => <String, dynamic>{}),
-      _service.getProduzionePerTipo().catchError((_) => <String, dynamic>{}),
-      _service.getBilancioEconomico().catchError((_) => <String, dynamic>{}),
-      _service.getFrequenzaControlli().catchError((_) => <String, dynamic>{}),
-      _service.getAndamentoScorte().catchError((_) => <String, dynamic>{}),
-      _service.getRegineStatistiche().catchError((_) => <String, dynamic>{}),
-      _service.getPerformanceRegine().catchError((_) => <String, dynamic>{}),
-      _service.getVarroaTrend().catchError((_) => <String, dynamic>{}),
-      _service.getFioritureVicine().catchError((_) => <String, dynamic>{}),
-      _service.getQuoteGruppo().catchError((_) => <String, dynamic>{}),
-      _service.getRiepilogoAttrezzature().catchError((_) => <String, dynamic>{}),
+      _service.getSaluteArnie(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getProduzioneAnnuale(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getProduzionePerTipo(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getBilancioEconomico(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getFrequenzaControlli(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getAndamentoScorte(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getAndamentoCovata(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getRegineStatistiche(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getPerformanceRegine(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getVarroaTrend(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getFioritureVicine(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getQuoteGruppo(gruppoId: quoteGruppoId, forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
+      _service.getRiepilogoAttrezzature(forceRefresh: forceRefresh).catchError((_) => <String, dynamic>{}),
     ]);
     if (mounted) setState(() => _preloading = false);
   }
@@ -100,6 +112,8 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
         return FioritureVicineWidget(key: k, service: _service);
       case 'andamento_scorte':
         return AndamentoScorteWidget(key: k, service: _service);
+      case 'andamento_covata':
+        return AndamentoCovataWidget(key: k, service: _service);
       case 'produzione_per_tipo':
         return ProduzionePerTipoWidget(key: k, service: _service);
       case 'riepilogo_attrezzature':
@@ -117,16 +131,19 @@ class _DashboardTabState extends State<DashboardTab> with AutomaticKeepAliveClie
     }
     return RefreshIndicator(
       onRefresh: () async {
-        StatisticheService.clearAllCache();
-        await _preloadAll();
+        _service.clearAllCache();
+        await _preloadAll(forceRefresh: true);
         setState(() => _refreshKey++);
       },
-      child: ListView.separated(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(12),
-        itemCount: _visibleWidgets.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _buildWidgetCard(_visibleWidgets[index]),
+        children: [
+          for (int i = 0; i < _visibleWidgets.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            _buildWidgetCard(_visibleWidgets[i]),
+          ],
+        ],
       ),
     );
   }

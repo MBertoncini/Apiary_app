@@ -13,6 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../constants/theme_constants.dart';
 import '../l10n/app_strings.dart';
 import '../models/user.dart';
+import '../services/ai_quota_service.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/language_service.dart';
@@ -34,9 +35,13 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final chatService =
-          Provider.of<ChatService>(context, listen: false);
-      if (chatService.allTierLimits == null) chatService.fetchQuota();
+      // Carica i limiti tier direttamente da AiQuotaService: ChatService
+      // dipende da quota service e l'utente potrebbe aprire questo paywall
+      // senza aver mai aperto la chat (e quindi prima che ChatService sia
+      // mai stato istanziato dal lazy provider).
+      final quota =
+          Provider.of<AiQuotaService>(context, listen: false);
+      if (quota.allTierLimits == null) quota.refresh();
     });
   }
 
@@ -54,7 +59,8 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
     final s = Provider.of<LanguageService>(context).strings;
     final user = Provider.of<AuthService>(context).currentUser;
     final currentTier = user?.aiTier ?? AiTier.free;
-    final allTierLimits = Provider.of<ChatService>(context).allTierLimits;
+    final allTierLimits =
+        Provider.of<AiQuotaService>(context).allTierLimits;
     final isProActive = currentTier != AiTier.free;
 
     return Scaffold(
@@ -120,7 +126,7 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
             ),
           ),
           child: Icon(
-            isProActive ? Icons.workspace_premium : Icons.auto_awesome,
+            isProActive ? Icons.volunteer_activism : Icons.auto_awesome,
             size: 40,
             color: Colors.white,
           ),
@@ -194,9 +200,9 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
 
   Widget _buildFeaturesCard(AppStrings s) {
     final features = [
-      (Icons.chat, s.subFeatureUnlimitedChat),
-      (Icons.mic, s.subFeatureVoice),
-      (Icons.analytics, s.subFeatureAdvancedAI),
+      (Icons.biotech_outlined, s.subFeatureUnlimitedChat),
+      (Icons.science_outlined, s.subFeatureVoice),
+      (Icons.code_outlined, s.subFeatureAdvancedAI),
     ];
 
     return PaperCard(
@@ -204,7 +210,7 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Apiary Pro',
+            s.subPaywallTitle,
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -232,8 +238,7 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
                         style: ThemeConstants.bodyStyle.copyWith(fontSize: 14),
                       ),
                     ),
-                    const Icon(Icons.check,
-                        size: 18, color: ThemeConstants.successColor),
+                    // Checkmark rimosso per narrative test/open-source
                   ],
                 ),
               )),
@@ -559,11 +564,11 @@ class _TierInfoCard extends StatelessWidget {
         break;
       case AiTier.apicoltore:
         color = ThemeConstants.primaryColor;
-        icon = Icons.hive;
+        icon = Icons.volunteer_activism_outlined;
         break;
       case AiTier.professionale:
         color = const Color(0xFFFFB300);
-        icon = Icons.workspace_premium;
+        icon = Icons.biotech_outlined;
         break;
     }
 

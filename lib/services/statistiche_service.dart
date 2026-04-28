@@ -16,12 +16,15 @@ class StatisticheService {
     _quotaService = svc;
   }
 
-  // Cache statica in-memory: dati validi finché non esplicitamente invalidati.
+  // Cache di istanza con TTL: i dati restano validi finché non scadono o
+  // finché non vengono esplicitamente invalidati. Non più static perché
+  // così sopravviveva tra utenti causando leak di dati su logout.
   // Chiave: 'path|param1=val1&...' (params ordinati per stabilità).
-  static final Map<String, Map<String, dynamic>> _cache = {};
+  final Map<String, _CachedStats> _cache = {};
+  static const Duration _cacheTtl = Duration(minutes: 5);
 
-  /// Invalida tutta la cache (usato dal pull-to-refresh globale).
-  static void clearAllCache() => _cache.clear();
+  /// Invalida tutta la cache (usato dal pull-to-refresh globale e su logout).
+  void clearAllCache() => _cache.clear();
 
   /// Costruisce URL per l'endpoint stats (prefisso /api/stats/)
   String _statsUrl(String path, [Map<String, String>? params]) {
@@ -42,12 +45,13 @@ class StatisticheService {
             .map((e) => '${e.key}=${e.value}')
             .join('&');
     final cacheKey = params == null ? path : '$path|$sortedParams';
-    if (!forceRefresh && _cache.containsKey(cacheKey)) {
-      return _cache[cacheKey]!;
+    final cached = _cache[cacheKey];
+    if (!forceRefresh && cached != null && !cached.isExpired) {
+      return cached.data;
     }
     final result = await _api.get(_statsUrl(path, params));
     final data = result is Map<String, dynamic> ? result : <String, dynamic>{};
-    _cache[cacheKey] = data;
+    _cache[cacheKey] = _CachedStats(data, DateTime.now());
     return data;
   }
 
@@ -111,14 +115,22 @@ class StatisticheService {
     return _getStats('widgets/quote_gruppo', p, forceRefresh);
   }
 
-  Future<Map<String, dynamic>> getFioritureVicine({double raggioKm = 5.0, bool forceRefresh = false}) {
-    return _getStats('widgets/fioriture_vicine', {'raggio_km': raggioKm.toString()}, forceRefresh);
+  Future<Map<String, dynamic>> getFioritureVicine({double raggioKm = 5.0, int? apiarioId, bool forceRefresh = false}) {
+    final p = {'raggio_km': raggioKm.toString()};
+    if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
+    return _getStats('widgets/fioriture_vicine', p, forceRefresh);
   }
 
   Future<Map<String, dynamic>> getAndamentoScorte({int mesi = 6, int? apiarioId, bool forceRefresh = false}) {
     final p = {'periodo_mesi': mesi.toString()};
     if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
     return _getStats('widgets/andamento_scorte', p, forceRefresh);
+  }
+
+  Future<Map<String, dynamic>> getAndamentoCovata({int mesi = 6, int? apiarioId, bool forceRefresh = false}) {
+    final p = {'periodo_mesi': mesi.toString()};
+    if (apiarioId != null) p['apiario_id'] = apiarioId.toString();
+    return _getStats('widgets/andamento_covata', p, forceRefresh);
   }
 
   Future<Map<String, dynamic>> getProduzionePerTipo({int? anno, bool forceRefresh = false}) {
@@ -169,9 +181,15 @@ class StatisticheService {
     if (groqApiKey != null && groqApiKey.isNotEmpty) {
       body['groq_api_key'] = groqApiKey;
     }
+    // Incremento ottimistico prima del POST: blocca eventuali ulteriori
+    // tentativi paralleli mentre il backend non ha ancora aggiornato il
+    // contatore autoritativo. recordStatsCall() lo decrementa al ritorno.
+    quota?.recordOptimisticCall(AiFeature.stats);
     try {
       final result = await _postStats('nl-query', body);
-      _quotaService?.recordOptimisticCall(AiFeature.stats);
+      // Sincronizza quota: usa i dati tornati dal backend se presenti,
+      // altrimenti resta l'incremento ottimistico fino al prossimo refresh.
+      _quotaService?.recordStatsCall(result);
       return result;
     } on QuotaExceededException {
       _quotaService?.markExceeded(AiFeature.stats);
@@ -208,4 +226,14 @@ class StatisticheService {
     if (result is List) return List<int>.from(result);
     return [];
   }
+}
+
+class _CachedStats {
+  final Map<String, dynamic> data;
+  final DateTime cachedAt;
+
+  _CachedStats(this.data, this.cachedAt);
+
+  bool get isExpired =>
+      DateTime.now().difference(cachedAt) >= StatisticheService._cacheTtl;
 }

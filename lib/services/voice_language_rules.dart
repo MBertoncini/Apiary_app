@@ -420,7 +420,8 @@ class VoiceRulesIt extends VoiceLanguageRules {
   @override
   String geminiPrompt(String contextInfo) => '''
 Sei un assistente per apicoltori. Ascolta questa registrazione audio di un apicoltore
-che descrive l'ispezione di un'arnia ed estrai i dati strutturati.
+e estrai i dati strutturati. L'audio può descrivere un normale controllo,
+la creazione di una nuova arnia, un trattamento o altre operazioni.
 
 $contextInfo
 
@@ -428,6 +429,16 @@ Rispondi SOLO con un oggetto JSON valido (nessun testo aggiuntivo, nessun markdo
 $_jsonSchema
 
 Regole:
+- Se l'audio descrive una normale ispezione, tipo_comando = "controllo"
+- Se l'apicoltore dice "crea una nuova arnia", "nuova arnia", "ho creato un'arnia",
+  imposta tipo_comando = "creazione_arnia" e ignora gli altri campi.
+- Se viene menzionato un trattamento (es. "trattamento con acido ossalico",
+  "ho trattato con Apivar"), imposta tipo_comando = "trattamento" e
+  nome_trattamento con il nome del prodotto.
+- Se viene menzionata una "sostituzione della scatola" o "cambio cassa",
+  imposta sostituzione_scatola = true. Questo può essere parte di un controllo.
+
+Regole per il controllo:
 - Se viene menzionato "arnia N", arnia_numero = N
 - "famiglia forte/normale/debole" → forza_famiglia (usa sempre i valori italiani: "debole", "normale", "forte")
 - "presenza regina" o "regina presente" → presenza_regina = true, regina_vista = false
@@ -716,7 +727,8 @@ class VoiceRulesEn extends VoiceLanguageRules {
   @override
   String geminiPrompt(String contextInfo) => '''
 You are a beekeeping assistant. Listen to this audio recording of a beekeeper
-describing a hive inspection and extract structured data.
+describing a hive inspection and extract structured data. The audio can describe
+a normal inspection, the creation of a new hive, a treatment, or other operations.
 
 $contextInfo
 
@@ -724,6 +736,16 @@ Respond ONLY with a valid JSON object (no extra text, no markdown):
 $_jsonSchema
 
 Rules:
+- If the audio describes a normal inspection, set tipo_comando = "controllo"
+- If the beekeeper says "create a new hive", "new hive", "I created a hive",
+  set tipo_comando = "creazione_arnia" and ignore other fields.
+- If a treatment is mentioned (e.g. "treatment with oxalic acid",
+  "I treated with Apivar"), set tipo_comando = "trattamento" and
+  nome_trattamento with the product name.
+- If "box replacement" or "changed the box" is mentioned,
+  set sostituzione_scatola = true. This can be part of a "controllo".
+
+Rules for an inspection ("controllo"):
 - If "hive N" or "box N" is mentioned, arnia_numero = N
 - "colony strong/normal/weak" → forza_famiglia (ALWAYS use Italian values: "debole", "normale", "forte")
 - "queen present" → presenza_regina = true, regina_vista = false
@@ -746,6 +768,7 @@ Rules:
 
 const String _jsonSchema = '''
 {
+  "tipo_comando": <"controllo"/"creazione_arnia"/"trattamento" or null>,
   "arnia_numero": <integer or null>,
   "presenza_regina": <true/false or null>,
   "regina_vista": <true/false or null>,
@@ -763,5 +786,7 @@ const String _jsonSchema = '''
   "tipo_problema": <string or null>,
   "note": <string or null>,
   "regina_colorata": <true/false or null>,
-  "colore_regina": <"bianco"/"giallo"/"rosso"/"verde"/"blu" or null>
+  "colore_regina": <"bianco"/"giallo"/"rosso"/"verde"/"blu" or null>,
+  "sostituzione_scatola": <true/false or null>,
+  "nome_trattamento": <string or null>
 }''';

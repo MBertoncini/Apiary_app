@@ -6,41 +6,37 @@ import 'api_service.dart';
 
 class MCPService {
   final ApiService _apiService;
-  
+
   MCPService(this._apiService);
-  
-  // Definisce gli strumenti disponibili per l'LLM
-  Map<String, Function> get tools => {
-    'getApiarioInfo': (int apiarioId) => _getApiarioInfo(apiarioId),
-    'getArniaInfo': (int arniaId) => _getArniaInfo(arniaId),
-    'getTrattamentiAttivi': () => _getTrattamentiAttivi(),
-    'getControlliRecenti': (int? daysBack) => _getControlliRecenti(daysBack ?? 30),
-    'getFioritureAttive': () => _getFioritureAttive(),
-    'searchArnie': (String query) => _searchArnie(query),
-    'getControlloDettagliato': (int controlloId) => _getControlloDettagliato(controlloId),
-    'getRiepilogoArniaTelaini': (int arniaId) => _getRiepilogoArniaTelaini(arniaId),
-    'generateArniaPopulationChart': (int arniaId, {int? months}) => 
-      _generateArniaPopulationChart(arniaId, months ?? 6),
-    'generateApiarioHealthChart': (int apiarioId) => 
-      _generateApiarioHealthChart(apiarioId),
-    'generateTrattamentiEffectivenessChart': (int apiarioId) => 
-      _generateTrattamentiEffectivenessChart(apiarioId),
-    'generateHoneyProductionChart': (int apiarioId, {int? years}) => 
-      _generateHoneyProductionChart(apiarioId, years ?? 3),
-  };
-  
+
+  /// Lista canonica dei nomi tool disponibili. Usata per l'esposizione nel
+  /// contesto utente; il dispatch reale è lo switch in [executeToolCall].
+  static const List<String> _toolNames = [
+    'getApiarioInfo',
+    'getArniaInfo',
+    'getTrattamentiAttivi',
+    'getControlliRecenti',
+    'getFioritureAttive',
+    'searchArnie',
+    'getControlloDettagliato',
+    'getRiepilogoArniaTelaini',
+    'generateArniaPopulationChart',
+    'generateApiarioHealthChart',
+    'generateTrattamentiEffectivenessChart',
+    'generateHoneyProductionChart',
+  ];
+
   // Metodo principale per preparare il contesto per il modello
-  Future<Map<String, dynamic>> prepareContext(String userId) async {
+  Future<Map<String, dynamic>> prepareContext() async {
     // Raccogli tutti i dati necessari in parallelo
     final resultsFutures = await Future.wait([
       _getApiari(),
       _getArnie(),
       _getTrattamenti(),
-      _getControlliDettagliati(),  // Modificato per ottenere i controlli con dettagli
+      _getControlliDettagliati(),
       _getRegine(),
     ]);
-    
-    // Compila il contesto completo
+
     return {
       'apiari': resultsFutures[0],
       'arnie': resultsFutures[1],
@@ -48,16 +44,13 @@ class MCPService {
       'controlli': resultsFutures[3],
       'regine': resultsFutures[4],
       'timestamp': DateTime.now().toIso8601String(),
-      'tools': tools.keys.toList(), // Aggiungiamo la lista degli strumenti disponibili
+      'tools': _toolNames,
     };
   }
-  
+
   // Metodo per eseguire una chiamata a strumento (tool call) da parte dell'LLM
-  Future<Map<String, dynamic>> executeToolCall(String toolName, Map<String, dynamic> parameters) async {
-    if (!tools.containsKey(toolName)) {
-      return {'error': 'Tool not found: $toolName'};
-    }
-    
+  Future<Map<String, dynamic>> executeToolCall(
+      String toolName, Map<String, dynamic> parameters) async {
     try {
       switch (toolName) {
         case 'getApiarioInfo':
@@ -65,77 +58,260 @@ class MCPService {
             return {'error': 'Missing parameter: apiarioId'};
           }
           return await _getApiarioInfo(parameters['apiarioId']);
-          
+
         case 'getArniaInfo':
           if (!parameters.containsKey('arniaId')) {
             return {'error': 'Missing parameter: arniaId'};
           }
           return await _getArniaInfo(parameters['arniaId']);
-        
+
         case 'getTrattamentiAttivi':
           return {'trattamenti': await _getTrattamentiAttivi()};
-        
+
         case 'getControlliRecenti':
-          int daysBack = parameters['daysBack'] ?? 30;
+          final int daysBack = parameters['daysBack'] ?? 30;
           return {'controlli': await _getControlliRecenti(daysBack)};
-          
+
         case 'getFioritureAttive':
           return {'fioriture': await _getFioritureAttive()};
-          
+
         case 'searchArnie':
           if (!parameters.containsKey('query')) {
             return {'error': 'Missing parameter: query'};
           }
           return {'results': await _searchArnie(parameters['query'])};
-          
+
         case 'getControlloDettagliato':
           if (!parameters.containsKey('controlloId')) {
             return {'error': 'Missing parameter: controlloId'};
           }
           return await _getControlloDettagliato(parameters['controlloId']);
-          
+
         case 'getRiepilogoArniaTelaini':
           if (!parameters.containsKey('arniaId')) {
             return {'error': 'Missing parameter: arniaId'};
           }
           return await _getRiepilogoArniaTelaini(parameters['arniaId']);
-          case 'generateArniaPopulationChart':
-        if (!parameters.containsKey('arniaId')) {
-          return {'error': 'Missing parameter: arniaId'};
-        }
-        int months = parameters['months'] ?? 6;
-        return await _generateArniaPopulationChart(parameters['arniaId'], months);
-          
+
+        case 'generateArniaPopulationChart':
+          if (!parameters.containsKey('arniaId')) {
+            return {'error': 'Missing parameter: arniaId'};
+          }
+          final months = parameters['months'] ?? 6;
+          return await _generateArniaPopulationChart(
+              parameters['arniaId'], months);
+
         case 'generateApiarioHealthChart':
           if (!parameters.containsKey('apiarioId')) {
             return {'error': 'Missing parameter: apiarioId'};
           }
           return await _generateApiarioHealthChart(parameters['apiarioId']);
-          
+
         case 'generateTrattamentiEffectivenessChart':
           if (!parameters.containsKey('apiarioId')) {
             return {'error': 'Missing parameter: apiarioId'};
           }
-          return await _generateTrattamentiEffectivenessChart(parameters['apiarioId']);
-          
+          return await _generateTrattamentiEffectivenessChart(
+              parameters['apiarioId']);
+
         case 'generateHoneyProductionChart':
           if (!parameters.containsKey('apiarioId')) {
             return {'error': 'Missing parameter: apiarioId'};
           }
-          int years = parameters['years'] ?? 3;
-          return await _generateHoneyProductionChart(parameters['apiarioId'], years);
-        
-      default:
-        return {'error': 'Tool implementation not found: $toolName'};
+          final years = parameters['years'] ?? 3;
+          return await _generateHoneyProductionChart(
+              parameters['apiarioId'], years);
+
+        default:
+          return {'error': 'Tool not found: $toolName'};
+      }
+    } catch (e) {
+      return {'error': 'Error executing tool $toolName: $e'};
     }
-  } catch (e) {
-    return {'error': 'Error executing tool $toolName: $e'};
   }
-}
+
+  /// Restituisce la lista delle dichiarazioni degli strumenti (tools) 
+  /// formattate per l'API di Google Gemini (Function Calling).
+  List<Map<String, dynamic>> getGeminiToolDeclarations() {
+    return [
+      {
+        'name': 'getApiarioInfo',
+        'description': 'Ottiene informazioni dettagliate su un apiario, incluse le arnie, i trattamenti e gli ultimi controlli effettuati.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'apiarioId': {
+              'type': 'integer',
+              'description': 'L\'ID univoco dell\'apiario da consultare.',
+            },
+          },
+          'required': ['apiarioId'],
+        },
+      },
+      {
+        'name': 'getArniaInfo',
+        'description': 'Ottiene informazioni complete su un\'arnia specifica, inclusa la regina associata e lo storico dei controlli.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'arniaId': {
+              'type': 'integer',
+              'description': 'L\'ID univoco dell\'arnia da consultare.',
+            },
+          },
+          'required': ['arniaId'],
+        },
+      },
+      {
+        'name': 'getTrattamentiAttivi',
+        'description': 'Recupera la lista di tutti i trattamenti sanitari attualmente in corso in tutti gli apiari.',
+        'parameters': {
+          'type': 'object',
+          'properties': {},
+        },
+      },
+      {
+        'name': 'getControlliRecenti',
+        'description': 'Restituisce i controlli effettuati recentemente su tutte le arnie, utile per avere un colpo d\'occhio sulla situazione attuale.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'daysBack': {
+              'type': 'integer',
+              'description': 'Numero di giorni passati da considerare (default: 30).',
+            },
+          },
+        },
+      },
+      {
+        'name': 'getFioritureAttive',
+        'description': 'Elenca le fioriture mellifere attualmente attive e segnalate, utile per pianificare gli spostamenti o la produzione.',
+        'parameters': {
+          'type': 'object',
+          'properties': {},
+        },
+      },
+      {
+        'name': 'searchArnie',
+        'description': 'Cerca arnie specifiche in base al loro numero, stato o nome dell\'apiario di appartenenza.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'query': {
+              'type': 'string',
+              'description': 'Testo da cercare (numero arnia, stato o apiario).',
+            },
+          },
+          'required': ['query'],
+        },
+      },
+      {
+        'name': 'getControlloDettagliato',
+        'description': 'Ottiene tutti i dettagli di un singolo controllo specifico, inclusa la configurazione dei telaini (scorte, covata, vuoti) e note sanitarie.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'controlloId': {
+              'type': 'integer',
+              'description': 'L\'ID univoco del controllo da consultare.',
+            },
+          },
+          'required': ['controlloId'],
+        },
+      },
+      {
+        'name': 'getRiepilogoArniaTelaini',
+        'description': 'Fornisce un riepilogo testuale e strutturato della situazione telaini di un\'arnia basandosi sull\'ultimo controllo, con tendenza e stato della famiglia.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'arniaId': {
+              'type': 'integer',
+              'description': 'L\'ID dell\'arnia di cui analizzare i telaini.',
+            },
+          },
+          'required': ['arniaId'],
+        },
+      },
+      {
+        'name': 'generateArniaPopulationChart',
+        'description': 'Genera i dati per un grafico sull\'andamento della popolazione (covata e scorte) di un\'arnia nel tempo.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'arniaId': {
+              'type': 'integer',
+              'description': 'L\'ID dell\'arnia.',
+            },
+            'months': {
+              'type': 'integer',
+              'description': 'Numero di mesi passati da considerare (default: 6).',
+            },
+          },
+          'required': ['arniaId'],
+        },
+      },
+      {
+        'name': 'generateApiarioHealthChart',
+        'description': 'Crea un grafico comparativo dello stato di salute delle diverse arnie all\'interno di un apiario.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'apiarioId': {
+              'type': 'integer',
+              'description': 'L\'ID dell\'apiario.',
+            },
+          },
+          'required': ['apiarioId'],
+        },
+      },
+      {
+        'name': 'generateTrattamentiEffectivenessChart',
+        'description': 'Analizza l\'efficacia dei trattamenti passati in un apiario e genera i dati per un grafico riassuntivo.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'apiarioId': {
+              'type': 'integer',
+              'description': 'L\'ID dell\'apiario.',
+            },
+          },
+          'required': ['apiarioId'],
+        },
+      },
+      {
+        'name': 'generateHoneyProductionChart',
+        'description': 'Genera i dati sulla produzione di miele (quantità e tipi) di un apiario per gli ultimi anni.',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'apiarioId': {
+              'type': 'integer',
+              'description': 'L\'ID dell\'apiario.',
+            },
+            'years': {
+              'type': 'integer',
+              'description': 'Numero di anni da considerare (default: 3).',
+            },
+          },
+          'required': ['apiarioId'],
+        },
+      },
+    ];
+  }
 
   
   // === STRUMENTI MCP (TOOLS) ===
-  
+
+  /// Parsing data sicuro: ritorna DateTime(1970) se il valore è null o
+  /// non parsabile. Senza, una singola riga con `data` corrotta o assente
+  /// rompe l'intero sort e il tool ritorna `{'error': ...}` all'AI.
+  static DateTime _safeParseDate(dynamic raw) {
+    if (raw == null) return DateTime(1970);
+    final s = raw.toString();
+    return DateTime.tryParse(s) ?? DateTime(1970);
+  }
+
   // Strumento: Ottieni informazioni sugli apiari
   Future<List<dynamic>> _getApiari() async {
     try {
@@ -168,17 +344,18 @@ class MCPService {
       
       // Ordina i trattamenti per data di inizio (decrescente)
       trattamenti.sort((a, b) {
-        final dateA = a['data_inizio'] != null ? DateTime.parse(a['data_inizio']) : DateTime(1970);
-        final dateB = b['data_inizio'] != null ? DateTime.parse(b['data_inizio']) : DateTime(1970);
+        final dateA = _safeParseDate(a['data_inizio']);
+        final dateB = _safeParseDate(b['data_inizio']);
         return dateB.compareTo(dateA);
       });
-      
+
       // Limita a trattamenti recenti e in corso
-      return trattamenti.where((t) => 
-        t['stato'] == 'in_corso' || 
+      final cutoff = DateTime.now().subtract(const Duration(days: 30));
+      return trattamenti.where((t) =>
+        t['stato'] == 'in_corso' ||
         t['stato'] == 'programmato' ||
-        (t['data_fine'] != null && 
-          DateTime.parse(t['data_fine']).isAfter(DateTime.now().subtract(Duration(days: 30))))
+        (t['data_fine'] != null &&
+          _safeParseDate(t['data_fine']).isAfter(cutoff))
       ).take(10).toList();
     } catch (e) {
       debugPrint('Errore nel recupero dei trattamenti: $e');
@@ -206,14 +383,14 @@ class MCPService {
       
       // Ordina i controlli per data (decrescente)
       controlli.sort((a, b) {
-        final dateA = a['data'] != null ? DateTime.parse(a['data']) : DateTime(1970);
-        final dateB = b['data'] != null ? DateTime.parse(b['data']) : DateTime(1970);
+        final dateA = _safeParseDate(a['data']);
+        final dateB = _safeParseDate(b['data']);
         return dateB.compareTo(dateA);
       });
-      
+
       // Arricchisci i controlli con informazioni aggiuntive
       List<dynamic> controlliDettagliati = [];
-      
+
       for (var controllo in controlli.take(10)) {
         // Decodifica la configurazione dei telaini se presente
         List<String> telainiConfig = [];
@@ -275,14 +452,15 @@ class MCPService {
       // Filtra per data
       final recenti = controlli.where((c) {
         if (c['data'] == null) return false;
-        final date = DateTime.parse(c['data']);
+        final date = DateTime.tryParse(c['data'].toString());
+        if (date == null) return false;
         return date.isAfter(cutoffDate);
       }).toList();
-      
+
       // Ordina per data (più recenti prima)
       recenti.sort((a, b) {
-        final dateA = DateTime.parse(a['data']);
-        final dateB = DateTime.parse(b['data']);
+        final dateA = _safeParseDate(a['data']);
+        final dateB = _safeParseDate(b['data']);
         return dateB.compareTo(dateA);
       });
       
@@ -414,11 +592,11 @@ class MCPService {
       
       // Ordina per data (più recenti prima)
       controlli.sort((a, b) {
-        final dateA = DateTime.parse(a['data']);
-        final dateB = DateTime.parse(b['data']);
+        final dateA = _safeParseDate(a['data']);
+        final dateB = _safeParseDate(b['data']);
         return dateB.compareTo(dateA);
       });
-      
+
       // Prendi l'ultimo controllo
       final ultimoControllo = controlli.first;
       
@@ -469,7 +647,7 @@ class MCPService {
       return {
         'arnia_id': arniaId,
         'ultimo_controllo_data': ultimoControllo['data'],
-        'giorni_da_ultimo_controllo': DateTime.now().difference(DateTime.parse(ultimoControllo['data'])).inDays,
+        'giorni_da_ultimo_controllo': DateTime.now().difference(_safeParseDate(ultimoControllo['data'])).inDays,
         'configurazione_telaini': telainiConfig,
         'descrizione_telaini': descrizioneTelaini,
         'conteggio': {
@@ -567,11 +745,11 @@ class MCPService {
           if (controlli.isNotEmpty) {
             // Ordina per data (più recenti prima)
             controlli.sort((a, b) {
-              final dateA = DateTime.parse(a['data']);
-              final dateB = DateTime.parse(b['data']);
+              final dateA = _safeParseDate(a['data']);
+              final dateB = _safeParseDate(b['data']);
               return dateB.compareTo(dateA);
             });
-            
+
             // Aggiungi solo l'ultimo controllo di ciascuna arnia
             var controllo = controlli.first;
             
@@ -630,11 +808,11 @@ class MCPService {
       
       // Ordina i controlli per data (più recenti prima)
       controlli.sort((a, b) {
-        final dateA = DateTime.parse(a['data']);
-        final dateB = DateTime.parse(b['data']);
+        final dateA = _safeParseDate(a['data']);
+        final dateB = _safeParseDate(b['data']);
         return dateB.compareTo(dateA);
       });
-      
+
       // Arricchisci i controlli con informazioni aggiuntive
       List<dynamic> controlliDettagliati = [];
       
@@ -815,13 +993,14 @@ class MCPService {
       // Filtra i controlli per il periodo richiesto e ordinali per data
       final filteredControlli = controlli.where((controllo) {
         if (controllo['data'] == null) return false;
-        final date = DateTime.parse(controllo['data']);
+        final date = DateTime.tryParse(controllo['data'].toString());
+        if (date == null) return false;
         return date.isAfter(startDate);
       }).toList();
-      
+
       filteredControlli.sort((a, b) {
-        final dateA = DateTime.parse(a['data']);
-        final dateB = DateTime.parse(b['data']);
+        final dateA = _safeParseDate(a['data']);
+        final dateB = _safeParseDate(b['data']);
         return dateA.compareTo(dateB);
       });
       
@@ -907,8 +1086,12 @@ class MCPService {
         }
       }
       
-      // Ordina i dati per numero arnia
-      chartData.sort((a, b) => a['arnia_numero'].compareTo(b['arnia_numero']));
+      // Ordina i dati per numero arnia (compareTo null-safe sul valore stringa)
+      chartData.sort((a, b) {
+        final na = (a['arnia_numero'] ?? '').toString();
+        final nb = (b['arnia_numero'] ?? '').toString();
+        return na.compareTo(nb);
+      });
       
       return {
         'apiario_id': apiarioId,
@@ -995,15 +1178,16 @@ class MCPService {
       // Filtra le smielature per il periodo richiesto
       final filteredSmielature = smielature.where((smielatura) {
         if (smielatura['data'] == null) return false;
-        final date = DateTime.parse(smielatura['data']);
+        final date = DateTime.tryParse(smielatura['data'].toString());
+        if (date == null) return false;
         return date.isAfter(startDate);
       }).toList();
-      
+
       // Raggruppa per anno e tipo di miele
       Map<int, Map<String, double>> productionyByYearAndType = {};
-      
+
       for (var smielatura in filteredSmielature) {
-        final date = DateTime.parse(smielatura['data']);
+        final date = _safeParseDate(smielatura['data']);
         final year = date.year;
         final tipoMiele = smielatura['tipo_miele'] ?? 'Millefiori';
         final quantita = smielatura['quantita'] ?? 0.0;

@@ -19,16 +19,17 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isComposing = false;
+  int _lastMessageCount = 0;
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
-  
+
   @override
   void initState() {
     super.initState();
     // Scorre automaticamente in basso quando arrivano nuovi messaggi
     _scrollToBottom();
   }
-  
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -40,19 +41,25 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     Provider.of<LanguageService>(context);
     final s = _s;
     final chatService = Provider.of<ChatService>(context);
 
-    // Set localized welcome message
+    // Set localized welcome message (idempotente: no-op se uguale).
     chatService.setWelcomeMessage(s.chatWelcomeMessage);
 
-    // Auto-scroll quando nuovi messaggi arrivano
-    if (chatService.messages.isNotEmpty) {
-      _scrollToBottom();
+    // Auto-scroll solo quando il numero di messaggi cambia. Senza questo
+    // tracking, ogni rebuild (es. tipi nel campo input) faceva risalire la
+    // lista, impedendo all'utente di leggere messaggi precedenti durante
+    // streaming/typing.
+    if (chatService.messages.length != _lastMessageCount) {
+      _lastMessageCount = chatService.messages.length;
+      if (chatService.messages.isNotEmpty) {
+        _scrollToBottom();
+      }
     }
 
     return Scaffold(

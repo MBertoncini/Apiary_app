@@ -84,4 +84,46 @@ class Melario {
   bool isActive() {
     return stato == 'posizionato';
   }
+
+  Melario copyWith({
+    int? id,
+    int? colonia,
+    int? coloniaId,
+    int? arnia,
+    int? arniaNumero,
+    int? apiarioId,
+    String? apiarioNome,
+    int? numeroTelaini,
+    int? posizione,
+    String? dataPosizionamento,
+    String? dataRimozione,
+    String? stato,
+    String? tipoMelario,
+    String? statoFavi,
+    bool? escludiRegina,
+    double? pesoStimato,
+    String? note,
+    String? apiarioGruppoNome,
+  }) {
+    return Melario(
+      id: id ?? this.id,
+      colonia: colonia ?? this.colonia,
+      coloniaId: coloniaId ?? this.coloniaId,
+      arnia: arnia ?? this.arnia,
+      arniaNumero: arniaNumero ?? this.arniaNumero,
+      apiarioId: apiarioId ?? this.apiarioId,
+      apiarioNome: apiarioNome ?? this.apiarioNome,
+      numeroTelaini: numeroTelaini ?? this.numeroTelaini,
+      posizione: posizione ?? this.posizione,
+      dataPosizionamento: dataPosizionamento ?? this.dataPosizionamento,
+      dataRimozione: dataRimozione ?? this.dataRimozione,
+      stato: stato ?? this.stato,
+      tipoMelario: tipoMelario ?? this.tipoMelario,
+      statoFavi: statoFavi ?? this.statoFavi,
+      escludiRegina: escludiRegina ?? this.escludiRegina,
+      pesoStimato: pesoStimato ?? this.pesoStimato,
+      note: note ?? this.note,
+      apiarioGruppoNome: apiarioGruppoNome ?? this.apiarioGruppoNome,
+    );
+  }
 }

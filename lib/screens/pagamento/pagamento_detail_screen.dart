@@ -110,7 +110,8 @@ class _PagamentoDetailScreenState extends State<PagamentoDetailScreen> {
   
   @override
   Widget build(BuildContext context) {
-    final formatCurrency = NumberFormat.currency(locale: 'it_IT', symbol: '€');
+    final localeCode = Provider.of<LanguageService>(context, listen: false).locale.toString();
+    final formatCurrency = NumberFormat.currency(locale: localeCode, symbol: '€');
     final formatDate = DateFormat('dd/MM/yyyy');
     
     Provider.of<LanguageService>(context);

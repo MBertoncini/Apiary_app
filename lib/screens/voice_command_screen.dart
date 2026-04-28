@@ -216,6 +216,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _VoiceTutorialSheet(
+        voiceMode: _voiceMode,
         onDismiss: () => Navigator.of(ctx).pop(),
       ),
     );
@@ -489,17 +490,9 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
             ),
           // Tutorial / guide toggle
           IconButton(
-            icon: Icon(_showGuide ? Icons.help : Icons.help_outline),
-            onPressed: () async {
-              if (!_showGuide) {
-                // Se la guida è nascosta, mostrare il tutorial bottom sheet
-                // (permette di rivedere il tutorial in modo completo)
-                await _showTutorialSheet();
-              } else {
-                setState(() => _showGuide = false);
-              }
-            },
-            tooltip: _showGuide ? s.voiceCommandTooltipHideGuide : s.voiceCommandTooltipShowTutorial,
+            icon: const Icon(Icons.help_outline),
+            onPressed: () => _showTutorialSheet(),
+            tooltip: s.voiceCommandTooltipShowTutorial,
           ),
         ],
       ),
@@ -519,92 +512,6 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                 onApiarioSelected: _onApiarioSelected,
                 isOnline: _isOnline,
               ),
-
-              // Guide section
-              if (_showGuide)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Card(
-                    elevation: 2,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            s.voiceCommandGuideTitle,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: ThemeConstants.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildGuideItem(
-                            icon: Icons.hive,
-                            title: s.voiceCommandGuideStep1Title,
-                            description: s.voiceCommandGuideStep1Desc,
-                          ),
-                          _buildGuideItem(
-                            icon: Icons.mic,
-                            title: s.voiceCommandGuideStep2Title,
-                            description: s.voiceCommandGuideStep2Desc,
-                          ),
-                          _buildGuideItem(
-                            icon: Icons.check_circle,
-                            title: s.voiceCommandGuideStep3Title,
-                            description: s.voiceCommandGuideStep3Desc,
-                          ),
-                          const SizedBox(height: 8),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          Text(
-                            s.voiceCommandGuideExamplesTitle,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildCommandExample(s.voiceCommandExample1),
-                          _buildCommandExample(s.voiceCommandExample2),
-                          _buildCommandExample(s.voiceCommandExample3),
-                          const SizedBox(height: 8),
-                          const Divider(),
-                          const SizedBox(height: 4),
-                          Text(
-                            s.voiceCommandGuideKeywordsTitle,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          _buildCommandExample(s.voiceCommandGuideKeyNextCmd),
-                          _buildCommandExample(s.voiceCommandGuideKeyStopCmd),
-                          const SizedBox(height: 8),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: Colors.orange.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.info_outline, color: Colors.orange),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    s.voiceCommandGuideOffline,
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
 
               // Voice input widget (STT) o Audio input widget
               Padding(
@@ -845,13 +752,19 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
 // Tutorial bottom sheet — primo accesso e richiamabile dall'AppBar
 // ---------------------------------------------------------------------------
 class _VoiceTutorialSheet extends StatelessWidget {
+  final String voiceMode;
   final VoidCallback onDismiss;
 
-  const _VoiceTutorialSheet({required this.onDismiss});
+  const _VoiceTutorialSheet({
+    required this.voiceMode,
+    required this.onDismiss,
+  });
 
   @override
   Widget build(BuildContext context) {
     final s = Provider.of<LanguageService>(context, listen: false).strings;
+    final isStt = voiceMode == VoiceSettingsService.modeStt;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       minChildSize: 0.5,
@@ -933,14 +846,14 @@ class _VoiceTutorialSheet extends StatelessWidget {
                       step: '2',
                       icon: Icons.mic,
                       title: s.voiceTutorialStep2Title,
-                      body: s.voiceTutorialStep2Body,
+                      body: isStt ? s.voiceTutorialStep2BodyStt : s.voiceTutorialStep2BodyAudio,
                       color: ThemeConstants.primaryColor,
                     ),
                     _tutorialSection(
                       step: '3',
                       icon: Icons.auto_awesome,
-                      title: s.voiceTutorialStep3Title,
-                      body: s.voiceTutorialStep3Body,
+                      title: isStt ? s.voiceTutorialStep3TitleStt : s.voiceTutorialStep3TitleAudio,
+                      body: isStt ? s.voiceTutorialStep3BodyStt : s.voiceTutorialStep3BodyAudio,
                       color: Colors.deepPurple,
                     ),
                     _tutorialSection(
@@ -961,18 +874,20 @@ class _VoiceTutorialSheet extends StatelessWidget {
                     _exampleChip(
                         '"Arnia 2, 7 telaini totali, 2 celle reali, rischio sciamatura"'),
                     const SizedBox(height: 16),
-                    // Modalità multipla
-                    _sectionTitle(s.voiceTutorialMultiTitle),
-                    const SizedBox(height: 8),
-                    _infoRow(
-                        Icons.skip_next,
-                        s.voiceTutorialMultiNextKeyword,
-                        s.voiceTutorialMultiNextDesc),
-                    _infoRow(
-                        Icons.stop_circle_outlined,
-                        s.voiceTutorialMultiStopKeyword,
-                        s.voiceTutorialMultiStopDesc),
-                    const SizedBox(height: 16),
+                    // Modalità multipla (solo STT)
+                    if (isStt) ...[
+                      _sectionTitle(s.voiceTutorialMultiTitle),
+                      const SizedBox(height: 8),
+                      _infoRow(
+                          Icons.skip_next,
+                          s.voiceTutorialMultiNextKeyword,
+                          s.voiceTutorialMultiNextDesc),
+                      _infoRow(
+                          Icons.stop_circle_outlined,
+                          s.voiceTutorialMultiStopKeyword,
+                          s.voiceTutorialMultiStopDesc),
+                      const SizedBox(height: 16),
+                    ],
                     // Offline
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -983,11 +898,12 @@ class _VoiceTutorialSheet extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.wifi_off, color: Colors.orange, size: 20),
+                          Icon(isStt ? Icons.check_circle_outline : Icons.wifi_off, 
+                               color: Colors.orange, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              s.voiceTutorialOfflineMsg,
+                              isStt ? s.voiceTutorialOfflineMsgStt : s.voiceTutorialOfflineMsgAudio,
                               style: const TextStyle(fontSize: 13),
                             ),
                           ),

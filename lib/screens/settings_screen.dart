@@ -1530,7 +1530,10 @@ class _PremiumFeatureSheet extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text(Provider.of<LanguageService>(context, listen: false).strings.btnCancel),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(Provider.of<LanguageService>(context, listen: false).strings.btnCancel),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1544,28 +1547,31 @@ class _PremiumFeatureSheet extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Bzzz! ',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          fontStyle: FontStyle.italic,
-                          color: const Color(0xFFFFD600),
-                          shadows: const [
-                            Shadow(
-                              color: Color(0xFFE65100),
-                              offset: Offset(1.5, 1.5),
-                              blurRadius: 0,
-                            ),
-                          ],
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Bzzz! ',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            fontStyle: FontStyle.italic,
+                            color: const Color(0xFFFFD600),
+                            shadows: const [
+                              Shadow(
+                                color: Color(0xFFE65100),
+                                offset: Offset(1.5, 1.5),
+                                blurRadius: 0,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(activateLabel),
-                    ],
+                        Text(activateLabel),
+                      ],
+                    ),
                   ),
                 ),
               ),
