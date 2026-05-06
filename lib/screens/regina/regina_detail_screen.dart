@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
+import '../../constants/app_constants.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
 import '../../services/language_service.dart';
@@ -98,6 +99,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   }
 
   Future<void> _loadGenealogia() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingGenealogia = true;
       _genealogiaError = null;
@@ -109,12 +111,14 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
       );
       debugPrint('Genealogia API response: $response');
 
+      if (!mounted) return;
       setState(() {
         _genealogia = response is Map<String, dynamic> ? response : null;
         _isLoadingGenealogia = false;
       });
     } catch (e) {
       debugPrint('Errore caricamento genealogia: $e');
+      if (!mounted) return;
       setState(() {
         _genealogiaError = 'Dati genealogia non disponibili';
         _isLoadingGenealogia = false;
@@ -208,6 +212,29 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (regina.sospettaAssente)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        s.reginaDetailSospettaAssenteMsg,
+                        style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             _buildReginaHeader(s, regina),
             const SizedBox(height: 24),
             _buildInfoSection(s.reginaDetailSectionGeneral, [
@@ -226,7 +253,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               if (regina.marcata && regina.colore != null && regina.colore != 'non_marcata')
                 _buildInfoRow(s.reginaFormLblColoreMarcatura, _getColoreMarcaturaDisplay(s, regina.colore!)),
               if (regina.codiceMarcatura != null && regina.codiceMarcatura!.isNotEmpty)
-                _buildInfoRow('Codice marcatura', regina.codiceMarcatura!),
+                _buildInfoRow(s.reginaDetailLblCodiceMarcatura, regina.codiceMarcatura!),
             ]),
             if (regina.docilita != null ||
                 regina.produttivita != null ||
@@ -534,7 +561,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
           onTap: id != null && !isCurrentQueen
               ? () {
                   Navigator.of(context).pushNamed(
-                    '/regina/detail',
+                    AppConstants.reginaDetailRoute,
                     arguments: id,
                   );
                 }
@@ -1029,11 +1056,19 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Future<void> _editRegina() async {
     if (_regina == null) return;
+    // Costruiamo il payload includendo l'id della regina madre (oggi non
+    // serializzato in toJson() di default), così il form pre-popola la
+    // dropdown e un PUT non azzera l'associazione.
+    final reginaData = _regina!.toJson();
+    if (_regina!.reginaMadreId != null) {
+      reginaData['regina_madre'] = _regina!.reginaMadreId;
+    }
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ReginaFormScreen(
           arniaId: _regina!.arniaId,
-          reginaData: _regina!.toJson(),
+          coloniaId: _regina!.coloniaId,
+          reginaData: reginaData,
           reginaId: widget.reginaId,
         ),
       ),
@@ -1129,18 +1164,34 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                             '${ApiConstants.regineUrl}${widget.reginaId}/sostituisci/',
                             {'motivo_fine': motivoFine, 'data_fine': fmt.format(dataFine)},
                           );
+
+                          // Ripulisci la cache locale: la regina sostituita
+                          // non deve più comparire come attiva nelle liste
+                          // finché il prossimo refresh non aggiorna i dati.
+                          final storageService =
+                              Provider.of<StorageService>(context, listen: false);
+                          final cached =
+                              await storageService.getStoredData('regine');
+                          await storageService.saveData(
+                            'regine',
+                            cached.where((r) => r['id'] != widget.reginaId).toList(),
+                          );
+
                           if (!mounted) return;
                           Navigator.of(ctx).pop();
                           await Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ReginaFormScreen(arniaId: _regina!.arniaId),
+                              builder: (_) => ReginaFormScreen(
+                                arniaId: _regina!.arniaId,
+                                coloniaId: _regina!.coloniaId,
+                              ),
                             ),
                           );
                           if (!mounted) return;
                           Navigator.of(context).pop(true);
                         } catch (e) {
                           setSheetState(() => isLoading = false);
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(s.reginaDetailError(e.toString()))));
                         }

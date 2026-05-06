@@ -606,15 +606,20 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       return Center(child: Text(_s.melariNoData));
     }
 
-    final totPosizionati  = _melari.where((m) => m.stato == 'posizionato').length;
-    final totInSmielatura = _melari.where((m) => m.stato == 'in_smielatura').length;
+    final totPosizionati = _melari.where((m) => m.stato == 'posizionato').length;
+    // "Da smielare": melari rimossi dall'arnia oppure (per dati storici)
+    // esplicitamente messi in coda di smielatura. Sono i candidati per la
+    // prossima Smielatura nel form dedicato.
+    final totDaSmielare = _melari
+        .where((m) => m.stato == 'rimosso' || m.stato == 'in_smielatura')
+        .length;
 
     return RefreshIndicator(
       onRefresh: _refreshAll,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildHiveStats(totPosizionati, totInSmielatura),
+          _buildHiveStats(totPosizionati, totDaSmielare),
           const SizedBox(height: 12),
           _buildHiveLegend(),
           const SizedBox(height: 16),
@@ -716,24 +721,43 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
     final isHighlighted = _highlightedArniaId == arnia.id;
 
-    return GestureDetector(
-      onTap: () => setState(() {
-        _highlightedArniaId =
-            _highlightedArniaId == arnia.id ? null : arnia.id;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: _superW + 20,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        decoration: BoxDecoration(
-          color: isHighlighted
-              ? ThemeConstants.primaryColor.withOpacity(0.10)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: isHighlighted
-              ? Border.all(color: ThemeConstants.primaryColor, width: 1.6)
-              : Border.all(color: Colors.transparent, width: 1.6),
-        ),
+    // DragTarget di colonna: cattura i drop su spazio "vuoto" della colonna
+    // (non sopra a un altro melario), gestendo lo spostamento in arnia anche
+    // quando l'arnia di destinazione non ha melari.
+    return DragTarget<Melario>(
+      onWillAcceptWithDetails: (details) =>
+          details.data.arnia != arnia.id &&
+          details.data.stato == 'posizionato',
+      onAcceptWithDetails: (details) =>
+          _moveMelarioToArnia(details.data, arnia.id, apiarioId),
+      builder: (ctx, candidates, rejected) {
+        final isDragOver = candidates.isNotEmpty;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _highlightedArniaId =
+                _highlightedArniaId == arnia.id ? null : arnia.id;
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _superW + 20,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDragOver
+                  ? ThemeConstants.primaryColor.withOpacity(0.18)
+                  : isHighlighted
+                      ? ThemeConstants.primaryColor.withOpacity(0.10)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: isDragOver
+                  ? Border.all(
+                      color: ThemeConstants.primaryColor,
+                      width: 2,
+                      style: BorderStyle.solid)
+                  : isHighlighted
+                      ? Border.all(
+                          color: ThemeConstants.primaryColor, width: 1.6)
+                      : Border.all(color: Colors.transparent, width: 1.6),
+            ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -741,29 +765,18 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             // Add melario button
             _buildAddSuperBtn(arnia.id, apiarioId),
             const SizedBox(height: 4),
-            // Melari stacked with ReorderableListView
-            ReorderableListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              proxyDecorator: (child, index, animation) {
-                return Material(
-                  elevation: 0,
-                  color: Colors.transparent,
-                  child: child,
-                );
-              },
-              onReorder: (oldIndex, newIndex) {
-                if (newIndex > oldIndex) newIndex -= 1;
-                final items = List<Melario>.from(activeMelari);
-                final item = items.removeAt(oldIndex);
-                items.insert(newIndex, item);
-                _updateMelariPositions(items);
-              },
-              children: activeMelari.map((m) => Padding(
-                key: ValueKey(m.id),
-                padding: const EdgeInsets.only(bottom: 2),
-                child: _buildMelarioBox(m),
-              )).toList(),
+            // Melari impilati: long-press per trascinare e scambiare con un
+            // altro melario (stessa arnia → swap posizione; arnia diversa →
+            // swap arnia + posizione).
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: activeMelari
+                  .map((m) => Padding(
+                        key: ValueKey('melario-${m.id}'),
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: _buildDraggableMelario(m),
+                      ))
+                  .toList(),
             ),
             // Queen excluder
             if (hasQE) ...[
@@ -771,7 +784,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               const SizedBox(height: 2),
             ],
             // Nido
-            _buildNidoBox(),
+            _buildNidoBox(arniaColor),
             const SizedBox(height: 3),
             // Base board
             Container(
@@ -792,11 +805,237 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 8),
             // Label
-            _buildArniaLabel(arnia.numero, arniaColor, activeMelari.length),
+            _buildArniaLabel(arnia.numero, activeMelari.length),
           ],
         ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDraggableMelario(Melario m) {
+    final box = _buildMelarioBox(m);
+    // Solo i melari "posizionato" possono essere trascinati per lo swap;
+    // quelli in_smielatura sono mostrati ma non spostabili.
+    final canDrag = m.stato == 'posizionato';
+    final draggableChild = canDrag
+        ? LongPressDraggable<Melario>(
+            data: m,
+            delay: const Duration(milliseconds: 250),
+            feedback: Material(
+              color: Colors.transparent,
+              elevation: 4,
+              child: Opacity(opacity: 0.9, child: box),
+            ),
+            childWhenDragging: Opacity(opacity: 0.3, child: box),
+            child: box,
+          )
+        : box;
+    return DragTarget<Melario>(
+      onWillAcceptWithDetails: (details) =>
+          details.data.id != m.id && canDrag,
+      onAcceptWithDetails: (details) => _swapMelari(details.data, m),
+      builder: (ctx, candidates, rejected) {
+        if (candidates.isNotEmpty) {
+          return Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: ThemeConstants.primaryColor, width: 2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: draggableChild,
+          );
+        }
+        return draggableChild;
+      },
+    );
+  }
+
+  Future<void> _swapMelari(Melario a, Melario b) async {
+    if (a.id == b.id) return;
+
+    // Risolvi le colonie di destinazione PRIMA dell'aggiornamento ottimistico:
+    // se serve uno spostamento di arnia ma la colonia non è ricavabile, è
+    // meglio bloccare subito che dover fare rollback.
+    int? coloniaForA = b.colonia ?? b.coloniaId;
+    int? coloniaForB = a.colonia ?? a.coloniaId;
+    if (a.arnia != b.arnia) {
+      coloniaForA ??= await _resolveColoniaForArnia(b.arnia ?? -1);
+      coloniaForB ??= await _resolveColoniaForArnia(a.arnia ?? -1);
+      if (coloniaForA == null || coloniaForB == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(
+                'Impossibile scambiare i melari: nessuna colonia attiva sull\'arnia di destinazione.')),
+          );
+        }
+        return;
+      }
+    }
+
+    // Calcola nuovi valori (swap di posizione e di colonia/arnia).
+    final newA = a.copyWith(
+      posizione: b.posizione,
+      colonia: coloniaForA,
+      coloniaId: coloniaForA,
+      arnia: b.arnia,
+      arniaNumero: b.arniaNumero,
+      apiarioId: b.apiarioId,
+      apiarioNome: b.apiarioNome,
+      apiarioGruppoNome: b.apiarioGruppoNome,
+    );
+    final newB = b.copyWith(
+      posizione: a.posizione,
+      colonia: coloniaForB,
+      coloniaId: coloniaForB,
+      arnia: a.arnia,
+      arniaNumero: a.arniaNumero,
+      apiarioId: a.apiarioId,
+      apiarioNome: a.apiarioNome,
+      apiarioGruppoNome: a.apiarioGruppoNome,
+    );
+
+    // Snapshot per rollback
+    final snapshot = List<Melario>.from(_melari);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    // Aggiornamento ottimistico
+    setState(() {
+      final idxA = _melari.indexWhere((x) => x.id == a.id);
+      final idxB = _melari.indexWhere((x) => x.id == b.id);
+      if (idxA != -1) _melari[idxA] = newA;
+      if (idxB != -1) _melari[idxB] = newB;
+    });
+
+    try {
+      // Una sola PATCH per melario: il backend non ha unique constraint su
+      // (colonia, posizione), quindi non serve il "parcheggio" temporaneo.
+      await Future.wait([
+        _apiService.patch(
+          '${ApiConstants.melariUrl}${a.id}/',
+          {
+            if (coloniaForA != null) 'colonia': coloniaForA,
+            'posizione': newA.posizione,
+          },
+        ),
+        _apiService.patch(
+          '${ApiConstants.melariUrl}${b.id}/',
+          {
+            if (coloniaForB != null) 'colonia': coloniaForB,
+            'posizione': newB.posizione,
+          },
+        ),
+      ]);
+
+      await storageService.saveData(
+          'melari', _melari.map((m) => m.toJson()).toList());
+    } catch (e) {
+      debugPrint('Errore swap melari: $e');
+      if (mounted) {
+        setState(() => _melari = snapshot);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore nello swap dei melari: $e')),
+        );
+        _refreshAll();
+      }
+    }
+  }
+
+  Future<int?> _resolveColoniaForArnia(int arniaId) async {
+    // Prima prova a leggerla dai melari già caricati su quella arnia.
+    for (final m in _melari) {
+      if (m.arnia == arniaId && (m.colonia ?? m.coloniaId) != null) {
+        return m.colonia ?? m.coloniaId;
+      }
+    }
+    try {
+      final res = await _apiService
+          .get('${ApiConstants.arnieUrl}$arniaId/colonia_attiva/');
+      if (res is Map<String, dynamic>) return res['id'] as int?;
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _moveMelarioToArnia(
+      Melario m, int destArniaId, int destApiarioId) async {
+    if (m.arnia == destArniaId) return;
+
+    // Calcola la prossima posizione libera sulla destinazione: stessa regola
+    // del form (prima posizione libera dal basso). In assenza di buchi cade
+    // su max+1, quindi resta coerente con "aggiungi in cima allo stack".
+    final occupiedOnDest = <int>{};
+    for (final x in _melari) {
+      if (x.arnia == destArniaId &&
+          (x.stato == 'posizionato' || x.stato == 'in_smielatura')) {
+        occupiedOnDest.add(x.posizione);
+      }
+    }
+    int newPos = 1;
+    while (occupiedOnDest.contains(newPos)) {
+      newPos++;
+    }
+
+    final destColonia = await _resolveColoniaForArnia(destArniaId);
+    if (destColonia == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(
+              'Impossibile spostare: nessuna colonia attiva sull\'arnia di destinazione.')),
+        );
+      }
+      return;
+    }
+
+    // Recupera nome arnia/apiario di destinazione (best-effort) dal cache locale.
+    final destArnia = _arnie.firstWhere(
+      (a) => a.id == destArniaId,
+      orElse: () => Arnia(
+        id: destArniaId,
+        apiario: destApiarioId,
+        apiarioNome: '',
+        numero: 0,
+        colore: '',
+        coloreHex: '#F5A623',
+        dataInstallazione: '',
+        attiva: true,
       ),
     );
+
+    final snapshot = List<Melario>.from(_melari);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    setState(() {
+      final idx = _melari.indexWhere((x) => x.id == m.id);
+      if (idx != -1) {
+        _melari[idx] = m.copyWith(
+          colonia: destColonia,
+          coloniaId: destColonia,
+          arnia: destArniaId,
+          arniaNumero: destArnia.numero,
+          apiarioId: destApiarioId,
+          apiarioNome: destArnia.apiarioNome,
+          posizione: newPos,
+        );
+      }
+    });
+
+    try {
+      await _apiService.patch(
+        '${ApiConstants.melariUrl}${m.id}/',
+        {'colonia': destColonia, 'posizione': newPos},
+      );
+      await storageService.saveData(
+          'melari', _melari.map((x) => x.toJson()).toList());
+    } catch (e) {
+      debugPrint('Errore spostamento melario: $e');
+      if (mounted) {
+        setState(() => _melari = snapshot);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore nello spostamento del melario: $e')),
+        );
+        _refreshAll();
+      }
+    }
   }
 
   Widget _buildMelarioBox(Melario m) {
@@ -868,7 +1107,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 child: Text('Smiel.', style: TextStyle(fontSize: 8, color: textColor)),
               )
             else if (isPosizionato)
-              Icon(Icons.touch_app, size: 14, color: textColor.withOpacity(0.5)),
+              Icon(Icons.drag_indicator, size: 14, color: textColor.withOpacity(0.55)),
           ],
         ),
       ),
@@ -901,19 +1140,26 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildNidoBox() {
+  Widget _buildNidoBox(Color arniaColor) {
     return Container(
       width: _superW,
       constraints: const BoxConstraints(minHeight: _nidoH),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFA06840), Color(0xFF7A4E2A), Color(0xFF5C3518)],
-          stops: [0.0, 0.5, 1.0],
+          colors: [
+            Color.alphaBlend(Colors.white.withOpacity(0.2), arniaColor),
+            arniaColor,
+            Color.alphaBlend(Colors.black.withOpacity(0.2), arniaColor),
+          ],
+          stops: const [0.0, 0.4, 1.0],
         ),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFF3D200A), width: 1.5),
+        border: Border.all(
+          color: Color.alphaBlend(Colors.black.withOpacity(0.4), arniaColor),
+          width: 1.5,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Column(
@@ -925,7 +1171,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFFFE4B5).withOpacity(0.8),
+              color: arniaColor.computeLuminance() > 0.5
+                  ? Colors.black.withOpacity(0.7)
+                  : Colors.white.withOpacity(0.8),
               letterSpacing: 1.2,
             ),
           ),
@@ -976,21 +1224,11 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildArniaLabel(int numero, Color color, int melariCount) {
+  Widget _buildArniaLabel(int numero, int melariCount) {
     return Column(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10, height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 4),
-            Text(_s.melariArniaNumLabel(numero),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          ],
-        ),
+        Text(_s.melariArniaNumLabel(numero),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         Text(
           melariCount == 0 ? _s.melariNoMelari : _s.melariCountMelari(melariCount),
           style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
@@ -999,7 +1237,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildHiveStats(int posizionati, int inSmielatura) {
+  Widget _buildHiveStats(int posizionati, int daSmielare) {
     return Row(
       children: [
         Expanded(child: Card(
@@ -1021,7 +1259,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
             child: Column(children: [
-              Text('$inSmielatura',
+              Text('$daSmielare',
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFF7A00))),
               Text(_s.melariInSmielatura, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
             ]),
@@ -1035,7 +1273,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     return Wrap(
       spacing: 12, runSpacing: 4,
       children: [
-        _legendItem(const Color(0xFF7A4E2A), _s.melariHiveLegendNido),
+        _legendItem(Colors.blueGrey.shade300, _s.melariHiveLegendNido),
         _legendItem(const Color(0xFFF5A623), _s.melariHiveLegendPosizionato),
         _legendItem(const Color(0xFFFF7A00), _s.melariHiveLegendInSmielatura),
       ],
@@ -1057,47 +1295,155 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   }
 
   void _showMelarioBottomSheet(Melario m) {
+    final dataPos = DateTime.tryParse(m.dataPosizionamento);
+    final dataPosFmt = dataPos != null
+        ? '${dataPos.day.toString().padLeft(2, "0")}/${dataPos.month.toString().padLeft(2, "0")}/${dataPos.year}'
+        : m.dataPosizionamento;
+    final giorni = dataPos != null
+        ? DateTime.now().difference(dataPos).inDays
+        : null;
+    final statoLabel = _statoMelarioLabel(m.stato);
+    final faviLabel = m.statoFavi == 'fogli_cerei' ? 'Fogli cerei' : 'Già costruiti';
+
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_s.melariMelarioId(m.id),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(_s.melariTelainiPosizione(m.numeroTelaini, m.posizione, _tipoLabel(m.tipoMelario))),
-            if (m.pesoStimato != null)
-              Text(_s.melariPesoStimatoLabel(m.pesoStimato!.toStringAsFixed(1)),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 12),
-            if (m.stato == 'posizionato')
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(
+                      color: m.stato == 'in_smielatura'
+                          ? const Color(0xFFFF7A00)
+                          : const Color(0xFFF5A623),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.layers, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_s.melariMelarioId(m.id),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        if (m.arniaNumero != null)
+                          Text('Arnia ${m.arniaNumero}'
+                              '${m.apiarioNome != null ? " · ${m.apiarioNome}" : ""}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(statoLabel,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              _infoRow(Icons.calendar_today, 'Data posizionamento', dataPosFmt),
+              if (giorni != null)
+                _infoRow(Icons.timelapse, 'Giorni in arnia',
+                    giorni == 0 ? 'oggi' : (giorni == 1 ? '1 giorno' : '$giorni giorni')),
+              _infoRow(Icons.view_week, 'Telaini', '${m.numeroTelaini}'),
+              _infoRow(Icons.layers, 'Posizione', '${m.posizione}°'),
+              _infoRow(Icons.grid_on, 'Tipo', _tipoLabel(m.tipoMelario)),
+              _infoRow(Icons.style, 'Stato favi', faviLabel),
+              _infoRow(Icons.block, 'Escludi regina', m.escludiRegina ? 'Sì' : 'No'),
+              if (m.pesoStimato != null)
+                _infoRow(Icons.scale, 'Peso stimato',
+                    '${m.pesoStimato!.toStringAsFixed(1)} kg'),
+              if (m.note != null && m.note!.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Note', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(m.note!),
+              ],
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              if (m.stato == 'posizionato' || m.stato == 'in_smielatura')
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.edit, color: Colors.indigo),
+                  title: Text(_s.melariMenuEdit),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.of(context)
+                        .pushNamed(AppConstants.melarioCreateRoute,
+                            arguments: {'editingMelario': m})
+                        .then((result) { if (result == true) _refreshAll(); });
+                  },
+                ),
+              if (m.stato == 'posizionato')
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.remove_circle_outline, color: Colors.blue),
+                  title: Text(_s.melariRemoveMelarioTitle),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showRemoveDialogFromView(m);
+                  },
+                ),
               ListTile(
-                leading: const Icon(Icons.remove_circle_outline, color: Colors.blue),
-                title: Text(_s.melariRemoveMelarioTitle),
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: Text(_s.melariEliminaMelarioTitle),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _showRemoveDialogFromView(m);
+                  _confirmDeleteFromView(m);
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: Text(_s.melariEliminaMelarioTitle),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmDeleteFromView(m);
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+          ),
+          Text(value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  String _statoMelarioLabel(String stato) {
+    switch (stato) {
+      case 'posizionato':   return 'Posizionato';
+      case 'in_smielatura': return 'In smielatura';
+      case 'rimosso':       return 'Rimosso';
+      case 'smielato':      return 'Smielato';
+      default:              return stato;
+    }
   }
 
   String _tipoLabel(String tipo) {
@@ -1135,29 +1481,54 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              try {
-                final peso = double.tryParse(pesoCtrl.text);
-                await _apiService.removeMelario(
-                  m.id,
-                  data: {
-                    'data_rimozione': DateTime.now().toIso8601String().split('T')[0],
-                    if (peso != null) 'peso_stimato': peso,
-                  },
-                );
-                _refreshAll();
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(_s.melariRemoveMelarioError(e.toString()))),
-                  );
-                }
-              }
+              await _removeMelarioOptimistic(m, double.tryParse(pesoCtrl.text));
             },
             child: Text(_s.melariConfirmBtn),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _removeMelarioOptimistic(Melario m, double? peso) async {
+    final dataRimozione = DateTime.now().toIso8601String().split('T')[0];
+    final snapshot = List<Melario>.from(_melari);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    // Aggiornamento ottimistico: il melario sparisce dalla vista alveari
+    // (filtrata su posizionato/in_smielatura) e va a popolare il counter
+    // "Da smielare".
+    setState(() {
+      final idx = _melari.indexWhere((x) => x.id == m.id);
+      if (idx != -1) {
+        _melari[idx] = m.copyWith(
+          stato: 'rimosso',
+          dataRimozione: dataRimozione,
+          pesoStimato: peso ?? m.pesoStimato,
+        );
+      }
+    });
+
+    try {
+      await _apiService.removeMelario(
+        m.id,
+        data: {
+          'data_rimozione': dataRimozione,
+          if (peso != null) 'peso_stimato': peso,
+        },
+      );
+      await storageService.saveData(
+          'melari', _melari.map((x) => x.toJson()).toList());
+    } catch (e) {
+      debugPrint('Errore rimozione melario: $e');
+      if (mounted) {
+        setState(() => _melari = snapshot);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.melariRemoveMelarioError(e.toString()))),
+        );
+        _refreshAll();
+      }
+    }
   }
 
   void _confirmDeleteFromView(Melario m) {
@@ -1193,49 +1564,6 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Future<void> _updateMelariPositions(List<Melario> reorderedList) async {
-    // 1. Aggiornamento ottimistico dello stato locale
-    setState(() {
-      for (int i = 0; i < reorderedList.length; i++) {
-        final m = reorderedList[i];
-        final newPos = reorderedList.length - i;
-        final idx = _melari.indexWhere((element) => element.id == m.id);
-        if (idx != -1) {
-          _melari[idx] = _melari[idx].copyWith(posizione: newPos);
-        }
-      }
-    });
-
-    // 2. Sincronizzazione con il server
-    try {
-      final futures = <Future>[];
-      for (int i = 0; i < reorderedList.length; i++) {
-        final m = reorderedList[i];
-        final newPos = reorderedList.length - i;
-        // Invia PATCH solo se la posizione è effettivamente cambiata sul server
-        // Nota: m.posizione qui è quella vecchia prima dell'aggiornamento ottimistico
-        // se reorderedList è una copia scattata prima del setState.
-        // Ma qui reorderedList contiene i melari con le vecchie posizioni.
-        if (m.posizione != newPos) {
-          futures.add(_apiService.patch('${ApiConstants.melariUrl}${m.id}/', {'posizione': newPos}));
-        }
-      }
-      if (futures.isNotEmpty) {
-        await Future.wait(futures);
-        // Salva nello storage locale dopo il successo
-        final storageService = Provider.of<StorageService>(context, listen: false);
-        await storageService.saveData('melari', _melari.map((m) => m.toJson()).toList());
-      }
-    } catch (e) {
-      debugPrint('Errore durante l\'aggiornamento posizioni melari: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nel salvataggio dell\'ordine: $e')),
-        );
-        _refreshAll(); // Rollback ricaricando i dati
-      }
-    }
-  }
 }
 
 class _QEPainter extends CustomPainter {

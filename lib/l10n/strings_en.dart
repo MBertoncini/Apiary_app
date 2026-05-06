@@ -721,6 +721,8 @@ class StringsEn extends AppStrings {
   @override String get reginaFormLblNote => 'Notes (optional)';
   @override String get reginaFormCreatedOk => 'Queen added successfully';
   @override String get reginaFormUpdatedOk => 'Queen updated successfully';
+  @override String get reginaDetailSospettaAssenteMsg => 'WARNING: this queen has been reported absent in the last two controls. She may be dead.';
+  @override String get reginaDetailLblCodiceMarcatura => 'Marking code';
 
   // ── Melario / Smielatura screens ──────────────────────────────────────────
   @override String get melariTitle => 'Honey Supers & Production';
@@ -772,6 +774,9 @@ class StringsEn extends AppStrings {
   @override String get melariSummaryTipi => 'Types';
   @override String get melariSummaryInvasettato => 'Jarred';
   @override String get melariSummaryRaccolto => 'Harvested';
+  @override String get melariAnnoTutti => 'All';
+  @override String get melariSummaryVasetti => 'Jars';
+  @override String melariSummaryVasettiFormato(int formato, int n) => '${formato}g: $n jars';
   @override String get melariHiveLegendNido => 'Brood';
   @override String get melariHiveLegendPosizionato => 'Placed';
   @override String get melariHiveLegendInSmielatura => 'In extraction';
@@ -814,6 +819,11 @@ class StringsEn extends AppStrings {
   @override String melarioFormLoadError(String e) => 'Loading error: $e';
   @override String melarioFormArnieLoadError(String e) => 'Hive loading error: $e';
   @override String get melarioFormCreatedOk => 'Super added successfully';
+  @override String get melarioFormTitleEdit => 'Edit Super';
+  @override String get melarioFormBtnUpdate => 'Save changes';
+  @override String get melarioFormUpdatedOk => 'Super updated successfully';
+  @override String get melarioFormNoColoniaError => 'No active colony on the selected hive: the super cannot be placed.';
+  @override String smielaturaFormMelarioDates(String immissione, String rimozione) => 'Placement: $immissione - Removal: $rimozione';
   // Smielatura form extra
   @override String get smielaturaFormLblMelariDisp => 'Available supers';
   @override String get smielaturaFormValidateNumero => 'Enter a valid number';
@@ -953,7 +963,31 @@ class StringsEn extends AppStrings {
   @override String get dashFabVoiceInput => 'Voice input';
   @override String get dashFabAiAssistant => 'ApiarioAI Assistant';
   @override String get dashFabScanQr => 'Scan QR';
-  @override String get dashFabNewApiario => 'New apiary';
+  @override String get dashFabScanNfc => 'Scan NFC';
+  @override String get nfcNotAvailable => 'NFC not available on this device';
+  @override String get nfcScanning => 'Bring the tag near the device…';
+  @override String get nfcTagNotFound => 'No hive associated with this tag';
+  @override String get nfcError => 'Error reading NFC tag';
+  @override String get dashFabNewApiario => 'New Apiary';
+
+  @override String get sectionNfc => 'NFC Action';
+  @override String get nfcSettingsSubtitle => 'What the app does when you scan an NFC chip on a hive';
+  @override String get nfcActionManual => 'Manual inspection';
+  @override String get nfcActionManualDesc => 'Opens the manual inspection entry form';
+  @override String get nfcActionVoice => 'Voice inspection';
+  @override String get nfcActionVoiceDesc => 'Starts voice recording with the hive number already set';
+
+  @override String get nfcChipPairing => 'NFC Chip';
+  @override String get nfcChipAssigned => 'Chip assigned';
+  @override String get nfcChipNone => 'No chip assigned';
+  @override String get nfcScanToAssign => 'Assign chip';
+  @override String get nfcChipRemoveBtn => 'Remove';
+  @override String get nfcChipAssignSuccess => 'NFC chip assigned successfully';
+  @override String get nfcChipScanFailed => 'No chip detected';
+
+  @override String nfcVoiceBanner(int arniaNumero, String apiarioNome) =>
+      'Voice inspection · Hive $arniaNumero · $apiarioNome';
+  @override String get nfcVoiceBannerHint => 'Hive number will be added automatically to your dictation';
 
   // ── Auth – Login Screen ───────────────────────────────────────────────────
   @override String get loginSubtitle => 'Sign in to manage your apiaries';
@@ -1483,6 +1517,10 @@ class StringsEn extends AppStrings {
   @override String cantinaDeleteMaturatoreMsg(String nome) => 'Delete ripening tank "$nome"?';
   @override String cantinaDeleteContenitoreMsg(String nome) => 'Delete container "$nome"?';
   @override String get cantinaVenditaErrVasetti => 'Sale saved but error updating jars';
+  @override String get cantinaStoricoMaturatori => '📦 Ripening Tank History';
+  @override String cantinaStoricoLabel(int n) => '$n emptied';
+  @override String cantinaMaturatoreStoricoPeriodo(String da, String a) => '$da → $a';
+  @override String cantinaMaturatoreStoricoKg(String kg, int giorni) => '$kg kg · $giorni days';
 
   // ── Aggiungi maturatore sheet ──
   @override String get aggiungiMaturatoreTitleNew => 'New Ripening Tank';

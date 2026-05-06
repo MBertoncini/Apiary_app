@@ -722,6 +722,8 @@ abstract class AppStrings {
   String get reginaFormLblNote;
   String get reginaFormCreatedOk;
   String get reginaFormUpdatedOk;
+  String get reginaDetailSospettaAssenteMsg;
+  String get reginaDetailLblCodiceMarcatura;
 
   // ── Melario / Smielatura screens ──────────────────────────────────────────
   String get melariTitle;
@@ -770,6 +772,9 @@ abstract class AppStrings {
   String get melariSummaryTipi;
   String get melariSummaryInvasettato;
   String get melariSummaryRaccolto;
+  String get melariAnnoTutti;
+  String get melariSummaryVasetti;
+  String melariSummaryVasettiFormato(int formato, int n);
   String get melariHiveLegendNido;
   String get melariHiveLegendPosizionato;
   String get melariHiveLegendInSmielatura;
@@ -812,6 +817,10 @@ abstract class AppStrings {
   String melarioFormLoadError(String e);
   String melarioFormArnieLoadError(String e);
   String get melarioFormCreatedOk;
+  String get melarioFormTitleEdit;
+  String get melarioFormBtnUpdate;
+  String get melarioFormUpdatedOk;
+  String get melarioFormNoColoniaError;
 
   // Smielatura form
   String get smielaturaFormTitleNew;
@@ -823,6 +832,7 @@ abstract class AppStrings {
   String get smielaturaFormLblNote;
   String smielaturaFormMelarioItem(int id, String arniaNum);
   String smielaturaFormMelarioStato(String stato);
+  String smielaturaFormMelarioDates(String immissione, String rimozione);
   String get smielaturaFormSelectApiarioMsg;
   String smielaturaFormError(String e);
   String get smielaturaFormOfflineMsg;
@@ -984,7 +994,33 @@ abstract class AppStrings {
   String get dashFabVoiceInput;
   String get dashFabAiAssistant;
   String get dashFabScanQr;
+  String get dashFabScanNfc;
+  String get nfcNotAvailable;
+  String get nfcScanning;
+  String get nfcTagNotFound;
+  String get nfcError;
   String get dashFabNewApiario;
+
+  // NFC settings card
+  String get sectionNfc;
+  String get nfcSettingsSubtitle;
+  String get nfcActionManual;
+  String get nfcActionManualDesc;
+  String get nfcActionVoice;
+  String get nfcActionVoiceDesc;
+
+  // NFC chip pairing (arnia form)
+  String get nfcChipPairing;
+  String get nfcChipAssigned;
+  String get nfcChipNone;
+  String get nfcScanToAssign;
+  String get nfcChipRemoveBtn;
+  String get nfcChipAssignSuccess;
+  String get nfcChipScanFailed;
+
+  // NFC voice banner (voice command screen)
+  String nfcVoiceBanner(int arniaNumero, String apiarioNome);
+  String get nfcVoiceBannerHint;
 
   // ── Auth – Login Screen ───────────────────────────────────────────────────
   String get loginSubtitle;
@@ -1520,6 +1556,10 @@ abstract class AppStrings {
   String cantinaDeleteMaturatoreMsg(String nome);
   String cantinaDeleteContenitoreMsg(String nome);
   String get cantinaVenditaErrVasetti;
+  String get cantinaStoricoMaturatori;
+  String cantinaStoricoLabel(int n);
+  String cantinaMaturatoreStoricoPeriodo(String da, String a);
+  String cantinaMaturatoreStoricoKg(String kg, int giorni);
 
   // ── Aggiungi maturatore sheet ──
   String get aggiungiMaturatoreTitleNew;

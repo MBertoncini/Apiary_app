@@ -28,6 +28,7 @@ import '../screens/regina/regina_detail_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
 import '../screens/trattamento/trattamento_form_screen.dart';
 import '../screens/trattamento/trattamento_detail_screen.dart';
+import '../models/melario.dart';
 import '../screens/melario/melari_screen.dart';
 import '../screens/melario/melario_form_screen.dart';
 import '../screens/melario/smielatura_detail_screen.dart';
@@ -262,6 +263,7 @@ class RouteGenerator {
             builder: (_) => MelarioFormScreen(
               preselectedApiarioId: args['apiarioId'] as int?,
               preselectedArniaId: args['arniaId'] as int?,
+              editingMelario: args['editingMelario'] as Melario?,
             ),
           );
         }

@@ -61,7 +61,9 @@ class _ReginaListScreenState extends State<ReginaListScreen> {
     } catch (e) {
       debugPrint('Errore API regine: $e');
       _isLoading = false;
-      _isOffline = _regine.isNotEmpty; // offline solo se abbiamo mostrato dati cached
+      // Mostriamo l'indicatore "offline/dati non aggiornati" solo se abbiamo
+      // dati cached visibili; se la lista è vuota mostriamo invece un errore.
+      _isOffline = _regine.isNotEmpty;
       if (_regine.isEmpty) _errorMessage = 'Errore durante il caricamento delle regine: $e';
     }
 

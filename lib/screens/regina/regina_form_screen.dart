@@ -8,12 +8,14 @@ import '../../services/storage_service.dart';
 
 class ReginaFormScreen extends StatefulWidget {
   final int arniaId;
+  final int? coloniaId;
   final Map<String, dynamic>? reginaData; // non-null → edit mode
   final int? reginaId;                    // non-null → edit mode
 
   const ReginaFormScreen({
     Key? key,
     required this.arniaId,
+    this.coloniaId,
     this.reginaData,
     this.reginaId,
   }) : super(key: key);
@@ -95,9 +97,24 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
       _produttivita = r['produttivita'] as int?;
       _resistenzaMalattie = r['resistenza_malattie'] as int?;
       _tendenzaSciamatura = r['tendenza_sciamatura'] as int?;
-      _reginaMadreId = r['regina_madre'] is int ? r['regina_madre'] as int : null;
+      final rawMadre = r['regina_madre'] ?? r['regina_madre_id'];
+      if (rawMadre is int) {
+        _reginaMadreId = rawMadre;
+      } else if (rawMadre is Map && rawMadre['id'] is int) {
+        _reginaMadreId = rawMadre['id'] as int;
+      } else if (rawMadre != null) {
+        _reginaMadreId = int.tryParse(rawMadre.toString());
+      }
     }
     _loadRegineDisponibili();
+  }
+
+  /// Estrae l'arniaId da una regina, gestendo entrambe le chiavi del backend.
+  int? _arniaIdOf(Map r) {
+    final raw = r['arnia'] ?? r['arnia_id'];
+    if (raw is int) return raw;
+    if (raw == null) return null;
+    return int.tryParse(raw.toString());
   }
 
   Future<void> _loadRegineDisponibili() async {
@@ -107,7 +124,7 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
       setState(() {
         _regineDisponibili = cached
             .map((r) => Map<String, dynamic>.from(r as Map))
-            .where((r) => r['arnia'] != widget.arniaId)
+            .where((r) => _arniaIdOf(r) != widget.arniaId)
             .toList();
       });
     }
@@ -123,7 +140,7 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
         setState(() {
           _regineDisponibili = regine
               .map((r) => Map<String, dynamic>.from(r as Map))
-              .where((r) => r['arnia'] != widget.arniaId)
+              .where((r) => _arniaIdOf(r) != widget.arniaId)
               .toList();
         });
       }
@@ -158,18 +175,29 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
 
     final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
+      // Se l'utente ha attivato "marcata" senza scegliere un colore dalla
+      // dropdown, quella mostra "Bianco" come fallback ma _coloreMarcatura
+      // resta 'non_marcata': qui forziamo un colore reale per evitare lo
+      // stato auto-contraddittorio (marcata=true, colore=non_marcata).
+      final coloreFinale = _marcata
+          ? (_coloreMarcatura == 'non_marcata' ? 'bianco' : _coloreMarcatura)
+          : 'non_marcata';
+
       final data = <String, dynamic>{
         'arnia': widget.arniaId,
+        if (widget.coloniaId != null) 'colonia': widget.coloniaId,
         'data_introduzione': _dateFormat.format(_dataIntroduzione),
         'origine': _origine,
         'razza': _razza,
         'marcata': _marcata,
-        'colore_marcatura': _marcata ? _coloreMarcatura : 'non_marcata',
+        'colore_marcatura': coloreFinale,
         'fecondata': _fecondata,
         'selezionata': _selezionata,
         if (_dataNascita != null) 'data_nascita': _dateFormat.format(_dataNascita!),
         if (_note.isNotEmpty) 'note': _note,
-        if (_reginaMadreId != null) 'regina_madre': _reginaMadreId,
+        // Inclusione esplicita anche quando null per non perdere l'associazione
+        // alla madre durante un PUT (PUT senza chiave la sovrascriverebbe a null).
+        'regina_madre': _reginaMadreId,
         if (_docilita != null) 'docilita': _docilita,
         if (_produttivita != null) 'produttivita': _produttivita,
         if (_resistenzaMalattie != null) 'resistenza_malattie': _resistenzaMalattie,
@@ -345,7 +373,16 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                     SwitchListTile(
                       title: Text(s.reginaFormMarcataTitle),
                       value: _marcata,
-                      onChanged: (v) => setState(() => _marcata = v),
+                      onChanged: (v) => setState(() {
+                        _marcata = v;
+                        // Mantieni _coloreMarcatura coerente con lo switch:
+                        // se attivato senza un colore reale, default 'bianco'.
+                        if (v && _coloreMarcatura == 'non_marcata') {
+                          _coloreMarcatura = 'bianco';
+                        } else if (!v) {
+                          _coloreMarcatura = 'non_marcata';
+                        }
+                      }),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
@@ -360,7 +397,7 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
                           labelText: s.reginaFormLblColoreMarcatura,
                           border: const OutlineInputBorder(),
                         ),
-                        value: _coloreMarcatura == 'non_marcata' ? 'bianco' : _coloreMarcatura,
+                        value: _coloreMarcatura,
                         items: _coloriMarcatura
                             .map((c) => DropdownMenuItem(value: c['id'], child: Text(c['label']!)))
                             .toList(),

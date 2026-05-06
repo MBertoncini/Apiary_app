@@ -27,6 +27,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
 
   List<Map<String, dynamic>> _apiari = [];
   List<Map<String, dynamic>> _melari = [];
+  List<Map<String, dynamic>> _smielature = [];
 
   int? _selectedApiarioId;
   DateTime _selectedDate = DateTime.now();
@@ -59,10 +60,12 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
     // Mostra subito dalla cache
     final cachedApiari = await _storageService.getStoredData('apiari');
     final cachedMelari = await _storageService.getStoredData('melari');
+    final cachedSmielature = await _storageService.getStoredData('smielature');
     if ((cachedApiari.isNotEmpty || cachedMelari.isNotEmpty) && mounted) {
       setState(() {
         if (cachedApiari.isNotEmpty) _apiari = cachedApiari.map((e) => e as Map<String, dynamic>).toList();
         if (cachedMelari.isNotEmpty) _melari = cachedMelari.map((e) => e as Map<String, dynamic>).toList();
+        if (cachedSmielature.isNotEmpty) _smielature = cachedSmielature.map((e) => e as Map<String, dynamic>).toList();
         _isLoadingData = false;
       });
     }
@@ -71,19 +74,23 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
       final results = await Future.wait([
         _apiService.get(ApiConstants.apiariUrl),
         _apiService.get(ApiConstants.melariUrl),
+        _apiService.get(ApiConstants.produzioniUrl),
       ]);
       final apiariList = results[0] is List ? results[0] : (results[0]['results'] as List? ?? []);
       final melariList = results[1] is List ? results[1] : (results[1]['results'] as List? ?? []);
+      final smielatureList = results[2] is List ? results[2] : (results[2]['results'] as List? ?? []);
 
       await Future.wait([
         _storageService.saveData('apiari', apiariList),
         _storageService.saveData('melari', melariList),
+        _storageService.saveData('smielature', smielatureList),
       ]);
 
       if (mounted) {
         setState(() {
           _apiari = apiariList.map((e) => e as Map<String, dynamic>).toList();
           _melari = melariList.map((e) => e as Map<String, dynamic>).toList();
+          _smielature = smielatureList.map((e) => e as Map<String, dynamic>).toList();
           _isLoadingData = false;
         });
       }
@@ -117,11 +124,48 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
 
   List<Map<String, dynamic>> get _filteredMelari {
     if (_selectedApiarioId == null) return [];
-    return _melari.where((m) {
+
+    // Troviamo tutti i melari già smielati in altre sessioni per escluderli con certezza
+    final usedMelariIds = _smielature
+        .where((s) => !_isEditing || s['id'] != _editId)
+        .expand((s) => (s['melari'] as List? ?? []).map((e) => e as int))
+        .toSet();
+
+    final filtered = _melari.where((m) {
+      final id = m['id'] as int;
       final apiarioId = m['apiario_id'];
       final stato = m['stato'] as String?;
-      return apiarioId == _selectedApiarioId && stato == 'in_smielatura';
+
+      // In edit mode i melari già parte di QUESTA smielatura devono restare
+      // visibili anche se ora sono in stato 'smielato'. Il filtro apiario va
+      // comunque applicato per evitare di mostrare melari di un altro apiario
+      // se l'utente cambia il dropdown.
+      if (_isEditing &&
+          _selectedMelariIds.contains(id) &&
+          apiarioId == _selectedApiarioId) {
+        return true;
+      }
+
+      // Escludiamo melari già presenti in altre smielature
+      if (usedMelariIds.contains(id)) return false;
+
+      // Sono disponibili per la smielatura tutti i melari rimossi dall'arnia
+      // (rimosso) o esplicitamente messi in coda di smielatura (in_smielatura).
+      // I "smielato" sono storia e non vengono mostrati.
+      return apiarioId == _selectedApiarioId &&
+          (stato == 'in_smielatura' || stato == 'rimosso');
     }).toList();
+
+    // Ordine deterministico: per arnia poi per id, evita liste in ordine
+    // arbitrario di cache.
+    filtered.sort((a, b) {
+      final aArnia = a['arnia_numero'] as int? ?? 0;
+      final bArnia = b['arnia_numero'] as int? ?? 0;
+      final c = aArnia.compareTo(bArnia);
+      if (c != 0) return c;
+      return (a['id'] as int).compareTo(b['id'] as int);
+    });
+    return filtered;
   }
 
   Future<void> _submit() async {
@@ -164,12 +208,8 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
             apiarioNome: (apiarioData['nome'] as String?) ?? '',
             dataSmielatura: _selectedDate,
           );
-          // Marca tutti i melari smielati come 'rimosso' così non appaiono più nel form
-          final oggi = _selectedDate.toIso8601String().split('T')[0];
-          await Future.wait(_selectedMelariIds.map((id) => _apiService.patch(
-            '${ApiConstants.melariUrl}$id/',
-            {'stato': 'rimosso', 'data_rimozione': oggi},
-          )));
+          // Il backend (Smielatura.save) marca automaticamente i melari come
+          // 'smielato', quindi non sono più visibili nel form smielatura.
         }
       }
       if (!mounted) return;
@@ -288,7 +328,20 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                         final id = m['id'] as int;
                         return CheckboxListTile(
                           title: Text(s.smielaturaFormMelarioItem(id, m['arnia_numero']?.toString() ?? '')),
-                          subtitle: Text(s.smielaturaFormMelarioStato(m['stato']?.toString() ?? '')),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(s.smielaturaFormMelarioStato(m['stato']?.toString() ?? '')),
+                              if (m['data_posizionamento'] != null || m['data_rimozione'] != null)
+                                Text(
+                                  s.smielaturaFormMelarioDates(
+                                    m['data_posizionamento'] ?? '-',
+                                    m['data_rimozione'] ?? '-',
+                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                            ],
+                          ),
                           value: _selectedMelariIds.contains(id),
                           onChanged: (checked) {
                             setState(() {
