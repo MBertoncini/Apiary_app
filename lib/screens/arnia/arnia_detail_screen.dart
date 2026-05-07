@@ -19,6 +19,7 @@ import 'arnia_form_screen.dart';
 import '../../widgets/offline_banner.dart';
 import '../../services/regina_service.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../widgets/beehive_illustrations.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/language_service.dart';
 import '../../models/colonia.dart';
@@ -279,9 +280,16 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   }
 
   Future<void> _navigateToReginaCreate() async {
+    // Se è già presente una regina, redirigi su edit invece di creare un duplicato.
+    if (_regina != null && _regina!['id'] != null) {
+      return _navigateToReginaEdit();
+    }
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ReginaFormScreen(arniaId: widget.arniaId),
+        builder: (_) => ReginaFormScreen(
+          arniaId: widget.arniaId,
+          coloniaId: _coloniaAttiva?.id,
+        ),
       ),
     );
     if (result == true) _loadArnia();
@@ -298,6 +306,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       MaterialPageRoute(
         builder: (_) => ReginaFormScreen(
           arniaId: widget.arniaId,
+          coloniaId: _coloniaAttiva?.id,
           reginaData: Map<String, dynamic>.from(_regina!),
           reginaId: _regina!['id'] as int,
         ),
@@ -408,8 +417,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           // Aggiungi subito la nuova regina
                           final result = await Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ReginaFormScreen(arniaId: widget.arniaId),
+                              builder: (_) => ReginaFormScreen(
+                                arniaId: widget.arniaId,
+                                coloniaId: _coloniaAttiva?.id,
+                              ),
                             ),
                           );
                           if (result == true || result == null) _loadArnia();
@@ -1004,11 +1015,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   Icons.grid_view,
                                   Colors.blue,
                                 ),
-                                _buildControlloTag(
+                                _buildControlloTagQueen(
                                   controllo['presenza_regina'] == true
                                       ? s.arniaDetailReginaPresente
                                       : s.arniaDetailReginaAssente,
-                                  Icons.star,
                                   controllo['presenza_regina'] == true ? Colors.green : Colors.red,
                                 ),
                                 if (controllo['regina_vista'] == true)
@@ -1120,7 +1130,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      const Icon(Icons.star, color: Colors.amber, size: 32),
+                                      const HandDrawnQueenBee(size: 32, color: Colors.amber),
                                       Positioned(
                                         top: -4,
                                         right: -4,
@@ -1180,47 +1190,85 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       ],
                       // Anteprima regina
                       Card(
-                        color: Colors.amber.withOpacity(0.1),
+                        color: _regina!['sospetta_assente'] == true 
+                            ? Colors.red.withOpacity(0.08) 
+                            : Colors.amber.withOpacity(0.1),
+                        elevation: _regina!['sospetta_assente'] == true ? 4 : 1,
+                        shape: _regina!['sospetta_assente'] == true 
+                            ? RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: const BorderSide(color: Colors.red, width: 2),
+                              )
+                            : RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: const BoxDecoration(
-                                  color: Colors.amber,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.star,
-                                  color: Colors.white,
-                                  size: 36,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Regina ${_regina!['razza']}',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 30,
+                                    backgroundColor: (_getReginaColor(_regina!['colore_marcatura']) ?? Colors.amber).withOpacity(0.2),
+                                    child: HandDrawnQueenBee(
+                                      size: 40, 
+                                      color: _getReginaColor(_regina!['colore_marcatura']) ?? Colors.amber
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      s.arniaDetailIntrodottaIl(_regina!['data_introduzione'] ?? ''),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: ThemeConstants.textSecondaryColor,
-                                      ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Regina ${_regina!['razza']}',
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          s.arniaDetailIntrodottaIl(_regina!['data_introduzione'] ?? ''),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: ThemeConstants.textSecondaryColor,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
+                              if (_regina!['sospetta_assente'] == true)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12.0),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            s.reginaDetailSospettaAssenteMsg,
+                                            style: TextStyle(
+                                              color: Colors.red.shade900, 
+                                              fontSize: 13, 
+                                              fontWeight: FontWeight.bold
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -1751,6 +1799,22 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   }
 
   Widget _buildControlloTag(String label, IconData icon, Color color) {
+    return _buildControlloTagBase(
+      label,
+      Icon(icon, size: 12, color: color),
+      color,
+    );
+  }
+
+  Widget _buildControlloTagQueen(String label, Color color) {
+    return _buildControlloTagBase(
+      label,
+      HandDrawnQueenBee(size: 12, color: color),
+      color,
+    );
+  }
+
+  Widget _buildControlloTagBase(String label, Widget leading, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -1761,11 +1825,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 12,
-            color: color,
-          ),
+          leading,
           const SizedBox(width: 4),
           Text(
             label,
@@ -1846,6 +1906,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         ],
       ),
     );
+  }
+
+  Color? _getReginaColor(String? colorStr) {
+    if (colorStr == null) return null;
+    final c = colorStr.toLowerCase();
+    if (!const {'bianco', 'giallo', 'rosso', 'verde', 'blu'}.contains(c)) return null;
+    // 'bianco' viene reso nero così l'icona è visibile su sfondi chiari
+    return reginaInkColorFor(c);
   }
 
   String _getOrigineRegina(String origine) {

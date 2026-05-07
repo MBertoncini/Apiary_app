@@ -704,6 +704,12 @@ class StringsIt extends AppStrings {
   @override String get melariTabTutti => 'Tutti';
   @override String get melariTabPersonali => 'Personali';
   @override String get melariNoSmielature => 'Nessuna smielatura registrata';
+  @override String get melariNoSmielatureAttive => 'Nessuna smielatura attiva. Tutte trasferite o archiviate.';
+  @override String get melariStoricoSmielature => 'Storico smielature';
+  @override String get melariMenuApri => 'Apri';
+  @override String get melariMenuArchivia => 'Archivia';
+  @override String get melariMenuRipristina => 'Ripristina';
+  @override String melariSmielaturaResidui(String kg) => '⏳ $kg kg ancora da trasferire';
   @override String get melariRiepilogoProd => 'Riepilogo Produzioni';
   @override String get melariKg => 'kg';
   @override String melariSmielaturaItem(String tipo, String qty) => '$tipo - $qty kg';
@@ -1500,6 +1506,14 @@ class StringsIt extends AppStrings {
   @override String get aggiungiMaturatoreLblGiorniMaturazione => 'Giorni maturazione';
   @override String get aggiungiMaturatoreHelperGiorni => 'Auto da tipo miele';
   @override String get aggiungiMaturatoreLblDataInizio => 'Data inizio';
+  @override String get aggiungiMaturatoreLblSmielatura => 'Smielatura di origine';
+  @override String get aggiungiMaturatoreSelectSmielatura => 'Seleziona la smielatura di origine';
+  @override String get aggiungiMaturatoreNoSmielatureAttive =>
+      'Nessuna smielatura con miele residuo. Crea prima una smielatura nel tab "Smielature".';
+  @override String aggiungiMaturatoreSmielaturaItem(String data, String apiario, String tipo, String kgResidui) =>
+      '$data · $apiario · $tipo ($kgResidui kg residui)';
+  @override String aggiungiMaturatoreErrKgEccesso(String kgResidui) =>
+      'Disponibili dalla smielatura: $kgResidui kg';
 
   // ── Trasferisci sheet ──
   @override String trasferisciTitle(String nome) => 'Trasferisci da "$nome"';

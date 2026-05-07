@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../services/ai_quota_local_tracker.dart';
 import '../services/ai_quota_service.dart';
 import '../services/voice_settings_service.dart';
+import '../services/nfc_settings_service.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/paper_widgets.dart';
 import '../widgets/skeleton_widgets.dart';
@@ -49,6 +50,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _voiceSettings = VoiceSettingsService();
   String _voiceMode = VoiceSettingsService.modeStt;
 
+  // Modalità azione NFC
+  final _nfcSettings = NfcSettingsService();
+  String _nfcAction = NfcSettingsService.actionManual;
+
   // Attrezzatura prompt preference
   bool _skipAttrezzaturaPrompt = false;
 
@@ -66,6 +71,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadLocalQuotas();
       _voiceSettings.getMode().then((m) {
         if (mounted) setState(() => _voiceMode = m);
+      });
+      _nfcSettings.getAction().then((a) {
+        if (mounted) setState(() => _nfcAction = a);
       });
       Provider.of<StorageService>(context, listen: false)
           .shouldSkipAttrezzaturaPrompt()
@@ -426,6 +434,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Card unificata: stato (tier + contatore), modalità (STT/Audio),
             // accesso esteso (CTA solo per tier < Professionale).
             _buildVoiceInputCard(s),
+            const SizedBox(height: 16),
+
+            // ── AZIONE NFC ────────────────────────────────────────────────
+            _buildNfcActionCard(s),
             const SizedBox(height: 16),
 
             // ── OPZIONI AVANZATE (chiavi API personali, collapsed) ───────
@@ -914,6 +926,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(subtitle,
                       style: ThemeConstants.bodyStyle.copyWith(
                           fontSize: 12, color: ThemeConstants.textSecondaryColor)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── NFC action card ──────────────────────────────────────────────────────
+
+  Widget _buildNfcActionCard(dynamic s) {
+    return PaperCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.nfc, color: ThemeConstants.secondaryColor, size: 20),
+              const SizedBox(width: 8),
+              Text(s.sectionNfc, style: ThemeConstants.subheadingStyle),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            s.nfcSettingsSubtitle,
+            style: ThemeConstants.bodyStyle.copyWith(
+                fontSize: 12, color: ThemeConstants.textSecondaryColor),
+          ),
+          const SizedBox(height: 16),
+          _buildNfcActionOption(
+            value: NfcSettingsService.actionManual,
+            icon: Icons.edit_note,
+            title: s.nfcActionManual,
+            subtitle: s.nfcActionManualDesc,
+          ),
+          const SizedBox(height: 10),
+          _buildNfcActionOption(
+            value: NfcSettingsService.actionVoice,
+            icon: Icons.mic_outlined,
+            iconColor: ThemeConstants.primaryColor,
+            title: s.nfcActionVoice,
+            subtitle: s.nfcActionVoiceDesc,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNfcActionOption({
+    required String value,
+    required IconData icon,
+    Color? iconColor,
+    required String title,
+    required String subtitle,
+  }) {
+    final selected = _nfcAction == value;
+    final color = iconColor ?? ThemeConstants.secondaryColor;
+    return GestureDetector(
+      onTap: () async {
+        await _nfcSettings.setAction(value);
+        if (mounted) setState(() => _nfcAction = value);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? color.withOpacity(0.08) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? color : Colors.grey.shade300,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: _nfcAction,
+              onChanged: (v) async {
+                if (v == null) return;
+                await _nfcSettings.setAction(v);
+                if (mounted) setState(() => _nfcAction = v);
+              },
+              activeColor: color,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 16, color: color),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(title,
+                            style: ThemeConstants.bodyStyle.copyWith(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitle,
+                      style: ThemeConstants.bodyStyle.copyWith(
+                          fontSize: 12,
+                          color: ThemeConstants.textSecondaryColor)),
                 ],
               ),
             ),

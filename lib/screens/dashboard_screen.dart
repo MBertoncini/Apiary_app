@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
+import '../models/arnia.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -10,6 +11,8 @@ import '../services/jokes_service.dart';
 import '../services/chat_service.dart';
 import '../services/ai_quota_service.dart';
 import '../services/mcp_service.dart';
+import '../services/nfc_service.dart';
+import '../services/nfc_settings_service.dart';
 import '../widgets/offline_banner.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/bee_joke_bubble.dart';
@@ -29,6 +32,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   // Variabili dati generali
   List<dynamic> _apiari = [];
+  List<dynamic> _arnie = [];
   List<dynamic> _trattamenti = [];
   List<dynamic> _fioriture = [];
   List<dynamic> _controlli = [];
@@ -81,6 +85,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _filteredTrattamenti = [];
   List<dynamic> _filteredFioriture = [];
   bool _showSearchResults = false;
+
+  final NfcService _nfcService = NfcService();
+  bool _isScanningNfc = false;
 
   @override
   void initState() {
@@ -138,6 +145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // === Fase 1: cache locale (istantaneo) ===
     final cached = await Future.wait([
       storageService.getStoredData('apiari'),
+      storageService.getStoredData('arnie'),
       storageService.getStoredData('trattamenti'),
       storageService.getStoredData('fioriture'),
       storageService.getStoredData('controlli'),
@@ -147,12 +155,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
 
     _apiari        = cached[0];
-    _trattamenti   = cached[1];
-    _fioriture     = cached[2];
-    _controlli     = cached[3];
-    _regine        = cached[4];
-    _melari        = cached[5];
-    _smielature    = cached[6];
+    _arnie         = cached[1];
+    _trattamenti   = cached[2];
+    _fioriture     = cached[3];
+    _controlli     = cached[4];
+    _regine        = cached[5];
+    _melari        = cached[6];
+    _smielature    = cached[7];
 
     final bool hasCache = _apiari.isNotEmpty || _trattamenti.isNotEmpty ||
         _fioriture.isNotEmpty || _controlli.isNotEmpty;
@@ -1727,6 +1736,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
   
+  Future<void> _scanNfcTag() async {
+    final s = _s;
+    bool available = await _nfcService.isAvailable();
+    if (!available) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.nfcNotAvailable)),
+      );
+      return;
+    }
+
+    setState(() { _isScanningNfc = true; });
+    
+    // Mostra feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(s.nfcScanning),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      String? tagId = await _nfcService.scanTag();
+      if (tagId != null) {
+        // Cerca l'arnia nel DB locale o cache (items are raw JSON maps)
+        Arnia? foundArnia;
+        for (var a in _arnie) {
+          final map = Map<String, dynamic>.from(a as Map);
+          if (map['nfc_id'] == tagId) {
+            foundArnia = Arnia.fromJson(map);
+            break;
+          }
+        }
+
+        if (foundArnia != null) {
+          final nfcAction = await NfcSettingsService().getAction();
+          if (!mounted) return;
+          if (nfcAction == NfcSettingsService.actionVoice) {
+            Navigator.pushNamed(
+              context,
+              AppConstants.voiceCommandRoute,
+              arguments: {
+                'apiarioId': foundArnia.apiario,
+                'apiarioNome': foundArnia.apiarioNome,
+                'arniaNumero': foundArnia.numero,
+              },
+            );
+          } else {
+            Navigator.pushNamed(
+              context,
+              AppConstants.controlloCreateRoute,
+              arguments: foundArnia.id,
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.nfcTagNotFound)),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.nfcError)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() { _isScanningNfc = false; });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Ascolta i cambiamenti di lingua e ricostruisce l'intera widget
@@ -2185,6 +2264,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     );
                   },
+                ),
+                SpeedDialChild(
+                  child: Icon(Icons.nfc),
+                  label: _s.dashFabScanNfc,
+                  onTap: _scanNfcTag,
                 ),
                 SpeedDialChild(
                   child: Icon(Icons.qr_code_scanner),

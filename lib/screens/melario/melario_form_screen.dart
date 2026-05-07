@@ -192,9 +192,10 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
     // Aggiornamento dal server (best-effort): le posizioni potrebbero essere
     // cambiate da un altro client. Il MelarioViewSet non espone un filtro
     // ?arnia_id=…, quindi si carica tutto e si filtra lato client.
+    // Usiamo getAll per seguire la paginazione DRF: con >20 melari, prima
+    // venivano lette solo le prime 20 posizioni occupate.
     try {
-      final res = await _apiService.get(ApiConstants.melariUrl);
-      final list = res is List ? res : (res['results'] as List? ?? []);
+      final list = await _apiService.getAll(ApiConstants.melariUrl);
       final fresh = <int>{};
       for (final raw in list) {
         final m = Melario.fromJson(raw as Map<String, dynamic>);

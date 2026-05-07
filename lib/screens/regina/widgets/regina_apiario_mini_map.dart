@@ -8,6 +8,7 @@ import '../../../models/arnia.dart';
 import '../../../models/regina.dart';
 import '../../../services/language_service.dart';
 import '../../../constants/theme_constants.dart';
+import '../../../widgets/beehive_illustrations.dart';
 
 /// Mini-mappa read-only della disposizione fisica delle arnie di un apiario.
 /// Evidenzia le arnie che hanno una regina attiva.
@@ -179,6 +180,22 @@ class _ReginaApiarioMiniMapState extends State<ReginaApiarioMiniMap> {
                     ),
                   ),
                 ),
+                // Mini icona regina (verde se presente, rosso se sospetta assente)
+                ...active.entries.where((e) => regineArnieIds.contains(e.key)).map((e) {
+                  final p = toMini(e.value);
+                  const queenSize = 14.0;
+                  final isSospetta = sospetteArnieIds.contains(e.key);
+                  return Positioned(
+                    left: p.dx - queenSize / 2,
+                    top: p.dy - 10 - queenSize - 2,
+                    width: queenSize,
+                    height: queenSize,
+                    child: HandDrawnQueenBee(
+                      size: queenSize,
+                      color: isSospetta ? Colors.red : Colors.green,
+                    ),
+                  );
+                }),
                 // Hit-areas trasparenti per gestire il tap su ogni arnia
                 if (widget.onArniaTap != null)
                   ...active.entries.map((e) {
@@ -263,17 +280,18 @@ class _RegineMiniMapPainter extends CustomPainter {
       final isSospetta = sospetteArnieIds.contains(id);
 
       if (hasQueen) {
-        // Glow effect for hives with queens
+        // Glow effect for hives with queens (rosso se sospetta assente, verde se presente)
+        final glow = isSospetta ? Colors.red : Colors.green;
         canvas.drawCircle(
           p,
           baseR + 6,
-          Paint()..color = (isSospetta ? Colors.red : Colors.amber).withOpacity(0.3),
+          Paint()..color = glow.withOpacity(0.3),
         );
         canvas.drawCircle(
           p,
           baseR + 3,
           Paint()
-            ..color = isSospetta ? Colors.red : Colors.amber
+            ..color = glow
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.5,
         );
@@ -305,22 +323,6 @@ class _RegineMiniMapPainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         )..layout();
         tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - tp.height / 2));
-      }
-      
-      // Mini queen icon (crown) if it has a queen
-      if (hasQueen) {
-        final tp = TextPainter(
-          text: const TextSpan(
-            text: '♛',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.amber,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - baseR - 12));
       }
     }
   }

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 import '../../../services/language_service.dart';
 import '../../../widgets/attrezzatura_prompt_dialog.dart';
+import '../../../widgets/beehive_illustrations.dart';
 
 // ════════════════════════════════════════════════════════════════
 //  DATA MODELS
@@ -1203,15 +1204,11 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '♛',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: presenzaRegina
-                        ? const Color(0xFF69F0AE)
-                        : const Color(0xFFFF6E6E),
-                    height: 1,
-                  ),
+                HandDrawnQueenBee(
+                  size: 10,
+                  color: presenzaRegina
+                      ? const Color(0xFF69F0AE)
+                      : const Color(0xFFFF6E6E),
                 ),
                 if (celleReali) ...[
                   const SizedBox(width: 2),

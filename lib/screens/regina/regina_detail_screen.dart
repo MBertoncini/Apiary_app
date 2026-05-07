@@ -10,6 +10,7 @@ import '../../services/storage_service.dart';
 import '../../models/regina.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../widgets/beehive_illustrations.dart';
 import 'regina_form_screen.dart';
 
 class ReginaDetailScreen extends StatefulWidget {
@@ -839,29 +840,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   // ==================== WIDGETS COMUNI ====================
   Widget _buildReginaHeader(AppStrings s, Regina regina) {
-    Color reginaColor;
-
-    switch (regina.colore) {
-      case 'bianco':
-        reginaColor = Colors.white;
-        break;
-      case 'giallo':
-        reginaColor = Colors.amber;
-        break;
-      case 'rosso':
-        reginaColor = Colors.red;
-        break;
-      case 'verde':
-        reginaColor = Colors.green;
-        break;
-      case 'blu':
-        reginaColor = Colors.blue;
-        break;
-      case 'non_marcata':
-      default:
-        reginaColor = Colors.grey;
-        break;
-    }
+    final Color inkColor = regina.marcata ? reginaInkColorFor(regina.colore) : Colors.grey;
+    final Color avatarBg = (regina.colore == 'bianco' ? Colors.grey : inkColor).withOpacity(0.2);
 
     return Card(
       elevation: 4,
@@ -871,10 +851,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: reginaColor,
-              child: regina.marcata
-                  ? Icon(Icons.local_florist, color: _getContrastColor(reginaColor), size: 36)
-                  : Icon(Icons.local_florist_outlined, color: _getContrastColor(reginaColor), size: 36),
+              backgroundColor: avatarBg,
+              child: HandDrawnQueenBee(size: 42, color: inkColor),
             ),
             SizedBox(width: 16),
             Expanded(
@@ -1047,11 +1025,6 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     } catch (_) {
       return s.labelNa;
     }
-  }
-
-  Color _getContrastColor(Color backgroundColor) {
-    double luminance = backgroundColor.computeLuminance();
-    return luminance > 0.5 ? Colors.black : Colors.white;
   }
 
   Future<void> _editRegina() async {

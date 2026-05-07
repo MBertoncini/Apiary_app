@@ -29,10 +29,18 @@ class ApiConstants {
   
   // Endpoint regine
   static const String regineUrl = baseUrl + apiPrefix + '/regine/';
-  static const String arniaReginaUrl = baseUrl + apiPrefix + '/arnia/{arnia_id}/regina/';
-  static const String arniaReginaAggiungiUrl = baseUrl + apiPrefix + '/arnia/{arnia_id}/regina/aggiungi/';
-  static const String arniaReginaSostituisciUrl = baseUrl + apiPrefix + '/arnia/{arnia_id}/regina/sostituisci/';
-  static const String reginaGenealogiaUrl = baseUrl + apiPrefix + '/regina/{regina_id}/genealogia/';
+  // Endpoint nidificato sull'arnia: il backend espone le risorse al plurale
+  // (`/arnie/{id}/regina/`). Le vecchie costanti singolari sono state rimosse
+  // perché puntavano a path inesistenti lato server.
+  static String arniaReginaUrlOf(int arniaId) =>
+      baseUrl + apiPrefix + '/arnie/$arniaId/regina/';
+  // Sostituzione e genealogia operano sulla risorsa regina:
+  //   POST /regine/{id}/sostituisci/
+  //   GET  /regine/{id}/genealogy/
+  static String reginaSostituisciUrlOf(int reginaId) =>
+      baseUrl + apiPrefix + '/regine/$reginaId/sostituisci/';
+  static String reginaGenealogyUrlOf(int reginaId) =>
+      baseUrl + apiPrefix + '/regine/$reginaId/genealogy/';
   
   // Endpoint trattamenti
   static const String trattamentiUrl = baseUrl + apiPrefix + '/trattamenti/';

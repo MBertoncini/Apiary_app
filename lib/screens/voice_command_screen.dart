@@ -28,6 +28,18 @@ import '../services/ai_quota_service.dart';
 import '../l10n/app_strings.dart';
 
 class VoiceCommandScreen extends StatefulWidget {
+  /// Quando avviata da NFC, pre-imposta il contesto arnia/apiario.
+  final int? initialApiarioId;
+  final String? initialApiarioNome;
+  final int? initialArniaNumero;
+
+  const VoiceCommandScreen({
+    Key? key,
+    this.initialApiarioId,
+    this.initialApiarioNome,
+    this.initialArniaNumero,
+  }) : super(key: key);
+
   @override
   _VoiceCommandScreenState createState() => _VoiceCommandScreenState();
 }
@@ -54,6 +66,9 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   int? _contextApiarioId;
   String? _contextApiarioNome;
 
+  // Contesto NFC: arnia pre-impostata dalla scansione NFC
+  int? _nfcArniaNumero;
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +76,16 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     _refreshQueueCount();
     _checkConnectivity();
     _voiceManager.addListener(_onVoiceManagerChanged);
+
+    // Se arrivati da NFC, pre-imposta il contesto apiario e arnia.
+    if (widget.initialApiarioId != null && widget.initialApiarioNome != null) {
+      _contextApiarioId = widget.initialApiarioId;
+      _contextApiarioNome = widget.initialApiarioNome;
+    }
+    if (widget.initialArniaNumero != null) {
+      _nfcArniaNumero = widget.initialArniaNumero;
+    }
+
     // Carica la modalità vocale e applica la chiave personale.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final user = Provider.of<AuthService>(context, listen: false).currentUser;
@@ -80,6 +105,11 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
       // Refresh opportunistico: se i dati di quota sono stantii li
       // riallinea al backend prima di mostrare il banner.
       unawaited(quotaService.refreshIfStale());
+      // Se contesto NFC già impostato, propaga ai processori ora che sono pronti.
+      if (_contextApiarioId != null && _contextApiarioNome != null) {
+        _dataProcessor.setContext(_contextApiarioId, _contextApiarioNome);
+        _audioProcessor.setContext(_contextApiarioId, _contextApiarioNome);
+      }
       // Sync language to all voice services (STT locale, regex, Gemini prompt).
       _applyLanguageToVoiceServices();
       final mode = await _voiceSettings.getMode();
@@ -263,6 +293,19 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     if (mounted) {
       setState(() => _pendingQueueCount = count);
     }
+  }
+
+  /// Se arrivati da NFC, antepone "Arnia N, " alle trascrizioni che non lo
+  /// menzionano già, così l'utente non deve ripetere il numero arnia.
+  List<String> _prependNfcArnia(List<String> transcriptions) {
+    final n = _nfcArniaNumero;
+    if (n == null) return transcriptions;
+    final prefix = 'Arnia $n, ';
+    final pattern = RegExp(r'arni[ae]\s+' + n.toString(), caseSensitive: false);
+    return transcriptions.map((t) {
+      if (pattern.hasMatch(t)) return t;
+      return '$prefix$t';
+    }).toList();
   }
 
   void _onApiarioSelected(int id, String nome) {
@@ -513,6 +556,50 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                 isOnline: _isOnline,
               ),
 
+              // Banner NFC: visibile solo quando avviata da scansione NFC
+              if (_nfcArniaNumero != null && _contextApiarioNome != null)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: ThemeConstants.primaryColor.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: ThemeConstants.primaryColor.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.nfc,
+                          color: ThemeConstants.primaryColor, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.nfcVoiceBanner(
+                                  _nfcArniaNumero!, _contextApiarioNome!),
+                              style: ThemeConstants.bodyStyle.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: ThemeConstants.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              s.nfcVoiceBannerHint,
+                              style: ThemeConstants.bodyStyle.copyWith(
+                                fontSize: 11,
+                                color: ThemeConstants.textSecondaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Voice input widget (STT) o Audio input widget
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -632,10 +719,12 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   void _handleTranscriptionsReady(List<String> transcriptions) {
     if (!mounted) return;
 
+    final enriched = _prependNfcArnia(transcriptions);
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => VoiceTranscriptReviewScreen(
-          initialTranscriptions: transcriptions,
+          initialTranscriptions: enriched,
           onLeave: (remaining) {
             // Always clear the manager's pending list regardless.
             _voiceManager.clearBatch();

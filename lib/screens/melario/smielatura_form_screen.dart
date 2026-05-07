@@ -71,14 +71,16 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
     }
 
     try {
+      // getAll per seguire la paginazione DRF — altrimenti melari/smielature
+      // dopo i primi 20 sparivano dal form e non potevi selezionarli.
       final results = await Future.wait([
-        _apiService.get(ApiConstants.apiariUrl),
-        _apiService.get(ApiConstants.melariUrl),
-        _apiService.get(ApiConstants.produzioniUrl),
+        _apiService.getAll(ApiConstants.apiariUrl),
+        _apiService.getAll(ApiConstants.melariUrl),
+        _apiService.getAll(ApiConstants.produzioniUrl),
       ]);
-      final apiariList = results[0] is List ? results[0] : (results[0]['results'] as List? ?? []);
-      final melariList = results[1] is List ? results[1] : (results[1]['results'] as List? ?? []);
-      final smielatureList = results[2] is List ? results[2] : (results[2]['results'] as List? ?? []);
+      final apiariList = results[0];
+      final melariList = results[1];
+      final smielatureList = results[2];
 
       await Future.wait([
         _storageService.saveData('apiari', apiariList),
@@ -149,11 +151,17 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
       // Escludiamo melari già presenti in altre smielature
       if (usedMelariIds.contains(id)) return false;
 
-      // Sono disponibili per la smielatura tutti i melari rimossi dall'arnia
-      // (rimosso) o esplicitamente messi in coda di smielatura (in_smielatura).
-      // I "smielato" sono storia e non vengono mostrati.
+      // Sono disponibili per la smielatura:
+      //  - posizionato: ancora sull'arnia (sarà marcato 'smielato' dal signal
+      //    m2m_changed di Smielatura.melari → sparirà automaticamente
+      //    dalla vista alveari). Combacia col form web (forms.py:346-351).
+      //  - rimosso: già staccato dall'arnia, in attesa di smielatura.
+      //  - in_smielatura: stato legacy / dati storici già messi in coda.
+      // I 'smielato' sono storia e non vengono mostrati.
       return apiarioId == _selectedApiarioId &&
-          (stato == 'in_smielatura' || stato == 'rimosso');
+          (stato == 'posizionato' ||
+           stato == 'in_smielatura' ||
+           stato == 'rimosso');
     }).toList();
 
     // Ordine deterministico: per arnia poi per id, evita liste in ordine
@@ -208,8 +216,20 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
             apiarioNome: (apiarioData['nome'] as String?) ?? '',
             dataSmielatura: _selectedDate,
           );
-          // Il backend (Smielatura.save) marca automaticamente i melari come
-          // 'smielato', quindi non sono più visibili nel form smielatura.
+          // Aggiorna la cache locale prima di tornare a MelariScreen:
+          // senza questo, MelariScreen legge la cache stale (scritta durante
+          // _loadInitialData) con i vecchi stati e il contatore "in smielatura"
+          // non si azzera nella fase cache-first di _refreshAll().
+          final cachedMelari = await _storageService.getStoredData('melari');
+          if (cachedMelari.isNotEmpty) {
+            final updated = cachedMelari.map<Map<String, dynamic>>((raw) {
+              final m = raw as Map<String, dynamic>;
+              return _selectedMelariIds.contains(m['id'])
+                  ? {...m, 'stato': 'smielato'}
+                  : m;
+            }).toList();
+            await _storageService.saveData('melari', updated);
+          }
         }
       }
       if (!mounted) return;

@@ -731,6 +731,12 @@ class StringsEn extends AppStrings {
   @override String get melariTabTutti => 'All';
   @override String get melariTabPersonali => 'Personal';
   @override String get melariNoSmielature => 'No extractions recorded';
+  @override String get melariNoSmielatureAttive => 'No active extractions. All transferred or archived.';
+  @override String get melariStoricoSmielature => 'Extraction history';
+  @override String get melariMenuApri => 'Open';
+  @override String get melariMenuArchivia => 'Archive';
+  @override String get melariMenuRipristina => 'Restore';
+  @override String melariSmielaturaResidui(String kg) => '⏳ $kg kg still to transfer';
   @override String get melariRiepilogoProd => 'Production Summary';
   @override String get melariKg => 'kg';
   @override String melariSmielaturaItem(String tipo, String qty) => '$tipo - $qty kg';
@@ -1532,6 +1538,14 @@ class StringsEn extends AppStrings {
   @override String get aggiungiMaturatoreLblGiorniMaturazione => 'Ripening days';
   @override String get aggiungiMaturatoreHelperGiorni => 'Auto from honey type';
   @override String get aggiungiMaturatoreLblDataInizio => 'Start date';
+  @override String get aggiungiMaturatoreLblSmielatura => 'Source extraction';
+  @override String get aggiungiMaturatoreSelectSmielatura => 'Select the source extraction';
+  @override String get aggiungiMaturatoreNoSmielatureAttive =>
+      'No extraction with leftover honey. Create one first in the "Extractions" tab.';
+  @override String aggiungiMaturatoreSmielaturaItem(String data, String apiario, String tipo, String kgResidui) =>
+      '$data · $apiario · $tipo ($kgResidui kg left)';
+  @override String aggiungiMaturatoreErrKgEccesso(String kgResidui) =>
+      'Available from extraction: $kgResidui kg';
 
   // ── Trasferisci sheet ──
   @override String trasferisciTitle(String nome) => 'Transfer from "$nome"';

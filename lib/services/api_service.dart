@@ -175,6 +175,34 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  // GET di una list-resource paginata, seguendo `next` finché disponibile.
+  // Senza questo, DRF (PAGE_SIZE=20) restituisce solo la prima pagina e
+  // collezioni grandi (melari, controlli, smielature) appaiono troncate —
+  // sintomo: aggiungere un nuovo elemento "fa sparire" un altro che era
+  // semplicemente fuori dalla finestra dei primi 20.
+  Future<List<dynamic>> getAll(String endpoint) async {
+    final all = <dynamic>[];
+    String? next = endpoint;
+    var safety = 0;
+    while (next != null) {
+      if (++safety > 200) break; // hard cap a ~4000 record
+      final res = await get(next);
+      if (res is List) {
+        all.addAll(res);
+        return all; // endpoint non paginato
+      }
+      if (res is Map<String, dynamic>) {
+        final results = res['results'];
+        if (results is List) all.addAll(results);
+        final n = res['next'];
+        next = (n is String && n.isNotEmpty) ? n : null;
+      } else {
+        next = null;
+      }
+    }
+    return all;
+  }
+
   // POST request
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     final uri = Uri.parse(_buildUrl(endpoint));
@@ -352,16 +380,17 @@ class ApiService {
     return await get('${ApiConstants.regineUrl}$reginaId/');
   }
   
-  // Aggiungi una regina ad un'arnia
-  Future<dynamic> addRegina(int arniaId, Map<String, dynamic> data) async {
-    return await post('${ApiConstants.arnieUrl}$arniaId/regina/aggiungi/', data);
+  // Crea una regina (POST diretto a /regine/, includere 'arnia' e/o 'colonia').
+  Future<dynamic> addRegina(Map<String, dynamic> data) async {
+    return await post(ApiConstants.regineUrl, data);
   }
-  
-  // Sostituisci una regina di un'arnia
-  Future<dynamic> replaceRegina(int arniaId, Map<String, dynamic> data) async {
-    return await post('${ApiConstants.arnieUrl}$arniaId/regina/sostituisci/', data);
+
+  // Sostituisci una regina via azione custom: POST /regine/{id}/sostituisci/
+  Future<dynamic> replaceRegina(int reginaId, Map<String, dynamic> data) async {
+    return await post(ApiConstants.reginaSostituisciUrlOf(reginaId), data);
   }
-  
+
+
   // === METODI PER TRATTAMENTI SANITARI ===
   
   // Ottieni tutti i trattamenti
@@ -420,14 +449,27 @@ class ApiService {
     return await post('${ApiConstants.arnieUrl}$arniaId/melario/aggiungi/', data);
   }
   
-  // Rimuovi un melario
+  // Rimuovi un melario.
+  // Il backend non espone l'action `rimuovi/` sul MelarioViewSet (solo CRUD
+  // standard via DRF router), quindi facciamo PATCH con stato='rimosso' e i
+  // campi data_rimozione/peso_stimato passati dall'UI. Il signal m2m_changed
+  // su Smielatura.melari gestirà poi le transizioni a 'smielato' al momento
+  // della creazione della smielatura.
   Future<dynamic> removeMelario(int melarioId, {Map<String, dynamic>? data}) async {
-    return await post('${ApiConstants.melariUrl}$melarioId/rimuovi/', data ?? {});
+    final payload = <String, dynamic>{
+      'stato': 'rimosso',
+      ...?data,
+    };
+    return await patch('${ApiConstants.melariUrl}$melarioId/', payload);
   }
-  
-  // Invia un melario in smielatura
+
+  // Invia un melario in smielatura: PATCH stato='in_smielatura'. Stesso
+  // motivo di removeMelario: l'endpoint custom non esiste sul backend.
   Future<dynamic> sendMelarioToSmielatura(int melarioId) async {
-    return await post('${ApiConstants.melariUrl}$melarioId/smielatura/', {});
+    return await patch(
+      '${ApiConstants.melariUrl}$melarioId/',
+      {'stato': 'in_smielatura'},
+    );
   }
   
   // Ottieni tutte le smielature

@@ -732,6 +732,12 @@ abstract class AppStrings {
   String get melariTabTutti;
   String get melariTabPersonali;
   String get melariNoSmielature;
+  String get melariNoSmielatureAttive;
+  String get melariStoricoSmielature;
+  String get melariMenuApri;
+  String get melariMenuArchivia;
+  String get melariMenuRipristina;
+  String melariSmielaturaResidui(String kg);
   String get melariRiepilogoProd;
   String get melariKg;
   String melariSmielaturaItem(String tipo, String qty);
@@ -1571,6 +1577,11 @@ abstract class AppStrings {
   String get aggiungiMaturatoreLblGiorniMaturazione;
   String get aggiungiMaturatoreHelperGiorni;
   String get aggiungiMaturatoreLblDataInizio;
+  String get aggiungiMaturatoreLblSmielatura;
+  String get aggiungiMaturatoreSelectSmielatura;
+  String get aggiungiMaturatoreNoSmielatureAttive;
+  String aggiungiMaturatoreSmielaturaItem(String data, String apiario, String tipo, String kgResidui);
+  String aggiungiMaturatoreErrKgEccesso(String kgResidui);
 
   // ── Trasferisci sheet ──
   String trasferisciTitle(String nome);

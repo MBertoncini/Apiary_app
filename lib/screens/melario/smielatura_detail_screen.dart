@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
+import '../../services/storage_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/error_widget.dart';
 
@@ -58,6 +59,29 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
       setState(() { _isRefreshing = true; });
       try {
         await _apiService.delete('${ApiConstants.produzioniUrl}${widget.smielaturaId}/');
+
+        // Patcha la cache locale 'melari': il backend (signal m2m_changed
+        // pre_clear su Smielatura.melari) riporta i melari linkati a
+        // 'rimosso'. Senza questo, MelariScreen mostra ancora 'smielato'
+        // nella fase cache-first di _refreshAll e il counter "Da smielare"
+        // resta stale finché non arriva il GET /melari/ di fase 2.
+        final melariIds = ((_smielatura?['melari'] as List?) ?? const [])
+            .map((e) => e as int)
+            .toSet();
+        if (melariIds.isNotEmpty && mounted) {
+          final storageService = Provider.of<StorageService>(context, listen: false);
+          final cached = await storageService.getStoredData('melari');
+          if (cached.isNotEmpty) {
+            final updated = cached.map<Map<String, dynamic>>((raw) {
+              final m = raw as Map<String, dynamic>;
+              return melariIds.contains(m['id'])
+                  ? {...m, 'stato': 'rimosso'}
+                  : m;
+            }).toList();
+            await storageService.saveData('melari', updated);
+          }
+        }
+
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.smielaturaDetailDeletedOk)));
         if (mounted) Navigator.pop(context, true);
       } catch (e) {

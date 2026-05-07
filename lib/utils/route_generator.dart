@@ -25,6 +25,7 @@ import '../screens/colonia/colonia_form_screen.dart';
 import '../models/colonia.dart';
 import '../screens/regina/regina_list_screen.dart';
 import '../screens/regina/regina_detail_screen.dart';
+import '../screens/regina/regina_genealogia_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
 import '../screens/trattamento/trattamento_form_screen.dart';
 import '../screens/trattamento/trattamento_detail_screen.dart';
@@ -219,6 +220,10 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
+
+      case AppConstants.reginaGenealogiaRoute:
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const ReginaGenealogiaScreen());
 
       // Routes for treatment management
       case AppConstants.trattamentiRoute:
@@ -421,7 +426,17 @@ class RouteGenerator {
         return MaterialPageRoute(settings: settings, builder: (_) => const DonazioneScreen());
 
       case AppConstants.voiceCommandRoute:
-        return MaterialPageRoute(settings: settings, builder: (_) => VoiceCommandScreen());
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => VoiceCommandScreen(
+              initialApiarioId: args['apiarioId'] as int?,
+              initialApiarioNome: args['apiarioNome'] as String?,
+              initialArniaNumero: args['arniaNumero'] as int?,
+            ),
+          );
+        }
+        return MaterialPageRoute(settings: settings, builder: (_) => const VoiceCommandScreen());
 
       // Route for analisi telaino
       case AppConstants.analisiTelainoRoute:

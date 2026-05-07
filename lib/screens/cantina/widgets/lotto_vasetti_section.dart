@@ -6,12 +6,10 @@ import '../../../services/language_service.dart';
 class LottoVasettiSection extends StatefulWidget {
   final String tipoMiele;
   final List<Invasettamento> invasettamenti;
-  /// [selected] = items per il form vendita
-  /// [deductions] = quali invasettamenti scalare e di quanto: [{id, new_qty}]
-  final void Function(
-    List<Map<String, dynamic>> selected,
-    List<Map<String, dynamic>> deductions,
-  ) onSell;
+  /// [selected] = items per il form vendita: [{tipo_miele, formato_vasetto, quantita}].
+  /// La distribuzione FIFO sui lotti avviene server-side via
+  /// POST /api/v1/invasettamenti/vendi/, quindi non servono deductions.
+  final void Function(List<Map<String, dynamic>> selected) onSell;
 
   const LottoVasettiSection({
     Key? key,
@@ -30,11 +28,14 @@ class _LottoVasettiSectionState extends State<LottoVasettiSection> {
 
   int get _totalSelected => _selected.values.fold(0, (s, v) => s + v);
 
-  // Group by formato
+  // Group by formato — somma vasetti DISPONIBILI (non venduti).
+  // I venduti restano nel DB per lo storico annuale, ma non si possono
+  // ri-vendere e non si vedono più in cantina.
   Map<int, int> get _vasettiPerFormato {
     final map = <int, int>{};
     for (final inv in widget.invasettamenti) {
-      map[inv.formatoVasetto] = (map[inv.formatoVasetto] ?? 0) + inv.numeroVasetti;
+      map[inv.formatoVasetto] =
+          (map[inv.formatoVasetto] ?? 0) + inv.vasettiDisponibili;
     }
     return map;
   }
@@ -110,25 +111,7 @@ class _LottoVasettiSectionState extends State<LottoVasettiSection> {
         .where((e) => e.value > 0)
         .map((e) => {'formato_vasetto': e.key, 'quantita': e.value, 'tipo_miele': widget.tipoMiele})
         .toList();
-
-    // Calcola deduzioni FIFO per invasettamento ID
-    final deductions = <Map<String, dynamic>>[];
-    for (final entry in _selected.entries) {
-      if (entry.value <= 0) continue;
-      int remaining = entry.value;
-      final matching = widget.invasettamenti
-          .where((i) => i.formatoVasetto == entry.key && i.numeroVasetti > 0)
-          .toList()
-        ..sort((a, b) => a.data.compareTo(b.data)); // FIFO
-      for (final inv in matching) {
-        if (remaining <= 0) break;
-        final deduct = remaining < inv.numeroVasetti ? remaining : inv.numeroVasetti;
-        deductions.add({'id': inv.id, 'numero_vasetti': inv.numeroVasetti - deduct});
-        remaining -= deduct;
-      }
-    }
-
-    widget.onSell(items, deductions);
+    widget.onSell(items);
     setState(() => _selected.clear());
   }
 }

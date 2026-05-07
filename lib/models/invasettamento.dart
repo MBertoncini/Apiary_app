@@ -7,7 +7,10 @@ class Invasettamento {
   final String? contenitoreInfo;
   final String tipoMiele;
   final int formatoVasetto;
+  // Vasetti totali prodotti (immutabile dopo creazione, tranne edit esplicito).
+  // Le vendite NON lo decrementano: incrementano `numeroVasettiVenduti`.
   final int numeroVasetti;
+  final int numeroVasettiVenduti;
   final String? lotto;
   final int utente;
   final String? utenteUsername;
@@ -26,6 +29,7 @@ class Invasettamento {
     required this.tipoMiele,
     required this.formatoVasetto,
     required this.numeroVasetti,
+    this.numeroVasettiVenduti = 0,
     this.lotto,
     required this.utente,
     this.utenteUsername,
@@ -34,6 +38,11 @@ class Invasettamento {
     this.kgTotali,
     this.apiarioGruppoNome,
   });
+
+  int get vasettiDisponibili =>
+      (numeroVasetti - numeroVasettiVenduti).clamp(0, numeroVasetti);
+
+  double get kgDisponibili => (formatoVasetto * vasettiDisponibili) / 1000.0;
 
   factory Invasettamento.fromJson(Map<String, dynamic> json) {
     return Invasettamento(
@@ -46,6 +55,7 @@ class Invasettamento {
       tipoMiele: json['tipo_miele'],
       formatoVasetto: json['formato_vasetto'],
       numeroVasetti: json['numero_vasetti'],
+      numeroVasettiVenduti: json['numero_vasetti_venduti'] ?? 0,
       lotto: json['lotto'],
       utente: json['utente'],
       utenteUsername: json['utente_username'],

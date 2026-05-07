@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
 import '../../models/arnia.dart';
 import '../../services/api_service.dart';
+import '../../services/nfc_service.dart';
 import '../../services/storage_service.dart';  // Import StorageService
 import '../../widgets/attrezzatura_prompt_dialog.dart';
 import '../../widgets/field_help_icon.dart';
@@ -75,6 +76,11 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
     {'id': 'altro', 'nome': 'Altro', 'hex': '#6c757d'},
   ];
   
+  // NFC chip associato a questa arnia
+  String? _nfcId;
+  bool _isScanningNfc = false;
+  final NfcService _nfcService = NfcService();
+
   // Indicatore di caricamento
   bool _isLoading = false;
 
@@ -94,6 +100,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
       _note = widget.arnia!.note ?? '';
       _tipoArnia = widget.arnia!.tipoArnia;
       _attiva = widget.arnia!.attiva;
+      _nfcId = widget.arnia!.nfcId;
     } else if (widget.apiarioId != null) {
       _apiarioId = widget.apiarioId;
     }
@@ -205,6 +212,47 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
     }
   }
 
+  Future<void> _scanNfcForPairing() async {
+    final s = _s;
+    final available = await _nfcService.isAvailable();
+    if (!available) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.nfcNotAvailable)),
+      );
+      return;
+    }
+
+    setState(() => _isScanningNfc = true);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.nfcScanning),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+
+    final tagId = await _nfcService.scanTag();
+
+    if (!mounted) return;
+    setState(() => _isScanningNfc = false);
+
+    if (tagId != null) {
+      setState(() => _nfcId = tagId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.nfcChipAssignSuccess),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.nfcChipScanFailed)),
+      );
+    }
+  }
+
   Future<void> _saveArnia() async {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
@@ -224,6 +272,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
           'data_installazione': dateFormat.format(_dataInstallazione),
           'note': _note,
           'attiva': _attiva,
+          'nfc_id': _nfcId,
         };
         
         if (widget.arnia != null) {
@@ -479,8 +528,75 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         _note = value ?? '';
                       },
                     ),
+                    const SizedBox(height: 16),
+
+                    // Chip NFC
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.nfc,
+                            color: _nfcId != null ? Colors.green : Colors.grey,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.nfcChipPairing,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _nfcId != null
+                                      ? '${s.nfcChipAssigned}: $_nfcId'
+                                      : s.nfcChipNone,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: _nfcId != null ? Colors.green[800] : Colors.grey[600],
+                                    fontWeight: _nfcId != null ? FontWeight.w500 : FontWeight.normal,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_nfcId != null)
+                            TextButton(
+                              onPressed: () => setState(() => _nfcId = null),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                              child: Text(s.nfcChipRemoveBtn),
+                            ),
+                          if (_isScanningNfc)
+                            const SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else
+                            TextButton(
+                              onPressed: _scanNfcForPairing,
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.blue,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                              child: Text(s.nfcScanToAssign),
+                            ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 24),
-                    
+
                     // Pulsante salva
                     ElevatedButton(
                       onPressed: _saveArnia,
