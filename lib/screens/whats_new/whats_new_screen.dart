@@ -11,21 +11,18 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
-  11: _ReleaseNotes(
+  16: _ReleaseNotes(
     version: '1.0.2',
-    buildNumber: 11,
+    buildNumber: 16,
     date: '07 Maggio 2026',
     notes: [
       _Note('🌳', 'Nuovo', 'Genealogia regine - albero interattivo che ricostruisce le linee madre→figlia con filtro per apiario'),
       _Note('📡', 'Nuovo', 'Lettura NFC - tocca un tag per aprire l\'arnia: in Impostazioni puoi scegliere se proseguire a mano o avviare subito il comando vocale'),
-      _Note('🔄', 'Nuovo', 'Aggiornamenti in-app - l\'app ora rileva le nuove versioni dal Play Store e le scarica in background'),
       _Note('👑', 'Miglioramento', 'Schermata regina più ricca - nuovi campi colonia, regina madre e indicatore "sospetta assente" con banner di allerta'),
       _Note('🍯', 'Miglioramento', 'Cantina e melari - flussi di smielatura, vasetti e maturatori rivisti per un inserimento più veloce'),
-      _Note('💰', 'Fix', 'Trasferimenti pagamenti stabili - l\'elenco dei movimenti suggeriti non cambia più ad ogni refresh sugli stessi dati'),
-      _Note('🐝', 'Fix', 'Salvataggio regine corretto - i campi marcata, fecondata e selezionata ora vengono persistiti correttamente in locale'),
     ],
   ),
-  9: _ReleaseNotes(
+  10: _ReleaseNotes(
     version: '1.0.1',
     buildNumber: 10,
     date: '27 Aprile 2026',
@@ -39,7 +36,7 @@ const Map<int, _ReleaseNotes> _changelog = {
   8: _ReleaseNotes(
     version: '1.0.1',
     buildNumber: 8,
-    date: 'Aprile 2026',
+    date: '02 Aprile 2026',
     notes: [
       _Note('🗺️', 'Nuovo', 'Nomadismo - pianifica gli spostamenti dell\'apiario con mappa interattiva e suggerimenti fioriture'),
       _Note('🌿', 'Nuovo', 'Mappa vegetazione OSM - visualizza le fioriture selvatiche attorno ai tuoi apiari'),

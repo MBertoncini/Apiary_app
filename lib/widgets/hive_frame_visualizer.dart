@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_strings.dart';
 import '../services/language_service.dart';
 import '../utils/telaini_utils.dart';
+import 'beehive_illustrations.dart';
 
 /// Visualizzazione grafica dei telaini dell'arnia + indicatore regina + allarme celle reali.
 class HiveFrameVisualizer extends StatelessWidget {
@@ -127,12 +128,9 @@ class HiveFrameVisualizer extends StatelessWidget {
         // ── icona regina ───────────────────────────────────────────
         Tooltip(
           message: presenzaRegina ? s.frameReginaPresente : s.frameReginaAssente,
-          child: Text(
-            '♛',
-            style: TextStyle(
-              fontSize: 17,
-              color: presenzaRegina ? Colors.green.shade700 : Colors.red.shade700,
-            ),
+          child: HandDrawnQueenBee(
+            size: 22,
+            color: presenzaRegina ? Colors.green.shade700 : Colors.red.shade700,
           ),
         ),
         // ── allerta celle reali ────────────────────────────────────

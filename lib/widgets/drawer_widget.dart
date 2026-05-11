@@ -5,6 +5,7 @@ import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
+import 'beehive_illustrations.dart';
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
@@ -145,7 +146,16 @@ class AppDrawer extends StatelessWidget {
 
           // Regine
           ListTile(
-            leading: Icon(Icons.local_florist),
+            leading: SizedBox(
+              width: 24,
+              height: 24,
+              child: HandDrawnQueenBee(
+                size: 24,
+                color: currentRoute == AppConstants.reginaListRoute
+                    ? ThemeConstants.primaryColor
+                    : Theme.of(context).iconTheme.color ?? Colors.black54,
+              ),
+            ),
             title: Text(s.navRegine),
             selected: currentRoute == AppConstants.reginaListRoute,
             selectedColor: ThemeConstants.primaryColor,
