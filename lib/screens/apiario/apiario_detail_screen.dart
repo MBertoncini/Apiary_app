@@ -90,7 +90,9 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
 
         final allMelari = await storageService.getStoredData('melari');
         _melari = allMelari
-            .where((m) => m['apiario_id'] == widget.apiarioId && m['stato'] == 'posizionato')
+            .where((m) =>
+                m['apiario_id'] == widget.apiarioId &&
+                (m['stato'] == 'posizionato' || m['stato'] == 'in_smielatura'))
             .toList();
 
         // Mostra subito i dati dalla cache (inclusi telaini da SQLite), poi aggiorna dal server
@@ -156,7 +158,10 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             fetched = melariData['results'] as List;
           }
           
-          _melari = fetched.where((m) => m['stato'] == 'posizionato').toList();
+          _melari = fetched
+              .where((m) =>
+                  m['stato'] == 'posizionato' || m['stato'] == 'in_smielatura')
+              .toList();
           // Aggiorna cache unendo con melari degli altri apiari
           final allMelari = await storageService.getStoredData('melari');
           final others = allMelari.where((m) => m['apiario_id'] != widget.apiarioId).toList();
@@ -177,10 +182,12 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
         
         final melariData = await apiService.get('${ApiConstants.melariUrl}?apiario_id=${widget.apiarioId}');
+        bool melarioAttivo(dynamic m) =>
+            m['stato'] == 'posizionato' || m['stato'] == 'in_smielatura';
         if (melariData is List) {
-          _melari = melariData.where((m) => m['stato'] == 'posizionato').toList();
+          _melari = melariData.where(melarioAttivo).toList();
         } else if (melariData is Map && melariData.containsKey('results')) {
-          _melari = (melariData['results'] as List).where((m) => m['stato'] == 'posizionato').toList();
+          _melari = (melariData['results'] as List).where(melarioAttivo).toList();
         }
       }
       
