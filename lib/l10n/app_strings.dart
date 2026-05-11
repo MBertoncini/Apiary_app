@@ -691,6 +691,7 @@ abstract class AppStrings {
   String reginaDetailChipIntrodotta(String date);
   String reginaDetailChipNata(String date);
   String reginaDetailDeleteMsg(String arniaId);
+  String get reginaDetailErrorNoArnia;
   String reginaDetailAgeAnni(int n);
   String reginaDetailAgeMesi(int n);
   String reginaDetailAgeGiorni(int n);
@@ -715,6 +716,7 @@ abstract class AppStrings {
   String get reginaFormHintNessunaRegina;
   String get reginaFormBtnSave;
   String reginaFormError(String e);
+  String get reginaFormErrorInvalidArnia;
   String get reginaFormHintDataNascitaVuota;
   String get reginaFormValutazioniTitle;
   String get reginaFormValutazioniHint;
@@ -764,7 +766,7 @@ abstract class AppStrings {
   String get melariMelarioLabel;
   String melariArniaLabel(String num);
   String get melariPosizionati;
-  String get melariInSmielatura;
+  String get melariDaSmielare;
   String melariMelarioId(int id);
   String melariTelainiPosizione(int telaini, int posizione, String tipo);
   String get melariSmielBtn;
@@ -1014,6 +1016,8 @@ abstract class AppStrings {
   String get nfcActionManualDesc;
   String get nfcActionVoice;
   String get nfcActionVoiceDesc;
+  String get nfcAlwaysListening;
+  String get nfcAlwaysListeningDesc;
 
   // NFC chip pairing (arnia form)
   String get nfcChipPairing;

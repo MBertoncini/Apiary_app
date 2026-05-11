@@ -346,8 +346,9 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                       const SizedBox(height: 8),
                       ..._filteredMelari.map((m) {
                         final id = m['id'] as int;
+                        final numDisplay = (m['numero_progressivo'] as int?) ?? id;
                         return CheckboxListTile(
-                          title: Text(s.smielaturaFormMelarioItem(id, m['arnia_numero']?.toString() ?? '')),
+                          title: Text(s.smielaturaFormMelarioItem(numDisplay, m['arnia_numero']?.toString() ?? '')),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

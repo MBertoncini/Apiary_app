@@ -690,6 +690,8 @@ class StringsEn extends AppStrings {
   @override String reginaDetailDeleteMsg(String arniaId) =>
       'Are you sure you want to delete the queen of hive $arniaId?\n\n'
       'This action cannot be undone.';
+  @override String get reginaDetailErrorNoArnia =>
+      'This queen is not linked to a hive: cannot edit or replace.';
   @override String reginaDetailAgeAnni(int n) => '$n ${n == 1 ? 'year' : 'years'}';
   @override String reginaDetailAgeMesi(int n) => '$n ${n == 1 ? 'month' : 'months'}';
   @override String reginaDetailAgeGiorni(int n) => '$n ${n == 1 ? 'day' : 'days'}';
@@ -714,6 +716,8 @@ class StringsEn extends AppStrings {
   @override String get reginaFormHintNessunaRegina => 'None (founder queen)';
   @override String get reginaFormBtnSave => 'SAVE QUEEN';
   @override String reginaFormError(String e) => 'Error: $e';
+  @override String get reginaFormErrorInvalidArnia =>
+      'Invalid hive: go back to the hive detail and try again.';
   @override String get reginaFormHintDataNascitaVuota => 'Not specified';
   @override String get reginaFormValutazioniTitle => 'Ratings (optional)';
   @override String get reginaFormValutazioniHint => 'Tap the stars to assign a score from 1 to 5.';
@@ -766,7 +770,7 @@ class StringsEn extends AppStrings {
   @override String get melariMelarioLabel => 'Honey super';
   @override String melariArniaLabel(String num) => 'Hive #$num';
   @override String get melariPosizionati => 'Placed';
-  @override String get melariInSmielatura => 'In extraction';
+  @override String get melariDaSmielare => 'To extract';
   @override String melariMelarioId(int id) => 'Super #$id';
   @override String melariTelainiPosizione(int telaini, int posizione, String tipo) =>
       '$telaini frames · Position $posizione · $tipo';
@@ -835,7 +839,7 @@ class StringsEn extends AppStrings {
   @override String get smielaturaFormValidateNumero => 'Enter a valid number';
   @override String get smielaturaFormValidateQuantitaMax => 'Quantity cannot exceed 99999.99 kg';
   @override String get smielaturaFormSelectMelarioMsg => 'Select at least one super';
-  @override String get smielaturaFormNoMelariDisp => 'No supers in "in extraction" state for this apiary. To make one available, open a placed super from the Supers screen and tap "Remove".';
+  @override String get smielaturaFormNoMelariDisp => 'No supers available for extraction on this apiary. Placed or already-removed supers not yet linked to another extraction can be selected.';
   @override String get smielaturaFormBtnCreate => 'REGISTER';
   @override String get smielaturaFormBtnUpdate => 'UPDATE';
   @override String get smielaturaFormCreatedOk => 'Extraction registered';
@@ -982,6 +986,8 @@ class StringsEn extends AppStrings {
   @override String get nfcActionManualDesc => 'Opens the manual inspection entry form';
   @override String get nfcActionVoice => 'Voice inspection';
   @override String get nfcActionVoiceDesc => 'Starts voice recording with the hive number already set';
+  @override String get nfcAlwaysListening => 'Always listening';
+  @override String get nfcAlwaysListeningDesc => 'Scan NFC tags anytime while the app is open';
 
   @override String get nfcChipPairing => 'NFC Chip';
   @override String get nfcChipAssigned => 'Chip assigned';

@@ -17,6 +17,10 @@ class Melario {
   final double? pesoStimato;
   final String? note;
   final String? apiarioGruppoNome;
+  /// Numero progressivo per-utente (1..N nell'ordine di creazione).
+  /// Da preferire all'`id` per il display in UI. NULL per record legacy
+  /// non ancora migrati.
+  final int? numeroProgressivo;
 
   Melario({
     required this.id,
@@ -37,7 +41,12 @@ class Melario {
     this.pesoStimato,
     this.note,
     this.apiarioGruppoNome,
+    this.numeroProgressivo,
   });
+
+  /// Numero da mostrare in UI: `numeroProgressivo` se disponibile, altrimenti
+  /// fallback al `id` globale (per record pre-migrazione 0046).
+  int get numeroDisplay => numeroProgressivo ?? id;
 
   factory Melario.fromJson(Map<String, dynamic> json) {
     return Melario(
@@ -59,6 +68,7 @@ class Melario {
       pesoStimato: double.tryParse(json['peso_stimato']?.toString() ?? ''),
       note: json['note'],
       apiarioGruppoNome: json['apiario_gruppo_nome'],
+      numeroProgressivo: json['numero_progressivo'],
     );
   }
 
@@ -78,11 +88,8 @@ class Melario {
       'escludi_regina': escludiRegina,
       'peso_stimato': pesoStimato,
       'note': note,
+      'numero_progressivo': numeroProgressivo,
     };
-  }
-
-  bool isActive() {
-    return stato == 'posizionato';
   }
 
   Melario copyWith({
@@ -104,6 +111,7 @@ class Melario {
     double? pesoStimato,
     String? note,
     String? apiarioGruppoNome,
+    int? numeroProgressivo,
   }) {
     return Melario(
       id: id ?? this.id,
@@ -124,6 +132,7 @@ class Melario {
       pesoStimato: pesoStimato ?? this.pesoStimato,
       note: note ?? this.note,
       apiarioGruppoNome: apiarioGruppoNome ?? this.apiarioGruppoNome,
+      numeroProgressivo: numeroProgressivo ?? this.numeroProgressivo,
     );
   }
 }

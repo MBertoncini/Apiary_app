@@ -664,6 +664,8 @@ class StringsIt extends AppStrings {
   @override String reginaDetailDeleteMsg(String arniaId) =>
       'Sei sicuro di voler eliminare la regina dell\'arnia $arniaId?\n\n'
       'Questa azione non può essere annullata.';
+  @override String get reginaDetailErrorNoArnia =>
+      'Questa regina non è associata a un\'arnia: impossibile modificarla o sostituirla.';
   @override String reginaDetailAgeAnni(int n) => '$n ${n == 1 ? 'anno' : 'anni'}';
   @override String reginaDetailAgeMesi(int n) => '$n ${n == 1 ? 'mese' : 'mesi'}';
   @override String reginaDetailAgeGiorni(int n) => '$n ${n == 1 ? 'giorno' : 'giorni'}';
@@ -687,6 +689,8 @@ class StringsIt extends AppStrings {
   @override String get reginaFormHintNessunaRegina => 'Nessuna (regina fondatrice)';
   @override String get reginaFormBtnSave => 'SALVA REGINA';
   @override String reginaFormError(String e) => 'Errore: $e';
+  @override String get reginaFormErrorInvalidArnia =>
+      'Arnia non valida: torna al dettaglio arnia e riprova.';
   @override String get reginaFormHintDataNascitaVuota => 'Non specificata';
   @override String get reginaFormValutazioniTitle => 'Valutazioni (opzionale)';
   @override String get reginaFormValutazioniHint => 'Tocca le stelle per assegnare un punteggio da 1 a 5.';
@@ -737,7 +741,7 @@ class StringsIt extends AppStrings {
   @override String get melariMelarioLabel => 'Melario';
   @override String melariArniaLabel(String num) => 'Arnia #$num';
   @override String get melariPosizionati => 'Posizionati';
-  @override String get melariInSmielatura => 'In smielatura';
+  @override String get melariDaSmielare => 'Da smielare';
   @override String melariMelarioId(int id) => 'Melario #$id';
   @override String melariTelainiPosizione(int telaini, int posizione, String tipo) =>
       '$telaini telaini · Posizione $posizione · $tipo';
@@ -806,7 +810,7 @@ class StringsIt extends AppStrings {
   @override String get smielaturaFormValidateNumero => 'Inserisci un numero valido';
   @override String get smielaturaFormValidateQuantitaMax => 'La quantità non può superare 99999.99 kg';
   @override String get smielaturaFormSelectMelarioMsg => 'Seleziona almeno un melario';
-  @override String get smielaturaFormNoMelariDisp => 'Nessun melario in stato "in smielatura" per questo apiario. Per renderne uno disponibile, dalla schermata Melari apri il melario posizionato e scegli "Rimuovi".';
+  @override String get smielaturaFormNoMelariDisp => 'Nessun melario disponibile per la smielatura su questo apiario. Sono selezionabili i melari posizionati o già rimossi non ancora associati a un\'altra smielatura.';
   @override String get smielaturaFormBtnCreate => 'REGISTRA';
   @override String get smielaturaFormBtnUpdate => 'AGGIORNA';
   @override String get smielaturaFormCreatedOk => 'Smielatura registrata';
@@ -950,6 +954,8 @@ class StringsIt extends AppStrings {
   @override String get nfcActionManualDesc => 'Apre il form di inserimento manuale dell\'ispezione';
   @override String get nfcActionVoice => 'Controllo vocale';
   @override String get nfcActionVoiceDesc => 'Avvia la registrazione vocale con il numero arnia già impostato';
+  @override String get nfcAlwaysListening => 'Sempre in ascolto';
+  @override String get nfcAlwaysListeningDesc => 'Scansiona i tag NFC in qualsiasi momento quando l\'app è aperta';
 
   @override String get nfcChipPairing => 'Chip NFC';
   @override String get nfcChipAssigned => 'Chip associato';

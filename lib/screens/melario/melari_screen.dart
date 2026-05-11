@@ -598,7 +598,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 _s.melariSmielaturaSubtitle(
                     sm['data']?.toString() ?? '',
                     sm['apiario_nome']?.toString() ?? '',
-                    (sm['melari'] as List?)?.length ?? 0),
+                    (sm['melari'] as List?)?.length ??
+                        (sm['melari_count'] as int?) ??
+                        0),
                 style: const TextStyle(fontSize: 11),
               ),
               trailing: archiviata
@@ -895,16 +897,46 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
             final hScrollCtrl = _apiarioHScrollCtrls.putIfAbsent(
                 apiarioId, () => ScrollController());
+            final daSmielareInApiario = _melari
+                .where((m) =>
+                    m.apiarioId == apiarioId &&
+                    (m.stato == 'rimosso' || m.stato == 'in_smielatura'))
+                .length;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  apiarioNomi[apiarioId] ?? 'Apiario $apiarioId',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: ThemeConstants.primaryColor,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        apiarioNomi[apiarioId] ?? 'Apiario $apiarioId',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: ThemeConstants.primaryColor,
+                        ),
+                      ),
+                    ),
+                    if (daSmielareInApiario > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF0E0),
+                          border: Border.all(
+                              color: const Color(0xFFFF7A00), width: 1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$daSmielareInApiario ${_s.melariDaSmielare}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFF7A00),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 Divider(color: ThemeConstants.primaryColor.withOpacity(0.3)),
                 const SizedBox(height: 8),
@@ -953,6 +985,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         .where((m) => m.stato == 'posizionato' || m.stato == 'in_smielatura')
         .toList()
       ..sort((a, b) => b.posizione.compareTo(a.posizione));
+
+    // Counter "Da smielare" per questa arnia/colonia: melari in stato
+    // rimosso o in_smielatura che appartenevano (e ancora referenziano)
+    // questa arnia. Allineato all'obiettivo dati-per-colonia.
+    final daSmielareOnArnia = melariOnArnia
+        .where((m) => m.stato == 'rimosso' || m.stato == 'in_smielatura')
+        .length;
 
     final hasQE = activeMelari.any((m) => m.escludiRegina);
 
@@ -1049,7 +1088,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 8),
             // Label
-            _buildArniaLabel(arnia.numero, activeMelari.length),
+            _buildArniaLabel(arnia.numero, activeMelari.length, daSmielareOnArnia),
           ],
         ),
           ),
@@ -1468,7 +1507,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildArniaLabel(int numero, int melariCount) {
+  Widget _buildArniaLabel(int numero, int melariCount, int daSmielareCount) {
     return Column(
       children: [
         Text(_s.melariArniaNumLabel(numero),
@@ -1477,6 +1516,18 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           melariCount == 0 ? _s.melariNoMelari : _s.melariCountMelari(melariCount),
           style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
         ),
+        if (daSmielareCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '$daSmielareCount ${_s.melariDaSmielare}',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFFF7A00),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -1505,7 +1556,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             child: Column(children: [
               Text('$daSmielare',
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFF7A00))),
-              Text(_s.melariInSmielatura, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              Text(_s.melariDaSmielare, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
             ]),
           ),
         )),
@@ -1580,7 +1631,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_s.melariMelarioId(m.id),
+                        Text(_s.melariMelarioId(m.numeroDisplay),
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         if (m.arniaNumero != null)
                           Text('Arnia ${m.arniaNumero}'

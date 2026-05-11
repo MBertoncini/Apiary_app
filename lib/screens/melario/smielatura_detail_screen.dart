@@ -22,6 +22,9 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
   bool _isRefreshing = true;
   String? _errorMessage;
   late ApiService _apiService;
+  /// Mappa pk Melario → numero_progressivo per-utente, letta dalla cache locale.
+  /// Fallback all'`id` se il record non è in cache (es. legacy o cache vuota).
+  Map<int, int> _melariNumByPk = {};
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
@@ -35,9 +38,26 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
 
   Future<void> _loadSmielatura() async {
     setState(() { _isRefreshing = true; _errorMessage = null; });
+    // Leggi il provider PRIMA degli await per evitare context-across-async-gap.
+    final storage = Provider.of<StorageService>(context, listen: false);
     try {
       final data = await _apiService.get('${ApiConstants.produzioniUrl}${widget.smielaturaId}/');
-      setState(() { _smielatura = data; _isRefreshing = false; });
+      // Carica anche la mappa pk -> numero_progressivo dalla cache locale
+      // per mostrare il numero per-utente invece del pk SQL globale.
+      final cached = await storage.getStoredData('melari');
+      final map = <int, int>{};
+      for (final raw in cached) {
+        if (raw is Map<String, dynamic>) {
+          final pk = raw['id'];
+          final n = raw['numero_progressivo'];
+          if (pk is int && n is int) map[pk] = n;
+        }
+      }
+      setState(() {
+        _smielatura = data;
+        _melariNumByPk = map;
+        _isRefreshing = false;
+      });
     } catch (e) {
       setState(() { _errorMessage = 'Errore: $e'; _isRefreshing = false; });
     }
@@ -60,25 +80,66 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
       try {
         await _apiService.delete('${ApiConstants.produzioniUrl}${widget.smielaturaId}/');
 
-        // Patcha la cache locale 'melari': il backend (signal m2m_changed
-        // pre_clear su Smielatura.melari) riporta i melari linkati a
-        // 'rimosso'. Senza questo, MelariScreen mostra ancora 'smielato'
-        // nella fase cache-first di _refreshAll e il counter "Da smielare"
-        // resta stale finché non arriva il GET /melari/ di fase 2.
+        // Aggiorna la cache locale leggendo gli stati VERI dei melari coinvolti
+        // dal server. Il backend (signal pre_delete su Smielatura) ripristina
+        // ciascun melario al suo `stato_origine` salvato nella through table:
+        // può essere 'posizionato', 'rimosso', ecc. — non più sempre 'rimosso'.
+        // Una patch ottimistica con stato hardcoded sarebbe corretta solo per
+        // le smielature legacy (pre-migrazione 0045).
         final melariIds = ((_smielatura?['melari'] as List?) ?? const [])
             .map((e) => e as int)
             .toSet();
-        if (melariIds.isNotEmpty && mounted) {
-          final storageService = Provider.of<StorageService>(context, listen: false);
-          final cached = await storageService.getStoredData('melari');
-          if (cached.isNotEmpty) {
-            final updated = cached.map<Map<String, dynamic>>((raw) {
-              final m = raw as Map<String, dynamic>;
-              return melariIds.contains(m['id'])
-                  ? {...m, 'stato': 'rimosso'}
-                  : m;
-            }).toList();
-            await storageService.saveData('melari', updated);
+        if (mounted) {
+          final storageService =
+              Provider.of<StorageService>(context, listen: false);
+          if (melariIds.isNotEmpty) {
+            // GET puntuale con ?ids=… per leggere gli stati ripristinati.
+            Map<int, Map<String, dynamic>> fresh = {};
+            try {
+              final url =
+                  '${ApiConstants.melariUrl}?ids=${melariIds.join(',')}';
+              final resp = await _apiService.get(url);
+              final list = resp is List
+                  ? resp
+                  : (resp is Map && resp['results'] is List
+                      ? resp['results'] as List
+                      : const []);
+              for (final raw in list) {
+                if (raw is Map<String, dynamic> && raw['id'] is int) {
+                  fresh[raw['id'] as int] = raw;
+                }
+              }
+            } catch (_) {
+              // Network/parse error: lasciamo `fresh` vuoto → la cache mostrerà
+              // l'ultimo stato noto fino al refresh di MelariScreen.
+            }
+            final cached = await storageService.getStoredData('melari');
+            if (cached.isNotEmpty) {
+              final updated = cached.map<Map<String, dynamic>>((raw) {
+                final m = raw as Map<String, dynamic>;
+                final pk = m['id'];
+                if (pk is int && fresh.containsKey(pk)) {
+                  return fresh[pk]!;
+                }
+                return m;
+              }).toList();
+              await storageService.saveData('melari', updated);
+            }
+          }
+
+          // Rimuovi la smielatura cancellata anche dalla cache 'smielature'.
+          // Senza questo, MelariScreen in fase cache-first di _refreshAll
+          // ricarica l'elemento appena eliminato finché non arriva il GET
+          // /produzioni/ di fase 2.
+          final cachedSm = await storageService.getStoredData('smielature');
+          if (cachedSm.isNotEmpty) {
+            final filtered = cachedSm
+                .where((raw) => (raw as Map<String, dynamic>)['id'] !=
+                    widget.smielaturaId)
+                .toList();
+            if (filtered.length != cachedSm.length) {
+              await storageService.saveData('smielature', filtered);
+            }
           }
         }
 
@@ -166,12 +227,16 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
           if (melariIds.isNotEmpty) ...[
             Text(loc.smielaturaDetailMelariAssociati, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            ...melariIds.map((id) => Card(
-              child: ListTile(
-                leading: const Icon(Icons.view_module, color: Colors.amber),
-                title: Text(loc.melariMelarioId(id as int)),
-              ),
-            )),
+            ...melariIds.map((id) {
+              final pk = id as int;
+              final numDisplay = _melariNumByPk[pk] ?? pk;
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.view_module, color: Colors.amber),
+                  title: Text(loc.melariMelarioId(numDisplay)),
+                ),
+              );
+            }),
           ],
         ],
       ),
