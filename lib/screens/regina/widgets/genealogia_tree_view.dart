@@ -70,7 +70,7 @@ class _GenealogiaTreeViewState extends State<GenealogiaTreeView> {
 
   Offset _centerOf(_LayoutNode n) => Offset(
         n.x * _colWidth + (_nodeSize + 32) / 2 + _padding + _yearAxisWidth,
-        _yToPx(n.depthY) + _nodeSize / 2,
+        _yToPx(n.depthY) + 10 + _nodeSize / 2,
       );
 
   void _onTapNode(_LayoutNode n) {
@@ -102,7 +102,7 @@ class _GenealogiaTreeViewState extends State<GenealogiaTreeView> {
 
     final width =
         (_layout.maxX + 1) * _colWidth + _padding * 2 + _yearAxisWidth;
-    final height = _yToPx(_layout.maxDepthY) + _nodeSize + _padding;
+    final height = _yToPx(_layout.maxDepthY) + _nodeSize + _padding + 40;
 
     return Stack(
       children: [
@@ -397,7 +397,7 @@ class _GenealogiaLinesPainter extends CustomPainter {
     );
 
     for (int y = yearMin; y <= yearMax; y++) {
-      final dy = yToPx((y - yearMin).toDouble()) + nodeRadius;
+      final dy = yToPx((y - yearMin).toDouble()) + 10 + nodeRadius;
       canvas.drawLine(
         Offset(axisX, dy),
         Offset(size.width, dy),

@@ -10,6 +10,7 @@ import '../../services/storage_service.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../widgets/apiario_filter_row.dart';
 import 'widgets/genealogia_tree_view.dart';
 
 /// Vista albero genealogico delle regine, accessibile dall'icona toggle
@@ -170,7 +171,8 @@ class _ReginaGenealogiaScreenState extends State<ReginaGenealogiaScreen> {
   int? _apiarioOf(Regina r) {
     final viaColonia =
         r.coloniaId != null ? _coloniaToApiario[r.coloniaId] : null;
-    return viaColonia ?? _arniaToApiario[r.arniaId];
+    if (viaColonia != null) return viaColonia;
+    return r.arniaId != null ? _arniaToApiario[r.arniaId!] : null;
   }
 
   List<Regina> _filteredRegine() {
@@ -225,7 +227,7 @@ class _ReginaGenealogiaScreenState extends State<ReginaGenealogiaScreen> {
         bottom: showFilter
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(52),
-                child: _ApiarioFilterRow(
+                child: ApiarioFilterRow(
                   apiari: _apiari,
                   selected: _selectedApiari,
                   onToggle: _toggleApiario,
@@ -277,75 +279,6 @@ class _ReginaGenealogiaScreenState extends State<ReginaGenealogiaScreen> {
                 style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ApiarioFilterRow extends StatelessWidget {
-  final List<dynamic> apiari;
-  final Set<int> selected;
-  final void Function(int) onToggle;
-  final VoidCallback onSelectAll;
-
-  const _ApiarioFilterRow({
-    required this.apiari,
-    required this.selected,
-    required this.onToggle,
-    required this.onSelectAll,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final allActive = selected.isEmpty;
-    return Container(
-      height: 52,
-      color: ThemeConstants.primaryColor,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: FilterChip(
-              label: const Text('Tutti'),
-              selected: allActive,
-              showCheckmark: false,
-              onSelected: (_) => onSelectAll(),
-              backgroundColor: Colors.white.withOpacity(0.15),
-              selectedColor: Colors.white,
-              labelStyle: TextStyle(
-                color: allActive
-                    ? ThemeConstants.primaryColor
-                    : Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              side: BorderSide(color: Colors.white.withOpacity(0.5)),
-            ),
-          ),
-          ...apiari.map((a) {
-            final id = a['id'] as int;
-            final isSel = selected.contains(id);
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: FilterChip(
-                label: Text(a['nome'] as String),
-                selected: isSel,
-                showCheckmark: false,
-                onSelected: (_) => onToggle(id),
-                backgroundColor: Colors.white.withOpacity(0.15),
-                selectedColor: Colors.white,
-                labelStyle: TextStyle(
-                  color: isSel ? ThemeConstants.primaryColor : Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-                side: BorderSide(color: Colors.white.withOpacity(0.5)),
-              ),
-            );
-          }),
-        ],
       ),
     );
   }

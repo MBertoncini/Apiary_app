@@ -112,10 +112,12 @@ class _ReginaApiarioMiniMapState extends State<ReginaApiarioMiniMap> {
     final Map<int, Offset> active = {};
     final Map<int, Color> colors = {};
     final Map<int, int> numbers = {};
-    final Set<int> regineArnieIds = widget.regine.map((r) => r.arniaId).toSet();
+    final Set<int> regineArnieIds =
+        widget.regine.map((r) => r.arniaId).whereType<int>().toSet();
     final Set<int> sospetteArnieIds = widget.regine
         .where((r) => r.sospettaAssente)
         .map((r) => r.arniaId)
+        .whereType<int>()
         .toSet();
 
     for (final a in widget.arnie) {

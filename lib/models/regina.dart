@@ -1,6 +1,8 @@
 class Regina {
   final int? id;
-  final int arniaId;
+  // Nullable: il backend può restituire regine senza campo `arnia`
+  // (es. regine sostituite/rimosse, o colonie ospitate in nucleo).
+  final int? arniaId;
   final int? coloniaId;
   final String? arniaNumero;  // Numero visibile dell'arnia (dal server)
   final String razza;
@@ -24,7 +26,7 @@ class Regina {
 
   Regina({
     this.id,
-    required this.arniaId,
+    this.arniaId,
     this.coloniaId,
     this.arniaNumero,
     required this.razza,
@@ -76,11 +78,15 @@ class Regina {
 
   // Convert from JSON (API REST response)
   factory Regina.fromJson(Map<String, dynamic> json) {
-    int parsedArniaId = 0;
-    if (json['arnia'] != null) {
-      parsedArniaId = json['arnia'] is int ? json['arnia'] : int.tryParse(json['arnia'].toString()) ?? 0;
-    } else if (json['arnia_id'] != null) {
-      parsedArniaId = json['arnia_id'] is int ? json['arnia_id'] : int.tryParse(json['arnia_id'].toString()) ?? 0;
+    // Restituisce null se entrambi i campi sono assenti/null: NON usare 0 come
+    // fallback, perché finirebbe come FK invalida nelle PUT/POST successive
+    // (issue: "Pk \"0\" non valido" alla creazione regina).
+    int? parsedArniaId;
+    final rawArnia = json['arnia'] ?? json['arnia_id'];
+    if (rawArnia is int) {
+      parsedArniaId = rawArnia;
+    } else if (rawArnia != null) {
+      parsedArniaId = int.tryParse(rawArnia.toString());
     }
 
     int? parsedColoniaId;
@@ -128,7 +134,7 @@ class Regina {
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
-      'arnia': arniaId,
+      if (arniaId != null) 'arnia': arniaId,
       if (coloniaId != null) 'colonia': coloniaId,
       if (arniaNumero != null) 'arnia_numero': arniaNumero,
       'razza': razza,
@@ -154,13 +160,6 @@ class Regina {
 
   // Convert a Map into a Regina object (SQLite). Null-safe.
   factory Regina.fromMap(Map<String, dynamic> map) {
-    int parseInt(dynamic v, {int fallback = 0}) {
-      if (v is int) return v;
-      if (v is num) return v.toInt();
-      if (v is String) return int.tryParse(v) ?? fallback;
-      return fallback;
-    }
-
     int? parseIntOrNull(dynamic v) {
       if (v == null) return null;
       if (v is int) return v;
@@ -178,7 +177,7 @@ class Regina {
 
     return Regina(
       id: parseIntOrNull(map['id']),
-      arniaId: parseInt(map['arnia_id']),
+      arniaId: parseIntOrNull(map['arnia_id']),
       coloniaId: parseIntOrNull(map['colonia_id']),
       razza: (map['razza'] ?? '') as String,
       origine: (map['origine'] ?? '') as String,

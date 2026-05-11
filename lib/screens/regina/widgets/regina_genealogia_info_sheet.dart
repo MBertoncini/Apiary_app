@@ -70,7 +70,7 @@ class ReginaGenealogiaInfoSheet extends StatelessWidget {
                       children: [
                         Text(
                           s.reginaListItemTitle(
-                            (regina.arniaNumero ?? regina.arniaId.toString()).toString(),
+                            regina.arniaNumero ?? regina.arniaId?.toString() ?? '?',
                           ),
                           style: const TextStyle(
                             fontSize: 17,

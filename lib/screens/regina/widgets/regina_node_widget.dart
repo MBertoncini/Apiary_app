@@ -23,7 +23,7 @@ class ReginaNodeWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _coloreToColor(regina.colore);
     final isInactive = !regina.isAttiva;
-    final label = regina.arniaNumero ?? regina.arniaId.toString();
+    final label = regina.arniaNumero ?? regina.arniaId?.toString() ?? '?';
     final year = _yearFromDate(regina.dataInserimento);
 
     return GestureDetector(

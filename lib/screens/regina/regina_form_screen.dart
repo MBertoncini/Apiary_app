@@ -171,9 +171,20 @@ class _ReginaFormScreenState extends State<ReginaFormScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     _formKey.currentState!.save();
 
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+
+    // Guard difensivo: arniaId == 0 (o negativo) significa che il chiamante ha
+    // perso il riferimento. Senza questo blocco il backend rigetta con
+    // "Pk \"0\" non valido — l'oggetto non esiste".
+    if (widget.arniaId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.reginaFormErrorInvalidArnia)),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    final s = Provider.of<LanguageService>(context, listen: false).strings;
     try {
       // Se l'utente ha attivato "marcata" senza scegliere un colore dalla
       // dropdown, quella mostra "Bianco" come fallback ma _coloreMarcatura

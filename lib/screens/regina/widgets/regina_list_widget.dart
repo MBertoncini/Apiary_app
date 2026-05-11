@@ -85,7 +85,7 @@ class ReginaListItem extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                s.reginaListItemTitle((regina.arniaNumero ?? regina.arniaId.toString()).toString()),
+                s.reginaListItemTitle(regina.arniaNumero ?? regina.arniaId?.toString() ?? '?'),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),

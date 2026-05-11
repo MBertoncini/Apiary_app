@@ -13,35 +13,79 @@ import '../../widgets/error_widget.dart';
 import '../../widgets/skeleton_widgets.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/beehive_illustrations.dart';
+import '../../widgets/apiario_filter_row.dart';
 
 class ReginaListScreen extends StatefulWidget {
   @override
   _ReginaListScreenState createState() => _ReginaListScreenState();
 }
 
-class _ReginaListScreenState extends State<ReginaListScreen> with TickerProviderStateMixin {
+class _ReginaListScreenState extends State<ReginaListScreen> {
   List<dynamic> _apiari = [];
   List<Regina> _regine = [];
   Map<int, int> _arniaToApiario = {};
   Map<int, int> _coloniaToApiario = {};
   
+  /// Apiari attualmente selezionati. Vuoto = tutti gli apiari visibili.
+  Set<int> _selectedApiari = {};
+
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _isOffline = false;
   String? _errorMessage;
-  
-  TabController? _tabController;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _bootstrap();
   }
 
   @override
   void dispose() {
-    _tabController?.dispose();
     super.dispose();
+  }
+
+  /// Mostra subito la cache (se presente) e poi aggiorna dal server.
+  /// Evita di ripartire ogni volta da uno skeleton vuoto.
+  Future<void> _bootstrap() async {
+    await _loadFromCache();
+    await _loadData();
+  }
+
+  Future<void> _loadFromCache() async {
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final cachedRegine = await storageService.getStoredData('regine');
+    final cachedApiari = await storageService.getStoredData('apiari');
+    final cachedArnie = await storageService.getStoredData('arnie');
+    final cachedColonie = await storageService.getStoredData('colonie');
+
+    if (!mounted || cachedRegine.isEmpty) return;
+
+    final regine = cachedRegine.map((item) => Regina.fromJson(item)).toList();
+    final apiari = List<dynamic>.from(cachedApiari)
+      ..sort((a, b) => (a['nome'] as String).compareTo(b['nome'] as String));
+
+    final Map<int, int> arniaToApiario = {};
+    for (var a in cachedArnie) {
+      if (a['id'] != null && a['apiario'] != null) {
+        arniaToApiario[a['id']] = a['apiario'];
+      }
+    }
+    final Map<int, int> coloniaToApiario = {};
+    for (var c in cachedColonie) {
+      if (c['id'] != null && c['apiario'] != null) {
+        coloniaToApiario[c['id']] = c['apiario'];
+      }
+    }
+
+    setState(() {
+      _regine = regine;
+      _apiari = apiari;
+      _arniaToApiario = arniaToApiario;
+      _coloniaToApiario = coloniaToApiario;
+      _isLoading = false;
+      _pruneSelection();
+    });
   }
 
   Future<void> _loadData() async {
@@ -104,12 +148,13 @@ class _ReginaListScreenState extends State<ReginaListScreen> with TickerProvider
 
       // 4. Carica Regine
       final regineResponse = await apiService.get(ApiConstants.regineUrl);
-      List<Regina> regine = [];
+      List<dynamic> regineRaw = const [];
       if (regineResponse is List) {
-        regine = regineResponse.map((item) => Regina.fromJson(item)).toList();
+        regineRaw = regineResponse;
       } else if (regineResponse is Map && regineResponse.containsKey('results')) {
-        regine = (regineResponse['results'] as List).map((item) => Regina.fromJson(item)).toList();
+        regineRaw = regineResponse['results'] as List;
       }
+      final regine = regineRaw.map((item) => Regina.fromJson(item)).toList();
 
       if (mounted) {
         setState(() {
@@ -120,20 +165,14 @@ class _ReginaListScreenState extends State<ReginaListScreen> with TickerProvider
           _isLoading = false;
           _isRefreshing = false;
           _isOffline = false;
-          
-          // Re-inizializza il TabController se il numero di apiari è cambiato
-          final oldIndex = _tabController?.index ?? 0;
-          _tabController?.dispose();
-          _tabController = TabController(
-            length: _apiari.length + 1, // +1 per "Tutte"
-            vsync: this,
-            initialIndex: oldIndex < (_apiari.length + 1) ? oldIndex : 0,
-          );
+          _pruneSelection();
         });
       }
 
-      // Salva in cache
-      await storageService.saveData('regine', regine.map((r) => r.toJson()).toList());
+      // Salva in cache: usiamo la response originale del server per non perdere
+      // i campi che `Regina.toJson` non emette (e per non normalizzare a 0
+      // un eventuale `arnia: null` lato server).
+      await storageService.saveData('regine', regineRaw);
       await storageService.saveData('apiari', apiari);
       await storageService.saveData('arnie', arnie);
       await storageService.saveData('colonie', colonie);
@@ -141,64 +180,57 @@ class _ReginaListScreenState extends State<ReginaListScreen> with TickerProvider
     } catch (e) {
       debugPrint('Errore caricamento regine: $e');
 
-      // Fallback cache
-      final cachedRegine = await storageService.getStoredData('regine');
-      final cachedApiari = await storageService.getStoredData('apiari');
-      final cachedArnie = await storageService.getStoredData('arnie');
-      final cachedColonie = await storageService.getStoredData('colonie');
-
-      if (mounted) {
-        setState(() {
-          if (cachedRegine.isNotEmpty) {
-            _regine = cachedRegine.map((item) => Regina.fromJson(item)).toList();
-            _apiari = List<dynamic>.from(cachedApiari)..sort((a, b) => a['nome'].compareTo(b['nome']));
-            
-            Map<int, int> arniaToApiario = {};
-            for (var a in cachedArnie) {
-              if (a['id'] != null && a['apiario'] != null) {
-                arniaToApiario[a['id']] = a['apiario'];
-              }
-            }
-            _arniaToApiario = arniaToApiario;
-
-            Map<int, int> coloniaToApiario = {};
-            for (var c in cachedColonie) {
-              if (c['id'] != null && c['apiario'] != null) {
-                coloniaToApiario[c['id']] = c['apiario'];
-              }
-            }
-            _coloniaToApiario = coloniaToApiario;
-
-            _isOffline = true;
-            
-            _tabController?.dispose();
-            _tabController = TabController(
-              length: _apiari.length + 1,
-              vsync: this,
-            );
-          } else {
-            _errorMessage = 'Impossibile caricare le regine. Controlla la connessione.';
-          }
-          _isLoading = false;
-          _isRefreshing = false;
-        });
-      }
+      if (!mounted) return;
+      // Se abbiamo già dati in cache (caricati da _loadFromCache), mostriamo
+      // semplicemente offline mode; altrimenti errore.
+      setState(() {
+        if (_regine.isNotEmpty) {
+          _isOffline = true;
+        } else {
+          _errorMessage = 'Impossibile caricare le regine. Controlla la connessione.';
+        }
+        _isLoading = false;
+        _isRefreshing = false;
+      });
     }
+  }
+
+  /// Rimuove dalla selezione apiari che non esistono più dopo il reload.
+  void _pruneSelection() {
+    final validIds = _apiari.map((a) => a['id'] as int).toSet();
+    _selectedApiari = _selectedApiari.intersection(validIds);
+  }
+
+  void _toggleApiario(int id) {
+    setState(() {
+      if (_selectedApiari.contains(id)) {
+        _selectedApiari.remove(id);
+      } else {
+        _selectedApiari.add(id);
+      }
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      _selectedApiari.clear();
+    });
   }
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
-  List<Regina> _getRegineForApiario(int? apiarioId) {
-    if (apiarioId == null) return _regine; // Tutte
+  List<Regina> _getFilteredRegine() {
+    if (_selectedApiari.isEmpty) return _regine;
 
     return _regine.where((r) {
-      // Prima prova via colonia (sorgente di verità: copre anche le colonie
-      // ospitate in nucleo e i payload Regina senza campo arnia)
+      // Prima prova via colonia
       final viaColonia = r.coloniaId != null ? _coloniaToApiario[r.coloniaId] : null;
-      if (viaColonia != null) return viaColonia == apiarioId;
+      if (viaColonia != null) return _selectedApiari.contains(viaColonia);
 
-      // Fallback regine vecchie senza coloniaId
-      return _arniaToApiario[r.arniaId] == apiarioId;
+      // Fallback via arnia
+      if (r.arniaId == null) return false;
+      final viaArnia = _arniaToApiario[r.arniaId!];
+      return viaArnia != null && _selectedApiari.contains(viaArnia);
     }).toList();
   }
 
@@ -233,13 +265,14 @@ class _ReginaListScreenState extends State<ReginaListScreen> with TickerProvider
         ],
         bottom: _isLoading || _apiari.isEmpty
             ? null
-            : TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabs: [
-                  const Tab(text: 'Tutte'),
-                  ..._apiari.map((a) => Tab(text: a['nome'])),
-                ],
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(52),
+                child: ApiarioFilterRow(
+                  apiari: _apiari,
+                  selected: _selectedApiari,
+                  onToggle: _toggleApiario,
+                  onSelectAll: _selectAll,
+                ),
               ),
       ),
       drawer: AppDrawer(currentRoute: AppConstants.reginaListRoute),
@@ -257,13 +290,7 @@ class _ReginaListScreenState extends State<ReginaListScreen> with TickerProvider
                       )
                     : _apiari.isEmpty && _regine.isEmpty
                         ? _buildEmptyState(s)
-                        : TabBarView(
-                            controller: _tabController,
-                            children: [
-                              _buildReginaList(_getRegineForApiario(null)),
-                              ..._apiari.map((a) => _buildReginaList(_getRegineForApiario(a['id']))),
-                            ],
-                          ),
+                        : _buildReginaList(_getFilteredRegine()),
           ),
         ],
       ),
@@ -346,7 +373,7 @@ class ReginaListItem extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                s.reginaListItemTitle((regina.arniaNumero ?? regina.arniaId.toString()).toString()),
+                s.reginaListItemTitle(regina.arniaNumero ?? regina.arniaId?.toString() ?? '?'),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),

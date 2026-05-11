@@ -167,7 +167,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(s.reginaDetailTitleArnia((_regina!.arniaNumero ?? _regina!.arniaId).toString())),
+        title: Text(s.reginaDetailTitleArnia(_regina!.arniaNumero ?? _regina!.arniaId?.toString() ?? '?')),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete),
@@ -239,7 +239,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             _buildReginaHeader(s, regina),
             const SizedBox(height: 24),
             _buildInfoSection(s.reginaDetailSectionGeneral, [
-              _buildInfoRow(s.labelArnia, '${s.labelArnia} ${regina.arniaNumero ?? regina.arniaId}'),
+              _buildInfoRow(s.labelArnia, '${s.labelArnia} ${regina.arniaNumero ?? regina.arniaId?.toString() ?? '?'}'),
               _buildInfoRow(s.reginaListRazza, _getRazzaDisplay(s, regina.razza)),
               _buildInfoRow(s.reginaListOrigine, _getOrigineDisplay(s, regina.origine)),
               if (regina.dataNascita != null)
@@ -282,25 +282,28 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               ]),
             ],
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.edit),
-                  label: Text(s.reginaDetailBtnEdit),
-                  onPressed: _editRegina,
-                ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.swap_horiz),
-                  label: Text(s.reginaDetailBtnReplace),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
+            // Modifica/Sostituisci richiedono una regina attiva con FK arnia
+            // valida: senza non si può costruire il form (issue Pk "0").
+            if (regina.isAttiva && regina.arniaId != null)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: Text(s.reginaDetailBtnEdit),
+                    onPressed: _editRegina,
                   ),
-                  onPressed: _showSostituisciDialog,
-                ),
-              ],
-            ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.swap_horiz),
+                    label: Text(s.reginaDetailBtnReplace),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _showSostituisciDialog,
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -384,7 +387,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            s.reginaDetailAlberoSubtitle((_regina!.arniaNumero ?? _regina!.arniaId).toString()),
+                            s.reginaDetailAlberoSubtitle(_regina!.arniaNumero ?? _regina!.arniaId?.toString() ?? '?'),
                             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                           ),
                         ],
@@ -860,7 +863,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    s.reginaListItemTitle((regina.arniaNumero ?? regina.arniaId).toString()),
+                    s.reginaListItemTitle(regina.arniaNumero ?? regina.arniaId?.toString() ?? '?'),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
@@ -1029,6 +1032,13 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Future<void> _editRegina() async {
     if (_regina == null) return;
+    final arniaId = _regina!.arniaId;
+    if (arniaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.reginaDetailErrorNoArnia)),
+      );
+      return;
+    }
     // Costruiamo il payload includendo l'id della regina madre (oggi non
     // serializzato in toJson() di default), così il form pre-popola la
     // dropdown e un PUT non azzera l'associazione.
@@ -1039,7 +1049,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ReginaFormScreen(
-          arniaId: _regina!.arniaId,
+          arniaId: arniaId,
           coloniaId: _regina!.coloniaId,
           reginaData: reginaData,
           reginaId: widget.reginaId,
@@ -1051,6 +1061,12 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Future<void> _showSostituisciDialog() async {
     if (_regina == null) return;
+    if (_regina!.arniaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.reginaDetailErrorNoArnia)),
+      );
+      return;
+    }
     final s = _s;
     final fmt = DateFormat('yyyy-MM-dd');
     String motivoFine = 'sostituzione';
@@ -1155,7 +1171,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                           await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => ReginaFormScreen(
-                                arniaId: _regina!.arniaId,
+                                arniaId: _regina!.arniaId!,
                                 coloniaId: _regina!.coloniaId,
                               ),
                             ),
@@ -1199,7 +1215,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
       context: context,
       builder: (context) => AlertDialog(
         title: Text(s.reginaDetailDeleteTitle),
-        content: Text(s.reginaDetailDeleteMsg((_regina!.arniaNumero ?? _regina!.arniaId).toString())),
+        content: Text(s.reginaDetailDeleteMsg(_regina!.arniaNumero ?? _regina!.arniaId?.toString() ?? '?')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
