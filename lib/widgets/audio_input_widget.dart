@@ -33,6 +33,8 @@ class AudioInputWidget extends StatefulWidget {
   final Function(VoiceEntryBatch) onEntriesReady;
   final int? contextApiarioId;
   final String? contextApiarioNome;
+  final int? preselectedArniaId;
+  final int? preselectedArniaNumero;
 
   const AudioInputWidget({
     Key? key,
@@ -40,6 +42,8 @@ class AudioInputWidget extends StatefulWidget {
     required this.onEntriesReady,
     this.contextApiarioId,
     this.contextApiarioNome,
+    this.preselectedArniaId,
+    this.preselectedArniaNumero,
   }) : super(key: key);
 
   @override
@@ -316,35 +320,50 @@ class _AudioInputWidgetState extends State<AudioInputWidget>
   }
 
   Future<bool> _processFile(String filePath) async {
-    final entry = await widget.processor.processAudioInput(filePath);
-    if (entry != null && entry.isValid()) {
-      final entryWithAudio = entry.copyWith(audioFilePath: filePath);
-      setState(() {
-        _entries.add(entryWithAudio);
-        _partialEntry = null;
-        _availableArnie = [];
-        _state = _RecState.idle;
-        _error = null;
-        _pendingFilePath = null;
-      });
-      return true;
-    } else if (entry != null && !entry.isValid()) {
-      // Gemini ha estratto dati utili ma manca il numero/id arnia: mostra picker
-      await _loadArnieForPicker();
-      setState(() {
-        _partialEntry = entry.copyWith(audioFilePath: filePath);
-        _state = _RecState.error;
-        _error = _s.audioInputErrNoArniaDetected;
-        // _pendingFilePath rimane per "Continua registrazione"
-      });
-      return false;
+    final entry = await widget.processor.processAudioInput(
+      filePath,
+      preselectedArniaNumero: widget.preselectedArniaNumero,
+    );
+    
+    if (entry != null) {
+      // Se Gemini non ha restituito l'arnia ma ne abbiamo una pre-selezionata (NFC), usiamola.
+      // Se Gemini ha restituito un'arnia diversa, rispettiamo quella (l'utente potrebbe averla dettata).
+      final arniaId = entry.arniaId ?? (entry.arniaNumero == null ? widget.preselectedArniaId : null);
+      final arniaNumero = entry.arniaNumero ?? (entry.arniaId == null ? widget.preselectedArniaNumero : null);
+      
+      if (arniaId != null || arniaNumero != null) {
+        final completed = entry.copyWith(
+          arniaId: arniaId,
+          arniaNumero: arniaNumero,
+          apiarioId: entry.apiarioId ?? widget.contextApiarioId,
+          apiarioNome: entry.apiarioNome ?? widget.contextApiarioNome,
+          audioFilePath: filePath,
+        );
+        setState(() {
+          _entries.add(completed);
+          _partialEntry = null;
+          _availableArnie = [];
+          _state = _RecState.idle;
+          _error = null;
+          _pendingFilePath = null;
+        });
+        return true;
+      } else {
+        // Gemini ha estratto dati utili ma manca il numero/id arnia (e non c'è NFC): mostra picker
+        await _loadArnieForPicker();
+        setState(() {
+          _partialEntry = entry.copyWith(audioFilePath: filePath);
+          _state = _RecState.error;
+          _error = _s.audioInputErrNoArniaDetected;
+        });
+        return false;
+      }
     } else {
       setState(() {
         _partialEntry = null;
         _availableArnie = [];
         _state = _RecState.error;
         _error = widget.processor.error ?? _s.audioInputErrExtract;
-        // _pendingFilePath rimane valorizzato per "Riprova"
       });
       return false;
     }
@@ -474,6 +493,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget>
       filePath: _pendingFilePath!,
       apiarioId: widget.contextApiarioId,
       apiarioNome: widget.contextApiarioNome,
+      arniaId: widget.preselectedArniaId,
+      arniaNumero: widget.preselectedArniaNumero,
       recordingDurationSeconds: _recordedSeconds,
     );
     _pendingFilePath = null;
@@ -558,6 +579,8 @@ class _AudioInputWidgetState extends State<AudioInputWidget>
       final filePath = item['file_path'] as String?;
       final apiarioId = item['apiario_id'] as int?;
       final apiarioNome = item['apiario_nome'] as String?;
+      final arniaId = item['arnia_id'] as int?;
+      final arniaNumero = item['arnia_numero'] as int?;
 
       if (filePath == null) {
         DebugTrace.log('widget: _processQueue item $i filePath=null → skip');
@@ -567,30 +590,45 @@ class _AudioInputWidgetState extends State<AudioInputWidget>
 
       DebugTrace.log('widget: _processQueue item ${i + 1}/$effectiveCount → gemini');
       widget.processor.setContext(apiarioId, apiarioNome);
-      final entry = await widget.processor.processAudioInput(filePath);
+      final entry = await widget.processor.processAudioInput(
+        filePath,
+        preselectedArniaNumero: arniaNumero,
+      );
       DebugTrace.log('widget: _processQueue item ${i + 1} result='
           '${entry == null ? "null" : (entry.isValid() ? "valid" : "partial")}');
 
-      if (entry != null && entry.isValid()) {
-        await _audioQueue.removeFromQueue(id);
-        final entryWithAudio = entry.copyWith(audioFilePath: filePath);
-        setState(() {
-          _entries.add(entryWithAudio);
-          _queueProcessedCount++;
-        });
-      } else if (entry != null && !entry.isValid()) {
-        // Gemini ha estratto dati ma manca il numero arnia:
-        // sposta la registrazione come pendente per il picker manuale
-        await _audioQueue.removeFromQueue(id);
-        await _loadArnieForPicker();
-        setState(() {
-          _partialEntry = entry.copyWith(audioFilePath: filePath);
-          _pendingFilePath = filePath;
-          _state = _RecState.error;
-          _error = s.audioInputErrNoArniaQueue;
-          _queueProcessedCount++;
-        });
-        break; // attende la risoluzione manuale prima di continuare
+      if (entry != null) {
+        // Fallback context: se Gemini non rileva l'arnia nell'audio, usa quella salvata nella coda
+        final finalArniaId = entry.arniaId ?? (entry.arniaNumero == null ? arniaId : null);
+        final finalArniaNumero = entry.arniaNumero ?? (entry.arniaId == null ? arniaNumero : null);
+
+        if (finalArniaId != null || finalArniaNumero != null) {
+          await _audioQueue.removeFromQueue(id);
+          final completed = entry.copyWith(
+            arniaId: finalArniaId,
+            arniaNumero: finalArniaNumero,
+            apiarioId: entry.apiarioId ?? apiarioId,
+            apiarioNome: entry.apiarioNome ?? apiarioNome,
+            audioFilePath: filePath,
+          );
+          setState(() {
+            _entries.add(completed);
+            _queueProcessedCount++;
+          });
+        } else {
+          // Gemini ha estratto dati ma manca il numero arnia (e non c'è in coda):
+          // sposta la registrazione come pendente per il picker manuale
+          await _audioQueue.removeFromQueue(id);
+          await _loadArnieForPicker();
+          setState(() {
+            _partialEntry = entry.copyWith(audioFilePath: filePath);
+            _pendingFilePath = filePath;
+            _state = _RecState.error;
+            _error = s.audioInputErrNoArniaQueue;
+            _queueProcessedCount++;
+          });
+          break; // attende la risoluzione manuale prima di continuare
+        }
       } else {
         if (widget.processor.lastCallWasRateLimit ||
             widget.processor.lastCallWasNetworkError) break;

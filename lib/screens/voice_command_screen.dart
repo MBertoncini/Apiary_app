@@ -25,18 +25,21 @@ import '../services/language_service.dart';
 import '../services/voice_language_rules.dart';
 import '../services/bee_vocabulary_corrector.dart';
 import '../services/ai_quota_service.dart';
+import '../services/nfc_handler.dart';
 import '../l10n/app_strings.dart';
 
 class VoiceCommandScreen extends StatefulWidget {
   /// Quando avviata da NFC, pre-imposta il contesto arnia/apiario.
   final int? initialApiarioId;
   final String? initialApiarioNome;
+  final int? initialArniaId;
   final int? initialArniaNumero;
 
   const VoiceCommandScreen({
     Key? key,
     this.initialApiarioId,
     this.initialApiarioNome,
+    this.initialArniaId,
     this.initialArniaNumero,
   }) : super(key: key);
 
@@ -52,6 +55,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   late PlatformSpeechService _speechService;
   late RegexDataProcessor _dataProcessor;
   late GeminiAudioProcessor _audioProcessor;
+  late NfcHandler _nfcHandler;
   final VoiceQueueService _queueService = VoiceQueueService();
   final ConnectivityService _connectivityService = ConnectivityService();
   final VoiceSettingsService _voiceSettings = VoiceSettingsService();
@@ -67,6 +71,7 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
   String? _contextApiarioNome;
 
   // Contesto NFC: arnia pre-impostata dalla scansione NFC
+  int? _nfcArniaId;
   int? _nfcArniaNumero;
 
   @override
@@ -76,15 +81,17 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     _refreshQueueCount();
     _checkConnectivity();
     _voiceManager.addListener(_onVoiceManagerChanged);
+    
+    _nfcHandler = Provider.of<NfcHandler>(context, listen: false);
+    _nfcHandler.addListener(_onNfcHandlerChanged);
 
     // Se arrivati da NFC, pre-imposta il contesto apiario e arnia.
     if (widget.initialApiarioId != null && widget.initialApiarioNome != null) {
       _contextApiarioId = widget.initialApiarioId;
       _contextApiarioNome = widget.initialApiarioNome;
     }
-    if (widget.initialArniaNumero != null) {
-      _nfcArniaNumero = widget.initialArniaNumero;
-    }
+    _nfcArniaId = widget.initialArniaId;
+    _nfcArniaNumero = widget.initialArniaNumero;
 
     // Carica la modalità vocale e applica la chiave personale.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -120,7 +127,31 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     });
   }
 
+  void _onNfcHandlerChanged() {
+    final arnia = _nfcHandler.lastScannedArnia;
+    if (arnia != null && mounted) {
+      setState(() {
+        _contextApiarioId = arnia.apiario;
+        _contextApiarioNome = arnia.apiarioNome;
+        _nfcArniaId = arnia.id;
+        _nfcArniaNumero = arnia.numero;
+      });
+      _dataProcessor.setContext(arnia.apiario, arnia.apiarioNome);
+      _audioProcessor.setContext(arnia.apiario, arnia.apiarioNome);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_s.nfcVoiceBanner(arnia.numero, arnia.apiarioNome)),
+          backgroundColor: ThemeConstants.primaryColor,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   void _onVoiceManagerChanged() {
+    // ... rest of method unchanged
+
     // Auto-save pending transcriptions as a crash-recovery draft.
     if (_voiceManager.isBatchMode) {
       if (_voiceManager.pendingTranscriptions.isNotEmpty) {
@@ -301,9 +332,22 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     final n = _nfcArniaNumero;
     if (n == null) return transcriptions;
     final prefix = 'Arnia $n, ';
-    final pattern = RegExp(r'arni[ae]\s+' + n.toString(), caseSensitive: false);
+    
+    // Pattern per rilevare se l'utente ha menzionato un'arnia specifica (qualsiasi numero)
+    final genericArniaPattern = RegExp(r'\barni[ae]\s+\d+', caseSensitive: false);
+    // Pattern specifico per l'arnia NFC attuale
+    final specificArniaPattern = RegExp(r'\barni[ae]\s+' + n.toString() + r'\b', caseSensitive: false);
+    
     return transcriptions.map((t) {
-      if (pattern.hasMatch(t)) return t;
+      final trimmed = t.trim();
+      if (trimmed.isEmpty) return t;
+
+      // Se l'utente ha già menzionato un numero arnia esplicito, rispettiamo quello.
+      // Se ha menzionato proprio quella NFC, non aggiungiamo il prefisso (evita "Arnia 3, Arnia 3...").
+      if (genericArniaPattern.hasMatch(trimmed) || specificArniaPattern.hasMatch(trimmed)) {
+        return t;
+      }
+      
       return '$prefix$t';
     }).toList();
   }
@@ -609,6 +653,8 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                         onEntriesReady: _handleEntriesReady,
                         contextApiarioId: _contextApiarioId,
                         contextApiarioNome: _contextApiarioNome,
+                        preselectedArniaId: _nfcArniaId,
+                        preselectedArniaNumero: _nfcArniaNumero,
                       )
                     : ChangeNotifierProvider<PlatformVoiceInputManager>.value(
                         value: _voiceManager,

@@ -43,6 +43,8 @@ class AudioQueueService {
     required String filePath,
     int? apiarioId,
     String? apiarioNome,
+    int? arniaId,
+    int? arniaNumero,
     int? recordingDurationSeconds,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -53,6 +55,8 @@ class AudioQueueService {
       'file_path': filePath,
       'apiario_id': apiarioId,
       'apiario_nome': apiarioNome,
+      'arnia_id': arniaId,
+      'arnia_numero': arniaNumero,
       'duration_seconds': recordingDurationSeconds,
       'timestamp': now.toIso8601String(),
     });

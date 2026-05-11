@@ -61,11 +61,17 @@ class GeminiAudioProcessor extends ChangeNotifier {
 
   /// Processa il file audio [filePath] (AAC) inviandolo a Gemini multimodale.
   /// Restituisce un [VoiceEntry] strutturato, o null in caso di errore.
-  Future<VoiceEntry?> processAudioInput(String filePath) async {
+  Future<VoiceEntry?> processAudioInput(String filePath, {int? preselectedArniaNumero}) async {
     DebugTrace.log('gemini: processAudioInput ENTER ${filePath.split('/').last}');
+    if (preselectedArniaNumero != null) {
+      DebugTrace.log('gemini: preselected arnia=$preselectedArniaNumero');
+    }
     final keyInUse = _personalApiKey != null ? 'personal' : 'shared';
     final keyLen = (_personalApiKey ?? ApiKeys.geminiApiKey).length;
     DebugTrace.log('gemini: key=$keyInUse len=$keyLen');
+
+    // ... rest of method logic with updated prompt
+
 
     // Pre-check centralizzato: se la quota voice è esaurita non spediamo.
     final quota = _quotaService;
@@ -105,17 +111,27 @@ class GeminiAudioProcessor extends ChangeNotifier {
       final bytes = await file.readAsBytes();
       final base64Audio = base64Encode(bytes);
 
-      final contextInfo = _contextApiarioNome != null
+      var contextInfo = _contextApiarioNome != null
           ? (_langRules.code == 'en'
               ? 'Session context: apiary "$_contextApiarioNome" '
                   '(ID: $_contextApiarioId). '
-                  'The beekeeper will only mention the hive number.'
               : 'Contesto sessione: apiario "$_contextApiarioNome" '
-                  '(ID: $_contextApiarioId). '
-                  'L\'apicoltore parlerà solo del numero arnia.')
+                  '(ID: $_contextApiarioId). ')
           : (_langRules.code == 'en'
-              ? 'No apiary selected as context.'
-              : 'Nessun apiario selezionato come contesto.');
+              ? 'No apiary selected as context. '
+              : 'Nessun apiario selezionato come contesto. ');
+
+      if (preselectedArniaNumero != null) {
+        contextInfo += (_langRules.code == 'en'
+            ? 'The hive being inspected is number $preselectedArniaNumero (identified via NFC). '
+                'Assume this number if the beekeeper does not mention a different one.'
+            : 'L\'arnia sotto ispezione è la numero $preselectedArniaNumero (identificata via NFC). '
+                'Assumi questo numero se l\'apicoltore non ne menziona uno diverso.');
+      } else {
+        contextInfo += (_langRules.code == 'en'
+            ? 'The beekeeper will only mention the hive number.'
+            : 'L\'apicoltore parlerà solo del numero arnia.');
+      }
 
       final prompt = _langRules.geminiPrompt(contextInfo);
 
