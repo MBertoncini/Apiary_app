@@ -185,6 +185,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // === Fase 2: aggiornamento dal server ===
     await Future.wait([
       _loadApiariData(apiService),
+      _loadArnieData(apiService),
       _loadTrattamentiData(apiService),
       _loadFioritureData(apiService),
       _loadControlliData(apiService),
@@ -201,6 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Salva i dati freschi in cache per la prossima visita
     final saves = <Future>[];
     if (_apiari.isNotEmpty)      saves.add(storageService.saveData('apiari',      _apiari));
+    if (_arnie.isNotEmpty)       saves.add(storageService.saveData('arnie',       _arnie));
     if (_trattamenti.isNotEmpty) saves.add(storageService.saveData('trattamenti', _trattamenti));
     if (_fioriture.isNotEmpty)   saves.add(storageService.saveData('fioriture',   _fioriture));
     if (_controlli.isNotEmpty)   saves.add(storageService.saveData('controlli',   _controlli));
@@ -233,6 +235,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       debugPrint('Error fetching apiari: $e');
       _apiariError = e.toString();
       _isLoadingApiari = false;
+    }
+  }
+
+  Future<void> _loadArnieData(ApiService apiService) async {
+    try {
+      final response = await apiService.get('arnie/');
+      if (response is List) {
+        _arnie = response;
+      } else if (response is Map) {
+        _arnie = response['results'] ?? [];
+      } else {
+        _arnie = [];
+      }
+    } catch (e) {
+      debugPrint('Error fetching arnie: $e');
     }
   }
 
@@ -1766,6 +1783,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (map['nfc_id'] == tagId) {
             foundArnia = Arnia.fromJson(map);
             break;
+          }
+        }
+
+        if (foundArnia == null) {
+          // Fallback: ricerca remota sul server (abbiamo aggiunto nfc_id ai search_fields)
+          try {
+            final apiService = Provider.of<ApiService>(context, listen: false);
+            final results = await apiService.searchArnie(tagId);
+            if (results.isNotEmpty) {
+              foundArnia = Arnia.fromJson(results[0] as Map<String, dynamic>);
+            }
+          } catch (e) {
+            debugPrint('Errore durante la ricerca remota NFC: $e');
           }
         }
 

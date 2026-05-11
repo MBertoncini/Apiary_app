@@ -14,6 +14,7 @@ import '../services/ai_quota_local_tracker.dart';
 import '../services/ai_quota_service.dart';
 import '../services/voice_settings_service.dart';
 import '../services/nfc_settings_service.dart';
+import '../services/nfc_handler.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/paper_widgets.dart';
 import '../widgets/skeleton_widgets.dart';
@@ -53,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Modalità azione NFC
   final _nfcSettings = NfcSettingsService();
   String _nfcAction = NfcSettingsService.actionManual;
+  bool _nfcAlwaysListening = false;
 
   // Attrezzatura prompt preference
   bool _skipAttrezzaturaPrompt = false;
@@ -74,6 +76,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
       _nfcSettings.getAction().then((a) {
         if (mounted) setState(() => _nfcAction = a);
+      });
+      _nfcSettings.getAlwaysListening().then((v) {
+        if (mounted) setState(() => _nfcAlwaysListening = v);
       });
       Provider.of<StorageService>(context, listen: false)
           .shouldSkipAttrezzaturaPrompt()
@@ -969,6 +974,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             iconColor: ThemeConstants.primaryColor,
             title: s.nfcActionVoice,
             subtitle: s.nfcActionVoiceDesc,
+          ),
+          const Divider(height: 32),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(s.nfcAlwaysListening, style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w600)),
+            subtitle: Text(s.nfcAlwaysListeningDesc, style: ThemeConstants.bodyStyle.copyWith(fontSize: 12, color: ThemeConstants.textSecondaryColor)),
+            value: _nfcAlwaysListening,
+            activeColor: ThemeConstants.primaryColor,
+            onChanged: (v) async {
+              await _nfcSettings.setAlwaysListening(v);
+              if (mounted) {
+                setState(() => _nfcAlwaysListening = v);
+                Provider.of<NfcHandler>(context, listen: false).refreshSettings();
+              }
+            },
           ),
         ],
       ),

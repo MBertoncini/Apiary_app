@@ -275,16 +275,17 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
           'nfc_id': _nfcId,
         };
         
+        dynamic resp;
         if (widget.arnia != null) {
           // Modalità modifica
-          await _apiService.put(ApiConstants.arnieUrl + widget.arnia!.id.toString() + '/', data);
+          resp = await _apiService.put(ApiConstants.arnieUrl + widget.arnia!.id.toString() + '/', data);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(_s.arniaUpdatedOk)),
           );
         } else {
           // Modalità creazione
-          final resp = await _apiService.post(ApiConstants.arnieUrl, data);
+          resp = await _apiService.post(ApiConstants.arnieUrl, data);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(_s.arniaCreatedOk)),
@@ -299,6 +300,23 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
               apiarioId: _apiarioId!,
               arniaId: resp['id'] as int,
             );
+          }
+        }
+
+        // Aggiorna cache locale per riflettere subito i cambiamenti (es. NFC id)
+        if (resp != null && resp is Map<String, dynamic>) {
+          try {
+            final arnie = await _storageService.getStoredData('arnie');
+            final List<dynamic> updatedList = List.from(arnie);
+            final index = updatedList.indexWhere((a) => a['id'] == resp['id']);
+            if (index != -1) {
+              updatedList[index] = resp;
+            } else {
+              updatedList.add(resp);
+            }
+            await _storageService.saveData('arnie', updatedList);
+          } catch (e) {
+            debugPrint('Errore aggiornamento cache arnie: $e');
           }
         }
 

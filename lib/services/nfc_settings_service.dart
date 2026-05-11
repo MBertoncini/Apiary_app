@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Persiste la modalità di azione NFC scelta dall'utente.
 class NfcSettingsService {
   static const String _actionKey = 'nfc_action_mode';
+  static const String _alwaysListeningKey = 'nfc_always_listening';
 
   /// Apre il form di controllo manuale (default storico).
   static const String actionManual = 'manual';
@@ -19,5 +20,15 @@ class NfcSettingsService {
   Future<void> setAction(String action) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_actionKey, action);
+  }
+
+  Future<bool> getAlwaysListening() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_alwaysListeningKey) ?? false;
+  }
+
+  Future<void> setAlwaysListening(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_alwaysListeningKey, value);
   }
 }

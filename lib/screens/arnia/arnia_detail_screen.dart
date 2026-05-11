@@ -84,7 +84,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
 
-      // Carica dati locali
+      // 1) Carica dati locali (per visualizzazione immediata)
       final arnie = await storageService.getStoredData('arnie');
       final arnia = arnie.firstWhere(
         (a) => a['id'] == widget.arniaId,
@@ -101,116 +101,105 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           orElse: () => null,
         );
 
-        // Carica regina - prima da storage locale, poi dal server se non trovata
+        // Carica regina locale
         final regine = await storageService.getStoredData('regine');
         _regina = regine.firstWhere(
           (r) => r['arnia'] == widget.arniaId,
           orElse: () => null,
         );
 
-        // Carica controlli dalla cache SQLite locale
+        // Carica controlli locali
         try {
           final dao = ControlloArniaDao();
           _controlli = await dao.getByArnia(widget.arniaId);
           _controlli.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
         } catch (_) { _controlli = []; }
 
-        // Mostra subito i dati dalla cache, poi aggiorna dal server
         if (mounted) setState(() {});
+      }
 
-        // Prova sempre a caricare la regina dal server (aggiornata dopo ogni creazione/sostituzione)
-        try {
-          final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
-          if (reginaData != null && reginaData is Map<String, dynamic> && reginaData.containsKey('id')) {
-            _regina = reginaData;
-            // Aggiorna lo StorageService locale per i prossimi accessi offline
-            final regineAggiornate = [...regine.where((r) => r['arnia'] != widget.arniaId), reginaData];
-            await storageService.saveData('regine', regineAggiornate);
-
-            // Controlla se la regina è stata auto-creata e richiede attenzione
-            final autoCreatedIds = await ReginaService.getAutoCreatedIds();
-            _reginaAutoCreata = autoCreatedIds.contains(reginaData['id'] as int);
-
-            // Carica genealogia della regina
-            try {
-              final genealogiaData = await apiService.get(
-                '${ApiConstants.regineUrl}${reginaData['id']}/genealogy/',
-              );
-              if (genealogiaData is Map<String, dynamic>) {
-                _reginaGenealogia = genealogiaData;
-              }
-            } catch (_) {
-              // Genealogia non disponibile (endpoint non ancora deployato)
-            }
+      // 2) Aggiorna SEMPRE dal server per avere i dati più recenti (es. nfc_id appena salvato)
+      try {
+        final arniaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/');
+        if (arniaData != null && arniaData is Map<String, dynamic>) {
+          if (mounted) setState(() { _arnia = arniaData; });
+          
+          // Aggiorna cache locale arnie
+          final allArnie = await storageService.getStoredData('arnie');
+          final List<dynamic> updatedArnie = List.from(allArnie);
+          final index = updatedArnie.indexWhere((a) => a['id'] == widget.arniaId);
+          if (index != -1) {
+            updatedArnie[index] = arniaData;
+          } else {
+            updatedArnie.add(arniaData);
           }
-        } catch (e) {
-          // Nessuna regina sul server – usa il dato locale se presente
-          if (_regina == null) {
-            debugPrint('Regina non trovata per arnia ${widget.arniaId}: $e');
+          await storageService.saveData('arnie', updatedArnie);
+
+          // Carica apiario se non presente o se cambiato
+          if (_apiario == null || _apiario!['id'] != arniaData['apiario']) {
+            final apiarioData = await apiService.get('${ApiConstants.apiariUrl}${arniaData['apiario']}/');
+            if (mounted) setState(() { _apiario = apiarioData; });
           }
         }
-
-        // Sincronizza controlli dal server in background (aggiorna SQLite e UI)
-        try {
-          final controlloService = ControlloService(apiService);
-          final updated = await controlloService.getControlliByArnia(widget.arniaId);
-          updated.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
-          _controlli = updated;
-          if (mounted) setState(() {});
-        } catch (e) {
-          debugPrint('Error syncing controlli: $e');
-        }
-
-        // Carica melari
-        final allMelari = await storageService.getStoredData('melari');
-        _melari = allMelari
-            .where((m) => (m['arnia_id'] ?? m['arnia']) == widget.arniaId)
-            .toList();
-        _melari.sort((a, b) {
-          final da = (a['data_posizionamento'] ?? '') as String;
-          final db = (b['data_posizionamento'] ?? '') as String;
-          return db.compareTo(da);
-        });
-
-        // Carica analisi telaini
-        try {
-          final analisiService = Provider.of<AnalisiTelainoService>(context, listen: false);
-          _analisiTelaini = await analisiService.getAnalisiByArnia(widget.arniaId);
-        } catch (e) {
-          debugPrint('Error loading analisi telaini: $e');
-        }
-      } else {
-        // Se non troviamo l'arnia in locale, prova a caricarla dal server
-        try {
-          final arniaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/');
-          _arnia = arniaData;
-
-          // Carica apiario
-          final apiarioData = await apiService.get('${ApiConstants.apiariUrl}${arniaData['apiario']}/');
-          _apiario = apiarioData;
-
-          // Carica regina
-          try {
-            final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
-            _regina = reginaData;
-          } catch (e) {
-            debugPrint('Regina non trovata: $e');
-          }
-
-          // Carica controlli
-          final controlliData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/controlli/');
-          _controlli = controlliData;
-          _controlli.sort((a, b) => b['data'].compareTo(a['data']));
-        } catch (e) {
-          debugPrint('Errore caricamento arnia dal server: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(_s.arniaDetailNotFound)),
-            );
-            Navigator.of(context).pop();
-          }
+      } catch (e) {
+        debugPrint('Errore caricamento arnia dal server: $e');
+        // Se non abbiamo neanche i dati cache, mostriamo errore
+        if (_arnia == null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_s.arniaDetailNotFound)),
+          );
+          Navigator.of(context).pop();
+          return;
         }
       }
+
+      // 3) Carica dati correlati dal server
+      try {
+        final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
+        if (reginaData != null && reginaData is Map<String, dynamic> && reginaData.containsKey('id')) {
+          _regina = reginaData;
+          // Aggiorna cache regine
+          final regine = await storageService.getStoredData('regine');
+          final regineAggiornate = [...regine.where((r) => r['arnia'] != widget.arniaId), reginaData];
+          await storageService.saveData('regine', regineAggiornate);
+
+          // Altri dati regina (auto-creata, genealogia)
+          final autoCreatedIds = await ReginaService.getAutoCreatedIds();
+          _reginaAutoCreata = autoCreatedIds.contains(reginaData['id'] as int);
+          try {
+            final genealogiaData = await apiService.get('${ApiConstants.regineUrl}${reginaData['id']}/genealogy/');
+            if (genealogiaData is Map<String, dynamic>) _reginaGenealogia = genealogiaData;
+          } catch (_) {}
+          if (mounted) setState(() {});
+        }
+      } catch (e) {
+        debugPrint('Regina non caricata dal server: $e');
+      }
+
+      // Sincronizza controlli dal server
+      try {
+        final controlloService = ControlloService(apiService);
+        final updated = await controlloService.getControlliByArnia(widget.arniaId);
+        updated.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+        _controlli = updated;
+        if (mounted) setState(() {});
+      } catch (e) {
+        debugPrint('Error syncing controlli: $e');
+      }
+
+      // Carica melari (cache)
+      final allMelari = await storageService.getStoredData('melari');
+      _melari = allMelari.where((m) => (m['arnia_id'] ?? m['arnia']) == widget.arniaId).toList();
+      _melari.sort((a, b) => (b['data_posizionamento'] ?? '').compareTo(a['data_posizionamento'] ?? ''));
+
+      // Carica analisi telaini (server/cache)
+      try {
+        final analisiService = Provider.of<AnalisiTelainoService>(context, listen: false);
+        _analisiTelaini = await analisiService.getAnalisiByArnia(widget.arniaId);
+      } catch (_) {}
+      
+      if (mounted) setState(() {});
+
     } catch (e) {
       debugPrint('Error loading arnia: $e');
       if (mounted) {

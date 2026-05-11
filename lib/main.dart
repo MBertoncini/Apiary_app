@@ -14,6 +14,7 @@ import 'provider_setup.dart';
 import 'services/language_service.dart';
 import 'services/auth_service.dart';
 import 'services/subscription_service.dart';
+import 'services/nfc_handler.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -98,9 +99,12 @@ class _InitSubscriptionState extends State<_InitSubscription> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final subService = Provider.of<SubscriptionService>(context, listen: false);
       final authService = Provider.of<AuthService>(context, listen: false);
+      final nfcHandler = Provider.of<NfcHandler>(context, listen: false);
+
       // Let AuthService call RC login/logout automatically.
       authService.subscriptionService = subService;
       subService.init();
+      nfcHandler.init();
     });
   }
 

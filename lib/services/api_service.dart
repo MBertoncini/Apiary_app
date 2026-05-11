@@ -280,6 +280,14 @@ class ApiService {
     return response is List ? response : [];
   }
   
+  // Cerca arnie per numero, apiario o nfc_id
+  Future<List<dynamic>> searchArnie(String query) async {
+    final response = await get('${ApiConstants.arnieUrl}?search=$query');
+    if (response is List) return response;
+    if (response is Map && response['results'] is List) return response['results'] as List;
+    return [];
+  }
+
   // Ottieni arnie di un apiario specifico
   Future<List<dynamic>> getArnieByApiario(int apiarioId) async {
     final response = await get('${ApiConstants.apiariUrl}$apiarioId/arnie/');

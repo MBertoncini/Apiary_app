@@ -432,6 +432,7 @@ class RouteGenerator {
             builder: (_) => VoiceCommandScreen(
               initialApiarioId: args['apiarioId'] as int?,
               initialApiarioNome: args['apiarioNome'] as String?,
+              initialArniaId: args['arniaId'] as int?,
               initialArniaNumero: args['arniaNumero'] as int?,
             ),
           );
