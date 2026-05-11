@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/api_constants.dart';
+import '../../constants/app_constants.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/api_service.dart';
 import '../../services/language_service.dart';
@@ -9,6 +10,7 @@ import '../../services/storage_service.dart';
 import '../../models/regina.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../widgets/beehive_illustrations.dart';
 import 'regina_form_screen.dart';
 
 class ReginaDetailScreen extends StatefulWidget {
@@ -98,6 +100,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
   }
 
   Future<void> _loadGenealogia() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingGenealogia = true;
       _genealogiaError = null;
@@ -109,12 +112,14 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
       );
       debugPrint('Genealogia API response: $response');
 
+      if (!mounted) return;
       setState(() {
         _genealogia = response is Map<String, dynamic> ? response : null;
         _isLoadingGenealogia = false;
       });
     } catch (e) {
       debugPrint('Errore caricamento genealogia: $e');
+      if (!mounted) return;
       setState(() {
         _genealogiaError = 'Dati genealogia non disponibili';
         _isLoadingGenealogia = false;
@@ -162,7 +167,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(s.reginaDetailTitleArnia((_regina!.arniaNumero ?? _regina!.arniaId).toString())),
+        title: Text(s.reginaDetailTitleArnia(_regina!.arniaNumero ?? _regina!.arniaId?.toString() ?? '?')),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete),
@@ -208,10 +213,33 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (regina.sospettaAssente)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        s.reginaDetailSospettaAssenteMsg,
+                        style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             _buildReginaHeader(s, regina),
             const SizedBox(height: 24),
             _buildInfoSection(s.reginaDetailSectionGeneral, [
-              _buildInfoRow(s.labelArnia, '${s.labelArnia} ${regina.arniaNumero ?? regina.arniaId}'),
+              _buildInfoRow(s.labelArnia, '${s.labelArnia} ${regina.arniaNumero ?? regina.arniaId?.toString() ?? '?'}'),
               _buildInfoRow(s.reginaListRazza, _getRazzaDisplay(s, regina.razza)),
               _buildInfoRow(s.reginaListOrigine, _getOrigineDisplay(s, regina.origine)),
               if (regina.dataNascita != null)
@@ -226,7 +254,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               if (regina.marcata && regina.colore != null && regina.colore != 'non_marcata')
                 _buildInfoRow(s.reginaFormLblColoreMarcatura, _getColoreMarcaturaDisplay(s, regina.colore!)),
               if (regina.codiceMarcatura != null && regina.codiceMarcatura!.isNotEmpty)
-                _buildInfoRow('Codice marcatura', regina.codiceMarcatura!),
+                _buildInfoRow(s.reginaDetailLblCodiceMarcatura, regina.codiceMarcatura!),
             ]),
             if (regina.docilita != null ||
                 regina.produttivita != null ||
@@ -254,25 +282,28 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
               ]),
             ],
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.edit),
-                  label: Text(s.reginaDetailBtnEdit),
-                  onPressed: _editRegina,
-                ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.swap_horiz),
-                  label: Text(s.reginaDetailBtnReplace),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
+            // Modifica/Sostituisci richiedono una regina attiva con FK arnia
+            // valida: senza non si può costruire il form (issue Pk "0").
+            if (regina.isAttiva && regina.arniaId != null)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: Text(s.reginaDetailBtnEdit),
+                    onPressed: _editRegina,
                   ),
-                  onPressed: _showSostituisciDialog,
-                ),
-              ],
-            ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.swap_horiz),
+                    label: Text(s.reginaDetailBtnReplace),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _showSostituisciDialog,
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -356,7 +387,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            s.reginaDetailAlberoSubtitle((_regina!.arniaNumero ?? _regina!.arniaId).toString()),
+                            s.reginaDetailAlberoSubtitle(_regina!.arniaNumero ?? _regina!.arniaId?.toString() ?? '?'),
                             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                           ),
                         ],
@@ -534,7 +565,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
           onTap: id != null && !isCurrentQueen
               ? () {
                   Navigator.of(context).pushNamed(
-                    '/regina/detail',
+                    AppConstants.reginaDetailRoute,
                     arguments: id,
                   );
                 }
@@ -812,29 +843,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   // ==================== WIDGETS COMUNI ====================
   Widget _buildReginaHeader(AppStrings s, Regina regina) {
-    Color reginaColor;
-
-    switch (regina.colore) {
-      case 'bianco':
-        reginaColor = Colors.white;
-        break;
-      case 'giallo':
-        reginaColor = Colors.amber;
-        break;
-      case 'rosso':
-        reginaColor = Colors.red;
-        break;
-      case 'verde':
-        reginaColor = Colors.green;
-        break;
-      case 'blu':
-        reginaColor = Colors.blue;
-        break;
-      case 'non_marcata':
-      default:
-        reginaColor = Colors.grey;
-        break;
-    }
+    final Color inkColor = regina.marcata ? reginaInkColorFor(regina.colore) : Colors.grey;
+    final Color avatarBg = (regina.colore == 'bianco' ? Colors.grey : inkColor).withOpacity(0.2);
 
     return Card(
       elevation: 4,
@@ -844,10 +854,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: reginaColor,
-              child: regina.marcata
-                  ? Icon(Icons.local_florist, color: _getContrastColor(reginaColor), size: 36)
-                  : Icon(Icons.local_florist_outlined, color: _getContrastColor(reginaColor), size: 36),
+              backgroundColor: avatarBg,
+              child: HandDrawnQueenBee(size: 42, color: inkColor),
             ),
             SizedBox(width: 16),
             Expanded(
@@ -855,7 +863,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    s.reginaListItemTitle((regina.arniaNumero ?? regina.arniaId).toString()),
+                    s.reginaListItemTitle(regina.arniaNumero ?? regina.arniaId?.toString() ?? '?'),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
@@ -1022,18 +1030,28 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     }
   }
 
-  Color _getContrastColor(Color backgroundColor) {
-    double luminance = backgroundColor.computeLuminance();
-    return luminance > 0.5 ? Colors.black : Colors.white;
-  }
-
   Future<void> _editRegina() async {
     if (_regina == null) return;
+    final arniaId = _regina!.arniaId;
+    if (arniaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.reginaDetailErrorNoArnia)),
+      );
+      return;
+    }
+    // Costruiamo il payload includendo l'id della regina madre (oggi non
+    // serializzato in toJson() di default), così il form pre-popola la
+    // dropdown e un PUT non azzera l'associazione.
+    final reginaData = _regina!.toJson();
+    if (_regina!.reginaMadreId != null) {
+      reginaData['regina_madre'] = _regina!.reginaMadreId;
+    }
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ReginaFormScreen(
-          arniaId: _regina!.arniaId,
-          reginaData: _regina!.toJson(),
+          arniaId: arniaId,
+          coloniaId: _regina!.coloniaId,
+          reginaData: reginaData,
           reginaId: widget.reginaId,
         ),
       ),
@@ -1043,6 +1061,12 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
 
   Future<void> _showSostituisciDialog() async {
     if (_regina == null) return;
+    if (_regina!.arniaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.reginaDetailErrorNoArnia)),
+      );
+      return;
+    }
     final s = _s;
     final fmt = DateFormat('yyyy-MM-dd');
     String motivoFine = 'sostituzione';
@@ -1129,18 +1153,34 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
                             '${ApiConstants.regineUrl}${widget.reginaId}/sostituisci/',
                             {'motivo_fine': motivoFine, 'data_fine': fmt.format(dataFine)},
                           );
+
+                          // Ripulisci la cache locale: la regina sostituita
+                          // non deve più comparire come attiva nelle liste
+                          // finché il prossimo refresh non aggiorna i dati.
+                          final storageService =
+                              Provider.of<StorageService>(context, listen: false);
+                          final cached =
+                              await storageService.getStoredData('regine');
+                          await storageService.saveData(
+                            'regine',
+                            cached.where((r) => r['id'] != widget.reginaId).toList(),
+                          );
+
                           if (!mounted) return;
                           Navigator.of(ctx).pop();
                           await Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ReginaFormScreen(arniaId: _regina!.arniaId),
+                              builder: (_) => ReginaFormScreen(
+                                arniaId: _regina!.arniaId!,
+                                coloniaId: _regina!.coloniaId,
+                              ),
                             ),
                           );
                           if (!mounted) return;
                           Navigator.of(context).pop(true);
                         } catch (e) {
                           setSheetState(() => isLoading = false);
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(s.reginaDetailError(e.toString()))));
                         }
@@ -1175,7 +1215,7 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
       context: context,
       builder: (context) => AlertDialog(
         title: Text(s.reginaDetailDeleteTitle),
-        content: Text(s.reginaDetailDeleteMsg((_regina!.arniaNumero ?? _regina!.arniaId).toString())),
+        content: Text(s.reginaDetailDeleteMsg(_regina!.arniaNumero ?? _regina!.arniaId?.toString() ?? '?')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

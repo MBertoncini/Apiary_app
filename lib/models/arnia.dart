@@ -12,6 +12,8 @@ class Arnia {
   final String? note;
   final bool attiva;
   final int? attrezzatura;
+  /// ID univoco del chip NFC fisico applicato all'arnia.
+  final String? nfcId;
   /// Colonia attualmente attiva in questa arnia (null se vuota).
   /// Popolata da una chiamata separata a /arnie/{id}/colonia_attiva/.
   final Colonia? coloniaAttiva;
@@ -28,6 +30,7 @@ class Arnia {
     this.note,
     required this.attiva,
     this.attrezzatura,
+    this.nfcId,
     this.coloniaAttiva,
   });
 
@@ -44,6 +47,7 @@ class Arnia {
       note: json['note'],
       attiva: json['attiva'] ?? true,
       attrezzatura: json['attrezzatura'],
+      nfcId: json['nfc_id'] as String?,
       // coloniaAttiva non arriva nel payload base dell'arnia
     );
   }
@@ -61,10 +65,11 @@ class Arnia {
       'note': note,
       'attiva': attiva,
       'attrezzatura': attrezzatura,
+      'nfc_id': nfcId,
     };
   }
 
-  Arnia copyWith({Colonia? coloniaAttiva, int? attrezzatura}) {
+  Arnia copyWith({Colonia? coloniaAttiva, int? attrezzatura, String? nfcId}) {
     return Arnia(
       id: id,
       apiario: apiario,
@@ -77,6 +82,7 @@ class Arnia {
       note: note,
       attiva: attiva,
       attrezzatura: attrezzatura ?? this.attrezzatura,
+      nfcId: nfcId ?? this.nfcId,
       coloniaAttiva: coloniaAttiva ?? this.coloniaAttiva,
     );
   }

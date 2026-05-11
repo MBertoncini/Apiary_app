@@ -19,6 +19,7 @@ import 'arnia_form_screen.dart';
 import '../../widgets/offline_banner.dart';
 import '../../services/regina_service.dart';
 import '../../widgets/skeleton_widgets.dart';
+import '../../widgets/beehive_illustrations.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/language_service.dart';
 import '../../models/colonia.dart';
@@ -83,7 +84,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       final apiService = Provider.of<ApiService>(context, listen: false);
       final storageService = Provider.of<StorageService>(context, listen: false);
 
-      // Carica dati locali
+      // 1) Carica dati locali (per visualizzazione immediata)
       final arnie = await storageService.getStoredData('arnie');
       final arnia = arnie.firstWhere(
         (a) => a['id'] == widget.arniaId,
@@ -100,116 +101,105 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
           orElse: () => null,
         );
 
-        // Carica regina - prima da storage locale, poi dal server se non trovata
+        // Carica regina locale
         final regine = await storageService.getStoredData('regine');
         _regina = regine.firstWhere(
           (r) => r['arnia'] == widget.arniaId,
           orElse: () => null,
         );
 
-        // Carica controlli dalla cache SQLite locale
+        // Carica controlli locali
         try {
           final dao = ControlloArniaDao();
           _controlli = await dao.getByArnia(widget.arniaId);
           _controlli.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
         } catch (_) { _controlli = []; }
 
-        // Mostra subito i dati dalla cache, poi aggiorna dal server
         if (mounted) setState(() {});
+      }
 
-        // Prova sempre a caricare la regina dal server (aggiornata dopo ogni creazione/sostituzione)
-        try {
-          final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
-          if (reginaData != null && reginaData is Map<String, dynamic> && reginaData.containsKey('id')) {
-            _regina = reginaData;
-            // Aggiorna lo StorageService locale per i prossimi accessi offline
-            final regineAggiornate = [...regine.where((r) => r['arnia'] != widget.arniaId), reginaData];
-            await storageService.saveData('regine', regineAggiornate);
-
-            // Controlla se la regina è stata auto-creata e richiede attenzione
-            final autoCreatedIds = await ReginaService.getAutoCreatedIds();
-            _reginaAutoCreata = autoCreatedIds.contains(reginaData['id'] as int);
-
-            // Carica genealogia della regina
-            try {
-              final genealogiaData = await apiService.get(
-                '${ApiConstants.regineUrl}${reginaData['id']}/genealogy/',
-              );
-              if (genealogiaData is Map<String, dynamic>) {
-                _reginaGenealogia = genealogiaData;
-              }
-            } catch (_) {
-              // Genealogia non disponibile (endpoint non ancora deployato)
-            }
+      // 2) Aggiorna SEMPRE dal server per avere i dati più recenti (es. nfc_id appena salvato)
+      try {
+        final arniaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/');
+        if (arniaData != null && arniaData is Map<String, dynamic>) {
+          if (mounted) setState(() { _arnia = arniaData; });
+          
+          // Aggiorna cache locale arnie
+          final allArnie = await storageService.getStoredData('arnie');
+          final List<dynamic> updatedArnie = List.from(allArnie);
+          final index = updatedArnie.indexWhere((a) => a['id'] == widget.arniaId);
+          if (index != -1) {
+            updatedArnie[index] = arniaData;
+          } else {
+            updatedArnie.add(arniaData);
           }
-        } catch (e) {
-          // Nessuna regina sul server – usa il dato locale se presente
-          if (_regina == null) {
-            debugPrint('Regina non trovata per arnia ${widget.arniaId}: $e');
+          await storageService.saveData('arnie', updatedArnie);
+
+          // Carica apiario se non presente o se cambiato
+          if (_apiario == null || _apiario!['id'] != arniaData['apiario']) {
+            final apiarioData = await apiService.get('${ApiConstants.apiariUrl}${arniaData['apiario']}/');
+            if (mounted) setState(() { _apiario = apiarioData; });
           }
         }
-
-        // Sincronizza controlli dal server in background (aggiorna SQLite e UI)
-        try {
-          final controlloService = ControlloService(apiService);
-          final updated = await controlloService.getControlliByArnia(widget.arniaId);
-          updated.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
-          _controlli = updated;
-          if (mounted) setState(() {});
-        } catch (e) {
-          debugPrint('Error syncing controlli: $e');
-        }
-
-        // Carica melari
-        final allMelari = await storageService.getStoredData('melari');
-        _melari = allMelari
-            .where((m) => (m['arnia_id'] ?? m['arnia']) == widget.arniaId)
-            .toList();
-        _melari.sort((a, b) {
-          final da = (a['data_posizionamento'] ?? '') as String;
-          final db = (b['data_posizionamento'] ?? '') as String;
-          return db.compareTo(da);
-        });
-
-        // Carica analisi telaini
-        try {
-          final analisiService = Provider.of<AnalisiTelainoService>(context, listen: false);
-          _analisiTelaini = await analisiService.getAnalisiByArnia(widget.arniaId);
-        } catch (e) {
-          debugPrint('Error loading analisi telaini: $e');
-        }
-      } else {
-        // Se non troviamo l'arnia in locale, prova a caricarla dal server
-        try {
-          final arniaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/');
-          _arnia = arniaData;
-
-          // Carica apiario
-          final apiarioData = await apiService.get('${ApiConstants.apiariUrl}${arniaData['apiario']}/');
-          _apiario = apiarioData;
-
-          // Carica regina
-          try {
-            final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
-            _regina = reginaData;
-          } catch (e) {
-            debugPrint('Regina non trovata: $e');
-          }
-
-          // Carica controlli
-          final controlliData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/controlli/');
-          _controlli = controlliData;
-          _controlli.sort((a, b) => b['data'].compareTo(a['data']));
-        } catch (e) {
-          debugPrint('Errore caricamento arnia dal server: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(_s.arniaDetailNotFound)),
-            );
-            Navigator.of(context).pop();
-          }
+      } catch (e) {
+        debugPrint('Errore caricamento arnia dal server: $e');
+        // Se non abbiamo neanche i dati cache, mostriamo errore
+        if (_arnia == null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_s.arniaDetailNotFound)),
+          );
+          Navigator.of(context).pop();
+          return;
         }
       }
+
+      // 3) Carica dati correlati dal server
+      try {
+        final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
+        if (reginaData != null && reginaData is Map<String, dynamic> && reginaData.containsKey('id')) {
+          _regina = reginaData;
+          // Aggiorna cache regine
+          final regine = await storageService.getStoredData('regine');
+          final regineAggiornate = [...regine.where((r) => r['arnia'] != widget.arniaId), reginaData];
+          await storageService.saveData('regine', regineAggiornate);
+
+          // Altri dati regina (auto-creata, genealogia)
+          final autoCreatedIds = await ReginaService.getAutoCreatedIds();
+          _reginaAutoCreata = autoCreatedIds.contains(reginaData['id'] as int);
+          try {
+            final genealogiaData = await apiService.get('${ApiConstants.regineUrl}${reginaData['id']}/genealogy/');
+            if (genealogiaData is Map<String, dynamic>) _reginaGenealogia = genealogiaData;
+          } catch (_) {}
+          if (mounted) setState(() {});
+        }
+      } catch (e) {
+        debugPrint('Regina non caricata dal server: $e');
+      }
+
+      // Sincronizza controlli dal server
+      try {
+        final controlloService = ControlloService(apiService);
+        final updated = await controlloService.getControlliByArnia(widget.arniaId);
+        updated.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+        _controlli = updated;
+        if (mounted) setState(() {});
+      } catch (e) {
+        debugPrint('Error syncing controlli: $e');
+      }
+
+      // Carica melari (cache)
+      final allMelari = await storageService.getStoredData('melari');
+      _melari = allMelari.where((m) => (m['arnia_id'] ?? m['arnia']) == widget.arniaId).toList();
+      _melari.sort((a, b) => (b['data_posizionamento'] ?? '').compareTo(a['data_posizionamento'] ?? ''));
+
+      // Carica analisi telaini (server/cache)
+      try {
+        final analisiService = Provider.of<AnalisiTelainoService>(context, listen: false);
+        _analisiTelaini = await analisiService.getAnalisiByArnia(widget.arniaId);
+      } catch (_) {}
+      
+      if (mounted) setState(() {});
+
     } catch (e) {
       debugPrint('Error loading arnia: $e');
       if (mounted) {
@@ -279,9 +269,16 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   }
 
   Future<void> _navigateToReginaCreate() async {
+    // Se è già presente una regina, redirigi su edit invece di creare un duplicato.
+    if (_regina != null && _regina!['id'] != null) {
+      return _navigateToReginaEdit();
+    }
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ReginaFormScreen(arniaId: widget.arniaId),
+        builder: (_) => ReginaFormScreen(
+          arniaId: widget.arniaId,
+          coloniaId: _coloniaAttiva?.id,
+        ),
       ),
     );
     if (result == true) _loadArnia();
@@ -298,6 +295,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       MaterialPageRoute(
         builder: (_) => ReginaFormScreen(
           arniaId: widget.arniaId,
+          coloniaId: _coloniaAttiva?.id,
           reginaData: Map<String, dynamic>.from(_regina!),
           reginaId: _regina!['id'] as int,
         ),
@@ -408,8 +406,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                           // Aggiungi subito la nuova regina
                           final result = await Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ReginaFormScreen(arniaId: widget.arniaId),
+                              builder: (_) => ReginaFormScreen(
+                                arniaId: widget.arniaId,
+                                coloniaId: _coloniaAttiva?.id,
+                              ),
                             ),
                           );
                           if (result == true || result == null) _loadArnia();
@@ -1004,11 +1004,10 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   Icons.grid_view,
                                   Colors.blue,
                                 ),
-                                _buildControlloTag(
+                                _buildControlloTagQueen(
                                   controllo['presenza_regina'] == true
                                       ? s.arniaDetailReginaPresente
                                       : s.arniaDetailReginaAssente,
-                                  Icons.star,
                                   controllo['presenza_regina'] == true ? Colors.green : Colors.red,
                                 ),
                                 if (controllo['regina_vista'] == true)
@@ -1120,7 +1119,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                                   Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      const Icon(Icons.star, color: Colors.amber, size: 32),
+                                      const HandDrawnQueenBee(size: 32, color: Colors.amber),
                                       Positioned(
                                         top: -4,
                                         right: -4,
@@ -1180,47 +1179,85 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                       ],
                       // Anteprima regina
                       Card(
-                        color: Colors.amber.withOpacity(0.1),
+                        color: _regina!['sospetta_assente'] == true 
+                            ? Colors.red.withOpacity(0.08) 
+                            : Colors.amber.withOpacity(0.1),
+                        elevation: _regina!['sospetta_assente'] == true ? 4 : 1,
+                        shape: _regina!['sospetta_assente'] == true 
+                            ? RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: const BorderSide(color: Colors.red, width: 2),
+                              )
+                            : RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: const BoxDecoration(
-                                  color: Colors.amber,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.star,
-                                  color: Colors.white,
-                                  size: 36,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Regina ${_regina!['razza']}',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 30,
+                                    backgroundColor: (_getReginaColor(_regina!['colore_marcatura']) ?? Colors.amber).withOpacity(0.2),
+                                    child: HandDrawnQueenBee(
+                                      size: 40, 
+                                      color: _getReginaColor(_regina!['colore_marcatura']) ?? Colors.amber
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      s.arniaDetailIntrodottaIl(_regina!['data_introduzione'] ?? ''),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: ThemeConstants.textSecondaryColor,
-                                      ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Regina ${_regina!['razza']}',
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          s.arniaDetailIntrodottaIl(_regina!['data_introduzione'] ?? ''),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: ThemeConstants.textSecondaryColor,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
+                              if (_regina!['sospetta_assente'] == true)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12.0),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            s.reginaDetailSospettaAssenteMsg,
+                                            style: TextStyle(
+                                              color: Colors.red.shade900, 
+                                              fontSize: 13, 
+                                              fontWeight: FontWeight.bold
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -1751,6 +1788,22 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   }
 
   Widget _buildControlloTag(String label, IconData icon, Color color) {
+    return _buildControlloTagBase(
+      label,
+      Icon(icon, size: 12, color: color),
+      color,
+    );
+  }
+
+  Widget _buildControlloTagQueen(String label, Color color) {
+    return _buildControlloTagBase(
+      label,
+      HandDrawnQueenBee(size: 12, color: color),
+      color,
+    );
+  }
+
+  Widget _buildControlloTagBase(String label, Widget leading, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -1761,11 +1814,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 12,
-            color: color,
-          ),
+          leading,
           const SizedBox(width: 4),
           Text(
             label,
@@ -1846,6 +1895,14 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
         ],
       ),
     );
+  }
+
+  Color? _getReginaColor(String? colorStr) {
+    if (colorStr == null) return null;
+    final c = colorStr.toLowerCase();
+    if (!const {'bianco', 'giallo', 'rosso', 'verde', 'blu'}.contains(c)) return null;
+    // 'bianco' viene reso nero così l'icona è visibile su sfondi chiari
+    return reginaInkColorFor(c);
   }
 
   String _getOrigineRegina(String origine) {

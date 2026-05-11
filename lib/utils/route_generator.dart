@@ -25,9 +25,11 @@ import '../screens/colonia/colonia_form_screen.dart';
 import '../models/colonia.dart';
 import '../screens/regina/regina_list_screen.dart';
 import '../screens/regina/regina_detail_screen.dart';
+import '../screens/regina/regina_genealogia_screen.dart';
 import '../screens/trattamento/trattamenti_screen.dart';
 import '../screens/trattamento/trattamento_form_screen.dart';
 import '../screens/trattamento/trattamento_detail_screen.dart';
+import '../models/melario.dart';
 import '../screens/melario/melari_screen.dart';
 import '../screens/melario/melario_form_screen.dart';
 import '../screens/melario/smielatura_detail_screen.dart';
@@ -219,6 +221,10 @@ class RouteGenerator {
         }
         return _errorRoute();
 
+      case AppConstants.reginaGenealogiaRoute:
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const ReginaGenealogiaScreen());
+
       // Routes for treatment management
       case AppConstants.trattamentiRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => TrattamentiScreen());
@@ -262,6 +268,7 @@ class RouteGenerator {
             builder: (_) => MelarioFormScreen(
               preselectedApiarioId: args['apiarioId'] as int?,
               preselectedArniaId: args['arniaId'] as int?,
+              editingMelario: args['editingMelario'] as Melario?,
             ),
           );
         }
@@ -419,7 +426,18 @@ class RouteGenerator {
         return MaterialPageRoute(settings: settings, builder: (_) => const DonazioneScreen());
 
       case AppConstants.voiceCommandRoute:
-        return MaterialPageRoute(settings: settings, builder: (_) => VoiceCommandScreen());
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => VoiceCommandScreen(
+              initialApiarioId: args['apiarioId'] as int?,
+              initialApiarioNome: args['apiarioNome'] as String?,
+              initialArniaId: args['arniaId'] as int?,
+              initialArniaNumero: args['arniaNumero'] as int?,
+            ),
+          );
+        }
+        return MaterialPageRoute(settings: settings, builder: (_) => const VoiceCommandScreen());
 
       // Route for analisi telaino
       case AppConstants.analisiTelainoRoute:

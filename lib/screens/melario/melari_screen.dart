@@ -13,6 +13,7 @@ import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/offline_banner.dart';
+import '../cantina/cantina_screen.dart';
 import 'widgets/melari_apiario_mini_map.dart';
 
 class MelariScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class MelariScreen extends StatefulWidget {
 class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late ApiService _apiService;
+  final GlobalKey<CantinaScreenState> _cantinaKey = GlobalKey<CantinaScreenState>();
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
@@ -37,6 +39,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   // null = tutti; '' = personali; non-empty = nome gruppo
   String? _filtroGruppo;
 
+  // null = tutti gli anni
+  int? _selectedYear;
+
   // Mini-mappa: arnia evidenziata e chiavi per scroll-to
   int? _highlightedArniaId;
   final Map<int, GlobalKey> _arniaColumnKeys = {};
@@ -45,7 +50,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() { if (mounted) setState(() {}); });
     final authService = Provider.of<AuthService>(context, listen: false);
     _apiService = ApiService(authService);
@@ -106,30 +111,36 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       if (mounted) setState(() { _isRefreshing = true; });
     }
 
-    // Fase 2: aggiornamento dal server
+    // Fase 2: aggiornamento dal server.
+    // IMPORTANTE: usare getAll (segue la paginazione DRF). Senza, con più di
+    // 20 melari/arnie l'utente vedeva sparire elementi quando ne aggiungeva
+    // un nuovo (l'item finiva fuori dalla finestra dei primi 20).
     try {
       final results = await Future.wait([
-        _apiService.get(ApiConstants.melariUrl),
-        _apiService.get(ApiConstants.produzioniUrl),
-        _apiService.get(ApiConstants.invasettamentiUrl),
-        _apiService.get(ApiConstants.arnieUrl),
+        _apiService.getAll(ApiConstants.melariUrl),
+        _apiService.getAll(ApiConstants.produzioniUrl),
+        _apiService.getAll(ApiConstants.invasettamentiUrl),
+        _apiService.getAll(ApiConstants.arnieUrl),
       ]);
-      final List melariList        = results[0] is List ? results[0] : (results[0]['results'] as List? ?? []);
-      final List smielatureList    = results[1] is List ? results[1] : (results[1]['results'] as List? ?? []);
-      final List invasettamentiList = results[2] is List ? results[2] : (results[2]['results'] as List? ?? []);
-      final List arnieList         = results[3] is List ? results[3] : (results[3]['results'] as List? ?? []);
+      final melariList        = results[0];
+      final smielatureList    = results[1];
+      final invasettamentiList = results[2];
+      final arnieList         = results[3];
 
       _melari        = melariList.map((item) => Melario.fromJson(item)).toList();
       _smielature    = smielatureList.map((item) => item as Map<String, dynamic>).toList();
       _invasettamenti = invasettamentiList.map((item) => Invasettamento.fromJson(item)).toList();
       _arnie         = arnieList.map((item) => Arnia.fromJson(item)).toList();
 
-      final saves = <Future>[];
-      if (melariList.isNotEmpty)        saves.add(storageService.saveData('melari', melariList));
-      if (smielatureList.isNotEmpty)    saves.add(storageService.saveData('smielature', smielatureList));
-      if (invasettamentiList.isNotEmpty) saves.add(storageService.saveData('invasettamenti', invasettamentiList));
-      if (arnieList.isNotEmpty)         saves.add(storageService.saveData('arnie', arnieList));
-      await Future.wait(saves);
+      // Salva sempre le liste fetchate (anche se vuote): se l'utente ha
+      // eliminato l'ultimo melario, la cache deve riflettere lo stato vuoto
+      // e non quello stale.
+      await Future.wait([
+        storageService.saveData('melari', melariList),
+        storageService.saveData('smielature', smielatureList),
+        storageService.saveData('invasettamenti', invasettamentiList),
+        storageService.saveData('arnie', arnieList),
+      ]);
     } catch (e) {
       if (!hasCache) _errorMessage = 'Errore nel caricamento: $e';
     }
@@ -148,7 +159,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           controller: _tabController,
           tabs: [
             Tab(icon: Icon(Icons.hive, size: 18), text: s.melariTabAlveari),
-            Tab(text: s.melariTabSmielature),
+            Tab(icon: Icon(Icons.local_drink, size: 18), text: s.melariTabSmielature),
+            Tab(icon: Icon(Icons.warehouse, size: 18), text: s.melariCantinaTitolo),
           ],
         ),
         actions: [],
@@ -177,6 +189,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                         children: [
                           _buildVistaAlveariTab(),
                           _buildSmielatureTab(),
+                          CantinaScreen(key: _cantinaKey, embedded: true),
                         ],
                       ),
           ),
@@ -198,7 +211,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 .then((result) { if (result == true) _refreshAll(); });
           },
         );
-      } else {
+      } else if (currentTab == 1) {
         return FloatingActionButton.extended(
           icon: Icon(Icons.add),
           label: Text(_s.melariBtnNuovaSmielatura),
@@ -206,6 +219,12 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             Navigator.pushNamed(context, AppConstants.smielaturaCreateRoute)
                 .then((_) => _refreshAll());
           },
+        );
+      } else {
+        return FloatingActionButton.extended(
+          icon: const Icon(Icons.add),
+          label: Text(_s.cantinaBtnNuovoMaturatore),
+          onPressed: () => _cantinaKey.currentState?.openAddMaturatore(),
         );
       }
     });
@@ -272,12 +291,66 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
   // ==================== SMIELATURE TAB ====================
 
+  List<int> _availableYears() {
+    final years = <int>{};
+    for (final sm in _smielature) {
+      final d = sm['data']?.toString() ?? '';
+      if (d.length >= 4) { final y = int.tryParse(d.substring(0, 4)); if (y != null) years.add(y); }
+    }
+    for (final inv in _invasettamenti) {
+      if (inv.data.length >= 4) { final y = int.tryParse(inv.data.substring(0, 4)); if (y != null) years.add(y); }
+    }
+    return years.toList()..sort((a, b) => b.compareTo(a));
+  }
+
+  Widget _buildAnnoFilterBar(List<int> years) {
+    final s = _s;
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: FilterChip(
+              label: Text(s.melariAnnoTutti),
+              selected: _selectedYear == null,
+              onSelected: (_) => setState(() => _selectedYear = null),
+            ),
+          ),
+          ...years.map((y) => Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: FilterChip(
+              label: Text('$y'),
+              selected: _selectedYear == y,
+              onSelected: (_) => setState(() => _selectedYear = y),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSmielatureTab() {
-    final filtered = _smielature
+    final years = _availableYears();
+
+    final filteredByGruppo = _smielature
         .where((s) => _matchesFiltro(s['apiario_gruppo_nome'] as String?))
         .toList();
 
-    if (filtered.isEmpty) {
+    final filtered = filteredByGruppo.where((s) {
+      if (_selectedYear == null) return true;
+      final d = s['data']?.toString() ?? '';
+      return d.length >= 4 && int.tryParse(d.substring(0, 4)) == _selectedYear;
+    }).toList();
+
+    final filteredInv = _invasettamenti.where((inv) {
+      if (_selectedYear == null) return true;
+      return inv.data.length >= 4 && int.tryParse(inv.data.substring(0, 4)) == _selectedYear;
+    }).toList();
+
+    if (filteredByGruppo.isEmpty) {
       return Column(children: [
         _buildGruppoFilterBar(),
         Expanded(child: Center(
@@ -295,15 +368,23 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       byTipo[tipo] = (byTipo[tipo] ?? 0) + qty;
     }
 
+    // Invasettamenti aggregati per formato
+    final Map<int, int> vasettiPerFormato = {};
+    int totVasetti = 0;
+    for (final inv in filteredInv) {
+      vasettiPerFormato[inv.formatoVasetto] = (vasettiPerFormato[inv.formatoVasetto] ?? 0) + inv.numeroVasetti;
+      totVasetti += inv.numeroVasetti;
+    }
+    final sortedFormati = vasettiPerFormato.keys.toList()..sort();
+
     return Column(children: [
       _buildGruppoFilterBar(),
+      if (years.isNotEmpty) _buildAnnoFilterBar(years),
       Expanded(child: RefreshIndicator(
         onRefresh: _refreshAll,
         child: ListView(
           padding: EdgeInsets.all(16),
           children: [
-            _buildCantinaCard(),
-            SizedBox(height: 8),
             Card(
               color: Colors.amber.shade50,
               child: Padding(
@@ -315,6 +396,17 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                       Icon(Icons.local_drink, color: Colors.amber.shade700),
                       SizedBox(width: 8),
                       Text(_s.melariRiepilogoProd, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      if (_selectedYear != null) ...[
+                        SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade200,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text('$_selectedYear', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ]),
                     SizedBox(height: 12),
                     Row(
@@ -339,44 +431,215 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                         ),
                       )),
                     ],
+                    // Sezione vasetti invasettati
+                    if (totVasetti > 0) ...[
+                      SizedBox(height: 12),
+                      Divider(),
+                      Row(children: [
+                        Icon(Icons.inventory_2, size: 14, color: Colors.teal.shade700),
+                        SizedBox(width: 6),
+                        Text(_s.melariSummaryVasetti,
+                            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.teal.shade700)),
+                        Spacer(),
+                        Text('$totVasetti', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal.shade700)),
+                      ]),
+                      SizedBox(height: 4),
+                      ...sortedFormati.map((fmt) => Padding(
+                        padding: EdgeInsets.only(top: 2, left: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(_s.melariSummaryVasettiFormato(fmt, vasettiPerFormato[fmt]!),
+                                style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                          ],
+                        ),
+                      )),
+                    ],
                   ],
                 ),
               ),
             ),
             SizedBox(height: 16),
-            ...List.generate(filtered.length, (i) {
-              final sm = filtered[i];
-              final melariCount = (sm['melari'] as List?)?.length ?? sm['melari_count'] ?? 0;
-              final gruppoNome = sm['apiario_gruppo_nome'] as String?;
-              return Card(
-                margin: EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: Icon(Icons.local_drink, color: Colors.amber),
-                  title: Text(_s.melariSmielaturaItem(sm['tipo_miele']?.toString() ?? '', sm['quantita_miele']?.toString() ?? '0')),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_s.melariSmielaturaSubtitle(sm['data']?.toString() ?? '', sm['apiario_nome']?.toString() ?? '', melariCount)),
-                      if (gruppoNome != null)
-                        Row(children: [
-                          Icon(Icons.group, size: 11, color: ThemeConstants.primaryColor),
-                          SizedBox(width: 3),
-                          Text(gruppoNome, style: TextStyle(fontSize: 11, color: ThemeConstants.primaryColor)),
-                        ]),
-                    ],
-                  ),
-                  trailing: Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: sm['id'])
-                        .then((_) => _refreshAll());
-                  },
-                ),
-              );
-            }),
+            ..._buildSmielatureLista(filtered),
           ],
         ),
       )),
     ]);
+  }
+
+  // Smielatura "attiva" = ancora con miele residuo e non archiviata.
+  // Le esaurite/archiviate finiscono in una sezione "Storico" collassabile,
+  // così il flusso operativo resta pulito ma lo storico resta consultabile
+  // (e il riepilogo annuale già lo include perché legge tutta `filtered`).
+  bool _smielaturaAttiva(Map<String, dynamic> sm) {
+    final archiviata = sm['archiviata'] == true;
+    final esaurita = sm['is_esaurita'] == true;
+    return !archiviata && !esaurita;
+  }
+
+  List<Widget> _buildSmielatureLista(List<Map<String, dynamic>> filtered) {
+    final attive = filtered.where(_smielaturaAttiva).toList();
+    final storico = filtered.where((s) => !_smielaturaAttiva(s)).toList();
+    if (filtered.isEmpty) {
+      return [
+        Center(child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(_s.melariNoSmielature, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+        )),
+      ];
+    }
+    return [
+      if (attive.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(_s.melariNoSmielatureAttive,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600])),
+        )
+      else
+        ...attive.map(_buildSmielaturaCard),
+      if (storico.isNotEmpty) _buildStoricoSmielature(storico),
+    ];
+  }
+
+  Widget _buildSmielaturaCard(Map<String, dynamic> sm) {
+    final melariCount = (sm['melari'] as List?)?.length ?? sm['melari_count'] ?? 0;
+    final gruppoNome = sm['apiario_gruppo_nome'] as String?;
+    final residui = double.tryParse(sm['kg_residui']?.toString() ?? '');
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: const Icon(Icons.local_drink, color: Colors.amber),
+        title: Text(_s.melariSmielaturaItem(
+            sm['tipo_miele']?.toString() ?? '',
+            sm['quantita_miele']?.toString() ?? '0')),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_s.melariSmielaturaSubtitle(
+                sm['data']?.toString() ?? '',
+                sm['apiario_nome']?.toString() ?? '',
+                melariCount)),
+            if (residui != null && residui > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(_s.melariSmielaturaResidui(residui.toStringAsFixed(1)),
+                    style: TextStyle(fontSize: 11, color: Colors.amber.shade800, fontWeight: FontWeight.w600)),
+              ),
+            if (gruppoNome != null)
+              Row(children: [
+                Icon(Icons.group, size: 11, color: ThemeConstants.primaryColor),
+                const SizedBox(width: 3),
+                Text(gruppoNome, style: TextStyle(fontSize: 11, color: ThemeConstants.primaryColor)),
+              ]),
+          ],
+        ),
+        trailing: PopupMenuButton<String>(
+          itemBuilder: (_) => [
+            PopupMenuItem(value: 'open', child: Text(_s.melariMenuApri)),
+            PopupMenuItem(value: 'archivia', child: Text(_s.melariMenuArchivia)),
+          ],
+          onSelected: (v) {
+            if (v == 'open') {
+              Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: sm['id'])
+                  .then((_) => _refreshAll());
+            } else if (v == 'archivia') {
+              _archiviaSmielatura(sm['id'] as int, true);
+            }
+          },
+        ),
+        onTap: () {
+          Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: sm['id'])
+              .then((_) => _refreshAll());
+        },
+      ),
+    );
+  }
+
+  Widget _buildStoricoSmielature(List<Map<String, dynamic>> storico) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: Row(children: [
+          Text(_s.melariStoricoSmielature,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('${storico.length}',
+                style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+          ),
+        ]),
+        children: storico.map((sm) {
+          final archiviata = sm['archiviata'] == true;
+          return Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            color: Colors.grey.shade50,
+            child: ListTile(
+              dense: true,
+              leading: Icon(
+                archiviata ? Icons.archive : Icons.check_circle,
+                color: archiviata ? Colors.grey : Colors.green.shade600,
+                size: 20,
+              ),
+              title: Text(
+                _s.melariSmielaturaItem(
+                    sm['tipo_miele']?.toString() ?? '',
+                    sm['quantita_miele']?.toString() ?? '0'),
+                style: const TextStyle(fontSize: 13),
+              ),
+              subtitle: Text(
+                _s.melariSmielaturaSubtitle(
+                    sm['data']?.toString() ?? '',
+                    sm['apiario_nome']?.toString() ?? '',
+                    (sm['melari'] as List?)?.length ??
+                        (sm['melari_count'] as int?) ??
+                        0),
+                style: const TextStyle(fontSize: 11),
+              ),
+              trailing: archiviata
+                  ? IconButton(
+                      icon: const Icon(Icons.unarchive, size: 20),
+                      tooltip: _s.melariMenuRipristina,
+                      onPressed: () => _archiviaSmielatura(sm['id'] as int, false),
+                    )
+                  : const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pushNamed(context, AppConstants.smielaturaDetailRoute, arguments: sm['id'])
+                    .then((_) => _refreshAll());
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Future<void> _archiviaSmielatura(int id, bool archiviata) async {
+    try {
+      await _apiService.post(
+        '${ApiConstants.produzioniUrl}$id/archivia/',
+        {'archiviata': archiviata},
+      );
+      // Patch ottimistico cache locale per coerenza UI immediata
+      final idx = _smielature.indexWhere((s) => s['id'] == id);
+      if (idx != -1) {
+        setState(() {
+          _smielature[idx] = {..._smielature[idx], 'archiviata': archiviata};
+        });
+      }
+      _refreshAll();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_s.msgErrorGeneric(e.toString()))),
+      );
+    }
   }
 
   Widget _buildSummaryItem(String label, String value) {
@@ -386,23 +649,6 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         SizedBox(height: 4),
         Text(label, style: TextStyle(color: Colors.grey[600])),
       ],
-    );
-  }
-
-  Widget _buildCantinaCard() {
-    return Card(
-      color: Colors.amber.shade50,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.amber.shade300),
-      ),
-      child: ListTile(
-        leading: Text('🍯', style: TextStyle(fontSize: 24)),
-        title: Text(_s.melariCantinaTitolo, style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(_s.melariCantinaSubtitle),
-        trailing: Icon(Icons.chevron_right, color: Colors.amber.shade700),
-        onTap: () => Navigator.pushNamed(context, AppConstants.cantinaRoute).then((_) => _refreshAll()),
-      ),
     );
   }
 
@@ -606,15 +852,20 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       return Center(child: Text(_s.melariNoData));
     }
 
-    final totPosizionati  = _melari.where((m) => m.stato == 'posizionato').length;
-    final totInSmielatura = _melari.where((m) => m.stato == 'in_smielatura').length;
+    final totPosizionati = _melari.where((m) => m.stato == 'posizionato').length;
+    // "Da smielare": melari rimossi dall'arnia oppure (per dati storici)
+    // esplicitamente messi in coda di smielatura. Sono i candidati per la
+    // prossima Smielatura nel form dedicato.
+    final totDaSmielare = _melari
+        .where((m) => m.stato == 'rimosso' || m.stato == 'in_smielatura')
+        .length;
 
     return RefreshIndicator(
       onRefresh: _refreshAll,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildHiveStats(totPosizionati, totInSmielatura),
+          _buildHiveStats(totPosizionati, totDaSmielare),
           const SizedBox(height: 12),
           _buildHiveLegend(),
           const SizedBox(height: 16),
@@ -646,16 +897,46 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
             final hScrollCtrl = _apiarioHScrollCtrls.putIfAbsent(
                 apiarioId, () => ScrollController());
+            final daSmielareInApiario = _melari
+                .where((m) =>
+                    m.apiarioId == apiarioId &&
+                    (m.stato == 'rimosso' || m.stato == 'in_smielatura'))
+                .length;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  apiarioNomi[apiarioId] ?? 'Apiario $apiarioId',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: ThemeConstants.primaryColor,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        apiarioNomi[apiarioId] ?? 'Apiario $apiarioId',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: ThemeConstants.primaryColor,
+                        ),
+                      ),
+                    ),
+                    if (daSmielareInApiario > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF0E0),
+                          border: Border.all(
+                              color: const Color(0xFFFF7A00), width: 1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$daSmielareInApiario ${_s.melariDaSmielare}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFF7A00),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 Divider(color: ThemeConstants.primaryColor.withOpacity(0.3)),
                 const SizedBox(height: 8),
@@ -705,6 +986,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         .toList()
       ..sort((a, b) => b.posizione.compareTo(a.posizione));
 
+    // Counter "Da smielare" per questa arnia/colonia: melari in stato
+    // rimosso o in_smielatura che appartenevano (e ancora referenziano)
+    // questa arnia. Allineato all'obiettivo dati-per-colonia.
+    final daSmielareOnArnia = melariOnArnia
+        .where((m) => m.stato == 'rimosso' || m.stato == 'in_smielatura')
+        .length;
+
     final hasQE = activeMelari.any((m) => m.escludiRegina);
 
     Color arniaColor;
@@ -716,24 +1004,43 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
     final isHighlighted = _highlightedArniaId == arnia.id;
 
-    return GestureDetector(
-      onTap: () => setState(() {
-        _highlightedArniaId =
-            _highlightedArniaId == arnia.id ? null : arnia.id;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: _superW + 20,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        decoration: BoxDecoration(
-          color: isHighlighted
-              ? ThemeConstants.primaryColor.withOpacity(0.10)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: isHighlighted
-              ? Border.all(color: ThemeConstants.primaryColor, width: 1.6)
-              : Border.all(color: Colors.transparent, width: 1.6),
-        ),
+    // DragTarget di colonna: cattura i drop su spazio "vuoto" della colonna
+    // (non sopra a un altro melario), gestendo lo spostamento in arnia anche
+    // quando l'arnia di destinazione non ha melari.
+    return DragTarget<Melario>(
+      onWillAcceptWithDetails: (details) =>
+          details.data.arnia != arnia.id &&
+          details.data.stato == 'posizionato',
+      onAcceptWithDetails: (details) =>
+          _moveMelarioToArnia(details.data, arnia.id, apiarioId),
+      builder: (ctx, candidates, rejected) {
+        final isDragOver = candidates.isNotEmpty;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _highlightedArniaId =
+                _highlightedArniaId == arnia.id ? null : arnia.id;
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _superW + 20,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDragOver
+                  ? ThemeConstants.primaryColor.withOpacity(0.18)
+                  : isHighlighted
+                      ? ThemeConstants.primaryColor.withOpacity(0.10)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: isDragOver
+                  ? Border.all(
+                      color: ThemeConstants.primaryColor,
+                      width: 2,
+                      style: BorderStyle.solid)
+                  : isHighlighted
+                      ? Border.all(
+                          color: ThemeConstants.primaryColor, width: 1.6)
+                      : Border.all(color: Colors.transparent, width: 1.6),
+            ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -741,29 +1048,18 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             // Add melario button
             _buildAddSuperBtn(arnia.id, apiarioId),
             const SizedBox(height: 4),
-            // Melari stacked with ReorderableListView
-            ReorderableListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              proxyDecorator: (child, index, animation) {
-                return Material(
-                  elevation: 0,
-                  color: Colors.transparent,
-                  child: child,
-                );
-              },
-              onReorder: (oldIndex, newIndex) {
-                if (newIndex > oldIndex) newIndex -= 1;
-                final items = List<Melario>.from(activeMelari);
-                final item = items.removeAt(oldIndex);
-                items.insert(newIndex, item);
-                _updateMelariPositions(items);
-              },
-              children: activeMelari.map((m) => Padding(
-                key: ValueKey(m.id),
-                padding: const EdgeInsets.only(bottom: 2),
-                child: _buildMelarioBox(m),
-              )).toList(),
+            // Melari impilati: long-press per trascinare e scambiare con un
+            // altro melario (stessa arnia → swap posizione; arnia diversa →
+            // swap arnia + posizione).
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: activeMelari
+                  .map((m) => Padding(
+                        key: ValueKey('melario-${m.id}'),
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: _buildDraggableMelario(m),
+                      ))
+                  .toList(),
             ),
             // Queen excluder
             if (hasQE) ...[
@@ -771,7 +1067,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
               const SizedBox(height: 2),
             ],
             // Nido
-            _buildNidoBox(),
+            _buildNidoBox(arniaColor),
             const SizedBox(height: 3),
             // Base board
             Container(
@@ -792,11 +1088,237 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 8),
             // Label
-            _buildArniaLabel(arnia.numero, arniaColor, activeMelari.length),
+            _buildArniaLabel(arnia.numero, activeMelari.length, daSmielareOnArnia),
           ],
         ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDraggableMelario(Melario m) {
+    final box = _buildMelarioBox(m);
+    // Solo i melari "posizionato" possono essere trascinati per lo swap;
+    // quelli in_smielatura sono mostrati ma non spostabili.
+    final canDrag = m.stato == 'posizionato';
+    final draggableChild = canDrag
+        ? LongPressDraggable<Melario>(
+            data: m,
+            delay: const Duration(milliseconds: 250),
+            feedback: Material(
+              color: Colors.transparent,
+              elevation: 4,
+              child: Opacity(opacity: 0.9, child: box),
+            ),
+            childWhenDragging: Opacity(opacity: 0.3, child: box),
+            child: box,
+          )
+        : box;
+    return DragTarget<Melario>(
+      onWillAcceptWithDetails: (details) =>
+          details.data.id != m.id && canDrag,
+      onAcceptWithDetails: (details) => _swapMelari(details.data, m),
+      builder: (ctx, candidates, rejected) {
+        if (candidates.isNotEmpty) {
+          return Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: ThemeConstants.primaryColor, width: 2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: draggableChild,
+          );
+        }
+        return draggableChild;
+      },
+    );
+  }
+
+  Future<void> _swapMelari(Melario a, Melario b) async {
+    if (a.id == b.id) return;
+
+    // Risolvi le colonie di destinazione PRIMA dell'aggiornamento ottimistico:
+    // se serve uno spostamento di arnia ma la colonia non è ricavabile, è
+    // meglio bloccare subito che dover fare rollback.
+    int? coloniaForA = b.colonia ?? b.coloniaId;
+    int? coloniaForB = a.colonia ?? a.coloniaId;
+    if (a.arnia != b.arnia) {
+      coloniaForA ??= await _resolveColoniaForArnia(b.arnia ?? -1);
+      coloniaForB ??= await _resolveColoniaForArnia(a.arnia ?? -1);
+      if (coloniaForA == null || coloniaForB == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(
+                'Impossibile scambiare i melari: nessuna colonia attiva sull\'arnia di destinazione.')),
+          );
+        }
+        return;
+      }
+    }
+
+    // Calcola nuovi valori (swap di posizione e di colonia/arnia).
+    final newA = a.copyWith(
+      posizione: b.posizione,
+      colonia: coloniaForA,
+      coloniaId: coloniaForA,
+      arnia: b.arnia,
+      arniaNumero: b.arniaNumero,
+      apiarioId: b.apiarioId,
+      apiarioNome: b.apiarioNome,
+      apiarioGruppoNome: b.apiarioGruppoNome,
+    );
+    final newB = b.copyWith(
+      posizione: a.posizione,
+      colonia: coloniaForB,
+      coloniaId: coloniaForB,
+      arnia: a.arnia,
+      arniaNumero: a.arniaNumero,
+      apiarioId: a.apiarioId,
+      apiarioNome: a.apiarioNome,
+      apiarioGruppoNome: a.apiarioGruppoNome,
+    );
+
+    // Snapshot per rollback
+    final snapshot = List<Melario>.from(_melari);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    // Aggiornamento ottimistico
+    setState(() {
+      final idxA = _melari.indexWhere((x) => x.id == a.id);
+      final idxB = _melari.indexWhere((x) => x.id == b.id);
+      if (idxA != -1) _melari[idxA] = newA;
+      if (idxB != -1) _melari[idxB] = newB;
+    });
+
+    try {
+      // Una sola PATCH per melario: il backend non ha unique constraint su
+      // (colonia, posizione), quindi non serve il "parcheggio" temporaneo.
+      await Future.wait([
+        _apiService.patch(
+          '${ApiConstants.melariUrl}${a.id}/',
+          {
+            if (coloniaForA != null) 'colonia': coloniaForA,
+            'posizione': newA.posizione,
+          },
+        ),
+        _apiService.patch(
+          '${ApiConstants.melariUrl}${b.id}/',
+          {
+            if (coloniaForB != null) 'colonia': coloniaForB,
+            'posizione': newB.posizione,
+          },
+        ),
+      ]);
+
+      await storageService.saveData(
+          'melari', _melari.map((m) => m.toJson()).toList());
+    } catch (e) {
+      debugPrint('Errore swap melari: $e');
+      if (mounted) {
+        setState(() => _melari = snapshot);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore nello swap dei melari: $e')),
+        );
+        _refreshAll();
+      }
+    }
+  }
+
+  Future<int?> _resolveColoniaForArnia(int arniaId) async {
+    // Prima prova a leggerla dai melari già caricati su quella arnia.
+    for (final m in _melari) {
+      if (m.arnia == arniaId && (m.colonia ?? m.coloniaId) != null) {
+        return m.colonia ?? m.coloniaId;
+      }
+    }
+    try {
+      final res = await _apiService
+          .get('${ApiConstants.arnieUrl}$arniaId/colonia_attiva/');
+      if (res is Map<String, dynamic>) return res['id'] as int?;
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _moveMelarioToArnia(
+      Melario m, int destArniaId, int destApiarioId) async {
+    if (m.arnia == destArniaId) return;
+
+    // Calcola la prossima posizione libera sulla destinazione: stessa regola
+    // del form (prima posizione libera dal basso). In assenza di buchi cade
+    // su max+1, quindi resta coerente con "aggiungi in cima allo stack".
+    final occupiedOnDest = <int>{};
+    for (final x in _melari) {
+      if (x.arnia == destArniaId &&
+          (x.stato == 'posizionato' || x.stato == 'in_smielatura')) {
+        occupiedOnDest.add(x.posizione);
+      }
+    }
+    int newPos = 1;
+    while (occupiedOnDest.contains(newPos)) {
+      newPos++;
+    }
+
+    final destColonia = await _resolveColoniaForArnia(destArniaId);
+    if (destColonia == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(
+              'Impossibile spostare: nessuna colonia attiva sull\'arnia di destinazione.')),
+        );
+      }
+      return;
+    }
+
+    // Recupera nome arnia/apiario di destinazione (best-effort) dal cache locale.
+    final destArnia = _arnie.firstWhere(
+      (a) => a.id == destArniaId,
+      orElse: () => Arnia(
+        id: destArniaId,
+        apiario: destApiarioId,
+        apiarioNome: '',
+        numero: 0,
+        colore: '',
+        coloreHex: '#F5A623',
+        dataInstallazione: '',
+        attiva: true,
       ),
     );
+
+    final snapshot = List<Melario>.from(_melari);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    setState(() {
+      final idx = _melari.indexWhere((x) => x.id == m.id);
+      if (idx != -1) {
+        _melari[idx] = m.copyWith(
+          colonia: destColonia,
+          coloniaId: destColonia,
+          arnia: destArniaId,
+          arniaNumero: destArnia.numero,
+          apiarioId: destApiarioId,
+          apiarioNome: destArnia.apiarioNome,
+          posizione: newPos,
+        );
+      }
+    });
+
+    try {
+      await _apiService.patch(
+        '${ApiConstants.melariUrl}${m.id}/',
+        {'colonia': destColonia, 'posizione': newPos},
+      );
+      await storageService.saveData(
+          'melari', _melari.map((x) => x.toJson()).toList());
+    } catch (e) {
+      debugPrint('Errore spostamento melario: $e');
+      if (mounted) {
+        setState(() => _melari = snapshot);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore nello spostamento del melario: $e')),
+        );
+        _refreshAll();
+      }
+    }
   }
 
   Widget _buildMelarioBox(Melario m) {
@@ -868,7 +1390,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                 child: Text('Smiel.', style: TextStyle(fontSize: 8, color: textColor)),
               )
             else if (isPosizionato)
-              Icon(Icons.touch_app, size: 14, color: textColor.withOpacity(0.5)),
+              Icon(Icons.drag_indicator, size: 14, color: textColor.withOpacity(0.55)),
           ],
         ),
       ),
@@ -901,19 +1423,26 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildNidoBox() {
+  Widget _buildNidoBox(Color arniaColor) {
     return Container(
       width: _superW,
       constraints: const BoxConstraints(minHeight: _nidoH),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFA06840), Color(0xFF7A4E2A), Color(0xFF5C3518)],
-          stops: [0.0, 0.5, 1.0],
+          colors: [
+            Color.alphaBlend(Colors.white.withOpacity(0.2), arniaColor),
+            arniaColor,
+            Color.alphaBlend(Colors.black.withOpacity(0.2), arniaColor),
+          ],
+          stops: const [0.0, 0.4, 1.0],
         ),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFF3D200A), width: 1.5),
+        border: Border.all(
+          color: Color.alphaBlend(Colors.black.withOpacity(0.4), arniaColor),
+          width: 1.5,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Column(
@@ -925,7 +1454,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFFFE4B5).withOpacity(0.8),
+              color: arniaColor.computeLuminance() > 0.5
+                  ? Colors.black.withOpacity(0.7)
+                  : Colors.white.withOpacity(0.8),
               letterSpacing: 1.2,
             ),
           ),
@@ -976,30 +1507,32 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildArniaLabel(int numero, Color color, int melariCount) {
+  Widget _buildArniaLabel(int numero, int melariCount, int daSmielareCount) {
     return Column(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10, height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 4),
-            Text(_s.melariArniaNumLabel(numero),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          ],
-        ),
+        Text(_s.melariArniaNumLabel(numero),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         Text(
           melariCount == 0 ? _s.melariNoMelari : _s.melariCountMelari(melariCount),
           style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
         ),
+        if (daSmielareCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '$daSmielareCount ${_s.melariDaSmielare}',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFFF7A00),
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildHiveStats(int posizionati, int inSmielatura) {
+  Widget _buildHiveStats(int posizionati, int daSmielare) {
     return Row(
       children: [
         Expanded(child: Card(
@@ -1021,9 +1554,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
             child: Column(children: [
-              Text('$inSmielatura',
+              Text('$daSmielare',
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFF7A00))),
-              Text(_s.melariInSmielatura, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              Text(_s.melariDaSmielare, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
             ]),
           ),
         )),
@@ -1035,7 +1568,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     return Wrap(
       spacing: 12, runSpacing: 4,
       children: [
-        _legendItem(const Color(0xFF7A4E2A), _s.melariHiveLegendNido),
+        _legendItem(Colors.blueGrey.shade300, _s.melariHiveLegendNido),
         _legendItem(const Color(0xFFF5A623), _s.melariHiveLegendPosizionato),
         _legendItem(const Color(0xFFFF7A00), _s.melariHiveLegendInSmielatura),
       ],
@@ -1057,47 +1590,155 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   }
 
   void _showMelarioBottomSheet(Melario m) {
+    final dataPos = DateTime.tryParse(m.dataPosizionamento);
+    final dataPosFmt = dataPos != null
+        ? '${dataPos.day.toString().padLeft(2, "0")}/${dataPos.month.toString().padLeft(2, "0")}/${dataPos.year}'
+        : m.dataPosizionamento;
+    final giorni = dataPos != null
+        ? DateTime.now().difference(dataPos).inDays
+        : null;
+    final statoLabel = _statoMelarioLabel(m.stato);
+    final faviLabel = m.statoFavi == 'fogli_cerei' ? 'Fogli cerei' : 'Già costruiti';
+
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_s.melariMelarioId(m.id),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(_s.melariTelainiPosizione(m.numeroTelaini, m.posizione, _tipoLabel(m.tipoMelario))),
-            if (m.pesoStimato != null)
-              Text(_s.melariPesoStimatoLabel(m.pesoStimato!.toStringAsFixed(1)),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 12),
-            if (m.stato == 'posizionato')
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(
+                      color: m.stato == 'in_smielatura'
+                          ? const Color(0xFFFF7A00)
+                          : const Color(0xFFF5A623),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.layers, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_s.melariMelarioId(m.numeroDisplay),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        if (m.arniaNumero != null)
+                          Text('Arnia ${m.arniaNumero}'
+                              '${m.apiarioNome != null ? " · ${m.apiarioNome}" : ""}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(statoLabel,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              _infoRow(Icons.calendar_today, 'Data posizionamento', dataPosFmt),
+              if (giorni != null)
+                _infoRow(Icons.timelapse, 'Giorni in arnia',
+                    giorni == 0 ? 'oggi' : (giorni == 1 ? '1 giorno' : '$giorni giorni')),
+              _infoRow(Icons.view_week, 'Telaini', '${m.numeroTelaini}'),
+              _infoRow(Icons.layers, 'Posizione', '${m.posizione}°'),
+              _infoRow(Icons.grid_on, 'Tipo', _tipoLabel(m.tipoMelario)),
+              _infoRow(Icons.style, 'Stato favi', faviLabel),
+              _infoRow(Icons.block, 'Escludi regina', m.escludiRegina ? 'Sì' : 'No'),
+              if (m.pesoStimato != null)
+                _infoRow(Icons.scale, 'Peso stimato',
+                    '${m.pesoStimato!.toStringAsFixed(1)} kg'),
+              if (m.note != null && m.note!.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Note', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(m.note!),
+              ],
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              if (m.stato == 'posizionato' || m.stato == 'in_smielatura')
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.edit, color: Colors.indigo),
+                  title: Text(_s.melariMenuEdit),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.of(context)
+                        .pushNamed(AppConstants.melarioCreateRoute,
+                            arguments: {'editingMelario': m})
+                        .then((result) { if (result == true) _refreshAll(); });
+                  },
+                ),
+              if (m.stato == 'posizionato')
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.remove_circle_outline, color: Colors.blue),
+                  title: Text(_s.melariRemoveMelarioTitle),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showRemoveDialogFromView(m);
+                  },
+                ),
               ListTile(
-                leading: const Icon(Icons.remove_circle_outline, color: Colors.blue),
-                title: Text(_s.melariRemoveMelarioTitle),
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: Text(_s.melariEliminaMelarioTitle),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _showRemoveDialogFromView(m);
+                  _confirmDeleteFromView(m);
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: Text(_s.melariEliminaMelarioTitle),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmDeleteFromView(m);
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+          ),
+          Text(value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  String _statoMelarioLabel(String stato) {
+    switch (stato) {
+      case 'posizionato':   return 'Posizionato';
+      case 'in_smielatura': return 'In smielatura';
+      case 'rimosso':       return 'Rimosso';
+      case 'smielato':      return 'Smielato';
+      default:              return stato;
+    }
   }
 
   String _tipoLabel(String tipo) {
@@ -1135,29 +1776,54 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              try {
-                final peso = double.tryParse(pesoCtrl.text);
-                await _apiService.removeMelario(
-                  m.id,
-                  data: {
-                    'data_rimozione': DateTime.now().toIso8601String().split('T')[0],
-                    if (peso != null) 'peso_stimato': peso,
-                  },
-                );
-                _refreshAll();
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(_s.melariRemoveMelarioError(e.toString()))),
-                  );
-                }
-              }
+              await _removeMelarioOptimistic(m, double.tryParse(pesoCtrl.text));
             },
             child: Text(_s.melariConfirmBtn),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _removeMelarioOptimistic(Melario m, double? peso) async {
+    final dataRimozione = DateTime.now().toIso8601String().split('T')[0];
+    final snapshot = List<Melario>.from(_melari);
+    final storageService = Provider.of<StorageService>(context, listen: false);
+
+    // Aggiornamento ottimistico: il melario sparisce dalla vista alveari
+    // (filtrata su posizionato/in_smielatura) e va a popolare il counter
+    // "Da smielare".
+    setState(() {
+      final idx = _melari.indexWhere((x) => x.id == m.id);
+      if (idx != -1) {
+        _melari[idx] = m.copyWith(
+          stato: 'rimosso',
+          dataRimozione: dataRimozione,
+          pesoStimato: peso ?? m.pesoStimato,
+        );
+      }
+    });
+
+    try {
+      await _apiService.removeMelario(
+        m.id,
+        data: {
+          'data_rimozione': dataRimozione,
+          if (peso != null) 'peso_stimato': peso,
+        },
+      );
+      await storageService.saveData(
+          'melari', _melari.map((x) => x.toJson()).toList());
+    } catch (e) {
+      debugPrint('Errore rimozione melario: $e');
+      if (mounted) {
+        setState(() => _melari = snapshot);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.melariRemoveMelarioError(e.toString()))),
+        );
+        _refreshAll();
+      }
+    }
   }
 
   void _confirmDeleteFromView(Melario m) {
@@ -1193,49 +1859,6 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
     );
   }
 
-  Future<void> _updateMelariPositions(List<Melario> reorderedList) async {
-    // 1. Aggiornamento ottimistico dello stato locale
-    setState(() {
-      for (int i = 0; i < reorderedList.length; i++) {
-        final m = reorderedList[i];
-        final newPos = reorderedList.length - i;
-        final idx = _melari.indexWhere((element) => element.id == m.id);
-        if (idx != -1) {
-          _melari[idx] = _melari[idx].copyWith(posizione: newPos);
-        }
-      }
-    });
-
-    // 2. Sincronizzazione con il server
-    try {
-      final futures = <Future>[];
-      for (int i = 0; i < reorderedList.length; i++) {
-        final m = reorderedList[i];
-        final newPos = reorderedList.length - i;
-        // Invia PATCH solo se la posizione è effettivamente cambiata sul server
-        // Nota: m.posizione qui è quella vecchia prima dell'aggiornamento ottimistico
-        // se reorderedList è una copia scattata prima del setState.
-        // Ma qui reorderedList contiene i melari con le vecchie posizioni.
-        if (m.posizione != newPos) {
-          futures.add(_apiService.patch('${ApiConstants.melariUrl}${m.id}/', {'posizione': newPos}));
-        }
-      }
-      if (futures.isNotEmpty) {
-        await Future.wait(futures);
-        // Salva nello storage locale dopo il successo
-        final storageService = Provider.of<StorageService>(context, listen: false);
-        await storageService.saveData('melari', _melari.map((m) => m.toJson()).toList());
-      }
-    } catch (e) {
-      debugPrint('Errore durante l\'aggiornamento posizioni melari: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore nel salvataggio dell\'ordine: $e')),
-        );
-        _refreshAll(); // Rollback ricaricando i dati
-      }
-    }
-  }
 }
 
 class _QEPainter extends CustomPainter {

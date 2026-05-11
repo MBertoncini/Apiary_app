@@ -32,7 +32,9 @@
       "WebFetch(domain:cible99.pythonanywhere.com)",
       "WebFetch(domain:generativelanguage.googleapis.com)",
       "WebFetch(domain:ai.google.dev)",
-      "WebFetch(domain:www.revenuecat.com)"
+      "WebFetch(domain:www.revenuecat.com)",
+      "Bash(ls \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\vendita\")",
+      "Bash(ls \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\vendite\")"
     ]
   }
 }

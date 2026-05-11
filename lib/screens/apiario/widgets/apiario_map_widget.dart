@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 import '../../../services/language_service.dart';
 import '../../../widgets/attrezzatura_prompt_dialog.dart';
+import '../../../widgets/beehive_illustrations.dart';
 
 // ════════════════════════════════════════════════════════════════
 //  DATA MODELS
@@ -1110,7 +1111,9 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   List<Widget> _buildMelariBoxes(int arniaId) {
     if (widget.melariData == null) return [];
     final active = widget.melariData!
-        .where((m) => (m['arnia_id'] ?? m['arnia']) == arniaId && m['stato'] == 'posizionato')
+        .where((m) =>
+            (m['arnia_id'] ?? m['arnia']) == arniaId &&
+            (m['stato'] == 'posizionato' || m['stato'] == 'in_smielatura'))
         .toList()
       ..sort((a, b) => ((b['posizione'] as num?)?.toInt() ?? 0)
           .compareTo((a['posizione'] as num?)?.toInt() ?? 0));
@@ -1203,15 +1206,11 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '♛',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: presenzaRegina
-                        ? const Color(0xFF69F0AE)
-                        : const Color(0xFFFF6E6E),
-                    height: 1,
-                  ),
+                HandDrawnQueenBee(
+                  size: 10,
+                  color: presenzaRegina
+                      ? const Color(0xFF69F0AE)
+                      : const Color(0xFFFF6E6E),
                 ),
                 if (celleReali) ...[
                   const SizedBox(width: 2),
@@ -1993,7 +1992,7 @@ class _HiveCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final disp = isActive ? color : Colors.grey.shade400;
     final lum = disp.computeLuminance();
-    final tc = lum > 0.4 ? Colors.black87 : Colors.white;
+    final tc = lum > 0.5 ? Colors.black : Colors.white;
     final isSmall = !tipo.isFullHive;
     final prefix = switch (tipo) {
       HiveTipo.apidea             => 'A',
@@ -2042,14 +2041,16 @@ class _HiveCell extends StatelessWidget {
               padding: EdgeInsets.symmetric(
                   horizontal: cellSize * .06, vertical: cellSize * .02),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(.18),
+                color: tc == Colors.black ? Colors.white.withOpacity(.25) : Colors.black.withOpacity(.18),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(label,
                 style: TextStyle(
                   color: tc, fontWeight: FontWeight.w900, height: 1,
                   fontSize: isSmall ? cellSize * .26 : cellSize * .28,
-                  shadows: [Shadow(color: Colors.black.withOpacity(.25), blurRadius: 3)],
+                  shadows: tc == Colors.white 
+                      ? [Shadow(color: Colors.black.withOpacity(.25), blurRadius: 3)]
+                      : null,
                 )),
             ),
           ),

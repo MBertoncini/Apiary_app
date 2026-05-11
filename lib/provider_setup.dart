@@ -18,6 +18,7 @@ import 'services/audio_service.dart';
 import 'services/bee_detection_service.dart';
 import 'services/analisi_telaino_service.dart';
 import 'services/subscription_service.dart';
+import 'services/nfc_handler.dart';
 
 List<SingleChildWidget> providers = [
   // Language service (independent) — must be first so MaterialApp can read it
@@ -45,6 +46,15 @@ List<SingleChildWidget> providers = [
   // by reference so the same ApiService always sees the latest token.
   ProxyProvider<AuthService, ApiService>(
     update: (_, authService, prev) => prev ?? ApiService(authService),
+  ),
+
+  // NFC Handler (depends on API and storage)
+  ChangeNotifierProxyProvider2<ApiService, StorageService, NfcHandler>(
+    create: (context) => NfcHandler(
+      Provider.of<ApiService>(context, listen: false),
+      Provider.of<StorageService>(context, listen: false),
+    ),
+    update: (_, api, storage, prev) => prev ?? NfcHandler(api, storage),
   ),
 
   // Sync service (depends on API and storage) - periodic sync NOT auto-started

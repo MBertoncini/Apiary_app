@@ -467,12 +467,48 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
   }
 
   Widget _buildBody() {
-    switch (_step) {
-      case 0: return _buildConfigStep();
-      case 1: return _buildAnalyzingStep();
-      case 2: return _buildResultsStep();
-      default: return const SizedBox();
-    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: 80,
+              color: Colors.orange.shade300,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Analisi AI: Coming Soon!",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange.shade800,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Stiamo aggiornando il motore di intelligenza artificiale per supportare i nuovi standard di sicurezza e prestazioni di Android 15.",
+              style: TextStyle(fontSize: 16, color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Questa funzione tornerà disponibile a breve. Grazie per la pazienza!",
+              style: TextStyle(fontSize: 14, color: Colors.black45, fontStyle: FontStyle.italic),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Torna indietro"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // -------------------------------------------------------------------------

@@ -664,6 +664,8 @@ class StringsIt extends AppStrings {
   @override String reginaDetailDeleteMsg(String arniaId) =>
       'Sei sicuro di voler eliminare la regina dell\'arnia $arniaId?\n\n'
       'Questa azione non può essere annullata.';
+  @override String get reginaDetailErrorNoArnia =>
+      'Questa regina non è associata a un\'arnia: impossibile modificarla o sostituirla.';
   @override String reginaDetailAgeAnni(int n) => '$n ${n == 1 ? 'anno' : 'anni'}';
   @override String reginaDetailAgeMesi(int n) => '$n ${n == 1 ? 'mese' : 'mesi'}';
   @override String reginaDetailAgeGiorni(int n) => '$n ${n == 1 ? 'giorno' : 'giorni'}';
@@ -687,6 +689,8 @@ class StringsIt extends AppStrings {
   @override String get reginaFormHintNessunaRegina => 'Nessuna (regina fondatrice)';
   @override String get reginaFormBtnSave => 'SALVA REGINA';
   @override String reginaFormError(String e) => 'Errore: $e';
+  @override String get reginaFormErrorInvalidArnia =>
+      'Arnia non valida: torna al dettaglio arnia e riprova.';
   @override String get reginaFormHintDataNascitaVuota => 'Non specificata';
   @override String get reginaFormValutazioniTitle => 'Valutazioni (opzionale)';
   @override String get reginaFormValutazioniHint => 'Tocca le stelle per assegnare un punteggio da 1 a 5.';
@@ -694,6 +698,8 @@ class StringsIt extends AppStrings {
   @override String get reginaFormLblNote => 'Note (opzionale)';
   @override String get reginaFormCreatedOk => 'Regina aggiunta con successo';
   @override String get reginaFormUpdatedOk => 'Regina modificata con successo';
+  @override String get reginaDetailSospettaAssenteMsg => 'ATTENZIONE: questa regina è segnalata come assente negli ultimi due controlli. Potrebbe essere morta.';
+  @override String get reginaDetailLblCodiceMarcatura => 'Codice marcatura';
 
   // ── Melario / Smielatura screens ──────────────────────────────────────────
   @override String get melariTitle => 'Melari e Produzioni';
@@ -702,6 +708,12 @@ class StringsIt extends AppStrings {
   @override String get melariTabTutti => 'Tutti';
   @override String get melariTabPersonali => 'Personali';
   @override String get melariNoSmielature => 'Nessuna smielatura registrata';
+  @override String get melariNoSmielatureAttive => 'Nessuna smielatura attiva. Tutte trasferite o archiviate.';
+  @override String get melariStoricoSmielature => 'Storico smielature';
+  @override String get melariMenuApri => 'Apri';
+  @override String get melariMenuArchivia => 'Archivia';
+  @override String get melariMenuRipristina => 'Ripristina';
+  @override String melariSmielaturaResidui(String kg) => '⏳ $kg kg ancora da trasferire';
   @override String get melariRiepilogoProd => 'Riepilogo Produzioni';
   @override String get melariKg => 'kg';
   @override String melariSmielaturaItem(String tipo, String qty) => '$tipo - $qty kg';
@@ -729,7 +741,7 @@ class StringsIt extends AppStrings {
   @override String get melariMelarioLabel => 'Melario';
   @override String melariArniaLabel(String num) => 'Arnia #$num';
   @override String get melariPosizionati => 'Posizionati';
-  @override String get melariInSmielatura => 'In smielatura';
+  @override String get melariDaSmielare => 'Da smielare';
   @override String melariMelarioId(int id) => 'Melario #$id';
   @override String melariTelainiPosizione(int telaini, int posizione, String tipo) =>
       '$telaini telaini · Posizione $posizione · $tipo';
@@ -743,6 +755,9 @@ class StringsIt extends AppStrings {
   @override String get melariSummaryTipi => 'Tipi';
   @override String get melariSummaryInvasettato => 'Invasettato';
   @override String get melariSummaryRaccolto => 'Raccolto';
+  @override String get melariAnnoTutti => 'Tutti';
+  @override String get melariSummaryVasetti => 'Vasetti';
+  @override String melariSummaryVasettiFormato(int formato, int n) => '${formato}g: $n vasetti';
   @override String get melariHiveLegendNido => 'Nido';
   @override String get melariHiveLegendPosizionato => 'Posizionato';
   @override String get melariHiveLegendInSmielatura => 'In smielatura';
@@ -785,12 +800,17 @@ class StringsIt extends AppStrings {
   @override String melarioFormLoadError(String e) => 'Errore nel caricamento: $e';
   @override String melarioFormArnieLoadError(String e) => 'Errore caricamento arnie: $e';
   @override String get melarioFormCreatedOk => 'Melario aggiunto con successo';
+  @override String get melarioFormTitleEdit => 'Modifica Melario';
+  @override String get melarioFormBtnUpdate => 'Salva modifiche';
+  @override String get melarioFormUpdatedOk => 'Melario aggiornato con successo';
+  @override String get melarioFormNoColoniaError => 'Nessuna colonia attiva sull\'arnia selezionata: il melario non può essere posizionato.';
+  @override String smielaturaFormMelarioDates(String immissione, String rimozione) => 'Immissione: $immissione - Rimozione: $rimozione';
   // Smielatura form extra
   @override String get smielaturaFormLblMelariDisp => 'Melari disponibili';
   @override String get smielaturaFormValidateNumero => 'Inserisci un numero valido';
   @override String get smielaturaFormValidateQuantitaMax => 'La quantità non può superare 99999.99 kg';
   @override String get smielaturaFormSelectMelarioMsg => 'Seleziona almeno un melario';
-  @override String get smielaturaFormNoMelariDisp => 'Nessun melario in stato "in smielatura" per questo apiario. Per renderne uno disponibile, dalla schermata Melari apri il melario posizionato e scegli "Rimuovi".';
+  @override String get smielaturaFormNoMelariDisp => 'Nessun melario disponibile per la smielatura su questo apiario. Sono selezionabili i melari posizionati o già rimossi non ancora associati a un\'altra smielatura.';
   @override String get smielaturaFormBtnCreate => 'REGISTRA';
   @override String get smielaturaFormBtnUpdate => 'AGGIORNA';
   @override String get smielaturaFormCreatedOk => 'Smielatura registrata';
@@ -921,7 +941,33 @@ class StringsIt extends AppStrings {
   @override String get dashFabVoiceInput => 'Input vocale';
   @override String get dashFabAiAssistant => 'ApiarioAI Assistant';
   @override String get dashFabScanQr => 'Scansiona QR';
+  @override String get dashFabScanNfc => 'Scansiona NFC';
+  @override String get nfcNotAvailable => 'NFC non disponibile su questo dispositivo';
+  @override String get nfcScanning => 'Avvicina il tag al dispositivo…';
+  @override String get nfcTagNotFound => 'Nessuna arnia associata a questo tag';
+  @override String get nfcError => 'Errore lettura tag NFC';
   @override String get dashFabNewApiario => 'Nuovo apiario';
+
+  @override String get sectionNfc => 'Azione NFC';
+  @override String get nfcSettingsSubtitle => 'Cosa fa l\'app quando leggi un chip NFC sull\'arnia';
+  @override String get nfcActionManual => 'Controllo manuale';
+  @override String get nfcActionManualDesc => 'Apre il form di inserimento manuale dell\'ispezione';
+  @override String get nfcActionVoice => 'Controllo vocale';
+  @override String get nfcActionVoiceDesc => 'Avvia la registrazione vocale con il numero arnia già impostato';
+  @override String get nfcAlwaysListening => 'Sempre in ascolto';
+  @override String get nfcAlwaysListeningDesc => 'Scansiona i tag NFC in qualsiasi momento quando l\'app è aperta';
+
+  @override String get nfcChipPairing => 'Chip NFC';
+  @override String get nfcChipAssigned => 'Chip associato';
+  @override String get nfcChipNone => 'Nessun chip associato';
+  @override String get nfcScanToAssign => 'Associa chip';
+  @override String get nfcChipRemoveBtn => 'Rimuovi';
+  @override String get nfcChipAssignSuccess => 'Chip NFC associato con successo';
+  @override String get nfcChipScanFailed => 'Nessun chip rilevato';
+
+  @override String nfcVoiceBanner(int arniaNumero, String apiarioNome) =>
+      'Controllo vocale · Arnia $arniaNumero · $apiarioNome';
+  @override String get nfcVoiceBannerHint => 'Il numero arnia sarà aggiunto automaticamente alla dettatura';
 
   // ── Auth – Login Screen ───────────────────────────────────────────────────
   @override String get loginSubtitle => 'Accedi per gestire i tuoi apiari';
@@ -1451,6 +1497,10 @@ class StringsIt extends AppStrings {
   @override String cantinaDeleteMaturatoreMsg(String nome) => 'Eliminare il maturatore "$nome"?';
   @override String cantinaDeleteContenitoreMsg(String nome) => 'Eliminare il contenitore "$nome"?';
   @override String get cantinaVenditaErrVasetti => 'Vendita salvata ma errore aggiornamento vasetti';
+  @override String get cantinaStoricoMaturatori => '📦 Storico Maturatori';
+  @override String cantinaStoricoLabel(int n) => '$n svuotati';
+  @override String cantinaMaturatoreStoricoPeriodo(String da, String a) => '$da → $a';
+  @override String cantinaMaturatoreStoricoKg(String kg, int giorni) => '$kg kg · $giorni giorni';
 
   // ── Aggiungi maturatore sheet ──
   @override String get aggiungiMaturatoreTitleNew => 'Nuovo Maturatore';
@@ -1462,6 +1512,14 @@ class StringsIt extends AppStrings {
   @override String get aggiungiMaturatoreLblGiorniMaturazione => 'Giorni maturazione';
   @override String get aggiungiMaturatoreHelperGiorni => 'Auto da tipo miele';
   @override String get aggiungiMaturatoreLblDataInizio => 'Data inizio';
+  @override String get aggiungiMaturatoreLblSmielatura => 'Smielatura di origine';
+  @override String get aggiungiMaturatoreSelectSmielatura => 'Seleziona la smielatura di origine';
+  @override String get aggiungiMaturatoreNoSmielatureAttive =>
+      'Nessuna smielatura con miele residuo. Crea prima una smielatura nel tab "Smielature".';
+  @override String aggiungiMaturatoreSmielaturaItem(String data, String apiario, String tipo, String kgResidui) =>
+      '$data · $apiario · $tipo ($kgResidui kg residui)';
+  @override String aggiungiMaturatoreErrKgEccesso(String kgResidui) =>
+      'Disponibili dalla smielatura: $kgResidui kg';
 
   // ── Trasferisci sheet ──
   @override String trasferisciTitle(String nome) => 'Trasferisci da "$nome"';

@@ -18,13 +18,17 @@ import 'sheets/trasferisci_sheet.dart';
 import 'sheets/invasetta_sheet.dart';
 
 class CantinaScreen extends StatefulWidget {
-  const CantinaScreen({Key? key}) : super(key: key);
+  /// Quando true il widget viene mostrato dentro un Tab di un'altra Scaffold:
+  /// niente Scaffold/AppBar/FAB propri (il FAB lo gestisce il parent via
+  /// GlobalKey<CantinaScreenState>().currentState?.openAddMaturatore()).
+  final bool embedded;
+  const CantinaScreen({Key? key, this.embedded = false}) : super(key: key);
 
   @override
-  State<CantinaScreen> createState() => _CantinaScreenState();
+  State<CantinaScreen> createState() => CantinaScreenState();
 }
 
-class _CantinaScreenState extends State<CantinaScreen> {
+class CantinaScreenState extends State<CantinaScreen> {
   late ApiService _apiService;
   late StorageService _storageService;
 
@@ -93,8 +97,10 @@ class _CantinaScreenState extends State<CantinaScreen> {
   }
 
   // ── Grouped invasettamenti by tipo_miele + formato ──────────────────
+  // Mostriamo solo i lotti con vasetti DISPONIBILI (≠ venduti).
+  // I lotti totalmente venduti restano nel DB per lo storico produzione.
   Map<String, List<Invasettamento>> get _invasettamentiPerTipo {
-    final active = _invasettamenti.where((i) => i.numeroVasetti > 0).toList();
+    final active = _invasettamenti.where((i) => i.vasettiDisponibili > 0).toList();
     final Map<String, List<Invasettamento>> map = {};
     for (final inv in active) {
       map.putIfAbsent(inv.tipoMiele, () => []).add(inv);
@@ -110,12 +116,49 @@ class _CantinaScreenState extends State<CantinaScreen> {
       _contenitori.where((c) => !c.isVuoto).fold(0, (s, c) => s + c.kgAttuali);
 
   int get _totVasetti =>
-      _invasettamenti.fold(0, (s, i) => s + i.numeroVasetti);
+      _invasettamenti.fold(0, (s, i) => s + i.vasettiDisponibili);
+
+  /// Trigger esterno per il FAB quando la schermata è embedded in un Tab.
+  Future<void> openAddMaturatore() => _onAddMaturatore();
+
+  Widget _buildBody() {
+    return Column(
+      children: [
+        const OfflineBanner(),
+        if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? _buildError()
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          _buildSummaryRow(),
+                          const SizedBox(height: 20),
+                          _buildMaturatoriSection(),
+                          const SizedBox(height: 8),
+                          _buildStoricoMaturatoriSection(),
+                          const SizedBox(height: 20),
+                          _buildStoccaggioSection(),
+                          const SizedBox(height: 20),
+                          _buildInvasettatiSection(),
+                          const SizedBox(height: 80),
+                        ],
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     Provider.of<LanguageService>(context);
     final s = _s;
+    if (widget.embedded) return _buildBody();
     return Scaffold(
       appBar: AppBar(
         title: Text(s.cantinaTitle),
@@ -126,34 +169,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          const OfflineBanner(),
-          if (_isRefreshing) const LinearProgressIndicator(minHeight: 2),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? _buildError()
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView(
-                          padding: const EdgeInsets.all(16),
-                          children: [
-                            _buildSummaryRow(),
-                            const SizedBox(height: 20),
-                            _buildMaturatoriSection(),
-                            const SizedBox(height: 20),
-                            _buildStoccaggioSection(),
-                            const SizedBox(height: 20),
-                            _buildInvasettatiSection(),
-                            const SizedBox(height: 80),
-                          ],
-                        ),
-                      ),
-          ),
-        ],
-      ),
+      body: _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _onAddMaturatore,
         icon: const Icon(Icons.add),
@@ -235,6 +251,115 @@ class _CantinaScreenState extends State<CantinaScreen> {
     );
   }
 
+  // ── Storico maturatori svuotati ──────────────────────────────────────
+  Widget _buildStoricoMaturatoriSection() {
+    final s = _s;
+    final svuotati = _maturatori.where((m) => m.isSvuotato).toList()
+      ..sort((a, b) => b.dataInizio.compareTo(a.dataInizio));
+
+    if (svuotati.isEmpty) return const SizedBox.shrink();
+
+    // Group by year
+    final Map<int, List<Maturatore>> byYear = {};
+    for (final m in svuotati) {
+      final y = m.dataInizio.length >= 4 ? (int.tryParse(m.dataInizio.substring(0, 4)) ?? 0) : 0;
+      byYear.putIfAbsent(y, () => []).add(m);
+    }
+    final sortedYears = byYear.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: Row(children: [
+          Text(s.cantinaStoricoMaturatori,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(s.cantinaStoricoLabel(svuotati.length),
+                style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+          ),
+        ]),
+        children: sortedYears.map((year) {
+          final list = byYear[year]!;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 4),
+                child: Text('$year',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+              ),
+              ...list.map((m) => _buildStoricoMaturatoreRow(m)),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildStoricoMaturatoreRow(Maturatore m) {
+    final s = _s;
+    final dataFine = m.dataPronta ?? '';
+    final periodo = s.cantinaMaturatoreStoricoPeriodo(
+      m.dataInizio.length >= 10 ? m.dataInizio.substring(0, 10) : m.dataInizio,
+      dataFine.length >= 10 ? dataFine.substring(0, 10) : dataFine,
+    );
+    final dettaglio = s.cantinaMaturatoreStoricoKg(
+      m.capacitaKg.toStringAsFixed(1),
+      m.giorniMaturazione,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text('📦', style: TextStyle(fontSize: 16)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(m.nome,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text(m.tipoMiele,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(periodo, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              const SizedBox(height: 2),
+              Text(dettaglio,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[800])),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Stoccaggio ───────────────────────────────────────────────────────
   Widget _buildStoccaggioSection() {
     final s = _s;
@@ -302,7 +427,7 @@ class _CantinaScreenState extends State<CantinaScreen> {
             child: LottoVasettiSection(
               tipoMiele: entry.key,
               invasettamenti: entry.value,
-              onSell: (selected, deductions) => _onSellVasetti(entry.key, selected, deductions),
+              onSell: (selected) => _onSellVasetti(entry.key, selected),
             ),
           )),
       ],
@@ -420,20 +545,25 @@ class _CantinaScreenState extends State<CantinaScreen> {
   Future<void> _onSellVasetti(
     String tipoMiele,
     List<Map<String, dynamic>> selected,
-    List<Map<String, dynamic>> deductions,
   ) async {
     final result = await Navigator.pushNamed(
       context,
       '/vendita/create',
       arguments: {'prefill_miele': selected, 'tipo_miele': tipoMiele},
     );
-    // Solo se la vendita è stata salvata, scala i vasetti
-    if (result == true && deductions.isNotEmpty) {
+    // Solo se la vendita è stata salvata, marca i vasetti come venduti.
+    // L'endpoint custom /api/v1/invasettamenti/vendi/ distribuisce
+    // FIFO sui lotti incrementando numero_vasetti_venduti (lo storico
+    // numero_vasetti resta intatto per le statistiche annuali).
+    if (result == true) {
       try {
-        await Future.wait(deductions.map((d) => _apiService.patch(
-          '${ApiConstants.invasettamentiUrl}${d['id']}/',
-          {'numero_vasetti': d['numero_vasetti']},
-        )));
+        for (final item in selected) {
+          await _apiService.post('${ApiConstants.invasettamentiUrl}vendi/', {
+            'tipo_miele': item['tipo_miele'],
+            'formato_vasetto': item['formato_vasetto'],
+            'quantita': item['quantita'],
+          });
+        }
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${_s.cantinaVenditaErrVasetti}: $e')),

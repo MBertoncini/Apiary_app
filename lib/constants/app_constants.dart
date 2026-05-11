@@ -42,6 +42,7 @@ class AppConstants {
   static const String reginaListRoute = "/regine";
   static const String reginaDetailRoute = "/regina/detail";
   static const String reginaCreateRoute = "/regina/create";
+  static const String reginaGenealogiaRoute = "/regine/genealogia";
   
   // Route per trattamenti
   static const String trattamentiRoute = "/trattamenti";

@@ -581,8 +581,10 @@ class MCPService {
     try {
       // Recupera l'ultimo controllo dell'arnia
       final controlliResponse = await _apiService.get('arnie/$arniaId/controlli/');
-      final List<dynamic> controlli = controlliResponse['results'] ?? [];
-      
+      final List<dynamic> controlli = controlliResponse is List
+          ? controlliResponse
+          : (controlliResponse['results'] ?? []);
+
       if (controlli.isEmpty) {
         return {
           'message': 'Nessun controllo disponibile per questa arnia',
@@ -729,18 +731,24 @@ class MCPService {
       
       // Recupera le arnie dell'apiario
       final arnieResponse = await _apiService.get('apiari/$apiarioId/arnie/');
-      final List<dynamic> arnie = arnieResponse['results'] ?? [];
-      
+      final List<dynamic> arnie = arnieResponse is List
+          ? arnieResponse
+          : (arnieResponse['results'] ?? []);
+
       // Recupera i trattamenti dell'apiario
       final trattamentiResponse = await _apiService.get('apiari/$apiarioId/trattamenti/');
-      final List<dynamic> trattamenti = trattamentiResponse['results'] ?? [];
-      
+      final List<dynamic> trattamenti = trattamentiResponse is List
+          ? trattamentiResponse
+          : (trattamentiResponse['results'] ?? []);
+
       // Recupera controlli recenti per tutte le arnie dell'apiario
       List<dynamic> controlliApiario = [];
       for (var arnia in arnie) {
         try {
           final controlliResponse = await _apiService.get('arnie/${arnia['id']}/controlli/');
-          final List<dynamic> controlli = controlliResponse['results'] ?? [];
+          final List<dynamic> controlli = controlliResponse is List
+              ? controlliResponse
+              : (controlliResponse['results'] ?? []);
           
           if (controlli.isNotEmpty) {
             // Ordina per data (più recenti prima)
@@ -804,8 +812,10 @@ class MCPService {
       
       // Recupera i controlli dell'arnia
       final controlliResponse = await _apiService.get('arnie/$arniaId/controlli/');
-      final List<dynamic> controlli = controlliResponse['results'] ?? [];
-      
+      final List<dynamic> controlli = controlliResponse is List
+          ? controlliResponse
+          : (controlliResponse['results'] ?? []);
+
       // Ordina i controlli per data (più recenti prima)
       controlli.sort((a, b) {
         final dateA = _safeParseDate(a['data']);
@@ -985,7 +995,11 @@ class MCPService {
     try {
       // Recupera i controlli dell'arnia
       final controlliResponse = await _apiService.get('arnie/$arniaId/controlli/');
-      final List<dynamic> controlli = controlliResponse['results'] ?? [];
+      // Le custom action DRF possono ritornare una List diretta invece del
+      // wrapper paginato `{results: [...]}` — gestisci entrambe le forme.
+      final List<dynamic> controlli = controlliResponse is List
+          ? controlliResponse
+          : (controlliResponse['results'] ?? []);
       
       // Calcola la data di inizio per il periodo richiesto
       final startDate = DateTime.now().subtract(Duration(days: 30 * months));
@@ -1040,14 +1054,18 @@ class MCPService {
     try {
       // Recupera le arnie dell'apiario
       final arnieResponse = await _apiService.get('apiari/$apiarioId/arnie/');
-      final List<dynamic> arnie = arnieResponse['results'] ?? [];
-      
+      final List<dynamic> arnie = arnieResponse is List
+          ? arnieResponse
+          : (arnieResponse['results'] ?? []);
+
       // Prepara i dati per il grafico
       List<Map<String, dynamic>> chartData = [];
       for (var arnia in arnie) {
         // Ottieni l'ultimo controllo per ogni arnia
         final controlliResponse = await _apiService.get('arnie/${arnia['id']}/controlli/?limit=1');
-        final List<dynamic> controlli = controlliResponse['results'] ?? [];
+        final List<dynamic> controlli = controlliResponse is List
+            ? controlliResponse
+            : (controlliResponse['results'] ?? []);
         
         if (controlli.isNotEmpty) {
           final controllo = controlli.first;
@@ -1112,7 +1130,9 @@ class MCPService {
     try {
       // Recupera i trattamenti dell'apiario
       final trattamentiResponse = await _apiService.get('apiari/$apiarioId/trattamenti/');
-      final List<dynamic> trattamenti = trattamentiResponse['results'] ?? [];
+      final List<dynamic> trattamenti = trattamentiResponse is List
+          ? trattamentiResponse
+          : (trattamentiResponse['results'] ?? []);
       
       // Filtra solo i trattamenti completati
       final completedTrattamenti = trattamenti.where((t) => t['stato'] == 'completato').toList();
@@ -1170,7 +1190,9 @@ class MCPService {
     try {
       // Recupera le smielature dell'apiario
       final smielatureResponse = await _apiService.get('apiari/$apiarioId/smielature/');
-      final List<dynamic> smielature = smielatureResponse['results'] ?? [];
+      final List<dynamic> smielature = smielatureResponse is List
+          ? smielatureResponse
+          : (smielatureResponse['results'] ?? []);
       
       // Calcola la data di inizio per il periodo richiesto
       final startDate = DateTime(DateTime.now().year - years, 1, 1);

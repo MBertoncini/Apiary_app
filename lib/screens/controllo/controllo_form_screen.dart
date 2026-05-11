@@ -17,6 +17,7 @@ import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/contextual_hint.dart';
 import '../../widgets/field_help_icon.dart';
+import '../../widgets/beehive_illustrations.dart';
 
 class ControlloArniaScreen extends StatefulWidget {
   final int arniaId;
@@ -95,10 +96,10 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     // Inizializza i servizi
     final apiService = Provider.of<ApiService>(context, listen: false);
     _controlloService = ControlloService(apiService);
-    // Carica l'ultimo controllo solo quando si crea un nuovo controllo
-    if (widget.controlloEsistente == null) {
-      _loadLastControllo();
-    }
+    // Carica il controllo immediatamente precedente (serve sia in creazione,
+    // per pre-popolare i telaini, sia in edit, per la deduzione della regina
+    // sospetta assente).
+    _loadLastControllo();
   }
 
   Future<void> _loadLastControllo() async {
@@ -106,18 +107,41 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
       final controlli = await _controlloService.getControlliByArnia(widget.arniaId);
       if (!mounted || controlli.isEmpty) return;
       controlli.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
-      final last = controlli.first;
+
+      // In edit mode, "ultimo controllo" = quello immediatamente precedente
+      // (per data) a quello che sto modificando — non il più recente in
+      // assoluto: serve a far funzionare la deduzione della regina sospetta
+      // assente anche quando si edita un controllo nel mezzo della cronologia.
+      Map<String, dynamic>? prev;
+      if (widget.controlloEsistente == null) {
+        prev = controlli.first;
+      } else {
+        final currentId = widget.controlloEsistente!['id'];
+        final String currentData = (widget.controlloEsistente!['data'] ?? '').toString();
+        for (final c in controlli) {
+          if (c['id'] == currentId) continue;
+          final String cData = (c['data'] ?? '').toString();
+          // controlli è in ordine decrescente per data: il primo con data
+          // strettamente minore di quella corrente è il precedente.
+          if (cData.compareTo(currentData) < 0) { prev = c; break; }
+        }
+      }
+      if (prev == null) return;
+
       if (!mounted) return;
       setState(() {
-        _lastControllo = last;
-        // Pre-popola telaini con la config dell'ultimo controllo
-        final raw = last['telaini_config'];
-        if (raw != null && raw.toString().isNotEmpty) {
-          try {
-            final List<dynamic> config = json.decode(raw.toString());
-            _telainiConfig = sortTelaini(List<String>.from(config));
-            _updateTelainiCounters();
-          } catch (_) {}
+        _lastControllo = prev;
+        // Pre-popola i telaini solo in creazione: in edit i campi sono già
+        // popolati dal controllo esistente.
+        if (widget.controlloEsistente == null) {
+          final raw = prev?['telaini_config'];
+          if (raw != null && raw.toString().isNotEmpty) {
+            try {
+              final List<dynamic> config = json.decode(raw.toString());
+              _telainiConfig = sortTelaini(List<String>.from(config));
+              _updateTelainiCounters();
+            } catch (_) {}
+          }
         }
       });
     } catch (e) {
@@ -382,6 +406,38 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     }
   }
 
+  /// Marca/smarca la regina attiva di questa arnia come "sospetta assente".
+  /// Idempotente: non fa nulla se lo stato è già quello richiesto.
+  Future<void> _segnalaReginaSospettaAssente(bool sospetta) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final storageService = Provider.of<StorageService>(context, listen: false);
+
+      final response = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
+      if (response == null || response['id'] == null) return;
+
+      final int reginaId = response['id'];
+      if (response['sospetta_assente'] == sospetta) return;
+
+      await apiService.patch(
+        '${ApiConstants.regineUrl}$reginaId/',
+        {'sospetta_assente': sospetta},
+      );
+
+      final cachedRegine = await storageService.getStoredData('regine');
+      final list = List<Map<String, dynamic>>.from(cachedRegine);
+      final idx = list.indexWhere((r) => r['id'] == reginaId);
+      if (idx >= 0) {
+        list[idx]['sospetta_assente'] = sospetta;
+        await storageService.saveData('regine', list);
+      }
+
+      debugPrint('Regina $reginaId: sospetta_assente=$sospetta');
+    } catch (e) {
+      debugPrint('Errore deduzione assenza regina: $e');
+    }
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -423,60 +479,78 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
       
       // Crea o aggiorna controllo
       Map<String, dynamic> result;
-      if (widget.controlloEsistente == null) {
-        // Nuovo controllo
+      final bool isCreazione = widget.controlloEsistente == null;
+      if (isCreazione) {
         result = await _controlloService.saveControllo(data);
         _scheduleControlloNotifications();
-
-        // Aggiorna colore regina se richiesto
-        if (_reginaColorata && _coloreRegina != null && _isOnline) {
-          await _aggiornaColoreRegina();
-        }
-
-        // Auto-crea scheda regina base se segnalata per la prima volta
-        if (_statoRegina != 'assente' && _isOnline) {
-          final apiService = Provider.of<ApiService>(context, listen: false);
-          final storageService = Provider.of<StorageService>(context, listen: false);
-          final reginaCreata = await ReginaService.maybeAutoCreate(
-            arniaId: widget.arniaId,
-            coloniaId: widget.coloniaId,
-            presenzaRegina: true,
-            dataControllo: _dataController.text,
-            apiService: apiService,
-            storageService: storageService,
-          );
-          if (reginaCreata != null && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(_s.controlloFormReginaAutoCreata),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          }
-        }
-
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isOnline ? _s.controlloFormSavedOk : _s.controlloFormSavedOffline),
-            backgroundColor: _isOnline ? Colors.green : Colors.orange,
-          )
-        );
       } else {
-        // Aggiornamento controllo esistente
-        int controlloId = widget.controlloEsistente!['id'];
+        final int controlloId = widget.controlloEsistente!['id'];
         result = await _controlloService.updateControllo(controlloId, data);
+      }
 
-        // Aggiorna colore regina se richiesto
-        if (_reginaColorata && _coloreRegina != null && _isOnline) {
-          await _aggiornaColoreRegina();
+      // ── Effetti collaterali: si applicano sia in creazione sia in edit ──
+
+      // Aggiorna colore regina se richiesto
+      if (_reginaColorata && _coloreRegina != null && _isOnline) {
+        await _aggiornaColoreRegina();
+      }
+
+      // Auto-crea scheda regina base se segnalata e non ancora presente.
+      // Vale anche in edit: l'utente potrebbe aver corretto un controllo
+      // in cui inizialmente la regina era data assente.
+      if (_statoRegina != 'assente' && _isOnline) {
+        final apiService = Provider.of<ApiService>(context, listen: false);
+        final storageService = Provider.of<StorageService>(context, listen: false);
+        final reginaCreata = await ReginaService.maybeAutoCreate(
+          arniaId: widget.arniaId,
+          coloniaId: widget.coloniaId,
+          presenzaRegina: true,
+          dataControllo: _dataController.text,
+          apiService: apiService,
+          storageService: storageService,
+        );
+        if (reginaCreata != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_s.controlloFormReginaAutoCreata),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
         }
+      }
 
+      // Deduzione "regina sospetta assente": 2 controlli consecutivi senza
+      // regina e senza uova fresche → marca la regina come sospetta. Se in
+      // questo controllo la regina riappare in qualsiasi forma (vista,
+      // dichiarata presente o uova fresche), il flag viene rimosso. Eseguito
+      // anche su edit per restare coerente con i dati.
+      if (_isOnline) {
+        if (_statoRegina == 'assente' && !_uovaFresche) {
+          if (_lastControllo != null) {
+            final bool prevAssente = !(_lastControllo!['presenza_regina'] ?? true);
+            final bool prevNoUova = !(_lastControllo!['uova_fresche'] ?? false);
+            if (prevAssente && prevNoUova) {
+              await _segnalaReginaSospettaAssente(true);
+            }
+          }
+        } else {
+          // _statoRegina è 'vista' o 'presente', oppure uova_fresche=true:
+          // in tutti questi casi consideriamo la regina presente e ripuliamo
+          // un eventuale flag impostato in precedenza.
+          await _segnalaReginaSospettaAssente(false);
+        }
+      }
+
+      if (mounted) {
+        final msg = isCreazione
+            ? (_isOnline ? _s.controlloFormSavedOk : _s.controlloFormSavedOffline)
+            : (_isOnline ? _s.controlloFormUpdatedOk : _s.controlloFormUpdatedOffline);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isOnline ? _s.controlloFormUpdatedOk : _s.controlloFormUpdatedOffline),
+            content: Text(msg),
             backgroundColor: _isOnline ? Colors.green : Colors.orange,
-          )
+          ),
         );
       }
 
@@ -804,7 +878,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                       // Stato regina: selezione unica a 3 stati
                       Row(
                         children: [
-                          Icon(Icons.star, color: ThemeConstants.primaryColor),
+                          HandDrawnQueenBee(size: 22, color: ThemeConstants.primaryColor),
                           SizedBox(width: 12),
                           Text(s.controlloFormLblStatoRegina, style: const TextStyle(fontSize: 15)),
                           FieldHelpIcon('Seleziona "Sì" se hai visto la regina, "Indiretto" se vedi uova fresche (< 3 giorni), "No" se non ci sono segni di covata fresca.'),
@@ -813,11 +887,11 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: _buildStatoReginaButton('assente', s.controlloFormReginaAssente, Icons.star_border, Colors.red.shade300)),
+                          Expanded(child: _buildStatoReginaButton('assente', s.controlloFormReginaAssente, Colors.red.shade400)),
                           SizedBox(width: 6),
-                          Expanded(child: _buildStatoReginaButton('presente', s.controlloFormReginaPresente, Icons.star_half, Colors.orange)),
+                          Expanded(child: _buildStatoReginaButton('presente', s.controlloFormReginaPresente, Colors.orange)),
                           SizedBox(width: 6),
-                          Expanded(child: _buildStatoReginaButton('vista', s.controlloFormReginaVista, Icons.star, Colors.amber)),
+                          Expanded(child: _buildStatoReginaButton('vista', s.controlloFormReginaVista, Colors.green)),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -1179,7 +1253,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                 // Regina
                 Row(
                   children: [
-                    Icon(Icons.star, size: 14, color: statoReginaColor),
+                    HandDrawnQueenBee(size: 14, color: statoReginaColor),
                     const SizedBox(width: 4),
                     Text(
                       _s.controlloFormReginaLabel(statoRegina),
@@ -1460,7 +1534,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     );
   }
   
-  Widget _buildStatoReginaButton(String stato, String label, IconData icon, Color color) {
+  Widget _buildStatoReginaButton(String stato, String label, Color color) {
     final isSelected = _statoRegina == stato;
     return GestureDetector(
       onTap: () => setState(() {
@@ -1480,7 +1554,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 22, color: isSelected ? Colors.white : color),
+            HandDrawnQueenBee(size: 22, color: isSelected ? Colors.white : color),
             SizedBox(height: 4),
             Text(
               label,

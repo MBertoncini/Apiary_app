@@ -17,7 +17,7 @@ import '../l10n/strings_en.dart';
 class LanguageService extends ChangeNotifier {
   static const String _prefKey = 'language_code';
 
-  AppStrings _strings = StringsIt();
+  AppStrings _strings = StringsEn();
 
   LanguageService() {
     _loadSaved();
@@ -58,18 +58,30 @@ class LanguageService extends ChangeNotifier {
 
   Future<void> _loadSaved() async {
     final prefs = await SharedPreferences.getInstance();
-    final code = prefs.getString(_prefKey) ?? 'it';
+    String? code = prefs.getString(_prefKey);
+
+    if (code == null) {
+      // Primo avvio: prova a rilevare la lingua di sistema per corrispondere
+      // alla scheda del Play Store visualizzata dall'utente.
+      final systemLocale = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      if (supportedLanguages.containsKey(systemLocale)) {
+        code = systemLocale;
+      } else {
+        code = 'en'; // Default internazionale se la lingua di sistema non è supportata
+      }
+    }
+
     _setFromCode(code);
     notifyListeners();
   }
 
   void _setFromCode(String code) {
     switch (code) {
-      case 'en':
-        _strings = StringsEn();
+      case 'it':
+        _strings = StringsIt();
         break;
       default:
-        _strings = StringsIt();
+        _strings = StringsEn();
     }
   }
 }

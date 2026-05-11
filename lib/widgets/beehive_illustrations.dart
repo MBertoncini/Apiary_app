@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:math' as math;
 import '../constants/theme_constants.dart';
 
@@ -314,7 +315,7 @@ class ApiaryPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-/// Widget per disegnare una regina delle api
+/// Widget per visualizzare la regina delle api usando l'SVG ufficiale
 class HandDrawnQueenBee extends StatelessWidget {
   final double size;
   final Color color;
@@ -330,131 +331,25 @@ class HandDrawnQueenBee extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: QueenBeePainter(color: color),
+      child: SvgPicture.asset(
+        'assets/images/icons/queen.svg',
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+        placeholderBuilder: (context) => const Icon(Icons.star, color: Colors.amber),
       ),
     );
   }
 }
 
-class QueenBeePainter extends CustomPainter {
-  final Color color;
-  
-  QueenBeePainter({required this.color});
-  
-  @override
-  void paint(Canvas canvas, Size size) {
-    final width = size.width;
-    final height = size.height;
-    
-    final paint = Paint()
-      ..color = ThemeConstants.secondaryColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width * 0.03
-      ..strokeCap = StrokeCap.round;
-    
-    final bodyFill = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    
-    final random = math.Random(54321);
-    
-    // Funzione per aggiungere "tremolio" alle linee
-    Offset jitter(double x, double y, double amount) {
-      return Offset(
-        x + random.nextDouble() * amount - amount / 2,
-        y + random.nextDouble() * amount - amount / 2,
-      );
-    }
-    
-    // Corpo dell'ape
-    final bodyPath = Path();
-    final bodyCenter = Offset(width * 0.5, height * 0.5);
-    
-    // Corpo ovale
-    bodyPath.addOval(
-      Rect.fromCenter(
-        center: bodyCenter,
-        width: width * 0.7,
-        height: width * 0.5,
-      )
-    );
-    
-    // Strisce
-    for (int i = 0; i < 3; i++) {
-      final stripeY = height * 0.4 + i * height * 0.1;
-      bodyPath.moveTo(width * 0.3, stripeY);
-      bodyPath.lineTo(width * 0.7, stripeY);
-    }
-    
-    // Ali
-    final wingPath = Path();
-    wingPath.addOval(
-      Rect.fromCenter(
-        center: jitter(width * 0.4, height * 0.35, width * 0.02),
-        width: width * 0.3,
-        height: width * 0.2,
-      )
-    );
-    wingPath.addOval(
-      Rect.fromCenter(
-        center: jitter(width * 0.6, height * 0.35, width * 0.02),
-        width: width * 0.3,
-        height: width * 0.2,
-      )
-    );
-    
-    // Corona (caratteristica della regina)
-    final crownPath = Path();
-    crownPath.moveTo(jitter(width * 0.4, height * 0.15, width * 0.01).dx, 
-                     jitter(width * 0.4, height * 0.15, width * 0.01).dy);
-    crownPath.lineTo(jitter(width * 0.45, height * 0.05, width * 0.01).dx, 
-                     jitter(width * 0.45, height * 0.05, width * 0.01).dy);
-    crownPath.lineTo(jitter(width * 0.5, height * 0.15, width * 0.01).dx, 
-                     jitter(width * 0.5, height * 0.15, width * 0.01).dy);
-    crownPath.lineTo(jitter(width * 0.55, height * 0.05, width * 0.01).dx, 
-                     jitter(width * 0.55, height * 0.05, width * 0.01).dy);
-    crownPath.lineTo(jitter(width * 0.6, height * 0.15, width * 0.01).dx, 
-                     jitter(width * 0.6, height * 0.15, width * 0.01).dy);
-    
-    // Disegna il corpo pieno
-    canvas.drawPath(bodyPath, bodyFill);
-    canvas.drawPath(bodyPath, paint);
-    
-    // Disegna ali con colore traslucido
-    final wingPaint = Paint()
-      ..color = Colors.white.withOpacity(0.7)
-      ..style = PaintingStyle.fill;
-    
-    canvas.drawPath(wingPath, wingPaint);
-    canvas.drawPath(wingPath, paint..strokeWidth = width * 0.01);
-    
-    // Disegna la corona
-    final crownPaint = Paint()
-      ..color = Colors.amber
-      ..style = PaintingStyle.fill;
-    
-    canvas.drawPath(crownPath, crownPaint);
-    canvas.drawPath(crownPath, paint..strokeWidth = width * 0.02);
-    
-    // Occhi
-    final eyePaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill;
-    
-    canvas.drawCircle(
-      jitter(width * 0.35, height * 0.4, width * 0.01),
-      width * 0.03,
-      eyePaint
-    );
-    
-    canvas.drawCircle(
-      jitter(width * 0.65, height * 0.4, width * 0.01),
-      width * 0.03,
-      eyePaint
-    );
+/// Map a regina marking-color string ('bianco'|'giallo'|'rosso'|'verde'|'blu')
+/// to a Color suitable for a HandDrawnQueenBee inked on a light background.
+/// 'bianco' is rendered black so the icon stays visible.
+Color reginaInkColorFor(String? colore) {
+  switch (colore) {
+    case 'bianco': return Colors.black;
+    case 'giallo': return Colors.amber;
+    case 'rosso':  return Colors.red;
+    case 'verde':  return Colors.green;
+    case 'blu':    return Colors.blue;
+    default:       return Colors.grey;
   }
-  
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

@@ -47,8 +47,6 @@ class ReginaService {
     required StorageService storageService,
   }) async {
     if (!presenzaRegina) return null;
-    // Senza coloniaId non possiamo associare la regina alla colonia
-    if (coloniaId == null) return null;
 
     // Controlla se l'arnia ha già una regina attiva
     try {
@@ -64,15 +62,21 @@ class ReginaService {
       // 404 o errore di rete → nessuna regina, procediamo
     }
 
-    // Crea scheda base associata alla colonia
+    // Crea scheda base associata sia all'arnia sia alla colonia.
+    // Inviamo entrambi i campi perché serializer/endpoint diversi del backend
+    // ne accettano uno o l'altro: in questo modo il record è coerente sia
+    // quando la lista viene letta da /arnie/{id}/regina/ sia da /regine/.
     try {
       final created = await apiService.post(ApiConstants.regineUrl, {
-        'colonia': coloniaId,
+        'arnia': arniaId,
+        if (coloniaId != null) 'colonia': coloniaId,
         'data_introduzione': dataControllo,
         'razza': 'altro',
         'origine': 'sconosciuta',
         'marcata': false,
+        'colore_marcatura': 'non_marcata',
         'fecondata': false,
+        'selezionata': false,
       });
 
       if (created != null &&

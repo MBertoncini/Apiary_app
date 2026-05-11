@@ -15,6 +15,7 @@ import '../../utils/pagamento_categoria.dart';
 import '../../widgets/drawer_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/offline_banner.dart';
+import 'trasferimenti_calculator.dart';
 
 class PagamentiScreen extends StatefulWidget {
   @override
@@ -494,7 +495,7 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
       });
     }
 
-    final trasferimenti = _calcolaTrasferimenti(bilancioMembri);
+    final trasferimenti = calcolaTrasferimenti(bilancioMembri);
 
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8),
@@ -785,47 +786,6 @@ class _PagamentiScreenState extends State<PagamentiScreen> with SingleTickerProv
         ],
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _calcolaTrasferimenti(List<Map<String, dynamic>> bilancioMembri) {
-    final List<Map<String, dynamic>> creditori = [];
-    final List<Map<String, dynamic>> debitori = [];
-
-    for (var membro in bilancioMembri) {
-      final double saldo = membro['saldo'];
-      if (saldo > 0.01) {
-        creditori.add({...membro, 'residuo': saldo});
-      } else if (saldo < -0.01) {
-        debitori.add({...membro, 'residuo': -saldo});
-      }
-    }
-
-    final List<Map<String, dynamic>> trasferimenti = [];
-    int i = 0, j = 0;
-
-    while (i < debitori.length && j < creditori.length) {
-      final double importo = debitori[i]['residuo'] < creditori[j]['residuo']
-          ? debitori[i]['residuo']
-          : creditori[j]['residuo'];
-
-      if (importo > 0.01) {
-        trasferimenti.add({
-          'da': debitori[i]['username'],
-          'daId': debitori[i]['utenteId'],
-          'a': creditori[j]['username'],
-          'aId': creditori[j]['utenteId'],
-          'importo': importo,
-        });
-      }
-
-      debitori[i]['residuo'] -= importo;
-      creditori[j]['residuo'] -= importo;
-
-      if (debitori[i]['residuo'] < 0.01) i++;
-      if (creditori[j]['residuo'] < 0.01) j++;
-    }
-
-    return trasferimenti;
   }
 
   Widget _buildTrasferimentoRow(Map<String, dynamic> trasf, int gruppoId, NumberFormat formatCurrency) {
