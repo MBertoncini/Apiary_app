@@ -1077,11 +1077,15 @@ class _ApiarioMapWidgetState extends State<ApiarioMapWidget>
   // ── helper: frame config per il mini-strip sulla mappa ─────────
 
   static const Map<String, Color> _frameColors = {
-    'covata':    Color(0xFFFF8C42),
-    'scorte':    Color(0xFFFFD166),
-    'diaframma': Color(0xFF9E9E9E),
-    'nutritore': Color(0xFF74B3CE),
-    'vuoto':     Color(0xFFDDDDDD),
+    'covata':          Color(0xFFFF8C42),
+    'scorte':          Color(0xFFFFD166),
+    'misto':           Color(0xFFFF8C42),
+    'foglio_cereo':    Color(0xFFC5E0A0),
+    'diaframma':       Color(0xFF9E9E9E),
+    'nutritore':       Color(0xFF74B3CE),
+    'trappola_varroa': Color(0xFF6D4C41),
+    'gabbia_regina':   Color(0xFF7E57C2),
+    'vuoto':           Color(0xFFDDDDDD),
   };
 
   List<String> _parseFrameConfig(Map<String, dynamic>? controllo) {

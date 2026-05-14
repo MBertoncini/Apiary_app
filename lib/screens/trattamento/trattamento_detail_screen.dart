@@ -6,6 +6,7 @@ import '../../constants/api_constants.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../l10n/app_strings.dart';
@@ -61,22 +62,167 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
     }
   }
 
-  Future<void> _restoreTrattamento() async {
+  Future<void> _openSplitDialog() async {
     final s = _s;
-    try {
-      await _apiService.patch(
-        '${ApiConstants.trattamentiUrl}${widget.trattamentoId}/',
-        {'stato': 'programmato'},
+    final t = _trattamento;
+    if (t == null) return;
+    final arnieIds = (t['arnie'] as List?)?.cast<int>() ?? const <int>[];
+    if (arnieIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.trattamentoSplitNoSelection)),
       );
+      return;
+    }
+
+    final Set<int> selected = <int>{};
+    DateTime dataRimozione = DateTime.now();
+    final dateFmt = DateFormat('yyyy-MM-dd');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(s.trattamentoSplitTitle),
+          scrollable: true,
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(s.trattamentoSplitDescription,
+                    style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: arnieIds.map((id) {
+                    final isSelected = selected.contains(id);
+                    return FilterChip(
+                      label: Text(s.trattamentoDetailArniaLabel(id.toString())),
+                      selected: isSelected,
+                      onSelected: (v) => setDialogState(() {
+                        if (v) {
+                          selected.add(id);
+                        } else {
+                          selected.remove(id);
+                        }
+                      }),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: ctx,
+                      initialDate: dataRimozione,
+                      firstDate: DateTime.parse(t['data_inizio'] as String),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (d != null) setDialogState(() => dataRimozione = d);
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: s.trattamentoSplitDataRimozione,
+                      border: const OutlineInputBorder(),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(DateFormat('dd/MM/yyyy').format(dataRimozione)),
+                        const Icon(Icons.calendar_today, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  s.trattamentoSplitArnieResidue(arnieIds.length - selected.length),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: ThemeConstants.textSecondaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(s.dialogCancelBtn),
+            ),
+            ElevatedButton(
+              onPressed: selected.isEmpty ? null : () => Navigator.pop(ctx, true),
+              child: Text(s.trattamentoSplitConfirm),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (selected.isEmpty) return;
+
+    try {
+      await _apiService.post(
+        '${ApiConstants.trattamentiUrl}${widget.trattamentoId}/split/',
+        {
+          'arnie': selected.toList(),
+          'data_rimozione': dateFmt.format(dataRimozione),
+        },
+      );
+      // Invalida la cache locale dei trattamenti: lo split crea un nuovo record
+      // e modifica quello corrente, quindi il prossimo refresh deve venire dal server.
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(s.trattamentoRestoredOk)));
+        final storage = Provider.of<StorageService>(context, listen: false);
+        await storage.saveData('trattamenti', []);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(s.trattamentoSplitOk)));
         _loadTrattamento();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(s.trattamentoRestoreError(e.toString()))));
+          SnackBar(content: Text(s.trattamentoSplitError(e.toString()))),
+        );
+      }
+    }
+  }
+
+  Future<void> _annullaTrattamento() async {
+    final s = _s;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.trattamentoAnnullaTitle),
+        content: Text(s.trattamentoAnnullaMsg),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(s.dialogCancelBtn.toUpperCase())),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(s.trattamentoAnnullaConfirm,
+                  style: const TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _apiService.post(
+        ApiConstants.trattamentoAnnullaUrlOf(widget.trattamentoId),
+        {},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.trattamentoAnnullatoOk)));
+        _loadTrattamento();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -164,20 +310,23 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
   Widget build(BuildContext context) {
     Provider.of<LanguageService>(context); // rebuild on language change
     final s = _s;
+    // stato is now always derived from dates server-side; 'annullato' is the
+    // only manual override. canEdit = not yet finished/cancelled.
     final stato = _trattamento?['stato'] as String?;
-    final canEdit =
-        stato == 'in_corso' || stato == 'programmato' || stato == 'annullato';
-    final canRestore = stato == 'annullato';
+    final canEdit  = stato == 'in_corso' || stato == 'programmato';
+    final canAnnulla = stato != 'annullato';
+    final canSplit = stato == 'in_corso' || stato == 'programmato';
+    final hasArnie = (_trattamento?['arnie'] as List?)?.isNotEmpty ?? false;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(s.trattamentoDetailTitle),
         actions: [
-          if (_trattamento != null && canRestore)
+          if (_trattamento != null && canSplit && hasArnie)
             IconButton(
-              icon: const Icon(Icons.restore),
-              tooltip: s.trattamentoDetailTooltipRestore,
-              onPressed: _restoreTrattamento,
+              icon: const Icon(Icons.call_split),
+              tooltip: s.trattamentoSplitTitle,
+              onPressed: _openSplitDialog,
             ),
           if (_trattamento != null && canEdit)
             IconButton(
@@ -191,6 +340,12 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                   .then((result) {
                 if (result == true && mounted) _loadTrattamento();
               }),
+            ),
+          if (_trattamento != null && canAnnulla)
+            IconButton(
+              icon: const Icon(Icons.cancel_outlined),
+              tooltip: s.trattamentoAnnullaTitle,
+              onPressed: _annullaTrattamento,
             ),
           if (_trattamento != null)
             IconButton(

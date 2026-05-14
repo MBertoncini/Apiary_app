@@ -34,7 +34,13 @@
       "WebFetch(domain:ai.google.dev)",
       "WebFetch(domain:www.revenuecat.com)",
       "Bash(ls \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\vendita\")",
-      "Bash(ls \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\vendite\")"
+      "Bash(ls \"I:\\\\Progetti Git\\\\Apiary_app\\\\lib\\\\screens\\\\vendite\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(Get-ChildItem -Path \"I:\\\\Progetti Git\\\\Apiary_app\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "Read(//i/Progetti Git/Apiary/**)",
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

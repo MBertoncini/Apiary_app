@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import '../constants/app_constants.dart';
 
 class NfcService {
   static final NfcService _instance = NfcService._internal();
@@ -114,9 +115,14 @@ class NfcService {
     }
   }
 
-  /// Scrive un testo NDEF sul tag.
-  Future<bool> writeToTag(String data) async {
+  /// Scrive sul tag un record NDEF di tipo URI con il deep link dell'arnia,
+  /// così che il tag possa aprire l'app anche se viene scansionato fuori
+  /// dall'app (lockscreen Android, background iPhone XS+).
+  ///
+  /// L'URL è costruito da [AppConstants.buildArniaDeepLink].
+  Future<bool> writeArniaUriToTag(String nfcId) async {
     final completer = Completer<bool>();
+    final url = AppConstants.buildArniaDeepLink(nfcId);
 
     try {
       await NfcManager.instance.startSession(
@@ -128,7 +134,7 @@ class NfcService {
             return;
           }
 
-          final message = NdefMessage([NdefRecord.createText(data)]);
+          final message = NdefMessage([NdefRecord.createUri(Uri.parse(url))]);
           try {
             await ndef.write(message);
             await NfcManager.instance.stopSession();

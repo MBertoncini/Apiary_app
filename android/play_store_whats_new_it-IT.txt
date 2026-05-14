@@ -1,0 +1,4 @@
+- Supporto NFC completo: gestisci i tag sia dall'interno che dall'esterno dell'app per un accesso immediato alle tue arnie.
+- Storico Meteo: visualizza le condizioni meteo dei giorni passati per monitorare meglio l'attività dell'apiario.
+- Nuovi tipi di telaino: aggiunti telaini specifici per il controllo della varroa e monitoraggio infestazione.
+- Ottimizzazioni e bug fix minori.

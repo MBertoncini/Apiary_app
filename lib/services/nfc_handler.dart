@@ -66,16 +66,29 @@ class NfcHandler extends ChangeNotifier with WidgetsBindingObserver {
   Arnia? get lastScannedArnia => _lastScannedArnia;
 
   Future<void> _onTagDiscovered(String tagId) async {
+    await resolveAndNavigateByNfcId(tagId, source: 'nfc');
+  }
+
+  /// Cerca un'arnia per nfc_id (UID hex) localmente poi via API e naviga
+  /// alla schermata appropriata (voice o manual) in base alle settings NFC.
+  ///
+  /// Riusato sia dalla sessione NFC in-app che dal [DeepLinkHandler] quando
+  /// l'app viene aperta da un tag scansionato dall'OS fuori dall'app.
+  ///
+  /// [source] è informativo ('nfc' o 'deeplink') per il logging.
+  Future<void> resolveAndNavigateByNfcId(
+    String tagId, {
+    String source = 'nfc',
+  }) async {
     if (_isProcessing) return;
     _isProcessing = true;
-    
-    debugPrint('NFC Handler: Tag rilevato -> $tagId');
-    
+
+    debugPrint('NFC Handler [$source]: Tag rilevato -> $tagId');
+
     try {
       final context = navigatorKey.currentContext;
       if (context == null) {
-        debugPrint('NFC Handler: Context non disponibile');
-        _isProcessing = false;
+        debugPrint('NFC Handler [$source]: Context non disponibile');
         return;
       }
 
@@ -99,7 +112,6 @@ class NfcHandler extends ChangeNotifier with WidgetsBindingObserver {
         try {
           final results = await _apiService.searchArnie(tagId);
           if (results.isNotEmpty) {
-            // Prendi la prima corrispondenza esatta per nfc_id
             for (var r in results) {
               if (r['nfc_id'] == tagId) {
                 foundArnia = Arnia.fromJson(Map<String, dynamic>.from(r));
@@ -116,19 +128,17 @@ class NfcHandler extends ChangeNotifier with WidgetsBindingObserver {
         _lastScannedArnia = foundArnia;
         notifyListeners();
 
-        // Feedback sonoro e tattile immediato
         _audioService.playSuccessSound();
         _feedbackService.vibrateSuccess();
 
         final action = await _nfcSettings.getAction();
-        
-        // Controllo se siamo già sulla schermata dei comandi vocali
+
         bool isOnVoiceScreen = false;
         navigatorKey.currentState?.popUntil((route) {
           if (route.settings.name == AppConstants.voiceCommandRoute) {
             isOnVoiceScreen = true;
           }
-          return true; // Non poppare nulla
+          return true;
         });
 
         if (action == NfcSettingsService.actionVoice) {
@@ -142,15 +152,17 @@ class NfcHandler extends ChangeNotifier with WidgetsBindingObserver {
         }
       } else {
         _feedbackService.vibrateError();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.nfcTagNotFound)),
-        );
+        final ctx = navigatorKey.currentContext;
+        if (ctx != null) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(content: Text(s.nfcTagNotFound)),
+          );
+        }
       }
     } catch (e, stack) {
-      debugPrint('Errore critico NFC Handler: $e');
+      debugPrint('Errore critico NFC Handler [$source]: $e');
       debugPrint('$stack');
     } finally {
-      // Debounce minimo per evitare letture multiple dello stesso tag troppo rapide
       await Future.delayed(const Duration(milliseconds: 1500));
       _isProcessing = false;
     }

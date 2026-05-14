@@ -352,6 +352,15 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
     }).toList();
   }
 
+  /// Rimuove l'arnia pre-impostata da NFC mantenendo il contesto apiario,
+  /// così l'utente può dettare un'arnia diversa nello stesso apiario.
+  void _clearNfcArnia() {
+    setState(() {
+      _nfcArniaId = null;
+      _nfcArniaNumero = null;
+    });
+  }
+
   void _onApiarioSelected(int id, String nome) {
     setState(() {
       _contextApiarioId = id;
@@ -639,6 +648,16 @@ class _VoiceCommandScreenState extends State<VoiceCommandScreen> {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close,
+                            color: ThemeConstants.primaryColor, size: 22),
+                        tooltip: s.nfcVoiceBannerClearTooltip,
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(
+                            minWidth: 40, minHeight: 40),
+                        padding: EdgeInsets.zero,
+                        onPressed: _clearNfcArnia,
                       ),
                     ],
                   ),

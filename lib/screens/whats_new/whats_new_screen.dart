@@ -11,6 +11,16 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
+  17: _ReleaseNotes(
+    version: '1.0.2',
+    buildNumber: 17,
+    date: '14 Maggio 2026',
+    notes: [
+      _Note('📡', 'Nuovo', 'NFC Completo - Supporto totale ai tag sia dentro che fuori dall\'app (Deep Linking) per un\'apertura immediata delle arnie'),
+      _Note('☁️', 'Nuovo', 'Storico Meteo - Visualizza l\'andamento climatico degli ultimi giorni per correlare meteo e comportamento delle api'),
+      _Note('🩺', 'Nuovo', 'Controllo Varroa - Aggiunti nuovi tipi di telaino (es. telaino trappola) per una gestione più efficace dei trattamenti'),
+    ],
+  ),
   16: _ReleaseNotes(
     version: '1.0.2',
     buildNumber: 16,

@@ -27,6 +27,7 @@ import '../../services/colonia_service.dart';
 import '../../database/dao/colonia_dao.dart';
 import '../colonia/colonia_detail_screen.dart';
 import '../colonia/colonia_form_screen.dart';
+import '../varroa/varroa_screen.dart';
 
 class ArniaDetailScreen extends StatefulWidget {
   final int arniaId;
@@ -1641,7 +1642,30 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
             label: s.arniaDetailBtnAnalisiTelaino,
             onTap: () => _navigateToAnalisiTelaino(),
           ),
+          if (_coloniaAttiva != null)
+            SpeedDialChild(
+              child: const Icon(Icons.bug_report_outlined),
+              label: 'Varroa',
+              onTap: _navigateToVarroa,
+            ),
         ],
+      ),
+    );
+  }
+
+  void _navigateToVarroa() {
+    if (_coloniaAttiva == null) return;
+    final lastTelaini = _controlli.isNotEmpty
+        ? (_controlli.first['telaini_covata'] as num?)?.toDouble()
+        : null;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VarroaScreen(
+          coloniaId:           _coloniaAttiva!.id,
+          coloniaName:         _coloniaAttiva!.contenitoreLabel,
+          lastTelainiCovata:   lastTelaini,
+        ),
       ),
     );
   }

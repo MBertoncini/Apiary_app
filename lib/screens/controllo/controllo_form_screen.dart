@@ -57,6 +57,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   int _telainiCovata = 0;
   int _telainiDiaframma = 0;
   int _tealiniFoglioCereo = 0;
+  int _telainiTrappolaVarroa = 0;
+  int _telainiGabbiaRegina = 0;
   
   // Stato
   bool _isLoading = false;
@@ -368,12 +370,16 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     int scorte = 0;
     int diaframma = 0;
     int foglioCereo = 0;
+    int trappolaVarroa = 0;
+    int gabbiaRegina = 0;
 
     for (String tipo in _telainiConfig) {
       if (tipo == 'covata') covata++;
       if (tipo == 'scorte') scorte++;
       if (tipo == 'diaframma') diaframma++;
       if (tipo == 'foglio_cereo') foglioCereo++;
+      if (tipo == 'trappola_varroa') trappolaVarroa++;
+      if (tipo == 'gabbia_regina') gabbiaRegina++;
     }
 
     setState(() {
@@ -381,6 +387,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
       _telainiScorte = scorte;
       _telainiDiaframma = diaframma;
       _tealiniFoglioCereo = foglioCereo;
+      _telainiTrappolaVarroa = trappolaVarroa;
+      _telainiGabbiaRegina = gabbiaRegina;
     });
   }
   
@@ -394,12 +402,23 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   Future<void> _aggiornaColoreRegina() async {
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
+      final storageService = Provider.of<StorageService>(context, listen: false);
       final reginaData = await apiService.get('${ApiConstants.arnieUrl}${widget.arniaId}/regina/');
       if (reginaData != null && reginaData['id'] != null) {
+        final int reginaId = reginaData['id'];
         await apiService.patch(
-          '${ApiConstants.regineUrl}${reginaData['id']}/',
+          '${ApiConstants.regineUrl}$reginaId/',
           {'colore_marcatura': _coloreRegina, 'marcata': true},
         );
+        // Aggiorna cache locale (allineato con _segnalaReginaSospettaAssente)
+        final cachedRegine = await storageService.getStoredData('regine');
+        final list = List<Map<String, dynamic>>.from(cachedRegine);
+        final idx = list.indexWhere((r) => r['id'] == reginaId);
+        if (idx >= 0) {
+          list[idx]['marcata'] = true;
+          list[idx]['colore_marcatura'] = _coloreRegina;
+          await storageService.saveData('regine', list);
+        }
       }
     } catch (e) {
       debugPrint('Errore aggiornamento colore regina: $e');
@@ -490,14 +509,9 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
 
       // ── Effetti collaterali: si applicano sia in creazione sia in edit ──
 
-      // Aggiorna colore regina se richiesto
-      if (_reginaColorata && _coloreRegina != null && _isOnline) {
-        await _aggiornaColoreRegina();
-      }
-
       // Auto-crea scheda regina base se segnalata e non ancora presente.
-      // Vale anche in edit: l'utente potrebbe aver corretto un controllo
-      // in cui inizialmente la regina era data assente.
+      // Deve precedere _aggiornaColoreRegina: se la regina non esiste ancora,
+      // la PATCH fallirebbe silenziosamente e il colore andrebbe perso.
       if (_statoRegina != 'assente' && _isOnline) {
         final apiService = Provider.of<ApiService>(context, listen: false);
         final storageService = Provider.of<StorageService>(context, listen: false);
@@ -518,6 +532,12 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
             ),
           );
         }
+      }
+
+      // Aggiorna colore regina se richiesto (dopo maybeAutoCreate, così la
+      // regina è garantita esistente prima della PATCH).
+      if (_reginaColorata && _coloreRegina != null && _isOnline) {
+        await _aggiornaColoreRegina();
       }
 
       // Deduzione "regina sospetta assente": 2 controlli consecutivi senza
@@ -789,6 +809,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           _buildToolButton('foglio_cereo', s.controlloFormTelainiFoglioCereo, Colors.yellow.shade200, Icons.description),
                           _buildToolButton('diaframma', s.controlloFormTelainiDiaframma, Colors.black, Icons.vertical_split),
                           _buildToolButton('nutritore', s.controlloFormTelainiNutritore, const Color(0xFFE8D4B9), Icons.coffee),
+                          _buildToolButton('trappola_varroa', s.controlloFormTelainiTrappolaVarroa, const Color(0xFF6D4C41), Icons.bug_report),
+                          _buildToolButton('gabbia_regina', s.controlloFormTelainiGabbiaRegina, const Color(0xFF7E57C2), Icons.lock_outline),
                           _buildToolButton('vuoto', s.controlloFormTelainiVuoto, Colors.grey.shade300, Icons.clear),
                         ],
                       ),
@@ -854,6 +876,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                           _buildCounter(s.controlloFormTelainiScorte, _telainiScorte, Colors.amber),
                           if (_telainiDiaframma > 0) _buildCounter(s.controlloFormTelainiDiaframma, _telainiDiaframma, Colors.blueGrey),
                           if (_tealiniFoglioCereo > 0) _buildCounter(s.controlloFormTelainiFoglioCereo, _tealiniFoglioCereo, Colors.yellow.shade600),
+                          if (_telainiTrappolaVarroa > 0) _buildCounter(s.controlloFormTelainiTrappolaVarroa, _telainiTrappolaVarroa, const Color(0xFF6D4C41)),
+                          if (_telainiGabbiaRegina > 0) _buildCounter(s.controlloFormTelainiGabbiaRegina, _telainiGabbiaRegina, const Color(0xFF7E57C2)),
                         ],
                       ),
                     ],
@@ -1189,6 +1213,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     final int prevScorte  = prevConfig.where((t) => t == 'scorte').length;
     final int prevDiaframma = prevConfig.where((t) => t == 'diaframma').length;
     final int prevFoglioCereo = prevConfig.where((t) => t == 'foglio_cereo').length;
+    final int prevTrappolaVarroa = prevConfig.where((t) => t == 'trappola_varroa').length;
+    final int prevGabbiaRegina = prevConfig.where((t) => t == 'gabbia_regina').length;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1247,6 +1273,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                     if (prevScorte > 0) _buildMiniChip(_s.controlloFormScorteCount(prevScorte), Colors.amber.shade700),
                     if (prevDiaframma > 0) _buildMiniChip(_s.controlloFormDiaframmaCount(prevDiaframma), Colors.blueGrey),
                     if (prevFoglioCereo > 0) _buildMiniChip(_s.controlloFormFoglioCereoCount(prevFoglioCereo), Colors.yellow.shade700),
+                    if (prevTrappolaVarroa > 0) _buildMiniChip(_s.controlloFormTrappolaVarroaCount(prevTrappolaVarroa), const Color(0xFF6D4C41)),
+                    if (prevGabbiaRegina > 0) _buildMiniChip(_s.controlloFormGabbiaReginaCount(prevGabbiaRegina), const Color(0xFF7E57C2)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1325,12 +1353,14 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
   Widget _buildMiniTelainiPreview(List<String> config) {
     Color _colorForTipo(String tipo) {
       switch (tipo) {
-        case 'covata':       return Colors.red;
-        case 'scorte':       return Colors.amber;
-        case 'diaframma':    return Colors.black54;
-        case 'foglio_cereo': return Colors.yellow.shade300;
-        case 'nutritore':    return const Color(0xFFE8D4B9);
-        default:             return Colors.grey.shade300;
+        case 'covata':          return Colors.red;
+        case 'scorte':          return Colors.amber;
+        case 'diaframma':       return Colors.black54;
+        case 'foglio_cereo':    return Colors.yellow.shade300;
+        case 'nutritore':       return const Color(0xFFE8D4B9);
+        case 'trappola_varroa': return const Color(0xFF6D4C41);
+        case 'gabbia_regina':   return const Color(0xFF7E57C2);
+        default:                return Colors.grey.shade300;
       }
     }
 
@@ -1416,7 +1446,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     Color color;
     double width;
     IconData icon;
-    
+    Gradient? gradient;
+
     switch (tipo) {
       case 'covata':
         color = Colors.red;
@@ -1443,13 +1474,38 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         width = 24;
         icon = Icons.coffee;
         break;
+      case 'trappola_varroa':
+        color = const Color(0xFF6D4C41);
+        width = 24;
+        icon = Icons.bug_report;
+        gradient = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: [0.0, 0.32, 0.36, 0.64, 0.68, 1.0],
+          colors: [
+            Color(0xFF6D4C41), Color(0xFF6D4C41),
+            Color(0xFF3E2723), Color(0xFF3E2723),
+            Color(0xFF6D4C41), Color(0xFF6D4C41),
+          ],
+        );
+        break;
+      case 'gabbia_regina':
+        color = const Color(0xFF7E57C2);
+        width = 24;
+        icon = Icons.lock_outline;
+        gradient = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFB39DDB), Color(0xFF7E57C2), Color(0xFF5E35B1)],
+        );
+        break;
       case 'vuoto':
       default:
         color = Colors.grey.shade300;
         width = 24;
         icon = Icons.clear;
     }
-    
+
     return GestureDetector(
       onTap: () {
         _applyTool(position);
@@ -1459,7 +1515,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         height: 100,
         margin: EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          color: color,
+          color: gradient == null ? color : null,
+          gradient: gradient,
           border: Border.all(
             color: color.withOpacity(0.8),
             width: 1,
@@ -1475,7 +1532,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
               size: 8,
               color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
             ),
-            
+
             // Number at bottom
             Container(
               width: double.infinity,
@@ -1570,28 +1627,55 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     );
   }
 
+  static String _coloreLegenda(String colore) {
+    switch (colore) {
+      case 'bianco': return '1, 6';
+      case 'giallo': return '2, 7';
+      case 'rosso':  return '3, 8';
+      case 'verde':  return '4, 9';
+      case 'blu':    return '5, 0';
+      default:       return '';
+    }
+  }
+
   Widget _buildColorButton(String colore, Color color) {
     final isSelected = _coloreRegina == colore;
     return GestureDetector(
       onTap: () => setState(() => _coloreRegina = colore),
       child: Container(
-        width: 44,
-        height: 44,
-        margin: EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected ? Colors.black : Colors.grey.shade400,
-            width: isSelected ? 3 : 1,
-          ),
-          boxShadow: isSelected
-              ? [BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1)]
-              : null,
+        margin: const EdgeInsets.only(right: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? Colors.black : Colors.grey.shade400,
+                  width: isSelected ? 3 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1)]
+                    : null,
+              ),
+              child: isSelected
+                  ? Icon(Icons.check, color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white, size: 20)
+                  : null,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              _coloreLegenda(colore),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.black87 : Colors.grey[600],
+              ),
+            ),
+          ],
         ),
-        child: isSelected
-            ? Icon(Icons.check, color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white, size: 20)
-            : null,
       ),
     );
   }

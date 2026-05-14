@@ -1275,10 +1275,10 @@ class _AudioInputWidgetState extends State<AudioInputWidget>
               if (durStr != null) durStr,
             ].join(' · ');
             return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 8),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
+                    horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(8),
@@ -1300,27 +1300,44 @@ class _AudioInputWidgetState extends State<AudioInputWidget>
                       ),
                     ),
                     if (filePath != null)
-                      GestureDetector(
-                        onTap: () => _playQueueItem(item),
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.orange.shade700,
-                          ),
-                          child: Icon(
-                            isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                            size: 18,
+                      Material(
+                        color: Colors.orange.shade700,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () => _playQueueItem(item),
+                          child: SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: Center(
+                              child: Icon(
+                                isPlaying ? Icons.pause : Icons.play_arrow,
+                                color: Colors.white,
+                                size: 26,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () => _deleteQueueItem(item),
-                      child: Icon(Icons.delete_outline,
-                          size: 20, color: Colors.red.shade400),
+                    const SizedBox(width: 14),
+                    Material(
+                      color: Colors.red.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: Colors.red.shade300),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => _deleteQueueItem(item),
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: Icon(Icons.delete_outline,
+                                size: 26, color: Colors.red.shade600),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

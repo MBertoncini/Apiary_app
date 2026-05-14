@@ -751,7 +751,12 @@ class _MappaScreenState extends State<MappaScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _s.mappaApprox,
+                            _s.mappaApproxRadius(
+                              ((apiario['privacy_radius_m'] is num)
+                                      ? (apiario['privacy_radius_m'] as num).toDouble()
+                                      : _defaultCommunityPrivacyRadiusM) ~/
+                                  1000,
+                            ),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.orange.shade800,
@@ -882,31 +887,31 @@ class _MappaScreenState extends State<MappaScreen> {
     }
   }
 
-  /// Sposta deterministicamente le coordinate di un apiario community
-  /// di ~200-400 m usando l'ID come seme, così la posizione precisa non è esposta.
-  LatLng _fuzzCoordinates(int id, double lat, double lng) {
-    const double maxOffset = 0.0025; // ~280 m in latitudine
-    final int s1 = (id * 1664525 + 1013904223) & 0x7FFFFFFF;
-    final int s2 = (s1 * 1664525 + 1013904223) & 0x7FFFFFFF;
-    final double latOffset = ((s1 % 1000) / 1000.0 - 0.5) * 2.0 * maxOffset;
-    final double lngOffset = ((s2 % 1000) / 1000.0 - 0.5) * 2.0 * maxOffset;
-    return LatLng(lat + latOffset, lng + lngOffset);
-  }
+  /// Raggio del cerchio "area approssimata" mostrato attorno agli apiari
+  /// community. Il backend invia [privacy_radius_m] (default 6 km, dimensionato
+  /// per coprire il caso peggiore del fuzzing HMAC + troncamento server-side
+  /// a tutte le latitudini italiane).
+  static const double _defaultCommunityPrivacyRadiusM = 6000.0;
 
   /// Cerchi arancioni semi-trasparenti che mostrano l'area approssimativa
-  /// degli apiari community (privacy anti-furto).
+  /// degli apiari community. Le coordinate arrivano GIÀ offuscate dal
+  /// backend (ApiarioCommunitySerializer, fuzzing HMAC + troncamento a 2
+  /// decimali) — il client le usa as-is e si limita a visualizzare il
+  /// raggio di incertezza dichiarato dal server.
   List<CircleMarker> _buildCommunityPrivacyCircles() {
     final result = <CircleMarker>[];
     for (final apiario in _apiari) {
       if (apiario['_community'] != true) continue;
       try {
-        final id = apiario['id'] as int;
         final lat = double.parse(apiario['latitudine'].toString());
         final lng = double.parse(apiario['longitudine'].toString());
-        final fuzzed = _fuzzCoordinates(id, lat, lng);
+        final radius = (apiario['privacy_radius_m'] is num)
+            ? (apiario['privacy_radius_m'] as num).toDouble()
+            : _defaultCommunityPrivacyRadiusM;
+
         result.add(CircleMarker(
-          point: fuzzed,
-          radius: 500,
+          point: LatLng(lat, lng),
+          radius: radius,
           color: Colors.orange.withOpacity(0.10),
           borderColor: Colors.orange.shade600.withOpacity(0.55),
           borderStrokeWidth: 1.5,
@@ -953,11 +958,10 @@ class _MappaScreenState extends State<MappaScreen> {
             ? ValueKey('c_${apiario['id']}')
             : ValueKey('a_${apiario['id']}');
 
-        // Gli apiari community mostrano una posizione sfumata (~280 m di offset
-        // deterministico) per proteggere la privacy dell'apicoltore.
-        final markerPoint = isCommunity
-            ? _fuzzCoordinates(apiario['id'] as int, lat, lng)
-            : LatLng(lat, lng);
+        // Per gli apiari community lat/lng arrivano già offuscati dal backend
+        // (ApiarioCommunitySerializer applica fuzzing HMAC con SECRET_KEY +
+        // troncamento a 2 decimali). Niente offuscamento aggiuntivo client-side.
+        final markerPoint = LatLng(lat, lng);
 
         result.add(Marker(
           key: markerKey,
@@ -1253,10 +1257,15 @@ class _MappaScreenState extends State<MappaScreen> {
                                 ))
                             .toList(),
                       ),
-                    // Raggio di volo (3 km) per ogni apiario
+                    // Raggio di volo (3 km) per ogni apiario.
+                    // Escluso per gli apiari community: il loro lat/lng arriva
+                    // già offuscato dal server, ma anche un cerchio centrato
+                    // sul punto offuscato suggerirebbe falsa precisione.
                     if (_showRaggioVolo)
                       CircleLayer(
-                        circles: _apiari.map((apiario) {
+                        circles: _apiari
+                            .where((a) => a['_community'] != true)
+                            .map((apiario) {
                           try {
                             final lat = double.parse(apiario['latitudine'].toString());
                             final lng = double.parse(apiario['longitudine'].toString());

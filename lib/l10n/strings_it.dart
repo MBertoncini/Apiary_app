@@ -258,7 +258,7 @@ class StringsIt extends AppStrings {
   @override String get apiarioFormVisibGroup => 'Membri del gruppo';
   @override String get apiarioFormVisibAll => 'Tutti gli utenti';
   @override String get apiarioFormVisibAllPrivacyNote =>
-      'La posizione esatta non verrà mostrata: sulla mappa verrà indicata solo un\'area approssimativa (~500 m). '
+      'La posizione esatta non verrà mostrata: sulla mappa verrà indicata solo un\'area approssimativa (~1.5 km). '
       'Questo ti permette di condividere la zona senza rischiare furti, e aiuta altri apicoltori a scoprire dove è già presente attività apistica.';
   @override String get mapaApproxAreaLabel => 'Posizione approssimata';
   @override String get apiarioFormMeteoTitle => 'Monitoraggio meteo';
@@ -448,6 +448,12 @@ class StringsIt extends AppStrings {
   @override String get trattamentiBtnRipristina => 'Ripristina';
   @override String get trattamentoRestoredOk => 'Trattamento ripristinato';
   @override String trattamentoRestoreError(String e) => 'Errore durante il ripristino: $e';
+  @override String get trattamentoAnnullaTitle => 'Annulla trattamento';
+  @override String get trattamentoAnnullaMsg =>
+      'Sei sicuro di voler annullare questo trattamento?\n'
+      'Verrà escluso dal calcolo Varroa e non potrà essere ripristinato automaticamente.';
+  @override String get trattamentoAnnullaConfirm => 'ANNULLA TRATTAMENTO';
+  @override String get trattamentoAnnullatoOk => 'Trattamento annullato';
   @override String get trattamentiDeleteTitle => 'Elimina Trattamento';
   @override String get trattamentiDeletedOk => 'Trattamento eliminato con successo';
   @override String trattamentiDeleteError(String e) => 'Errore durante l\'eliminazione: $e';
@@ -530,6 +536,15 @@ class StringsIt extends AppStrings {
   @override String get trattamentoFormHintNoteBlocco => 'Dettagli aggiuntivi (opzionale)';
   @override String get trattamentoFormLblMetodoApplicazione => 'Metodo di applicazione';
   @override String get trattamentoFormLblNoteBloccoCovata => 'Note blocco covata';
+  @override String get trattamentoSplitTitle => 'Rimuovi da arnie selezionate';
+  @override String get trattamentoSplitDescription =>
+      'Le arnie selezionate verranno marcate come trattamento completato alla data scelta. Le altre restano in corso.';
+  @override String get trattamentoSplitDataRimozione => 'Data rimozione';
+  @override String get trattamentoSplitConfirm => 'Conferma rimozione';
+  @override String get trattamentoSplitNoSelection => 'Seleziona almeno un\'arnia da cui rimuovere';
+  @override String get trattamentoSplitOk => 'Rimozione registrata';
+  @override String trattamentoSplitError(String e) => 'Errore durante la rimozione: $e';
+  @override String trattamentoSplitArnieResidue(int n) => 'Resteranno in trattamento: $n arnie';
 
   // ── Fioritura screens ─────────────────────────────────────────────────────
   @override String get fiorituraListTitle => 'Fioriture';
@@ -964,10 +979,16 @@ class StringsIt extends AppStrings {
   @override String get nfcChipRemoveBtn => 'Rimuovi';
   @override String get nfcChipAssignSuccess => 'Chip NFC associato con successo';
   @override String get nfcChipScanFailed => 'Nessun chip rilevato';
+  @override String get nfcProgramTagBtn => 'Programma tag';
+  @override String get nfcProgramTagHint => 'Scrive il link sul tag per aprirlo dal cellulare anche con l\'app chiusa';
+  @override String get nfcProgramTagWriting => 'Avvicina il tag al telefono…';
+  @override String get nfcProgramTagSuccess => 'Tag programmato. Ora apre l\'app anche da fuori.';
+  @override String get nfcProgramTagFailed => 'Scrittura tag fallita';
 
   @override String nfcVoiceBanner(int arniaNumero, String apiarioNome) =>
       'Controllo vocale · Arnia $arniaNumero · $apiarioNome';
   @override String get nfcVoiceBannerHint => 'Il numero arnia sarà aggiunto automaticamente alla dettatura';
+  @override String get nfcVoiceBannerClearTooltip => 'Rimuovi arnia pre-impostata';
 
   // ── Auth – Login Screen ───────────────────────────────────────────────────
   @override String get loginSubtitle => 'Accedi per gestire i tuoi apiari';
@@ -1573,6 +1594,8 @@ class StringsIt extends AppStrings {
   @override String get controlloFormTelainiFoglioCereo => 'F. Cereo';
   @override String get controlloFormTelainiDiaframma => 'Diaframma';
   @override String get controlloFormTelainiNutritore => 'Nutritore';
+  @override String get controlloFormTelainiTrappolaVarroa => 'Trapp. Varroa';
+  @override String get controlloFormTelainiGabbiaRegina => 'Gabbia Regina';
   @override String get controlloFormTelainiVuoto => 'Vuoto';
   @override String get controlloFormAutoOrdina => 'Auto-ordina';
   @override String get controlloFormPreCaricato => 'Pre-caricato dall\'ultimo controllo';
@@ -1619,6 +1642,8 @@ class StringsIt extends AppStrings {
   @override String controlloFormScorteCount(int n) => 'Scorte $n';
   @override String controlloFormDiaframmaCount(int n) => 'Diaframma $n';
   @override String controlloFormFoglioCereoCount(int n) => 'F.Cereo $n';
+  @override String controlloFormTrappolaVarroaCount(int n) => 'Trapp.Varroa $n';
+  @override String controlloFormGabbiaReginaCount(int n) => 'Gabbia $n';
 
   // ── Pagamenti screen ──
   @override String get pagamentiTitle => 'Gestione Pagamenti';
@@ -2218,6 +2243,7 @@ class StringsIt extends AppStrings {
   @override String get mappaStatCommunity => 'Community';
   @override String get mappaStatTuoGruppo => 'Tuo/Gruppo';
   @override String get mappaApprox => 'Posizione approssimata';
+  @override String mappaApproxRadius(int km) => 'Posizione approssimata (~$km km di incertezza per privacy)';
   @override String get mappaBtnVisualizza => 'Visualizza';
   @override String get mappaBtnApriApiario => 'Apri Apiario';
   @override String get mappaLegenda => 'Legenda';
@@ -2447,6 +2473,28 @@ class StringsIt extends AppStrings {
   @override String get weatherToday => 'Oggi';
   @override List<String> get weatherDayNamesShort => ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
+  // ── Meteo storico (dataset ML) ──
+  @override String get meteoLiveTab => 'Live';
+  @override String get meteoStoricoTab => 'Storico';
+  @override String get meteoStoricoEmpty => 'Nessun dato meteo storico disponibile per questo apiario.';
+  @override String get meteoStoricoError => 'Errore nel caricamento dello storico meteo';
+  @override String get meteoStoricoRange30 => '30 giorni';
+  @override String get meteoStoricoRange90 => '90 giorni';
+  @override String get meteoStoricoRange365 => '1 anno';
+  @override String get meteoStoricoStatsGiorni => 'Giorni';
+  @override String get meteoStoricoStatsTempMedia => 'T media';
+  @override String get meteoStoricoStatsPrecipTotale => 'Pioggia totale';
+  @override String get meteoStoricoStatsGddCumulato => 'GDD cumulato';
+  @override String get meteoStoricoChartTemperatura => 'Temperatura (°C)';
+  @override String get meteoStoricoChartPrecipitazioni => 'Precipitazioni (mm)';
+  @override String get meteoStoricoChartGdd => 'GDD cumulato (base 10°C)';
+  @override String get meteoStoricoTempMin => 'Min';
+  @override String get meteoStoricoTempMax => 'Max';
+  @override String get meteoStoricoGddInfo =>
+      'I Gradi Giorno di Sviluppo (GDD) misurano il calore accumulato sopra una temperatura base (10 °C). '
+      'Un valore GDD elevato indica più calore disponibile per l\'attività delle api, la fioritura delle piante e la produzione di nettare. '
+      'Il grafico mostra il GDD cumulato dall\'inizio del periodo selezionato.';
+
   // ── QR code ──
   @override String get qrUnsupportedEntity => 'Tipo di entità non supportato per la generazione QR';
   @override String get qrLabelApiario => 'Apiario';
@@ -2599,6 +2647,8 @@ class StringsIt extends AppStrings {
   @override String get frameLabelFoglioCereo => 'F. Cereo';
   @override String get frameLabelDiaframma => 'Diaframma';
   @override String get frameLabelNutritore => 'Nutritore';
+  @override String get frameLabelTrappolaVarroa => 'Trapp. Varroa';
+  @override String get frameLabelGabbiaRegina => 'Gabbia Regina';
   @override String get frameLabelVuoto => 'Vuoto';
   @override String get frameNoControllo => 'Nessun controllo registrato';
   @override String get frameReginaPresente => 'Regina presente';
@@ -2750,4 +2800,140 @@ class StringsIt extends AppStrings {
       default:           return '';
     }
   }
+
+  // ── Varroa monitoring ────────────────────────────────────────────────────
+  @override String get varroaScreenTitle => 'Varroa';
+  @override String get varroaRefresh => 'Aggiorna';
+  @override String get varroaFabAdd => 'Nuovo rilievo';
+  @override String get varroaEmptyTitle => 'Nessun dato Varroa';
+  @override String get varroaEmptySubtitle =>
+      'Aggiungi il primo rilievo per iniziare a monitorare e proiettare l\'andamento dell\'infestazione.';
+  @override String get varroaAlarmPct => 'infest.';
+  @override String varroaAlarmDaGiorni(int giorni) =>
+      giorni == 0 ? 'oggi' : '$giorni gg fa';
+  @override String varroaAlarmSoglie(double gialla, double rossa) =>
+      'Soglie: ⚠ ${gialla.toStringAsFixed(1)}%  🚨 ${rossa.toStringAsFixed(1)}%';
+  @override String varroaAlarmProiezioneRossa(String data) =>
+      'Soglia critica prevista: $data';
+  @override String get varroaRischioVerde => 'Sotto controllo';
+  @override String get varroaRischioGiallo => 'Attenzione';
+  @override String get varroaRischioArancione => 'Elevato';
+  @override String get varroaRischioRosso => 'Critico';
+  @override String get varroaChartTitle => 'Andamento infestazione';
+  @override String get varroaLegendaOsservato => 'Osservato/Stimato';
+  @override String get varroaLegendaProiezione => 'Proiezione';
+  @override String get varroaLegendaSogliaGialla => 'Soglia attenzione';
+  @override String get varroaLegendaSogliaRossa => 'Soglia critica';
+  @override String get varroaLegendaTrattamento => 'Trattamento';
+  @override String get varroaStatCheckpoints => 'Rilievi';
+  @override String get varroaStatGiorni => 'Dall\'ultimo';
+  @override String get varroaStatTasso => 'Crescita/die';
+  @override String get varroaListTitle => 'Rilievi registrati';
+  @override String get varroaCheckpointEdit => 'Modifica';
+  @override String get varroaCheckpointDelete => 'Elimina';
+  @override String get varroaDeleteTitle => 'Elimina rilievo';
+  @override String varroaDeleteConfirm(String data) =>
+      'Eliminare il rilievo del $data?\nQuesto dato non sarà più disponibile per il modello predittivo.';
+  @override String get varroaFormTitleNew => 'Nuovo rilievo Varroa';
+  @override String get varroaFormTitleEdit => 'Modifica rilievo';
+  @override String get varroaFormSectionData => 'DATA DEL CAMPIONAMENTO';
+  @override String get varroaFormLblData => 'Data';
+  @override String get varroaFormSectionMetodo => 'METODO DI CAMPIONAMENTO';
+  @override String get varroaMetodoLavaggio => 'Lavaggio alcolico';
+  @override String get varroaMetodoSugar => 'Zucchero a velo (sugar shake)';
+  @override String get varroaMetodoCaduta => 'Caduta naturale (fondo)';
+  @override String get varroaFormSectionMisurazione => 'MISURAZIONE';
+  @override String get varroaFormLblApiCampionate => 'Api campionate';
+  @override String get varroaFormLblAcariContati => 'Varroa contate';
+  @override String get varroaFormLblAcariTotali => 'Varroa totali (periodo)';
+  @override String get varroaFormLblGiorniRilevazione => 'Giorni di rilevazione';
+  @override String get varroaFormSuffixApi => 'api';
+  @override String get varroaFormSuffixAcari => 'acari';
+  @override String get varroaFormSuffixGiorni => 'gg';
+  @override String get varroaFormSuffixCaduta => 'acari/gg';
+  @override String get varroaFormSugarShakeNote =>
+      'Correzione +54%: il sugar shake sottostima sistematicamente. Il valore visualizzato è già corretto.';
+  @override String get varroaFormCadutaNaturaleNote =>
+      'Stima approssimativa (conf. 50%). La conversione in % varia con la stagione e la dimensione della colonia.';
+  @override String get varroaFormSectionCovata => 'COVATA AL CAMPIONAMENTO';
+  @override String get varroaFormLblTelainiCovata => 'Telaini di covata presenti';
+  @override String get varroaFormCovataHint =>
+      'Usato dal motore per stimare la proporzione foretica/in-covata';
+  @override String get varroaFormSectionNote => 'NOTE (OPZIONALE)';
+  @override String get varroaFormNoteHint => 'Condizioni, anomalie, osservazioni…';
+  @override String get varroaFormPreviewTitolo => '% infestazione stimata';
+  @override String varroaFormPreviewConfidenza(String metodo) {
+    switch (metodo) {
+      case 'lavaggio_alcolico': return 'Confidenza alta (95%) — metodo di riferimento';
+      case 'sugar_shake':       return 'Confidenza media (75%) — correzione +54% applicata';
+      default:                  return 'Confidenza bassa (50%) — stima stagionale';
+    }
+  }
+  @override String get varroaFormValidazioneObbligatorio => 'Campo obbligatorio';
+  @override String get varroaFormBtnSave => 'SALVA RILIEVO';
+
+  // ── Varroa model info ────────────────────────────────────────────────────
+  @override String get varroaModelInfoBtn => 'Come funziona il modello →';
+  @override String get varroaModelInfoTitle => 'Come funziona il modello Varroa';
+  @override String get varroaModelInfoIntro =>
+      'Il motore predittivo di Apiary Manager stima l\'infestazione da Varroa destructor '
+      'combinando i tuoi campionamenti con un modello di crescita esponenziale. '
+      'Qui trovi i dettagli matematici, i metodi supportati e le integrazioni con il resto dell\'app.';
+  @override String get varroaModelSectionMetodi => 'Metodi di campionamento';
+  @override String get varroaModelLavaggioTitle => 'Lavaggio alcolico';
+  @override String get varroaModelLavaggioDesc =>
+      'Gold standard (95% di confidenza). Le api vengono immerse in alcool per separare fisicamente '
+      'le varroe. È il metodo di riferimento più accurato e serve da calibrazione per gli altri.';
+  @override String get varroaModelLavaggioNote =>
+      'V = varroa contate  ·  n = api campionate';
+  @override String get varroaModelSugarTitle => 'Sugar shake (zucchero a velo)';
+  @override String get varroaModelSugarDesc =>
+      'Confidenza media (75% dopo correzione). Lo zucchero a velo fa staccare le varroe. '
+      'Questo metodo sottostima sistematicamente del 35–54% rispetto al lavaggio alcolico: '
+      'l\'app applica automaticamente la correzione ×1.54 (rif. Macedo et al., Lindsey et al.).';
+  @override String get varroaModelSugarNote =>
+      'Correzione ×1.54 applicata automaticamente';
+  @override String get varroaModelCadutaTitle => 'Caduta naturale (fondo)';
+  @override String get varroaModelCadutaDesc =>
+      'Confidenza bassa (~50%). Si contano le varroe cadute sul fondo nel periodo definito. '
+      'La conversione in percentuale dipende fortemente dalla stagione, dalla dimensione della '
+      'covata e da variabili biologiche difficili da standardizzare.';
+  @override String get varroaModelCadutaNote =>
+      'K = f(stagione, telaini_covata)';
+  @override String get varroaModelSectionProiezione => 'Modello di proiezione';
+  @override String get varroaModelProiezioneDesc =>
+      'Tra due checkpoint a distanza Δt giorni, il motore calcola il tasso di crescita giornaliero '
+      'osservato r e proietta esponenzialmente i 60 giorni successivi. Con più checkpoint viene '
+      'usata una media pesata (i rilievi più recenti pesano di più). Un trattamento interrompe '
+      'la serie: il modello riprende dal checkpoint successivo.';
+  @override String get varroaModelProiezioneFormulaR => '← tasso giornaliero';
+  @override String get varroaModelProiezioneFormulaP => '← proiezione';
+  @override String get varroaModelProiezioneNote =>
+      'Δt = giorni tra checkpoint  ·  P = % infestazione';
+  @override String get varroaModelSectionSoglie => 'Soglie di rischio stagionali';
+  @override String get varroaModelSoglieDesc =>
+      'Le soglie variano con la stagione perché in primavera/estate la covata amplia le opportunità '
+      'riproduttive per la varroa, rendendo più urgente l\'intervento tempestivo.';
+  @override String get varroaModelSoglieColPeriodo => 'Periodo';
+  @override String get varroaModelSoglieColGialla  => '⚠ Gialla';
+  @override String get varroaModelSoglieColRossa   => '🚨 Rossa';
+  @override String get varroaModelSoglieRigaPrimavera => 'Mar – Ago (covata piena)';
+  @override String get varroaModelSoglieRigaAutunno   => 'Set – Ott (pre-invernamento)';
+  @override String get varroaModelSoglieRigaInverno   => 'Nov – Feb (invernamento)';
+  @override String get varroaModelSectionIntegrazioni => 'Integrazioni con l\'app';
+  @override String get varroaModelIntTelaini =>
+      'Analisi Telaini: i telaini di covata rilevati durante un\'ispezione alimentano il fattore K '
+      'nel modello di caduta naturale e migliorano la stima della proporzione foretica/in-covata.';
+  @override String get varroaModelIntTrattamenti =>
+      'Trattamenti: ogni trattamento registrato appare come linea verticale nel grafico. '
+      'Il motore segmenta la proiezione sulla data del trattamento per valutare l\'efficacia terapia.';
+  @override String get varroaModelIntAI =>
+      'AI Chat: i dati varroa sono inclusi nel contesto inviato all\'assistente AI (via MCPService), '
+      'che può rispondere a domande come "quando devo trattare?" o "qual è il rischio attuale?".';
+  @override String get varroaModelFeedbackTitle => 'Non sei d\'accordo? Hai un paper?';
+  @override String get varroaModelFeedbackSubtitle =>
+      'Se hai ricerche o evidenze scientifiche che suggeriscono parametri diversi, scrivici. '
+      'Valutiamo ogni segnalazione e, quando possibile, aggiorniamo il modello.';
+  @override String get varroaModelFeedbackMsgHint =>
+      'Descrivi la tua proposta, incolla link a paper, indica i parametri che vorresti modificare…';
 }

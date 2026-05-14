@@ -455,6 +455,11 @@ abstract class AppStrings {
   String get trattamentiBtnRipristina;
   String get trattamentoRestoredOk;
   String trattamentoRestoreError(String e);
+  // Annullamento (sostituisce il cambio stato manuale)
+  String get trattamentoAnnullaTitle;
+  String get trattamentoAnnullaMsg;
+  String get trattamentoAnnullaConfirm;
+  String get trattamentoAnnullatoOk;
   String get trattamentiDeleteTitle;
   String get trattamentiDeletedOk;
   String trattamentiDeleteError(String e);
@@ -549,6 +554,15 @@ abstract class AppStrings {
   String get trattamentoFormHintNoteBlocco;
   String get trattamentoFormLblMetodoApplicazione;
   String get trattamentoFormLblNoteBloccoCovata;
+  // Split (rimozione parziale arnie da un trattamento in corso)
+  String get trattamentoSplitTitle;
+  String get trattamentoSplitDescription;
+  String get trattamentoSplitDataRimozione;
+  String get trattamentoSplitConfirm;
+  String get trattamentoSplitNoSelection;
+  String get trattamentoSplitOk;
+  String trattamentoSplitError(String e);
+  String trattamentoSplitArnieResidue(int n);
 
   // ── Fioritura screens ─────────────────────────────────────────────────────
   // List
@@ -1027,10 +1041,16 @@ abstract class AppStrings {
   String get nfcChipRemoveBtn;
   String get nfcChipAssignSuccess;
   String get nfcChipScanFailed;
+  String get nfcProgramTagBtn;
+  String get nfcProgramTagHint;
+  String get nfcProgramTagWriting;
+  String get nfcProgramTagSuccess;
+  String get nfcProgramTagFailed;
 
   // NFC voice banner (voice command screen)
   String nfcVoiceBanner(int arniaNumero, String apiarioNome);
   String get nfcVoiceBannerHint;
+  String get nfcVoiceBannerClearTooltip;
 
   // ── Auth – Login Screen ───────────────────────────────────────────────────
   String get loginSubtitle;
@@ -1639,6 +1659,8 @@ abstract class AppStrings {
   String get controlloFormTelainiFoglioCereo;
   String get controlloFormTelainiDiaframma;
   String get controlloFormTelainiNutritore;
+  String get controlloFormTelainiTrappolaVarroa;
+  String get controlloFormTelainiGabbiaRegina;
   String get controlloFormTelainiVuoto;
   String get controlloFormAutoOrdina;
   String get controlloFormPreCaricato;
@@ -1685,6 +1707,8 @@ abstract class AppStrings {
   String controlloFormScorteCount(int n);
   String controlloFormDiaframmaCount(int n);
   String controlloFormFoglioCereoCount(int n);
+  String controlloFormTrappolaVarroaCount(int n);
+  String controlloFormGabbiaReginaCount(int n);
 
   // ── Pagamenti screen ──
   String get pagamentiTitle;
@@ -2267,6 +2291,7 @@ abstract class AppStrings {
   String get mappaStatCommunity;
   String get mappaStatTuoGruppo;
   String get mappaApprox;
+  String mappaApproxRadius(int km);
   String get mappaBtnVisualizza;
   String get mappaBtnApriApiario;
   String get mappaLegenda;
@@ -2436,6 +2461,25 @@ abstract class AppStrings {
   String get weatherToday;
   List<String> get weatherDayNamesShort;
 
+  // ── Meteo storico (dataset ML) ──
+  String get meteoLiveTab;
+  String get meteoStoricoTab;
+  String get meteoStoricoEmpty;
+  String get meteoStoricoError;
+  String get meteoStoricoRange30;
+  String get meteoStoricoRange90;
+  String get meteoStoricoRange365;
+  String get meteoStoricoStatsGiorni;
+  String get meteoStoricoStatsTempMedia;
+  String get meteoStoricoStatsPrecipTotale;
+  String get meteoStoricoStatsGddCumulato;
+  String get meteoStoricoChartTemperatura;
+  String get meteoStoricoChartPrecipitazioni;
+  String get meteoStoricoChartGdd;
+  String get meteoStoricoTempMin;
+  String get meteoStoricoTempMax;
+  String get meteoStoricoGddInfo;
+
   // ── QR code ──
   String get qrUnsupportedEntity;
   String get qrLabelApiario;
@@ -2547,6 +2591,8 @@ abstract class AppStrings {
   String get frameLabelFoglioCereo;
   String get frameLabelDiaframma;
   String get frameLabelNutritore;
+  String get frameLabelTrappolaVarroa;
+  String get frameLabelGabbiaRegina;
   String get frameLabelVuoto;
   String get frameNoControllo;
   String get frameReginaPresente;
@@ -2611,6 +2657,98 @@ abstract class AppStrings {
 
   // ── Controllo form contextual hint ──
   String get controlloFormIntroHint;
+
+  // ── Varroa monitoring ────────────────────────────────────────────────────
+  String get varroaScreenTitle;
+  String get varroaRefresh;
+  String get varroaFabAdd;
+  String get varroaEmptyTitle;
+  String get varroaEmptySubtitle;
+  String get varroaAlarmPct;
+  String varroaAlarmDaGiorni(int giorni);
+  String varroaAlarmSoglie(double gialla, double rossa);
+  String varroaAlarmProiezioneRossa(String data);
+  String get varroaRischioVerde;
+  String get varroaRischioGiallo;
+  String get varroaRischioArancione;
+  String get varroaRischioRosso;
+  String get varroaChartTitle;
+  String get varroaLegendaOsservato;
+  String get varroaLegendaProiezione;
+  String get varroaLegendaSogliaGialla;
+  String get varroaLegendaSogliaRossa;
+  String get varroaLegendaTrattamento;
+  String get varroaStatCheckpoints;
+  String get varroaStatGiorni;
+  String get varroaStatTasso;
+  String get varroaListTitle;
+  String get varroaCheckpointEdit;
+  String get varroaCheckpointDelete;
+  String get varroaDeleteTitle;
+  String varroaDeleteConfirm(String data);
+  String get varroaFormTitleNew;
+  String get varroaFormTitleEdit;
+  String get varroaFormSectionData;
+  String get varroaFormLblData;
+  String get varroaFormSectionMetodo;
+  String get varroaMetodoLavaggio;
+  String get varroaMetodoSugar;
+  String get varroaMetodoCaduta;
+  String get varroaFormSectionMisurazione;
+  String get varroaFormLblApiCampionate;
+  String get varroaFormLblAcariContati;
+  String get varroaFormLblAcariTotali;
+  String get varroaFormLblGiorniRilevazione;
+  String get varroaFormSuffixApi;
+  String get varroaFormSuffixAcari;
+  String get varroaFormSuffixGiorni;
+  String get varroaFormSuffixCaduta;
+  String get varroaFormSugarShakeNote;
+  String get varroaFormCadutaNaturaleNote;
+  String get varroaFormSectionCovata;
+  String get varroaFormLblTelainiCovata;
+  String get varroaFormCovataHint;
+  String get varroaFormSectionNote;
+  String get varroaFormNoteHint;
+  String get varroaFormPreviewTitolo;
+  String varroaFormPreviewConfidenza(String metodo);
+  String get varroaFormValidazioneObbligatorio;
+  String get varroaFormBtnSave;
+
+  // ── Varroa model info ────────────────────────────────────────────────────
+  String get varroaModelInfoBtn;
+  String get varroaModelInfoTitle;
+  String get varroaModelInfoIntro;
+  String get varroaModelSectionMetodi;
+  String get varroaModelLavaggioTitle;
+  String get varroaModelLavaggioDesc;
+  String get varroaModelLavaggioNote;
+  String get varroaModelSugarTitle;
+  String get varroaModelSugarDesc;
+  String get varroaModelSugarNote;
+  String get varroaModelCadutaTitle;
+  String get varroaModelCadutaDesc;
+  String get varroaModelCadutaNote;
+  String get varroaModelSectionProiezione;
+  String get varroaModelProiezioneDesc;
+  String get varroaModelProiezioneFormulaR;
+  String get varroaModelProiezioneFormulaP;
+  String get varroaModelProiezioneNote;
+  String get varroaModelSectionSoglie;
+  String get varroaModelSoglieDesc;
+  String get varroaModelSoglieColPeriodo;
+  String get varroaModelSoglieColGialla;
+  String get varroaModelSoglieColRossa;
+  String get varroaModelSoglieRigaPrimavera;
+  String get varroaModelSoglieRigaAutunno;
+  String get varroaModelSoglieRigaInverno;
+  String get varroaModelSectionIntegrazioni;
+  String get varroaModelIntTelaini;
+  String get varroaModelIntTrattamenti;
+  String get varroaModelIntAI;
+  String get varroaModelFeedbackTitle;
+  String get varroaModelFeedbackSubtitle;
+  String get varroaModelFeedbackMsgHint;
 
   // ── Nomadismo presets (melliferous plants) ──
   String nomadismoPresetNome(String key);

@@ -414,6 +414,8 @@ class MCPService {
         int telainiVuoti = telainiConfig.where((t) => t == 'vuoto').length;
         int telainiDiaframma = telainiConfig.where((t) => t == 'diaframma').length;
         int telainiNutritore = telainiConfig.where((t) => t == 'nutritore').length;
+        int telainiTrappolaVarroa = telainiConfig.where((t) => t == 'trappola_varroa').length;
+        int telainiGabbiaRegina = telainiConfig.where((t) => t == 'gabbia_regina').length;
         
         // Crea un riepilogo con maggiori informazioni
         Map<String, dynamic> controlloDettagliato = Map<String, dynamic>.from({
@@ -422,6 +424,8 @@ class MCPService {
           'telaini_vuoti': telainiVuoti,
           'telaini_diaframma': telainiDiaframma,
           'telaini_nutritore': telainiNutritore,
+          'telaini_trappola_varroa': telainiTrappolaVarroa,
+          'telaini_gabbia_regina': telainiGabbiaRegina,
           'stato_regina': {
             'presente': controllo['presenza_regina'] ?? false,
             'vista': controllo['regina_vista'] ?? false,
@@ -490,6 +494,8 @@ class MCPService {
         int telainiVuoti = telainiConfig.where((t) => t == 'vuoto').length;
         int telainiDiaframma = telainiConfig.where((t) => t == 'diaframma').length;
         int telainiNutritore = telainiConfig.where((t) => t == 'nutritore').length;
+        int telainiTrappolaVarroa = telainiConfig.where((t) => t == 'trappola_varroa').length;
+        int telainiGabbiaRegina = telainiConfig.where((t) => t == 'gabbia_regina').length;
         
         // Crea un riepilogo con maggiori informazioni
         Map<String, dynamic> controlloDettagliato = Map<String, dynamic>.from({
@@ -498,6 +504,8 @@ class MCPService {
           'telaini_vuoti': telainiVuoti,
           'telaini_diaframma': telainiDiaframma,
           'telaini_nutritore': telainiNutritore,
+          'telaini_trappola_varroa': telainiTrappolaVarroa,
+          'telaini_gabbia_regina': telainiGabbiaRegina,
           'stato_regina': {
             'presente': controllo['presenza_regina'] ?? false,
             'vista': controllo['regina_vista'] ?? false,
@@ -545,7 +553,9 @@ class MCPService {
       int telainiVuoti = telainiConfig.where((t) => t == 'vuoto').length;
       int telainiDiaframma = telainiConfig.where((t) => t == 'diaframma').length;
       int telainiNutritore = telainiConfig.where((t) => t == 'nutritore').length;
-      
+      int telainiTrappolaVarroa = telainiConfig.where((t) => t == 'trappola_varroa').length;
+      int telainiGabbiaRegina = telainiConfig.where((t) => t == 'gabbia_regina').length;
+
       // Crea un riepilogo con dati completi
       return {
         'controllo': {
@@ -554,6 +564,8 @@ class MCPService {
           'telaini_vuoti': telainiVuoti,
           'telaini_diaframma': telainiDiaframma,
           'telaini_nutritore': telainiNutritore,
+          'telaini_trappola_varroa': telainiTrappolaVarroa,
+          'telaini_gabbia_regina': telainiGabbiaRegina,
           'stato_regina': {
             'presente': response['presenza_regina'] ?? false,
             'vista': response['regina_vista'] ?? false,
@@ -629,6 +641,8 @@ class MCPService {
       int telainiVuoti = telainiConfig.where((t) => t == 'vuoto').length;
       int telainiDiaframma = telainiConfig.where((t) => t == 'diaframma').length;
       int telainiNutritore = telainiConfig.where((t) => t == 'nutritore').length;
+      int telainiTrappolaVarroa = telainiConfig.where((t) => t == 'trappola_varroa').length;
+      int telainiGabbiaRegina = telainiConfig.where((t) => t == 'gabbia_regina').length;
       
       // Calcola lo stato e tendenza
       String statoFamiglia = "normale";
@@ -658,6 +672,8 @@ class MCPService {
           'telaini_vuoti': telainiVuoti,
           'telaini_diaframma': telainiDiaframma,
           'telaini_nutritore': telainiNutritore,
+          'telaini_trappola_varroa': telainiTrappolaVarroa,
+          'telaini_gabbia_regina': telainiGabbiaRegina,
           'totale_telaini': telainiConfig.length
         },
         'stato_famiglia': statoFamiglia,
@@ -933,26 +949,36 @@ class MCPService {
     int telainiVuoti = telainiConfig.where((t) => t == 'vuoto').length;
     int telainiDiaframma = telainiConfig.where((t) => t == 'diaframma').length;
     int telainiNutritore = telainiConfig.where((t) => t == 'nutritore').length;
-    
+    int telainiTrappolaVarroa = telainiConfig.where((t) => t == 'trappola_varroa').length;
+    int telainiGabbiaRegina = telainiConfig.where((t) => t == 'gabbia_regina').length;
+
     List<String> parti = [];
-    
+
     // Aggiungi descrizioni per i diversi tipi
     if (telainiCovata > 0) {
       parti.add('$telainiCovata telaini di covata');
     }
-    
+
     if (telainiScorte > 0) {
       parti.add('$telainiScorte telaini di scorte');
     }
-    
+
     if (telainiVuoti > 0) {
       parti.add('$telainiVuoti telaini vuoti');
     }
-    
+
     if (telainiDiaframma > 0) {
       parti.add('$telainiDiaframma diaframma/i');
     }
-    
+
+    if (telainiTrappolaVarroa > 0) {
+      parti.add('$telainiTrappolaVarroa telaino/i trappola varroa');
+    }
+
+    if (telainiGabbiaRegina > 0) {
+      parti.add('$telainiGabbiaRegina telaino/i gabbia regina (blocco covata)');
+    }
+
     if (telainiNutritore > 0) {
       parti.add('$telainiNutritore nutritore/i');
     }

@@ -15,6 +15,7 @@ import 'apiario_form_screen.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/skeleton_widgets.dart';
 import '../../widgets/weather_widget.dart';
+import '../../widgets/meteo_storico_widget.dart';
 import '../../database/dao/controllo_arnia_dao.dart';
 import '../../services/controllo_service.dart';
 
@@ -328,7 +329,8 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
       );
     }
 
-    return WeatherWidget(
+    return _MeteoTabView(
+      apiarioId: widget.apiarioId,
       latitude: double.parse(lat.toString()),
       longitude: double.parse(lon.toString()),
       locationName: nome,
@@ -896,6 +898,62 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
         Text(label,
             style: TextStyle(fontSize: 12, color: ThemeConstants.textSecondaryColor)),
+      ],
+    );
+  }
+}
+
+/// Tab Meteo con segmented control Live | Storico.
+class _MeteoTabView extends StatefulWidget {
+  final int apiarioId;
+  final double latitude;
+  final double longitude;
+  final String locationName;
+
+  const _MeteoTabView({
+    Key? key,
+    required this.apiarioId,
+    required this.latitude,
+    required this.longitude,
+    required this.locationName,
+  }) : super(key: key);
+
+  @override
+  State<_MeteoTabView> createState() => _MeteoTabViewState();
+}
+
+class _MeteoTabViewState extends State<_MeteoTabView> {
+  int _selected = 0; // 0 = Live, 1 = Storico
+
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: SegmentedButton<int>(
+            segments: [
+              ButtonSegment(value: 0, label: Text(_s.meteoLiveTab),
+                  icon: const Icon(Icons.cloud_outlined)),
+              ButtonSegment(value: 1, label: Text(_s.meteoStoricoTab),
+                  icon: const Icon(Icons.show_chart)),
+            ],
+            selected: {_selected},
+            onSelectionChanged: (s) => setState(() => _selected = s.first),
+          ),
+        ),
+        Expanded(
+          child: _selected == 0
+              ? WeatherWidget(
+                  latitude: widget.latitude,
+                  longitude: widget.longitude,
+                  locationName: widget.locationName,
+                )
+              : MeteoStoricoWidget(apiarioId: widget.apiarioId),
+        ),
       ],
     );
   }

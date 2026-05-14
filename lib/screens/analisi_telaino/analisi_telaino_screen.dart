@@ -27,34 +27,40 @@ class _TelainoSlot {
 
   String get label {
     switch (tipo) {
-      case 'covata':       return 'Covata';
-      case 'scorte':       return 'Scorte';
-      case 'foglio_cereo': return 'F. Cereo';
-      case 'diaframma':    return 'Diaframma';
-      case 'nutritore':    return 'Nutritore';
-      default:             return tipo;
+      case 'covata':          return 'Covata';
+      case 'scorte':          return 'Scorte';
+      case 'foglio_cereo':    return 'F. Cereo';
+      case 'diaframma':       return 'Diaframma';
+      case 'nutritore':       return 'Nutritore';
+      case 'trappola_varroa': return 'Trapp. Varroa';
+      case 'gabbia_regina':   return 'Gabbia Regina';
+      default:                return tipo;
     }
   }
 
   Color get color {
     switch (tipo) {
-      case 'covata':       return Colors.red.shade700;
-      case 'scorte':       return Colors.amber.shade700;
-      case 'foglio_cereo': return const Color(0xFF8FBC5A);
-      case 'diaframma':    return Colors.grey.shade800;
-      case 'nutritore':    return const Color(0xFFA0785A);
-      default:             return Colors.blueGrey;
+      case 'covata':          return Colors.red.shade700;
+      case 'scorte':          return Colors.amber.shade700;
+      case 'foglio_cereo':    return const Color(0xFF8FBC5A);
+      case 'diaframma':       return Colors.grey.shade800;
+      case 'nutritore':       return const Color(0xFFA0785A);
+      case 'trappola_varroa': return const Color(0xFF6D4C41);
+      case 'gabbia_regina':   return const Color(0xFF7E57C2);
+      default:                return Colors.blueGrey;
     }
   }
 
   IconData get icon {
     switch (tipo) {
-      case 'covata':       return Icons.grid_4x4;
-      case 'scorte':       return Icons.hexagon_outlined;
-      case 'foglio_cereo': return Icons.description_outlined;
-      case 'diaframma':    return Icons.vertical_split;
-      case 'nutritore':    return Icons.coffee;
-      default:             return Icons.help_outline;
+      case 'covata':          return Icons.grid_4x4;
+      case 'scorte':          return Icons.hexagon_outlined;
+      case 'foglio_cereo':    return Icons.description_outlined;
+      case 'diaframma':       return Icons.vertical_split;
+      case 'nutritore':       return Icons.coffee;
+      case 'trappola_varroa': return Icons.bug_report;
+      case 'gabbia_regina':   return Icons.lock_outline;
+      default:                return Icons.help_outline;
     }
   }
 }

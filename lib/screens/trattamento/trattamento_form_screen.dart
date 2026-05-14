@@ -451,8 +451,22 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
         'blocco_covata_attivo': _bloccoCovataAttivo,
       };
 
+      // Materializza sempre la lista arnie: anche per "tutto l'apiario" salviamo
+      // gli id correnti delle arnie, così uno split parziale futuro è sempre possibile.
+      List<int> arnieDaSalvare;
       if (_targetingSpecificArnie && _selectedArnieIds.isNotEmpty) {
-        data['arnie'] = _selectedArnieIds.toList();
+        arnieDaSalvare = _selectedArnieIds.toList();
+      } else {
+        if (_arnieApiario.isEmpty) {
+          await _loadArnieForApiario(_apiarioId!);
+        }
+        arnieDaSalvare = _arnieApiario
+            .map<int?>((a) => a['id'] as int?)
+            .whereType<int>()
+            .toList();
+      }
+      if (arnieDaSalvare.isNotEmpty) {
+        data['arnie'] = arnieDaSalvare;
       }
       if (_dataFine != null) data['data_fine'] = dateFormat.format(_dataFine!);
       if (_bloccoCovataAttivo) {

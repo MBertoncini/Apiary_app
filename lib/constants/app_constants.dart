@@ -131,6 +131,21 @@ class AppConstants {
   static const String whatsNewRoute = "/whats-new";
   static const String guidaRoute = "/guida";
 
+  // Deep link / NFC tag URL
+  // Tag NFC scritti come record URI NDEF → quando scansionati fuori dall'app
+  // l'OS apre direttamente l'app via App Link (Android) / Universal Link (iOS).
+  static const String deepLinkScheme = "https";
+  static const String deepLinkHost = "cible99.pythonanywhere.com";
+  static const String deepLinkArniaPathPrefix = "/a/";
+  static const String deepLinkCustomScheme = "apiary";
+  static const String deepLinkCustomHost = "a";
+
+  /// Costruisce l'URL HTTPS da scrivere su un tag NFC per una data arnia.
+  /// Es: https://cible99.pythonanywhere.com/a/04:11:A2:33:B4:5C:80
+  static String buildArniaDeepLink(String nfcId) {
+    return '$deepLinkScheme://$deepLinkHost$deepLinkArniaPathPrefix$nfcId';
+  }
+
   // Altri parametri
   static const int defaultSyncInterval = 30; // Minuti
   

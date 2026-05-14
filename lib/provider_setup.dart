@@ -19,6 +19,7 @@ import 'services/bee_detection_service.dart';
 import 'services/analisi_telaino_service.dart';
 import 'services/subscription_service.dart';
 import 'services/nfc_handler.dart';
+import 'services/deep_link_handler.dart';
 
 List<SingleChildWidget> providers = [
   // Language service (independent) — must be first so MaterialApp can read it
@@ -55,6 +56,16 @@ List<SingleChildWidget> providers = [
       Provider.of<StorageService>(context, listen: false),
     ),
     update: (_, api, storage, prev) => prev ?? NfcHandler(api, storage),
+  ),
+
+  // Deep link handler — apre l'app da tag NFC scansionati fuori dall'app
+  // o da App Link / Universal Link. Riusa NfcHandler per la navigazione.
+  ChangeNotifierProxyProvider2<AuthService, NfcHandler, DeepLinkHandler>(
+    create: (context) => DeepLinkHandler(
+      Provider.of<AuthService>(context, listen: false),
+      Provider.of<NfcHandler>(context, listen: false),
+    ),
+    update: (_, auth, nfc, prev) => prev ?? DeepLinkHandler(auth, nfc),
   ),
 
   // Sync service (depends on API and storage) - periodic sync NOT auto-started

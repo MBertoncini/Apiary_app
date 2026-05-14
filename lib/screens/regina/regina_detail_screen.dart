@@ -251,8 +251,8 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
             const SizedBox(height: 16),
             _buildInfoSection(s.reginaDetailSectionMarcatura, [
               _buildInfoRow(s.reginaFormMarcataTitle, regina.marcata ? s.labelYes : s.labelNo),
-              if (regina.marcata && regina.colore != null && regina.colore != 'non_marcata')
-                _buildInfoRow(s.reginaFormLblColoreMarcatura, _getColoreMarcaturaDisplay(s, regina.colore!)),
+              if (regina.marcata)
+                _buildColorePalettaMarcatura(s, regina.colore),
               if (regina.codiceMarcatura != null && regina.codiceMarcatura!.isNotEmpty)
                 _buildInfoRow(s.reginaDetailLblCodiceMarcatura, regina.codiceMarcatura!),
             ]),
@@ -886,6 +886,81 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     );
   }
 
+  static const List<(String, Color, String)> _marcaturaColori = [
+    ('bianco', Colors.white,  '1, 6'),
+    ('giallo', Colors.yellow, '2, 7'),
+    ('rosso',  Colors.red,    '3, 8'),
+    ('verde',  Colors.green,  '4, 9'),
+    ('blu',    Colors.blue,   '5, 0'),
+  ];
+
+  Widget _buildColorePalettaMarcatura(AppStrings s, String? coloreSelezionato) {
+    final attivo = (coloreSelezionato == null || coloreSelezionato == 'non_marcata')
+        ? null
+        : coloreSelezionato;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              s.reginaFormLblColoreMarcatura,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final (nome, color, legenda) in _marcaturaColori)
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: attivo == nome ? 36 : 28,
+                          height: attivo == nome ? 36 : 28,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: attivo == nome ? Colors.black87 : Colors.grey.shade400,
+                              width: attivo == nome ? 3 : 1,
+                            ),
+                            boxShadow: attivo == nome
+                                ? [const BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1)]
+                                : null,
+                          ),
+                          child: attivo == nome
+                              ? Icon(Icons.check, size: 16,
+                                  color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+                              : null,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          legenda,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: attivo == nome ? FontWeight.bold : FontWeight.normal,
+                            color: attivo == nome ? Colors.black87 : Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoSection(String title, List<Widget> children) {
     return Card(
       child: Column(
@@ -1002,17 +1077,6 @@ class _ReginaDetailScreenState extends State<ReginaDetailScreen> with SingleTick
     }
   }
 
-  String _getColoreMarcaturaDisplay(AppStrings s, String colore) {
-    switch (colore) {
-      case 'bianco':      return s.reginaDetailColoreBianco;
-      case 'giallo':      return s.reginaDetailColoreGiallo;
-      case 'rosso':       return s.reginaDetailColoreRosso;
-      case 'verde':       return s.reginaDetailColoreVerde;
-      case 'blu':         return s.reginaDetailColoreBlu;
-      case 'non_marcata': return s.reginaDetailColoreNonMarcata;
-      default:            return colore;
-    }
-  }
 
   String _calculateAge(AppStrings s, String birthDateString) {
     try {

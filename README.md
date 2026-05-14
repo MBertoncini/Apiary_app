@@ -32,9 +32,9 @@ Apiary Manager is a Flutter mobile app paired with a Django REST backend. It is 
 | **Platform** | Flutter (Android primary; iOS, Web, Linux, macOS supported) |
 | **Dart SDK** | ≥ 3.0.0 < 4.0.0 |
 | **Android Min SDK** | API 21 (Android 5.0) |
-| **App Version** | 1.0.2+10 |
-| **Backend** | Django 4.2 + DRF @ `cible99.pythonanywhere.com` |
-| **Local DB schema** | v7 |
+| **App Version** | 1.0.2+17 |
+| **Backend** | Django 4.2 + DRF @ `cible99.pythonanywhere.com` (MySQL: `Cible99$apiary`) |
+| **Local DB schema** | v7 (SQLite) |
 
 ---
 
@@ -67,6 +67,7 @@ Apiary Manager is a Flutter mobile app paired with a Django REST backend. It is 
 | **Permissions** | `permission_handler` |
 | **Export** | `pdf`, `printing`, `csv`, `share_plus` |
 | **Sensors** | `sensors_plus`, `vibration` |
+| **NFC & deep links** | `nfc_manager`, `app_links` |
 | **i18n** | `flutter_localizations`, `intl` |
 
 ### Custom fonts
@@ -105,6 +106,7 @@ Caveat, Quicksand, Poppins.
    ┌──────────────────────┐    ┌────────────────────────────┐
    │  Django 4.2 + DRF    │    │  Gemini API (v1beta)       │
    │  PythonAnywhere      │    │  + RevenueCat (entitlements)│
+   │  + MySQL             │    │                            │
    └──────────────────────┘    └────────────────────────────┘
 ```
 
@@ -169,7 +171,12 @@ lib/
 │   ├── voice_language_rules, bee_vocabulary_corrector
 │   ├── platform_speech_service, platform_voice_input_manager
 │   ├── audio_service, audio_recorder_service, audio_queue_service
-│   └── subscription_service       # RevenueCat wrapper
+│   ├── subscription_service       # RevenueCat wrapper
+│   │
+│   │  # NFC & deep linking
+│   ├── nfc_service                # raw NFC reader (nfc_manager)
+│   ├── nfc_handler                # resolves nfc_id → arnia and navigates
+│   └── deep_link_handler          # https://.../a/<nfc_id> + apiary:// links
 │
 ├── screens/                    # 40+ screens, domain-organised
 │   ├── auth/, splash_screen, onboarding/
@@ -240,6 +247,14 @@ Free-form speech → structured inspection records.
 
 ### Frame analysis
 On-device YOLOv8-seg detection of bees / drones / queens / royal cells from a frame photo.
+
+### NFC & deep links
+Each arnia can be bound to an NFC tag via its `nfc_id` (UID hex). Scanning a tag — either inside the app or from the OS — opens the matching arnia detail screen.
+
+- `NfcService` reads the UID via `nfc_manager` (supports nfca/nfcb/nfcf/nfcv/ISO-DEP/MIFARE/FeliCa/ISO15693/ISO7816).
+- `NfcHandler` resolves the UID locally first, then via `ApiService.searchArnie()`, and navigates.
+- `DeepLinkHandler` (App Links / Universal Links + custom scheme) handles `https://cible99.pythonanywhere.com/a/<nfc_id>` and `apiary://a/<nfc_id>`, queueing the link until the user is authenticated.
+- Server-side artefacts to wire OS-level deep linking live in `deploy/nfc-deeplink/` (`assetlinks.json`, `apple-app-site-association`, `views.py`, `nfc_landing.html`).
 
 ---
 

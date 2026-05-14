@@ -79,6 +79,7 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
   // NFC chip associato a questa arnia
   String? _nfcId;
   bool _isScanningNfc = false;
+  bool _isProgrammingTag = false;
   final NfcService _nfcService = NfcService();
 
   // Indicatore di caricamento
@@ -251,6 +252,34 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
         SnackBar(content: Text(s.nfcChipScanFailed)),
       );
     }
+  }
+
+  /// Scrive sul tag fisico un record NDEF URI con il deep link dell'arnia,
+  /// così che il tag possa aprire l'app anche se scansionato fuori dall'app.
+  Future<void> _programNfcTag() async {
+    if (_nfcId == null) return;
+    final s = Provider.of<LanguageService>(context, listen: false).strings;
+
+    setState(() => _isProgrammingTag = true);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(s.nfcProgramTagWriting),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    final ok = await _nfcService.writeArniaUriToTag(_nfcId!);
+
+    if (!mounted) return;
+    setState(() => _isProgrammingTag = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? s.nfcProgramTagSuccess : s.nfcProgramTagFailed),
+        backgroundColor: ok ? Colors.green : null,
+      ),
+    );
   }
 
   Future<void> _saveArnia() async {
@@ -613,6 +642,31 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                         ],
                       ),
                     ),
+                    if (_nfcId != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              s.nfcProgramTagHint,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_isProgrammingTag)
+                            const SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else
+                            OutlinedButton.icon(
+                              onPressed: _programNfcTag,
+                              icon: const Icon(Icons.edit_note, size: 18),
+                              label: Text(s.nfcProgramTagBtn),
+                            ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 24),
 
                     // Pulsante salva

@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "REPLACE_TEAM_ID.com.example.apiaryApp"
+        ],
+        "components": [
+          {
+            "/": "/a/*",
+            "comment": "Apre l'app Apiary quando si scansiona un tag NFC che contiene questo URL"
+          }
+        ]
+      }
+    ]
+  }
+}

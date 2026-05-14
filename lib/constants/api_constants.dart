@@ -17,6 +17,14 @@ class ApiConstants {
   
   // Endpoint apiari
   static const String apiariUrl = baseUrl + apiPrefix + '/apiari/';
+
+  // Endpoint meteo giornaliero (dataset per ML predittivo)
+  static String apiarioMeteoGiornalieroUrlOf(int apiarioId) =>
+      baseUrl + apiPrefix + '/apiari/$apiarioId/meteo-giornaliero/';
+  static String apiarioMeteoGiornalieroStatsUrlOf(int apiarioId) =>
+      baseUrl + apiPrefix + '/apiari/$apiarioId/meteo-giornaliero/stats/';
+  static String apiarioMeteoGiornalieroBackfillUrlOf(int apiarioId) =>
+      baseUrl + apiPrefix + '/apiari/$apiarioId/meteo-giornaliero/backfill/';
   
   // Endpoint arnie
   static const String arnieUrl = baseUrl + apiPrefix + '/arnie/';
@@ -45,6 +53,8 @@ class ApiConstants {
   // Endpoint trattamenti
   static const String trattamentiUrl = baseUrl + apiPrefix + '/trattamenti/';
   static const String trattamentiAttiviUrl = baseUrl + apiPrefix + '/trattamenti/attivi/';
+  static String trattamentoAnnullaUrlOf(int id) =>
+      baseUrl + apiPrefix + '/trattamenti/$id/annulla/';
   static const String tipiTrattamentoUrl = baseUrl + apiPrefix + '/tipi-trattamento/';
   static const String apiarioTrattamentoUrl = baseUrl + apiPrefix + '/apiario/{apiario_id}/trattamento/nuovo/';
   static const String trattamentoStatoUrl = baseUrl + apiPrefix + '/trattamento/{trattamento_id}/stato/{nuovo_stato}/';
@@ -120,6 +130,10 @@ class ApiConstants {
   // Azioni sull'arnia relative alle colonie
   static const String arniaColoniaAttivaUrl  = baseUrl + apiPrefix + '/arnie/{arnia_id}/colonia_attiva/';
   static const String arniaStoriaColonieUrl  = baseUrl + apiPrefix + '/arnie/{arnia_id}/storia_colonie/';
+
+  // Endpoint Varroa monitoring
+  static const String varroaCheckpointsUrl = baseUrl + apiPrefix + '/varroa-checkpoints/';
+  static const String varroaTraiettoriaUrl = baseUrl + apiPrefix + '/varroa-checkpoints/traiettoria/';
 
   // Endpoint AI
   static const String aiChatUrl = baseUrl + apiPrefix + '/ai/chat/';

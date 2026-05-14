@@ -15,34 +15,79 @@ class HiveFrameVisualizer extends StatelessWidget {
 
   // ─── colori per tipo telaino ───────────────────────────────────
   static const Map<String, Color> _colors = {
-    'covata':       Color(0xFFFF8C42), // arancione caldo
-    'scorte':       Color(0xFFFFD166), // giallo miele
-    'misto':        Color(0xFFFF8C42), // come covata
-    'foglio_cereo': Color(0xFFC5E0A0), // verde chiaro (cera)
-    'diaframma':    Color(0xFF9E9E9E), // grigio
-    'nutritore':    Color(0xFF74B3CE), // azzurro
-    'vuoto':        Color(0xFFEEEEEE), // grigio chiaro
+    'covata':          Color(0xFFFF8C42), // arancione caldo
+    'scorte':          Color(0xFFFFD166), // giallo miele
+    'misto':           Color(0xFFFF8C42), // come covata
+    'foglio_cereo':    Color(0xFFC5E0A0), // verde chiaro (cera)
+    'diaframma':       Color(0xFF9E9E9E), // grigio
+    'nutritore':       Color(0xFF74B3CE), // azzurro
+    'trappola_varroa': Color(0xFF6D4C41), // marrone scuro (legno)
+    'gabbia_regina':   Color(0xFF7E57C2), // viola
+    'vuoto':           Color(0xFFEEEEEE), // grigio chiaro
   };
 
   static String _labelFor(AppStrings s, String type) {
     switch (type) {
-      case 'covata':       return s.frameLabelCovata;
-      case 'scorte':       return s.frameLabelScorte;
-      case 'misto':        return s.frameLabelCovata;
-      case 'foglio_cereo': return s.frameLabelFoglioCereo;
-      case 'diaframma':    return s.frameLabelDiaframma;
-      case 'nutritore':    return s.frameLabelNutritore;
-      case 'vuoto':        return s.frameLabelVuoto;
-      default:             return type;
+      case 'covata':          return s.frameLabelCovata;
+      case 'scorte':          return s.frameLabelScorte;
+      case 'misto':           return s.frameLabelCovata;
+      case 'foglio_cereo':    return s.frameLabelFoglioCereo;
+      case 'diaframma':       return s.frameLabelDiaframma;
+      case 'nutritore':       return s.frameLabelNutritore;
+      case 'trappola_varroa': return s.frameLabelTrappolaVarroa;
+      case 'gabbia_regina':   return s.frameLabelGabbiaRegina;
+      case 'vuoto':           return s.frameLabelVuoto;
+      default:                return type;
     }
   }
 
   static Color _colorFor(String type) => _colors[type] ?? const Color(0xFFEEEEEE);
 
+  /// Decorazione speciale per tipi con pattern complesso (3 scomparti, gabbia).
+  /// Per gli altri tipi, restituisce un BoxDecoration semplice con colore pieno.
+  static BoxDecoration _decorationFor(String type) {
+    switch (type) {
+      case 'trappola_varroa':
+        return BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: [0.0, 0.32, 0.36, 0.64, 0.68, 1.0],
+            colors: [
+              Color(0xFF6D4C41),
+              Color(0xFF6D4C41),
+              Color(0xFF3E2723),
+              Color(0xFF3E2723),
+              Color(0xFF6D4C41),
+              Color(0xFF6D4C41),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: const Color(0xFF3E2723), width: 0.5),
+        );
+      case 'gabbia_regina':
+        return BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFB39DDB), Color(0xFF7E57C2), Color(0xFF5E35B1)],
+          ),
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: const Color(0xFF4527A0), width: 0.5),
+        );
+      default:
+        return BoxDecoration(
+          color: _colorFor(type),
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: Colors.black12, width: 0.5),
+        );
+    }
+  }
+
   // ─── legenda (chiamata una volta per gruppo; ora localizzata) ──────
   static Widget legend(BuildContext context) {
     final s = Provider.of<LanguageService>(context, listen: false).strings;
-    const types = ['covata', 'scorte', 'foglio_cereo', 'diaframma', 'nutritore', 'vuoto'];
+    const types = ['covata', 'scorte', 'foglio_cereo', 'diaframma', 'nutritore', 'trappola_varroa', 'gabbia_regina', 'vuoto'];
     return Wrap(
       spacing: 10,
       runSpacing: 2,
@@ -115,11 +160,7 @@ class HiveFrameVisualizer extends StatelessWidget {
               child: Container(
                 height: 22,
                 margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                decoration: BoxDecoration(
-                  color: _colorFor(frames[i]),
-                  borderRadius: BorderRadius.circular(2),
-                  border: Border.all(color: Colors.black12, width: 0.5),
-                ),
+                decoration: _decorationFor(frames[i]),
               ),
             )),
           ),

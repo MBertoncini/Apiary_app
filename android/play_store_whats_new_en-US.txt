@@ -1,0 +1,4 @@
+- Full NFC support: manage tags both inside and outside the app for immediate access to your hives.
+- Weather History: view weather conditions from past days to better monitor apiary activity.
+- New frame types: added specific frame types for varroa control and infestation monitoring.
+- Minor optimizations and bug fixes.
