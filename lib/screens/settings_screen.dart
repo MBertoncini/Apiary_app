@@ -15,6 +15,7 @@ import '../services/ai_quota_service.dart';
 import '../services/voice_settings_service.dart';
 import '../services/nfc_settings_service.dart';
 import '../services/nfc_handler.dart';
+import '../widgets/animated_tier_icon.dart';
 import '../widgets/drawer_widget.dart';
 import '../widgets/paper_widgets.dart';
 import '../widgets/skeleton_widgets.dart';
@@ -645,19 +646,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final hasPersonalKey = quota.hasPersonalGeminiKey;
 
     Color tierColor;
-    IconData tierIcon;
     switch (tier) {
       case AiTier.free:
         tierColor = Colors.grey.shade600;
-        tierIcon = Icons.eco_outlined;
         break;
       case AiTier.apicoltore:
         tierColor = ThemeConstants.primaryColor;
-        tierIcon = Icons.hive;
         break;
       case AiTier.professionale:
         tierColor = const Color(0xFFFFB300);
-        tierIcon = Icons.workspace_premium;
         break;
     }
 
@@ -685,7 +682,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             s: s,
             tier: tier,
             tierColor: tierColor,
-            tierIcon: tierIcon,
             used: voiceUsed,
             limit: voiceLimit,
             resetAtStr: resetAtStr,
@@ -768,7 +764,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required dynamic s,
     required AiTier tier,
     required Color tierColor,
-    required IconData tierIcon,
     required int used,
     required int limit,
     required String? resetAtStr,
@@ -798,7 +793,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(tierIcon, color: tierColor, size: 20),
+              SizedBox(
+                width: 26,
+                height: 26,
+                child: AnimatedTierIcon(tier: tier, size: 26),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

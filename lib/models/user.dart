@@ -17,14 +17,41 @@ enum AiTier {
     }
   }
 
+  /// Nome tematico del tier, ispirato al ciclo vitale dell'ape.
+  /// I valori enum (free/apicoltore/professionale) restano invariati perché
+  /// usati per la serializzazione col backend — cambia solo l'etichetta.
   String get label {
     switch (this) {
       case AiTier.free:
-        return 'Base (Test)';
+        return 'Uovo';
       case AiTier.apicoltore:
-        return 'Sostenitore';
+        return 'Larva';
       case AiTier.professionale:
-        return 'Tester Avanzato';
+        return 'Ape';
+    }
+  }
+
+  /// Emoji del tier, utile nei contesti di solo testo.
+  String get emoji {
+    switch (this) {
+      case AiTier.free:
+        return '🥚';
+      case AiTier.apicoltore:
+        return '🐛';
+      case AiTier.professionale:
+        return '🐝';
+    }
+  }
+
+  /// Percorso dell'illustrazione SVG (versione statica/intera) del tier.
+  String get iconAsset {
+    switch (this) {
+      case AiTier.free:
+        return 'assets/images/icons/Tiers/UOVO.svg';
+      case AiTier.apicoltore:
+        return 'assets/images/icons/Tiers/LARVA.svg';
+      case AiTier.professionale:
+        return 'assets/images/icons/Tiers/APE.svg';
     }
   }
 

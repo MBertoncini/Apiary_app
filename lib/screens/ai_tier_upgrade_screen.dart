@@ -17,6 +17,7 @@ import '../services/ai_quota_service.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/language_service.dart';
+import '../widgets/animated_tier_icon.dart';
 import '../widgets/paper_widgets.dart';
 
 class AiTierUpgradeScreen extends StatefulWidget {
@@ -160,13 +161,16 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: ThemeConstants.successColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.check_circle,
-                color: ThemeConstants.successColor, size: 28),
+            child: SizedBox(
+              width: 36,
+              height: 36,
+              child: AnimatedTierIcon(tier: tier, size: 36),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -556,19 +560,15 @@ class _TierInfoCard extends StatelessWidget {
     final limits = tier.resolvedLimits(allTierLimits);
 
     Color color;
-    IconData icon;
     switch (tier) {
       case AiTier.free:
         color = Colors.grey.shade600;
-        icon = Icons.eco_outlined;
         break;
       case AiTier.apicoltore:
         color = ThemeConstants.primaryColor;
-        icon = Icons.volunteer_activism_outlined;
         break;
       case AiTier.professionale:
         color = const Color(0xFFFFB300);
-        icon = Icons.biotech_outlined;
         break;
     }
 
@@ -589,8 +589,12 @@ class _TierInfoCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 10),
+          SizedBox(
+            width: 52,
+            height: 52,
+            child: Center(child: AnimatedTierIcon(tier: tier, size: 48)),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

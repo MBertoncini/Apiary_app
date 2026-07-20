@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Wing layer split from APE.svg for flap animation. Same viewBox/transform. -->
+<svg
+   version="1.1"
+   width="535.2691"
+   height="459.00455"
+   viewBox="0 0 535.2691 459.00455"
+   xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(1354.3451,-373.76254)">
+    <path
+       style="fill:#3bacc1;fill-opacity:0.358108;stroke:#000000;stroke-width:8.03528;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"
+       d="m -1138.248,527.75 -136.6978,-89.48468 -70,15.98042 c 0,0 -4,1.00426 -5.25,4.25426 -1.25,3.25 42.5,101.5 42.5,101.5 l 85.7608,57.75 91.7392,-44.25 z"
+       id="path31" />
+    <path
+       style="fill:#3babc1;fill-opacity:0.356863;stroke:#000000;stroke-width:8.04779;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"
+       d="m -1035.8404,527.75 137.1237,-89.48468 70.2182,15.98042 c 0,0 4.0124,1.00426 5.2663,4.25426 1.2539,3.25 -42.6324,101.5 -42.6324,101.5 l -86.028,57.75 -92.0251,-44.25 z"
+       id="path31-3" />
+  </g>
+</svg>
