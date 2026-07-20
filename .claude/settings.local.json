@@ -40,7 +40,12 @@
       "Bash(Select-Object FullName)",
       "Read(//i/Progetti Git/Apiary/**)",
       "Bash(Get-ChildItem -Path . -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(echo \"DONE exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(git check-ignore *)",
+      "Bash(grep -nE \"env|api_key|secret|credential\" .gitignore)",
+      "WebFetch(domain:mbertoncini.github.io)"
     ]
   }
 }
