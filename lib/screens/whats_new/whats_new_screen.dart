@@ -11,6 +11,15 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
+  18: _ReleaseNotes(
+    version: '1.0.3',
+    buildNumber: 18,
+    date: '20 Luglio 2026',
+    notes: [
+      _Note('🔩', 'Fix', 'Disposizione telaini - la posizione scelta viene ora rispettata sia in inserimento che in modifica: diaframmi e fogli cerei restano dove li hai messi e non vengono più riordinati da soli'),
+      _Note('👥', 'Fix', 'Elenco clienti - risolto il limite che ne mostrava solo venti e che faceva sembrare i nuovi inseriti come sostituti dei vecchi'),
+    ],
+  ),
   17: _ReleaseNotes(
     version: '1.0.2',
     buildNumber: 17,
