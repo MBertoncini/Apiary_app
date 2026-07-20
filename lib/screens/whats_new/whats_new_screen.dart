@@ -16,6 +16,7 @@ const Map<int, _ReleaseNotes> _changelog = {
     buildNumber: 18,
     date: '20 Luglio 2026',
     notes: [
+      _Note('🔔', 'Nuovo', 'Centro notifiche - Un campanello nel menu laterale raccoglie gli avvisi e le comunicazioni, con il numero di messaggi non letti sempre in vista'),
       _Note('🔩', 'Fix', 'Disposizione telaini - la posizione scelta viene ora rispettata sia in inserimento che in modifica: diaframmi e fogli cerei restano dove li hai messi e non vengono più riordinati da soli'),
       _Note('👥', 'Fix', 'Elenco clienti - risolto il limite che ne mostrava solo venti e che faceva sembrare i nuovi inseriti come sostituti dei vecchi'),
     ],
