@@ -20,6 +20,8 @@ import 'services/analisi_telaino_service.dart';
 import 'services/subscription_service.dart';
 import 'services/nfc_handler.dart';
 import 'services/deep_link_handler.dart';
+import 'services/notification_service.dart';
+import 'services/notification_polling_service.dart';
 
 List<SingleChildWidget> providers = [
   // Language service (independent) — must be first so MaterialApp can read it
@@ -66,6 +68,25 @@ List<SingleChildWidget> providers = [
       Provider.of<NfcHandler>(context, listen: false),
     ),
     update: (_, auth, nfc, prev) => prev ?? DeepLinkHandler(auth, nfc),
+  ),
+
+  // Centro notifiche: poll del backend per le comunicazioni broadcast +
+  // bridge con NotificationService per emettere le local notification.
+  // Si auto-avvia su login e si ferma su logout via il proxy AuthService.
+  ChangeNotifierProxyProvider2<ApiService, AuthService, NotificationPollingService>(
+    create: (context) => NotificationPollingService(
+      Provider.of<ApiService>(context, listen: false),
+      NotificationService(),
+    ),
+    update: (_, api, auth, prev) {
+      final svc = prev ?? NotificationPollingService(api, NotificationService());
+      if (auth.currentUser != null) {
+        svc.start();
+      } else {
+        svc.stop();
+      }
+      return svc;
+    },
   ),
 
   // Sync service (depends on API and storage) - periodic sync NOT auto-started

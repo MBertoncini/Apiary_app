@@ -576,6 +576,36 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  // ── Centro notifiche ──────────────────────────────────────────────────
+
+  /// Lista paginata di notifiche dell'utente.
+  /// Ritorna la lista raw (Map JSON) dal campo `results` se paginato.
+  Future<List<dynamic>> getNotifiche({int page = 1}) async {
+    final response = await get('${ApiConstants.notificheUrl}?page=$page');
+    if (response is List) return response;
+    if (response is Map && response['results'] is List) {
+      return response['results'] as List;
+    }
+    return [];
+  }
+
+  /// Conteggio notifiche non lette (lightweight, no paginazione).
+  Future<int> getNotificheUnreadCount() async {
+    final response = await get(ApiConstants.notificheUnreadCountUrl);
+    if (response is Map && response['unread_count'] is int) {
+      return response['unread_count'] as int;
+    }
+    return 0;
+  }
+
+  Future<void> markNotificaRead(int notificaId) async {
+    await post(ApiConstants.notificaMarkReadUrlOf(notificaId), {});
+  }
+
+  Future<void> markAllNotificheRead() async {
+    await post(ApiConstants.notificheMarkAllReadUrl, {});
+  }
+
   // Metodo di debug per verificare la costruzione degli URL
   void printDebugInfo() {
     if (kDebugMode) {

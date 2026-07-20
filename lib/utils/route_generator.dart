@@ -69,6 +69,7 @@ import '../screens/statistiche/statistiche_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/whats_new/whats_new_screen.dart';
 import '../screens/help/guida_screen.dart';
+import '../screens/notifications/notification_center_screen.dart';
 
 class RouteGenerator {
 
@@ -581,6 +582,12 @@ class RouteGenerator {
 
       case AppConstants.guidaRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => const GuidaScreen());
+
+      case AppConstants.notificationCenterRoute:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const NotificationCenterScreen(),
+        );
 
       default:
         return _errorRoute();

@@ -5,6 +5,7 @@ import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
+import '../services/notification_polling_service.dart';
 import 'beehive_illustrations.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -81,6 +82,56 @@ class AppDrawer extends StatelessWidget {
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
+                  ),
+                ),
+                Consumer<NotificationPollingService>(
+                  builder: (_, notif, __) => IconButton(
+                    tooltip: 'Notifiche',
+                    icon: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.18),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(Icons.notifications,
+                              color: Colors.white, size: 20),
+                          if (notif.unreadCount > 0)
+                            Positioned(
+                              right: -4,
+                              top: -4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: ThemeConstants.primaryColor,
+                                      width: 1.5),
+                                ),
+                                constraints: const BoxConstraints(
+                                    minWidth: 16, minHeight: 16),
+                                child: Text(
+                                  notif.unreadCount > 99
+                                      ? '99+'
+                                      : '${notif.unreadCount}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    onPressed: () => _navigateTo(
+                        context, AppConstants.notificationCenterRoute),
                   ),
                 ),
                 IconButton(

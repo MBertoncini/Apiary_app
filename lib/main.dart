@@ -16,6 +16,8 @@ import 'services/auth_service.dart';
 import 'services/subscription_service.dart';
 import 'services/nfc_handler.dart';
 import 'services/deep_link_handler.dart';
+import 'services/notification_service.dart';
+import 'services/notification_navigator.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -94,10 +96,12 @@ class _InitSubscription extends StatefulWidget {
 }
 
 class _InitSubscriptionState extends State<_InitSubscription> {
+  StreamSubscription<String?>? _notifTapSub;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final subService = Provider.of<SubscriptionService>(context, listen: false);
       final authService = Provider.of<AuthService>(context, listen: false);
       final nfcHandler = Provider.of<NfcHandler>(context, listen: false);
@@ -108,7 +112,52 @@ class _InitSubscriptionState extends State<_InitSubscription> {
       subService.init();
       nfcHandler.init();
       deepLinkHandler.init();
+
+      // Centro notifiche locale: init plugin, canali e listener tap.
+      final notif = NotificationService();
+      await notif.init();
+      await notif.createNotificationChannels();
+      _notifTapSub = notif.onNotificationClick.listen(_handleNotificationTap);
     });
+  }
+
+  void _handleNotificationTap(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    if (payload.startsWith('notifica:')) {
+      navigatorKey.currentState?.pushNamed(AppConstants.notificationCenterRoute);
+      return;
+    }
+    final parts = payload.split(':');
+    final tipo = parts[0];
+    final arg = parts.length > 1 ? int.tryParse(parts[1]) : null;
+    switch (tipo) {
+      case 'controllo':
+        if (arg != null) {
+          navigatorKey.currentState?.pushNamed(
+            AppConstants.arniaDetailRoute,
+            arguments: arg,
+          );
+        }
+        break;
+      case 'trattamento':
+        navigatorKey.currentState?.pushNamed(AppConstants.trattamentiRoute);
+        break;
+      case 'smielatura':
+        navigatorKey.currentState?.pushNamed(AppConstants.smielaturaListRoute);
+        break;
+      case 'gruppi':
+        navigatorKey.currentState?.pushNamed(AppConstants.gruppiListRoute);
+        break;
+      default:
+        // payload non riconosciuto: prova come linkRoute del dropdown admin.
+        NotificationNavigator.navigate(linkRoute: tipo);
+    }
+  }
+
+  @override
+  void dispose() {
+    _notifTapSub?.cancel();
+    super.dispose();
   }
 
   @override

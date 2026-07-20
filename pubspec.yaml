@@ -61,6 +61,7 @@ dependencies:
   purchases_ui_flutter: ^10.0.0
   nfc_manager: ^3.3.0
   app_links: ^6.3.2
+  flutter_html: ^3.0.0
 
 dev_dependencies:
   flutter_test:

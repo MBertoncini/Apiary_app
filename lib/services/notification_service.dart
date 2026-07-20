@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -12,9 +13,33 @@ class NotificationService {
   
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   final _onNotificationClick = StreamController<String?>.broadcast();
-  
+
   Stream<String?> get onNotificationClick => _onNotificationClick.stream;
-  
+
+  /// Colore d'accento miele applicato alle notifiche Android (icona piccola
+  /// e linea colorata del corpo). Coerente con `ThemeConstants.primaryColor`.
+  static const Color _accentColor = Color(0xFFD3A121);
+
+  /// Risorsa drawable monocromatica per la status bar (silhouette bianca).
+  static const String _smallIcon = 'ic_stat_notification';
+
+  /// Costruisce le specifiche Android comuni a tutte le notifiche:
+  /// icona dedicata, colore d'accento e testo espandibile (BigTextStyle)
+  /// così i messaggi lunghi non vengono troncati.
+  AndroidNotificationDetails _androidDetails(String channelId, String body) {
+    return AndroidNotificationDetails(
+      channelId,
+      channelId,
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      icon: _smallIcon,
+      color: _accentColor,
+      ticker: body,
+      styleInformation: BigTextStyleInformation(body),
+    );
+  }
+
   NotificationService._internal();
   
   Future<void> init() async {
@@ -24,7 +49,7 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation(timeZoneName));
     
     // Configurazione iniziale Android
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings(_smallIcon);
     
     // Configurazione iniziale iOS
     const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
@@ -141,6 +166,14 @@ class NotificationService {
         importance: Importance.defaultImportance,
       );
 
+      // Canale per comunicazioni broadcast dagli admin
+      const AndroidNotificationChannel broadcastChannel = AndroidNotificationChannel(
+        'broadcast_channel',
+        'Comunicazioni',
+        description: 'Comunicazioni e novità inviate dal team di Apiary',
+        importance: Importance.high,
+      );
+
       await _flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(smielaturaChannel);
@@ -148,6 +181,10 @@ class NotificationService {
       await _flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(attrezzaturaChannel);
+
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(broadcastChannel);
     }
   }
 
@@ -175,27 +212,22 @@ class NotificationService {
     String channelId = 'default_channel',
   }) async {
     // Specifiche per Android
-    AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      channelId,
-      channelId,
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-    );
-    
+    AndroidNotificationDetails androidPlatformChannelSpecifics =
+        _androidDetails(channelId, body);
+
     // Specifiche per iOS
     const DarwinNotificationDetails iOSPlatformChannelSpecifics = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
-    
+
     // Specifiche combinate
     NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
       iOS: iOSPlatformChannelSpecifics,
     );
-    
+
     // Mostra la notifica
     await _flutterLocalNotificationsPlugin.show(
       id,
@@ -220,22 +252,18 @@ class NotificationService {
     bool allowWhileIdle = true,
   }) async {
     // Specifiche per Android
-    AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      channelId,
-      channelId,
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    
+    AndroidNotificationDetails androidPlatformChannelSpecifics =
+        _androidDetails(channelId, body);
+
     // Specifiche per iOS
     const DarwinNotificationDetails iOSPlatformChannelSpecifics = DarwinNotificationDetails();
-    
+
     // Specifiche combinate
     NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
       iOS: iOSPlatformChannelSpecifics,
     );
-    
+
     // Pianifica la notifica
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       id,
@@ -260,22 +288,18 @@ class NotificationService {
     String channelId = 'default_channel',
   }) async {
     // Specifiche per Android
-    AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      channelId,
-      channelId,
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    
+    AndroidNotificationDetails androidPlatformChannelSpecifics =
+        _androidDetails(channelId, body);
+
     // Specifiche per iOS
     const DarwinNotificationDetails iOSPlatformChannelSpecifics = DarwinNotificationDetails();
-    
+
     // Specifiche combinate
     NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
       iOS: iOSPlatformChannelSpecifics,
     );
-    
+
     // Pianifica la notifica ricorrente
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       id,

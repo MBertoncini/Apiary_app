@@ -137,6 +137,9 @@ class AppConstants {
   static const String whatsNewRoute = "/whats-new";
   static const String guidaRoute = "/guida";
 
+  // Centro notifiche
+  static const String notificationCenterRoute = "/notifiche";
+
   // Deep link / NFC tag URL
   // Tag NFC scritti come record URI NDEF → quando scansionati fuori dall'app
   // l'OS apre direttamente l'app via App Link (Android) / Universal Link (iOS).

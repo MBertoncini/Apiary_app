@@ -117,6 +117,13 @@ class ApiConstants {
   // Endpoint analisi telaini
   static const String analisiTelainiUrl = baseUrl + apiPrefix + '/analisi-telaini/';
 
+  // Endpoint centro notifiche
+  static const String notificheUrl = baseUrl + apiPrefix + '/notifiche/';
+  static const String notificheUnreadCountUrl = baseUrl + apiPrefix + '/notifiche/unread_count/';
+  static const String notificheMarkAllReadUrl = baseUrl + apiPrefix + '/notifiche/mark_all_read/';
+  static String notificaMarkReadUrlOf(int id) =>
+      baseUrl + apiPrefix + '/notifiche/$id/mark_read/';
+
   // Endpoint layout mappa apiario
   static const String apiarioMapLayoutUrl = baseUrl + apiPrefix + '/apiari/{apiario_id}/map_layout/';
 
