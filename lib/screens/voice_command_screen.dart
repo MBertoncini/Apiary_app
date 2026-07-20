@@ -1024,7 +1024,7 @@ class _VoiceTutorialSheet extends StatelessWidget {
                     _exampleChip(
                         '"Arnia 3, regina presente, vista, 4 telaini di covata, 3 scorte"'),
                     _exampleChip(
-                        '"Arnia 7, famiglia forte, problemi sanitari, varroa"'),
+                        '"Arnia 7, problemi sanitari, varroa"'),
                     _exampleChip(
                         '"Arnia 2, 7 telaini totali, 2 celle reali, rischio sciamatura"'),
                     const SizedBox(height: 16),

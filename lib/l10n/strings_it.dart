@@ -1953,7 +1953,6 @@ class StringsIt extends AppStrings {
   @override String get voiceVerifSectionRegina => 'Regina';
   @override String get voiceVerifSectionTelaini => 'Telaini';
   @override String get voiceVerifLblTotale => 'Totale';
-  @override String get voiceVerifLblForzaFamiglia => 'Forza famiglia';
   @override String get voiceVerifSectionProblemi => 'Problemi';
   @override String get voiceVerifLblProblemiSanitari => 'Problemi sanitari';
   @override String get voiceVerifLblTipoProblema => 'Tipo di problema';
@@ -2578,7 +2577,7 @@ class StringsIt extends AppStrings {
 
   // ── Voice command examples ──
   @override String get voiceCommandExample1 => '"Arnia 3, regina presente, vista, 4 telaini di covata, 3 scorte"';
-  @override String get voiceCommandExample2 => '"Arnia 7, famiglia forte, problemi sanitari, varroa"';
+  @override String get voiceCommandExample2 => '"Arnia 7, problemi sanitari, varroa"';
   @override String get voiceCommandExample3 => '"Arnia 2, 7 telaini totali, celle reali 2, rischio sciamatura"';
   @override String voiceCommandGeminiError(String detail) => 'Gemini: $detail';
 

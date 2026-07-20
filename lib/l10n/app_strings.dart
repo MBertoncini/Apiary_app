@@ -2018,7 +2018,6 @@ abstract class AppStrings {
   String get voiceVerifSectionRegina;
   String get voiceVerifSectionTelaini;
   String get voiceVerifLblTotale;
-  String get voiceVerifLblForzaFamiglia;
   String get voiceVerifSectionProblemi;
   String get voiceVerifLblProblemiSanitari;
   String get voiceVerifLblTipoProblema;

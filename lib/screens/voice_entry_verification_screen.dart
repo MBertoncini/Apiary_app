@@ -696,16 +696,8 @@ class _VoiceEntryVerificationScreenState extends State<VoiceEntryVerificationScr
               ),
             ],
           ),
-          _buildDropdownField(
-            label: s.voiceVerifLblForzaFamiglia,
-            value: entry.forzaFamiglia,
-            items: ['debole', 'normale', 'forte'],
-            onChanged: (value) {
-              _updateEntry(entry.copyWith(forzaFamiglia: value));
-            },
-          ),
           const SizedBox(height: 16),
-          
+
           // Problems section
           _buildSectionTitle(s.voiceVerifSectionProblemi),
           Row(

@@ -31,7 +31,6 @@ class VoiceEntry {
       (telainiDiaframma ?? 0) +
       (tealiniFoglioCereo ?? 0) +
       (telainiNutritore ?? 0);
-  final String? forzaFamiglia;
   final bool? sciamatura;
   final bool? problemiSanitari;
   final String? tipoProblema;
@@ -65,7 +64,6 @@ class VoiceEntry {
     this.telainiDiaframma,
     this.tealiniFoglioCereo,
     this.telainiNutritore,
-    this.forzaFamiglia,
     this.sciamatura,
     this.problemiSanitari,
     this.tipoProblema,
@@ -96,7 +94,6 @@ class VoiceEntry {
     int? telainiDiaframma,
     int? tealiniFoglioCereo,
     int? telainiNutritore,
-    String? forzaFamiglia,
     bool? sciamatura,
     bool? problemiSanitari,
     String? tipoProblema,
@@ -125,7 +122,6 @@ class VoiceEntry {
       telainiDiaframma: telainiDiaframma ?? this.telainiDiaframma,
       tealiniFoglioCereo: tealiniFoglioCereo ?? this.tealiniFoglioCereo,
       telainiNutritore: telainiNutritore ?? this.telainiNutritore,
-      forzaFamiglia: forzaFamiglia ?? this.forzaFamiglia,
       sciamatura: sciamatura ?? this.sciamatura,
       problemiSanitari: problemiSanitari ?? this.problemiSanitari,
       tipoProblema: tipoProblema ?? this.tipoProblema,
@@ -181,7 +177,6 @@ class VoiceEntry {
       telainiDiaframma: json['telaini_diaframma'],
       tealiniFoglioCereo: json['telaini_foglio_cereo'],
       telainiNutritore: json['telaini_nutritore'],
-      forzaFamiglia: json['forza_famiglia'],
       sciamatura: json['sciamatura'],
       problemiSanitari: json['problemi_sanitari'],
       tipoProblema: json['tipo_problema'],
@@ -216,7 +211,6 @@ class VoiceEntry {
     if (telainiDiaframma != null) jsonMap['telaini_diaframma'] = telainiDiaframma;
     if (tealiniFoglioCereo != null) jsonMap['telaini_foglio_cereo'] = tealiniFoglioCereo;
     if (telainiNutritore != null) jsonMap['telaini_nutritore'] = telainiNutritore;
-    if (forzaFamiglia != null) jsonMap['forza_famiglia'] = forzaFamiglia;
     if (sciamatura != null) jsonMap['sciamatura'] = sciamatura;
     if (problemiSanitari != null) jsonMap['problemi_sanitari'] = problemiSanitari;
     if (tipoProblema != null) jsonMap['tipo_problema'] = tipoProblema;
@@ -249,7 +243,6 @@ class VoiceEntry {
       'problemi_sanitari': problemiSanitari ?? false,
       'note': note ?? '',
     };
-    if (forzaFamiglia != null) map['forza_famiglia'] = forzaFamiglia;
     if (tipoProblema != null) map['tipo_problema'] = tipoProblema;
     return map;
   }
@@ -317,11 +310,6 @@ class VoiceEntry {
     
     if (telainiInfo.isNotEmpty) {
       parts.add('Telaini: ${telainiInfo.join(', ')}');
-    }
-    
-    // Colony strength
-    if (forzaFamiglia != null) {
-      parts.add('Forza famiglia: $forzaFamiglia');
     }
     
     // Problems

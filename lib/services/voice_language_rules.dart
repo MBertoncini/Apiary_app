@@ -53,7 +53,6 @@ abstract class VoiceLanguageRules {
   bool? extractCelleReali(String t);
   int? extractNumeroCelleReali(String t);
   int? extractTelaini(String t, List<String> keywords);
-  String? extractForzaFamiglia(String t);
   bool? extractSciamatura(String t);
   String? extractTipoProblema(String t);
   bool? extractProblemiSanitari(String t);
@@ -117,7 +116,6 @@ abstract class VoiceLanguageRules {
       telainiDiaframma: extractTelaini(t, _diaframmaKeywords),
       tealiniFoglioCereo: extractTelaini(t, _foglioCereoKeywords),
       telainiNutritore: extractTelaini(t, _nutritoreKeywords),
-      forzaFamiglia: extractForzaFamiglia(t),
       sciamatura: extractSciamatura(t),
       problemiSanitari: problemiSanitari,
       tipoProblema: tipoProblema,
@@ -230,8 +228,6 @@ class VoiceRulesIt extends VoiceLanguageRules {
     'siroppo': 'sciroppo', 'sciroppio': 'sciroppo',
     'apistanno': 'apistano', 'api stano': 'apistano',
     'bay varol': 'bayvarol', 'baivarol': 'bayvarol',
-    'forte famiglia': 'famiglia forte', 'debole famiglia': 'famiglia debole',
-    'normale famiglia': 'famiglia normale',
     'un un': 'un',
   };
 
@@ -341,17 +337,6 @@ class VoiceRulesIt extends VoiceLanguageRules {
   }
 
   @override
-  String? extractForzaFamiglia(String t) {
-    if (RegExp(r'famig\w*\s+(?:molto\s+|abbastanza\s+)?forte').hasMatch(t) ||
-        RegExp(r'forza\w*\s+forte').hasMatch(t)) return 'forte';
-    if (RegExp(r'famig\w*\s+(?:molto\s+|abbastanza\s+)?debole').hasMatch(t) ||
-        RegExp(r'forza\w*\s+debole').hasMatch(t)) return 'debole';
-    if (RegExp(r'famig\w*\s+normale').hasMatch(t) ||
-        RegExp(r'forza\w*\s+normale').hasMatch(t)) return 'normale';
-    return null;
-  }
-
-  @override
   bool? extractSciamatura(String t) {
     final m = RegExp(r'sciamatur[ae]|rischio\s+sciam').firstMatch(t);
     if (m == null) return null;
@@ -440,7 +425,6 @@ Regole:
 
 Regole per il controllo:
 - Se viene menzionato "arnia N", arnia_numero = N
-- "famiglia forte/normale/debole" → forza_famiglia (usa sempre i valori italiani: "debole", "normale", "forte")
 - "presenza regina" o "regina presente" → presenza_regina = true, regina_vista = false
 - "regina vista" o "ho visto la regina" → presenza_regina = true, regina_vista = true
 - "regina assente" → presenza_regina = false, regina_vista = false
@@ -519,10 +503,6 @@ class VoiceRulesEn extends VoiceLanguageRules {
     'funded asian': 'foundation', 'fun nation': 'foundation',
     // ── Feeder ─────────────────────────────────────────────────────────────
     'theater': 'feeder', 'peter': 'feeder',
-    // ── Colony strength reorder ────────────────────────────────────────────
-    'strong colony': 'colony strong',
-    'weak colony': 'colony weak',
-    'normal colony': 'colony normal',
   };
 
   // ── Telaini keywords (English beekeeping terms) ──────────────────────────
@@ -637,21 +617,6 @@ class VoiceRulesEn extends VoiceLanguageRules {
   }
 
   @override
-  String? extractForzaFamiglia(String t) {
-    // Returns Italian DB values regardless of input language
-    if (RegExp(r'colon\w*\s+(?:very\s+|quite\s+)?strong').hasMatch(t) ||
-        RegExp(r'strong\s+colon').hasMatch(t) ||
-        RegExp(r'strength\s+strong').hasMatch(t)) return 'forte';
-    if (RegExp(r'colon\w*\s+(?:very\s+|quite\s+)?weak').hasMatch(t) ||
-        RegExp(r'weak\s+colon').hasMatch(t) ||
-        RegExp(r'strength\s+weak').hasMatch(t)) return 'debole';
-    if (RegExp(r'colon\w*\s+normal').hasMatch(t) ||
-        RegExp(r'normal\s+colon').hasMatch(t) ||
-        RegExp(r'strength\s+normal').hasMatch(t)) return 'normale';
-    return null;
-  }
-
-  @override
   bool? extractSciamatura(String t) {
     final m = RegExp(r'swarm(?:ing|ed)?|risk\s+(?:of\s+)?swarm').firstMatch(t);
     if (m == null) return null;
@@ -747,7 +712,6 @@ Rules:
 
 Rules for an inspection ("controllo"):
 - If "hive N" or "box N" is mentioned, arnia_numero = N
-- "colony strong/normal/weak" → forza_famiglia (ALWAYS use Italian values: "debole", "normale", "forte")
 - "queen present" → presenza_regina = true, regina_vista = false
 - "queen seen" or "I saw the queen" → presenza_regina = true, regina_vista = true
 - "queen absent" or "no queen" → presenza_regina = false, regina_vista = false
@@ -780,7 +744,6 @@ const String _jsonSchema = '''
   "telaini_diaframma": <integer or null>,
   "telaini_foglio_cereo": <integer or null>,
   "telaini_nutritore": <integer or null>,
-  "forza_famiglia": <"debole"/"normale"/"forte" or null>,
   "sciamatura": <true/false or null>,
   "problemi_sanitari": <true/false or null>,
   "tipo_problema": <string or null>,

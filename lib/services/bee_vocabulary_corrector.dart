@@ -210,11 +210,6 @@ class BeeVocabularyCorrector {
     'bay varol':        'bayvarol',    // multi-word
     'baivarol':         'bayvarol',
 
-    // ── Ordine parole forza famiglia ─────────────────────────────────────────
-    'forte famiglia':   'famiglia forte',   // multi-word
-    'debole famiglia':  'famiglia debole',  // multi-word
-    'normale famiglia': 'famiglia normale', // multi-word
-
     // ── Duplicati fonetici ────────────────────────────────────────────────────
     'un un':            'un',              // multi-word
   };

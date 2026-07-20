@@ -1985,7 +1985,6 @@ class StringsEn extends AppStrings {
   @override String get voiceVerifSectionRegina => 'Queen';
   @override String get voiceVerifSectionTelaini => 'Frames';
   @override String get voiceVerifLblTotale => 'Total';
-  @override String get voiceVerifLblForzaFamiglia => 'Colony strength';
   @override String get voiceVerifSectionProblemi => 'Problems';
   @override String get voiceVerifLblProblemiSanitari => 'Health issues';
   @override String get voiceVerifLblTipoProblema => 'Problem type';
