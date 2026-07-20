@@ -151,7 +151,9 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
       final raw = latest['telaini_config'];
       if (raw != null && raw.toString().isNotEmpty) {
         try {
-          config = sortTelaini(List<String>.from(json.decode(raw.toString()) as List));
+          // Posizioni reali dei telaini: il numero slot deve corrispondere
+          // a dove il telaino si trova davvero nell'arnia, senza riordino.
+          config = normalizeTelaini(List<String>.from(json.decode(raw.toString()) as List));
         } catch (_) {}
       }
 

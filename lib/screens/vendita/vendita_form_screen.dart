@@ -149,8 +149,8 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
     }
 
     try {
-      final clientiRes = await _apiService.get(ApiConstants.clientiUrl);
-      final clientiList = clientiRes is List ? clientiRes : (clientiRes['results'] as List? ?? []);
+      // getAll segue la paginazione DRF (senza, solo i primi 20 clienti).
+      final clientiList = await _apiService.getAll(ApiConstants.clientiUrl);
       await _storageService.saveData('clienti', clientiList);
       if (mounted) {
         setState(() {

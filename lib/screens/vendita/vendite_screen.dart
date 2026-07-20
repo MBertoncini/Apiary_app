@@ -69,12 +69,14 @@ class _VenditeScreenState extends State<VenditeScreen> with SingleTickerProvider
     if (mounted) setState(() { _isLoading = false; _isRefreshing = true; });
 
     try {
+      // getAll segue la paginazione DRF: con .get() arrivavano solo i primi
+      // 20 record e i nuovi clienti sembravano "sostituire" i vecchi.
       final results = await Future.wait([
-        _apiService.get(ApiConstants.venditeUrl),
-        _apiService.get(ApiConstants.clientiUrl),
+        _apiService.getAll(ApiConstants.venditeUrl),
+        _apiService.getAll(ApiConstants.clientiUrl),
       ]);
-      final venditeList = results[0] is List ? results[0] as List : (results[0]['results'] as List? ?? []);
-      final clientiList = results[1] is List ? results[1] as List : (results[1]['results'] as List? ?? []);
+      final venditeList = results[0];
+      final clientiList = results[1];
 
       await Future.wait([
         _storageService.saveData(_cacheKeyVendite, venditeList),

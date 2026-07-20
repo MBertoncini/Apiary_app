@@ -119,7 +119,8 @@ class HiveFrameVisualizer extends StatelessWidget {
       try {
         final decoded = json.decode(raw.toString()) as List;
         if (decoded.isNotEmpty) {
-          return sortTelaini(List<String>.from(decoded));
+          // La config salvata riflette le posizioni reali: non riordinare.
+          return normalizeTelaini(List<String>.from(decoded));
         }
       } catch (_) {}
     }

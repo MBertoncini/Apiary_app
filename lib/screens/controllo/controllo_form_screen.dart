@@ -140,7 +140,9 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
           if (raw != null && raw.toString().isNotEmpty) {
             try {
               final List<dynamic> config = json.decode(raw.toString());
-              _telainiConfig = sortTelaini(List<String>.from(config));
+              // Rispetta la disposizione salvata nell'ultimo controllo:
+              // niente riordino automatico (c'è il pulsante "Auto ordina").
+              _telainiConfig = normalizeTelaini(List<String>.from(config));
               _updateTelainiCounters();
             } catch (_) {}
           }
@@ -203,7 +205,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     if (controllo['telaini_config'] != null && controllo['telaini_config'].isNotEmpty) {
       try {
         final List<dynamic> config = json.decode(controllo['telaini_config']);
-        _telainiConfig = sortTelaini(List<String>.from(config));
+        // In edit la disposizione salvata dall'utente va mostrata com'è.
+        _telainiConfig = normalizeTelaini(List<String>.from(config));
       } catch (e) {
         debugPrint('Errore nel parsing della configurazione telaini: $e');
       }

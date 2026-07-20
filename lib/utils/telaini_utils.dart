@@ -8,6 +8,17 @@ library telaini_utils;
 ///
 /// Esempio (10 telaini):
 ///   [scorte, scorte, covata, covata, foglio_cereo, covata, covata, scorte, diaframma, vuoto]
+/// Normalizza una configurazione salvata a esattamente [size] slot,
+/// SENZA riordinarla: la posizione scelta dall'utente (diaframmi ai lati,
+/// fogli cerei dove inseriti, ecc.) è un dato e va rispettata.
+/// Usare [sortTelaini] solo per configurazioni generate dai contatori
+/// o su richiesta esplicita (pulsante "Auto ordina").
+List<String> normalizeTelaini(List<String> frames, {int size = 10}) {
+  final out = List<String>.from(frames);
+  while (out.length < size) out.add('vuoto');
+  return out.length > size ? out.sublist(0, size) : out;
+}
+
 List<String> sortTelaini(List<String> frames) {
   final vuoti        = frames.where((f) => f == 'vuoto').toList();
   final diaframmi    = frames.where((f) => f == 'diaframma').toList();
