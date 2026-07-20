@@ -5,10 +5,17 @@ import 'package:in_app_update/in_app_update.dart';
 /// Gestisce il controllo aggiornamenti via Play Store In-App Update.
 ///
 /// Regole:
-/// - `updatePriority >= 4` (impostato lato Play Console) → immediate update bloccante.
-/// - Altrimenti, se disponibile l'immediate, lo si usa comunque.
-/// - Fallback su flexible update (download in background + install al termine).
+/// - `updatePriority >= 4` → immediate update bloccante (schermo intero).
+/// - Altrimenti flexible update (download in background + install al termine),
+///   cosi' un aggiornamento ordinario non interrompe il lavoro dell'utente.
+/// - Solo se il Play Store non concede il flexible si ripiega sull'immediate.
 /// - Se l'utente nega o il flusso fallisce, si ritenta al prossimo resume dell'app.
+///
+/// NOTA: `updatePriority` NON e' impostabile dalla UI della Play Console. Si
+/// definisce solo via Publishing API, nel campo `inAppUpdatePriority` di
+/// `Edits.tracks.releases`, al momento della creazione della release (valori
+/// 0-5, default 0). Pubblicando l'aab a mano la priorita' resta 0, quindi si
+/// prende il ramo flexible.
 class UpdateService {
   static const int _immediatePriorityThreshold = 4;
 
@@ -39,13 +46,15 @@ class UpdateService {
         return;
       }
 
-      if (info.immediateUpdateAllowed) {
-        await _runImmediate();
+      if (info.flexibleUpdateAllowed && !_flexibleDownloadStarted) {
+        await _runFlexible();
         return;
       }
 
-      if (info.flexibleUpdateAllowed && !_flexibleDownloadStarted) {
-        await _runFlexible();
+      // Priorita' bassa ma il Play Store concede solo l'immediate: meglio
+      // aggiornare in modo bloccante che non aggiornare affatto.
+      if (info.immediateUpdateAllowed) {
+        await _runImmediate();
       }
     } catch (e, st) {
       if (kDebugMode) {
