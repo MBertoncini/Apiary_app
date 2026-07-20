@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/chat_message.dart';
-import '../config/api_keys.dart';
 import '../constants/gemini_constants.dart';
 import 'ai_quota_service.dart';
 import 'api_service.dart' show QuotaExceededException;
@@ -362,34 +361,46 @@ Hai accesso a strumenti per consultare apiari, arnie, trattamenti, controlli e f
   }
 
   Future<Map<String, dynamic>?> _callGeminiApi(
-    List<Map<String, dynamic>> contents, 
+    List<Map<String, dynamic>> contents,
     String systemPrompt,
     List<Map<String, dynamic>> tools,
   ) async {
-    final apiKey = _personalApiKey ?? ApiKeys.geminiApiKey;
-    if (apiKey == 'YOUR_GEMINI_API_KEY' || apiKey.isEmpty) {
-      throw Exception('Chiave API Gemini non configurata.');
+    final body = <String, dynamic>{
+      'contents': contents,
+      'system_instruction': {
+        'parts': [{'text': systemPrompt}]
+      },
+      'tools': [
+        {'function_declarations': tools}
+      ],
+      'generationConfig': {
+        'temperature': 0.7,
+        'topK': 40,
+        'topP': 0.95,
+        'maxOutputTokens': 2048,
+      },
+    };
+
+    final personalKey = _personalApiKey;
+
+    // Chiave CONDIVISA → passa dal proxy backend: la chiave Gemini resta
+    // server-side e non viene mai compilata nel binario dell'app (era così che
+    // veniva scoperta da Google e sospesa). Il proxy inoltra il payload grezzo,
+    // preservando il function calling che orchestriamo qui sotto.
+    if (personalKey == null || personalKey.isEmpty) {
+      // QuotaExceededException (429) propaga fino a sendMessage che la gestisce.
+      return await _quotaService.callGeminiProxy(
+        feature: 'chat',
+        payload: body,
+        models: kGeminiModelFallbacks,
+      );
     }
 
+    // Chiave PERSONALE → l'utente paga Google direttamente: chiamata diretta
+    // (nessun rischio di leak, è la sua chiave) con rotazione modelli.
     for (var modelName in kGeminiModelFallbacks) {
       try {
-        final url = '$kGeminiBaseUrl/$modelName:generateContent?key=$apiKey';
-        
-        final body = {
-          'contents': contents,
-          'system_instruction': {
-            'parts': [{'text': systemPrompt}]
-          },
-          'tools': [
-            {'function_declarations': tools}
-          ],
-          'generationConfig': {
-            'temperature': 0.7,
-            'topK': 40,
-            'topP': 0.95,
-            'maxOutputTokens': 2048,
-          },
-        };
+        final url = '$kGeminiBaseUrl/$modelName:generateContent?key=$personalKey';
 
         final response = await http.post(
           Uri.parse(url),

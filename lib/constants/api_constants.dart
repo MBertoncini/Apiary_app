@@ -137,6 +137,10 @@ class ApiConstants {
 
   // Endpoint AI
   static const String aiChatUrl = baseUrl + apiPrefix + '/ai/chat/';
+  // Proxy Gemini server-side: il backend inietta la chiave (mai più spedita nel
+  // binario dell'app) e inoltra il payload generateContent grezzo. Usato per la
+  // chiave CONDIVISA; con chiave personale il client chiama Gemini in diretta.
+  static const String aiGeminiProxyUrl = baseUrl + apiPrefix + '/ai/gemini-proxy/';
   static const String aiQuotaUrl = baseUrl + apiPrefix + '/ai/quota/';
   static const String aiRequestUpgradeUrl = baseUrl + apiPrefix + '/ai/request-upgrade/';
   static const String aiActivateCodeUrl = baseUrl + apiPrefix + '/ai/activate-code/';

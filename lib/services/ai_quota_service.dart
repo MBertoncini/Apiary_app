@@ -398,6 +398,28 @@ class AiQuotaService extends ChangeNotifier {
     }
   }
 
+  /// Inoltra al backend un payload Gemini `generateContent` GREZZO tramite il
+  /// proxy autenticato `/ai/gemini-proxy/`. Il backend inietta la chiave
+  /// Gemini server-side (così non viene più compilata nel binario dell'app) e
+  /// ritorna la risposta Gemini grezza (con `candidates`).
+  ///
+  /// Usato SOLO per la chiave condivisa: con chiave personale il client
+  /// continua a chiamare Gemini in diretta. Il proxy applica il gate di quota
+  /// del tier e risponde 429 (→ [QuotaExceededException]) se esaurita; NON
+  /// incrementa i contatori, che restano gestiti dalla telemetria esistente.
+  ///
+  /// [feature] è 'chat' o 'voice'. Propaga [QuotaExceededException] sul 429.
+  Future<Map<String, dynamic>> callGeminiProxy({
+    required String feature,
+    required Map<String, dynamic> payload,
+    List<String>? models,
+  }) async {
+    final body = <String, dynamic>{'feature': feature, 'payload': payload};
+    if (models != null && models.isNotEmpty) body['models'] = models;
+    final data = await _apiService.post(ApiConstants.aiGeminiProxyUrl, body);
+    return Map<String, dynamic>.from(data as Map);
+  }
+
   /// Notifica al backend che è stata effettuata una chiamata chat (Gemini
   /// viene invocato direttamente dal client). Usa l'endpoint esistente
   /// aiChatUrl ma segnala che è solo per registrazione quota.

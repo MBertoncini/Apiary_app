@@ -5,9 +5,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/voice_entry.dart';
-import '../config/api_keys.dart';
 import '../constants/gemini_constants.dart';
 import 'ai_quota_service.dart';
+import 'api_service.dart' show QuotaExceededException;
 import 'voice_language_rules.dart';
 import 'debug_trace.dart';
 
@@ -66,9 +66,8 @@ class GeminiAudioProcessor extends ChangeNotifier {
     if (preselectedArniaNumero != null) {
       DebugTrace.log('gemini: preselected arnia=$preselectedArniaNumero');
     }
-    final keyInUse = _personalApiKey != null ? 'personal' : 'shared';
-    final keyLen = (_personalApiKey ?? ApiKeys.geminiApiKey).length;
-    DebugTrace.log('gemini: key=$keyInUse len=$keyLen');
+    final keyInUse = _personalApiKey != null ? 'personal' : 'shared (proxy)';
+    DebugTrace.log('gemini: key=$keyInUse');
 
     // ... rest of method logic with updated prompt
 
@@ -135,7 +134,7 @@ class GeminiAudioProcessor extends ChangeNotifier {
 
       final prompt = _langRules.geminiPrompt(contextInfo);
 
-      final body = jsonEncode({
+      final payload = <String, dynamic>{
         'contents': [
           {
             'parts': [
@@ -153,12 +152,23 @@ class GeminiAudioProcessor extends ChangeNotifier {
           'temperature': 0,
           'responseMimeType': 'application/json',
         }
-      });
+      };
 
+      final personalKey = _personalApiKey;
+
+      // Chiave CONDIVISA → proxy backend: la chiave Gemini resta server-side e
+      // non viene mai compilata nel binario dell'app (era così che finiva
+      // esposta e veniva sospesa da Google).
+      if (personalKey == null || personalKey.isEmpty) {
+        return await _processAudioViaProxy(payload);
+      }
+
+      // Chiave PERSONALE → chiamata diretta a Gemini con la chiave dell'utente.
+      final body = jsonEncode(payload);
       for (final model in kGeminiModelFallbacks) {
         final uri = Uri.parse(
             '$kGeminiBaseUrl/$model:generateContent'
-            '?key=${_personalApiKey ?? ApiKeys.geminiApiKey}');
+            '?key=$personalKey');
 
         DebugTrace.log('gemini: POST model=$model');
         http.Response response;
@@ -277,6 +287,49 @@ class GeminiAudioProcessor extends ChangeNotifier {
     }
   }
 
+  /// Percorso chiave CONDIVISA: inoltra l'audio al proxy backend, che inietta
+  /// la chiave Gemini server-side e ritorna la risposta grezza. La telemetria
+  /// quota voce resta gestita come nel percorso diretto (recordVoiceCall).
+  Future<VoiceEntry?> _processAudioViaProxy(Map<String, dynamic> payload) async {
+    final quota = _quotaService;
+    if (quota == null) {
+      _error = 'Servizio quota non disponibile per il proxy AI';
+      DebugTrace.log('gemini: PROXY no quota service');
+      return null;
+    }
+    DebugTrace.log('gemini: POST via proxy backend');
+    try {
+      final responseJson = await quota.callGeminiProxy(
+        feature: 'voice',
+        payload: payload,
+        models: kGeminiModelFallbacks,
+      );
+      final responseText = responseJson['candidates']?[0]?['content']
+          ?['parts']?[0]?['text'] as String?;
+      if (responseText == null) {
+        _error = 'Risposta Gemini vuota';
+        return null;
+      }
+      quota.recordOptimisticCall(AiFeature.voice);
+      // Telemetria backend per rendere voice_today autoritativo (il proxy
+      // applica solo il gate di quota, non incrementa i contatori).
+      unawaited(quota.recordVoiceCallToBackend());
+      return _parseResponse(responseText);
+    } on QuotaExceededException {
+      _lastCallWasRateLimit = true;
+      quota.markExceeded(AiFeature.voice);
+      _error = 'Quota giornaliera AI voce esaurita. '
+          'Riprova dopo il reset giornaliero.';
+      DebugTrace.log('gemini: PROXY 429 quota exceeded');
+      return null;
+    } catch (e) {
+      _lastCallWasNetworkError = true;
+      _error = 'Errore comunicazione con il server AI: $e';
+      DebugTrace.log('gemini: PROXY EXCEPTION $e');
+      return null;
+    }
+  }
+
   VoiceEntry? _parseResponse(String rawText) {
     try {
       var clean = rawText.trim();
@@ -301,7 +354,6 @@ class GeminiAudioProcessor extends ChangeNotifier {
         telainiDiaframma: _parseInt(json['telaini_diaframma']),
         tealiniFoglioCereo: _parseInt(json['telaini_foglio_cereo']),
         telainiNutritore: _parseInt(json['telaini_nutritore']),
-        forzaFamiglia: json['forza_famiglia'] as String?,
         sciamatura: json['sciamatura'] as bool?,
         problemiSanitari: json['problemi_sanitari'] as bool?,
         tipoProblema: json['tipo_problema'] as String?,
