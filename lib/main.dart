@@ -18,6 +18,7 @@ import 'services/nfc_handler.dart';
 import 'services/deep_link_handler.dart';
 import 'services/notification_service.dart';
 import 'services/notification_navigator.dart';
+import 'services/update_service.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -95,12 +96,14 @@ class _InitSubscription extends StatefulWidget {
   State<_InitSubscription> createState() => _InitSubscriptionState();
 }
 
-class _InitSubscriptionState extends State<_InitSubscription> {
+class _InitSubscriptionState extends State<_InitSubscription>
+    with WidgetsBindingObserver {
   StreamSubscription<String?>? _notifTapSub;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final subService = Provider.of<SubscriptionService>(context, listen: false);
       final authService = Provider.of<AuthService>(context, listen: false);
@@ -118,7 +121,18 @@ class _InitSubscriptionState extends State<_InitSubscription> {
       await notif.init();
       await notif.createNotificationChannels();
       _notifTapSub = notif.onNotificationClick.listen(_handleNotificationTap);
+
+      // Play Store In-App Update: se l'utente nega o il flusso fallisce si
+      // ritenta al resume (vedi didChangeAppLifecycleState). No-op fuori Android.
+      UpdateService.checkForUpdate();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      UpdateService.checkForUpdate();
+    }
   }
 
   void _handleNotificationTap(String? payload) {
@@ -156,6 +170,7 @@ class _InitSubscriptionState extends State<_InitSubscription> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notifTapSub?.cancel();
     super.dispose();
   }
