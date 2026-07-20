@@ -135,6 +135,13 @@ class ApiConstants {
   static const String varroaCheckpointsUrl = baseUrl + apiPrefix + '/varroa-checkpoints/';
   static const String varroaTraiettoriaUrl = baseUrl + apiPrefix + '/varroa-checkpoints/traiettoria/';
 
+  // Endpoint ML: pesate melari / alimentazione / nomadismo + dataset export
+  static const String pesateMelariUrl = baseUrl + apiPrefix + '/pesate-melari/';
+  static const String alimentazioniUrl = baseUrl + apiPrefix + '/alimentazioni/';
+  static const String nomadismiUrl = baseUrl + apiPrefix + '/nomadismi/';
+  static String mlDatasetColoniaUrlOf(int coloniaId) =>
+      baseUrl + apiPrefix + '/ml/dataset/colonia/$coloniaId/';
+
   // Endpoint AI
   static const String aiChatUrl = baseUrl + apiPrefix + '/ai/chat/';
   // Proxy Gemini server-side: il backend inietta la chiave (mai più spedita nel

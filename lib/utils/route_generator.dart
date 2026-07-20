@@ -23,6 +23,10 @@ import '../screens/controllo/controllo_form_screen.dart';
 import '../screens/colonia/colonia_detail_screen.dart';
 import '../screens/colonia/colonia_form_screen.dart';
 import '../models/colonia.dart';
+import '../screens/alimentazione/alimentazioni_screen.dart';
+import '../screens/alimentazione/alimentazione_form_screen.dart';
+import '../screens/nomadismo/nomadismi_screen.dart';
+import '../screens/nomadismo/nomadismo_form_screen.dart';
 import '../screens/regina/regina_list_screen.dart';
 import '../screens/regina/regina_detail_screen.dart';
 import '../screens/regina/regina_genealogia_screen.dart';
@@ -523,6 +527,39 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
+
+      // Routes for alimentazione e nomadismo (dataset ML)
+      case AppConstants.alimentazioniRoute:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => AlimentazioniScreen(
+            coloniaId: args is int ? args : null,
+          ),
+        );
+
+      case AppConstants.alimentazioneCreateRoute:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => AlimentazioneFormScreen(
+            coloniaId: args is int ? args : null,
+          ),
+        );
+
+      case AppConstants.nomadismiRoute:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NomadismiScreen(
+            coloniaId: args is int ? args : null,
+          ),
+        );
+
+      case AppConstants.nomadismoCreateRoute:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NomadismoFormScreen(
+            coloniaId: args is int ? args : null,
+          ),
+        );
 
       // Routes for onboarding and help guide
       case AppConstants.onboardingRoute:

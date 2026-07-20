@@ -1812,6 +1812,21 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
           if (peso != null) 'peso_stimato': peso,
         },
       );
+      // Se l'utente ha pesato il melario alla rimozione, registriamo una
+      // PesataMelario di tipo "rimozione" per il dataset ML produzione/colonia.
+      if (peso != null && peso > 0) {
+        try {
+          await _apiService.post(ApiConstants.pesateMelariUrl, {
+            'melario': m.id,
+            'colonia': m.colonia ?? m.coloniaId,
+            'data': dataRimozione,
+            'tipo': 'rimozione',
+            'peso_lordo_kg': peso,
+          });
+        } catch (_) {
+          // Non blocca la rimozione: la pesata è un dato aggiuntivo.
+        }
+      }
       await storageService.saveData(
           'melari', _melari.map((x) => x.toJson()).toList());
     } catch (e) {

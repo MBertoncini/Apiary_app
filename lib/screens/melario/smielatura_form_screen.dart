@@ -28,6 +28,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
   List<Map<String, dynamic>> _apiari = [];
   List<Map<String, dynamic>> _melari = [];
   List<Map<String, dynamic>> _smielature = [];
+  List<Map<String, dynamic>> _fioriture = [];
 
   int? _selectedApiarioId;
   DateTime _selectedDate = DateTime.now();
@@ -35,6 +36,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
   final _quantitaController = TextEditingController();
   final _noteController = TextEditingController();
   List<int> _selectedMelariIds = [];
+  List<int> _selectedFiorituraIds = [];
 
   bool get _isEditing => widget.initialData is Map<String, dynamic>;
   int? get _editId => _isEditing ? (widget.initialData as Map<String, dynamic>)['id'] : null;
@@ -77,15 +79,18 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
         _apiService.getAll(ApiConstants.apiariUrl),
         _apiService.getAll(ApiConstants.melariUrl),
         _apiService.getAll(ApiConstants.produzioniUrl),
+        _apiService.getAll(ApiConstants.fioritureUrl),
       ]);
       final apiariList = results[0];
       final melariList = results[1];
       final smielatureList = results[2];
+      final fioritureList = results[3];
 
       await Future.wait([
         _storageService.saveData('apiari', apiariList),
         _storageService.saveData('melari', melariList),
         _storageService.saveData('smielature', smielatureList),
+        _storageService.saveData('fioriture', fioritureList),
       ]);
 
       if (mounted) {
@@ -93,6 +98,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
           _apiari = apiariList.map((e) => e as Map<String, dynamic>).toList();
           _melari = melariList.map((e) => e as Map<String, dynamic>).toList();
           _smielature = smielatureList.map((e) => e as Map<String, dynamic>).toList();
+          _fioriture = fioritureList.map((e) => e as Map<String, dynamic>).toList();
           _isLoadingData = false;
         });
       }
@@ -105,6 +111,8 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
         _quantitaController.text = data['quantita_miele']?.toString() ?? '';
         _noteController.text = data['note'] ?? '';
         _selectedMelariIds = (data['melari'] as List?)?.map((e) => e as int).toList() ?? [];
+        _selectedFiorituraIds =
+            (data['fioriture'] as List?)?.map((e) => e as int).toList() ?? [];
       } else if (widget.initialData is int) {
         _selectedApiarioId = widget.initialData as int;
       }
@@ -195,6 +203,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
       'tipo_miele': _tipoMieleController.text,
       'quantita_miele': _quantitaController.text,
       'melari': _selectedMelariIds,
+      'fioriture': _selectedFiorituraIds,
       'note': _noteController.text.isEmpty ? null : _noteController.text,
     };
 
@@ -246,6 +255,89 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
     }
   }
 
+  /// Fioriture filtrate per l'apiario attualmente selezionato.
+  List<Map<String, dynamic>> get _filteredFioriture {
+    if (_selectedApiarioId == null) return const [];
+    return _fioriture.where((f) {
+      final apId = f['apiario'];
+      return apId == _selectedApiarioId;
+    }).toList()
+      ..sort((a, b) => (b['data_inizio'] ?? '')
+          .toString()
+          .compareTo((a['data_inizio'] ?? '').toString()));
+  }
+
+  Widget _buildFiorituraSelector() {
+    final available = _filteredFioriture;
+    if (_selectedApiarioId == null) {
+      return const SizedBox.shrink();
+    }
+    if (available.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.local_florist, size: 18, color: Colors.grey),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Nessuna fioritura registrata per questo apiario.',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.local_florist, size: 18, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Fioriture di origine',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Seleziona quali fioriture hanno alimentato questo raccolto (dataset per modelli predittivi).',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: available.map((f) {
+            final id = f['id'] as int;
+            final selected = _selectedFiorituraIds.contains(id);
+            final pianta = f['pianta']?.toString() ?? '—';
+            final inizio = f['data_inizio']?.toString() ?? '';
+            return FilterChip(
+              label: Text(inizio.isNotEmpty ? '$pianta · $inizio' : pianta),
+              selected: selected,
+              onSelected: (v) {
+                setState(() {
+                  if (v) {
+                    _selectedFiorituraIds.add(id);
+                  } else {
+                    _selectedFiorituraIds.remove(id);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -284,6 +376,7 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                       onChanged: (val) => setState(() {
                         _selectedApiarioId = val;
                         _selectedMelariIds.clear();
+                        _selectedFiorituraIds.clear();
                       }),
                       validator: (val) => val == null ? s.smielaturaFormSelectApiarioMsg : null,
                     ),
@@ -374,6 +467,10 @@ class _SmielaturaFormScreenState extends State<SmielaturaFormScreen> {
                       }),
                       const SizedBox(height: 16),
                     ],
+
+                    // Fioriture associate (per modelli predittivi per-colonia)
+                    _buildFiorituraSelector(),
+                    const SizedBox(height: 16),
 
                     // Note
                     TextFormField(

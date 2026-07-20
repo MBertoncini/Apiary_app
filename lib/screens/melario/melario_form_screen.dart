@@ -50,6 +50,9 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
   String _statoFavi = 'costruiti';
   bool _escludiRegina = true;
   final _noteController = TextEditingController();
+  // Pesata iniziale opzionale (solo in creazione, non in edit).
+  final _pesoLordoIniziale = TextEditingController();
+  final _taraIniziale = TextEditingController();
   // Posizioni già occupate da melari attivi sull'arnia selezionata.
   Set<int> _posizioniOccupate = {};
   Melario? get _editingMelario => widget.editingMelario;
@@ -66,6 +69,8 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
   @override
   void dispose() {
     _noteController.dispose();
+    _pesoLordoIniziale.dispose();
+    _taraIniziale.dispose();
     super.dispose();
   }
 
@@ -323,7 +328,32 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
         await _apiService.patch(
             '${ApiConstants.melariUrl}${_editingMelario!.id}/', body);
       } else {
-        await _apiService.post(ApiConstants.melariUrl, body);
+        final created = await _apiService.post(ApiConstants.melariUrl, body);
+        // Se l'utente ha inserito una pesata iniziale, la registra come
+        // PesataMelario di tipo "posizionamento" (dataset ML).
+        final pesoLordo = double.tryParse(
+            _pesoLordoIniziale.text.trim().replaceAll(',', '.'));
+        final tara = double.tryParse(
+            _taraIniziale.text.trim().replaceAll(',', '.'));
+        if (pesoLordo != null && pesoLordo > 0) {
+          final int? melarioId = (created is Map && created['id'] is int)
+              ? created['id'] as int
+              : null;
+          if (melarioId != null) {
+            try {
+              await _apiService.post(ApiConstants.pesateMelariUrl, {
+                'melario': melarioId,
+                'colonia': _selectedColoniaId,
+                'data': _dataPosizionamento.toIso8601String().split('T')[0],
+                'tipo': 'posizionamento',
+                'peso_lordo_kg': pesoLordo,
+                if (tara != null && tara >= 0) 'tara_kg': tara,
+              });
+            } catch (_) {
+              // La pesata è un di più: non blocca la creazione del melario.
+            }
+          }
+        }
       }
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -451,6 +481,57 @@ class _MelarioFormScreenState extends State<MelarioFormScreen> {
                         value: _escludiRegina,
                         onChanged: (v) => setState(() => _escludiRegina = v),
                       ),
+                      if (_editingMelario == null) ...[
+                        const Divider(height: 24),
+                        Row(
+                          children: [
+                            Icon(Icons.scale,
+                                size: 18,
+                                color: Theme.of(context).primaryColor),
+                            const SizedBox(width: 8),
+                            const Text('Pesata iniziale (opzionale)',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _pesoLordoIniziale,
+                                keyboardType: const TextInputType
+                                    .numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Peso lordo (kg)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _taraIniziale,
+                                keyboardType: const TextInputType
+                                    .numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Tara (kg)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Se inserisci il peso lordo viene creata una pesata "posizionamento" (usata per stimare la produzione per colonia).',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _noteController,

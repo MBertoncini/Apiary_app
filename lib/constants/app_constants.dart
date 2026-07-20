@@ -33,6 +33,12 @@ class AppConstants {
   static const String coloniaCreateRoute  = "/colonia/create";
   static const String coloniaChiudiRoute  = "/colonia/chiudi";
 
+  // Route per alimentazione e nomadismo (dataset ML per-colonia)
+  static const String alimentazioniRoute       = "/alimentazioni";
+  static const String alimentazioneCreateRoute = "/alimentazione/create";
+  static const String nomadismiRoute           = "/nomadismi";
+  static const String nomadismoCreateRoute     = "/nomadismo/create";
+
   @Deprecated('Usa arniaCreateRoute')
   static const String creaArniaRoute = arniaCreateRoute;
   static const String controlloCreateRoute = "/controllo/create";

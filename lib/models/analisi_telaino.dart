@@ -2,6 +2,9 @@ class AnalisiTelaino {
   final int? id;
   final int arnia;
   final int? arniaNumero;
+  /// FK opzionale alla colonia presente nell'arnia al momento dell'analisi
+  /// (snapshot biologico per ML).
+  final int? colonia;
   final int numeroTelaino;
   final String facciata;
   final String? data;
@@ -20,6 +23,7 @@ class AnalisiTelaino {
     this.id,
     required this.arnia,
     this.arniaNumero,
+    this.colonia,
     required this.numeroTelaino,
     required this.facciata,
     this.data,
@@ -40,6 +44,7 @@ class AnalisiTelaino {
       id: json['id'],
       arnia: json['arnia'],
       arniaNumero: json['arnia_numero'],
+      colonia: json['colonia'],
       numeroTelaino: json['numero_telaino'],
       facciata: json['facciata'],
       data: json['data'],
@@ -60,6 +65,7 @@ class AnalisiTelaino {
     return {
       if (id != null) 'id': id,
       'arnia': arnia,
+      if (colonia != null) 'colonia': colonia,
       'numero_telaino': numeroTelaino,
       'facciata': facciata,
       'conteggio_api': conteggioApi,
