@@ -801,7 +801,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${s.aiTierLabel}: ${tier.label}',
+                  '${s.aiTierLabel}: ${tier.label(s)}',
                   style: ThemeConstants.bodyStyle.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -1377,7 +1377,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final resetAt = quota.resetAtFor(AiFeature.voice)?.toIso8601String();
             final subtitle = quota.hasPersonalGeminiKey
                 ? s.quotaUsingPersonalKey
-                : '${tier.label} plan';
+                : s.quotaUsingTierPlan(tier.label(s));
             return _quotaBar(
               label: s.quotaTranscriptionsToday,
               used: voiceUsed,

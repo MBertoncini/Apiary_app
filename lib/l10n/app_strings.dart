@@ -127,6 +127,7 @@ abstract class AppStrings {
 
   // ── Quota section – detailed labels ──────────────────────────────────────
   String get quotaUsingPersonalKey;
+  String quotaUsingTierPlan(String tier);
   String get quotaUsingSystemKey;
   String get quotaSystemKeyLabel;
   String get quotaPersonalKeyLabel;
@@ -2139,6 +2140,10 @@ abstract class AppStrings {
   String get aiTierFreeDesc;
   String get aiTierApicoltoreDesc;
   String get aiTierProfessionaleDesc;
+  // Nomi dei tier, ispirati al ciclo vitale dell'ape (vedi AiTierLabel).
+  String get aiTierNameFree;
+  String get aiTierNameApicoltore;
+  String get aiTierNameProfessionale;
 
   // ── AI Tier upgrade screen ──
   String get aiUpgradeTitle;

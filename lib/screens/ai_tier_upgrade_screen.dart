@@ -178,7 +178,7 @@ class _AiTierUpgradeScreenState extends State<AiTierUpgradeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  tier.label,
+                  tier.label(s),
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -602,7 +602,7 @@ class _TierInfoCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      tier.label,
+                      tier.label(s),
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,

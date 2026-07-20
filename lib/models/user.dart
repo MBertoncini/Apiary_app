@@ -1,5 +1,7 @@
 // lib/models/user.dart
 
+import '../l10n/app_strings.dart';
+
 /// Tier AI disponibili — corrispondono ai valori nel backend Django.
 enum AiTier {
   free,
@@ -14,20 +16,6 @@ enum AiTier {
         return AiTier.professionale;
       default:
         return AiTier.free;
-    }
-  }
-
-  /// Nome tematico del tier, ispirato al ciclo vitale dell'ape.
-  /// I valori enum (free/apicoltore/professionale) restano invariati perché
-  /// usati per la serializzazione col backend — cambia solo l'etichetta.
-  String get label {
-    switch (this) {
-      case AiTier.free:
-        return 'Uovo';
-      case AiTier.apicoltore:
-        return 'Larva';
-      case AiTier.professionale:
-        return 'Ape';
     }
   }
 
@@ -78,6 +66,24 @@ enum AiTier {
       );
     }
     return fallbackLimits;
+  }
+}
+
+/// Nome tematico del tier, ispirato al ciclo vitale dell'ape.
+///
+/// E' un'estensione e non un getter dell'enum perche' l'etichetta va
+/// localizzata: i valori enum (free/apicoltore/professionale) restano
+/// invariati perche' sono il contratto di serializzazione col backend.
+extension AiTierLabel on AiTier {
+  String label(AppStrings s) {
+    switch (this) {
+      case AiTier.free:
+        return s.aiTierNameFree;
+      case AiTier.apicoltore:
+        return s.aiTierNameApicoltore;
+      case AiTier.professionale:
+        return s.aiTierNameProfessionale;
+    }
   }
 }
 

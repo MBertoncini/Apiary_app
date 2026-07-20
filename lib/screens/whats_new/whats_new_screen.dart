@@ -11,9 +11,9 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
-  18: _ReleaseNotes(
+  19: _ReleaseNotes(
     version: '1.0.3',
-    buildNumber: 18,
+    buildNumber: 19,
     date: '20 Luglio 2026',
     notes: [
       _Note('🔔', 'Nuovo', 'Centro notifiche - Un campanello nel menu laterale raccoglie gli avvisi e le comunicazioni, con il numero di messaggi non letti sempre in vista'),

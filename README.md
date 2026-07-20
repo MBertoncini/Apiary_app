@@ -32,7 +32,7 @@ Apiary Manager is a Flutter mobile app paired with a Django REST backend. It is 
 | **Platform** | Flutter (Android primary; iOS, Web, Linux, macOS supported) |
 | **Dart SDK** | ≥ 3.0.0 < 4.0.0 |
 | **Android Min SDK** | API 21 (Android 5.0) |
-| **App Version** | 1.0.3+18 |
+| **App Version** | 1.0.3+19 |
 | **Backend** | Django 4.2 + DRF @ `cible99.pythonanywhere.com` (MySQL: `Cible99$apiary`) |
 | **Local DB schema** | v7 (SQLite) |
 

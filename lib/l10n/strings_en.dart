@@ -146,6 +146,7 @@ class StringsEn extends AppStrings {
 
   // Quota section – detailed labels
   @override String get quotaUsingPersonalKey => 'Using your personal key';
+  @override String quotaUsingTierPlan(String tier) => '$tier plan';
   @override String get quotaUsingSystemKey => 'Using the shared system key';
   @override String get quotaSystemKeyLabel => 'System key (shared)';
   @override String get quotaPersonalKeyLabel => 'Your personal key';
@@ -2113,6 +2114,9 @@ class StringsEn extends AppStrings {
   @override String get aiTierFreeDesc => 'Chat: 10/day, Voice: 5/day';
   @override String get aiTierApicoltoreDesc => 'Chat: 30/day, Voice: 30/day';
   @override String get aiTierProfessionaleDesc => 'Chat: 200/day, Voice: 100/day';
+  @override String get aiTierNameFree => 'Egg';
+  @override String get aiTierNameApicoltore => 'Larva';
+  @override String get aiTierNameProfessionale => 'Bee';
 
   // ── AI Tier upgrade screen ──
   @override String get aiUpgradeTitle => 'AI Plans';
