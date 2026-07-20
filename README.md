@@ -62,12 +62,13 @@ Apiary Manager is a Flutter mobile app paired with a Django REST backend. It is 
 | **QR / barcode** | `mobile_scanner`, `qr_flutter` |
 | **Payments** | `purchases_flutter`, `purchases_ui_flutter` (RevenueCat) |
 | **Auth** | `google_sign_in` |
-| **Notifications** | `flutter_local_notifications`, `flutter_timezone` |
+| **Notifications** | `flutter_local_notifications`, `flutter_timezone`, `flutter_html` (broadcast body) |
 | **Background work** | `flutter_background_service`, `flutter_background_service_android` |
 | **Permissions** | `permission_handler` |
 | **Export** | `pdf`, `printing`, `csv`, `share_plus` |
 | **Sensors** | `sensors_plus`, `vibration` |
 | **NFC & deep links** | `nfc_manager`, `app_links` |
+| **App updates** | `in_app_update` (Play Store in-app update) |
 | **i18n** | `flutter_localizations`, `intl` |
 
 ### Custom fonts
@@ -155,18 +156,20 @@ lib/
 │   ├── controllo_service, colonia_service, regina_service
 │   ├── analisi_telaino_service, attrezzatura_service, pagamento_service
 │   ├── fioritura_service, gruppo_service, statistiche_service
-│   ├── notification_service, location_service, locations_service, meteo_service
+│   ├── notification_service, notification_polling_service, notification_navigator
+│   ├── update_service             # Play Store in-app update (startup + resume)
+│   ├── location_service, locations_service, meteo_service
 │   ├── osm_vegetazione_service, sensor_service, mobile_scanner_service, qr_*_service
 │   ├── export_service, language_service, jokes_service
 │   │
 │   │  # AI / voice / subscription
-│   ├── chat_service               # Gemini chat (direct), function calling
+│   ├── chat_service               # Gemini chat (direct w/ personal key, proxy w/ shared)
 │   ├── mcp_service                # tool layer over backend REST
 │   ├── ai_quota_service           # quota & tier gating (single source of truth)
 │   ├── ai_quota_local_tracker     # offline counters
 │   ├── bee_detection_service      # YOLOv8-seg TFLite inference
 │   ├── voice_data_processor       # voice → structured fields (Gemini)
-│   ├── gemini_audio_processor     # direct audio → text via Gemini
+│   ├── gemini_audio_processor     # audio → text via Gemini (direct or backend proxy)
 │   ├── voice_feedback_service, voice_queue_service, voice_settings_service
 │   ├── voice_language_rules, bee_vocabulary_corrector
 │   ├── platform_speech_service, platform_voice_input_manager
@@ -182,6 +185,8 @@ lib/
 │   ├── auth/, splash_screen, onboarding/
 │   ├── apiario/, arnia/, colonia/, regina/, controllo/
 │   ├── melario/, nucleo/, cantina/  (maturatori + contenitori + invasettamenti)
+│   ├── alimentazione/, nomadismo/   # ML dataset feeds, per-colonia
+│   ├── notifications/               # broadcast notification centre
 │   ├── fioritura/, trattamento/, attrezzatura/
 │   ├── pagamento/, vendita/, gruppo/
 │   ├── analisi_telaino/, mappa/
@@ -308,9 +313,11 @@ The app gates AI features (chat / voice / stats NL queries) by tier. Tiers are d
 
 | Tier | Label | Fallback daily limits (chat / voice / total) |
 |---|---|---|
-| `free` | Base (Test) | 10 / 5 / 15 |
-| `apicoltore` | Sostenitore | 30 / 30 / 60 |
-| `professionale` | Tester Avanzato | 200 / 100 / 300 |
+| `free` | Uovo 🥚 | 10 / 5 / 15 |
+| `apicoltore` | Larva 🐛 | 30 / 30 / 60 |
+| `professionale` | Ape 🐝 | 200 / 100 / 300 |
+
+Labels follow the bee life cycle and are rendered as animated SVGs by `AnimatedTierIcon` (`assets/images/icons/Tiers/`). The enum values are unchanged — they are the serialization contract with the backend.
 
 Authoritative limits come from the backend (`GET /api/v1/ai/quota/` → `all_tier_limits`); local values are only fallbacks.
 
@@ -319,6 +326,8 @@ Authoritative limits come from the backend (`GET /api/v1/ai/quota/` → `all_tie
 1. **RevenueCat in-app purchase** — `SubscriptionService` (entitlement: `Apiary Pro`) maps active products to tiers (`yearly` → `professionale`, otherwise `apicoltore`). Lifecycle: `init()` at app start, `login()` after auth, `logout()` on sign-out.
 2. **Tester code** — entered in `AiTierUpgradeScreen`; backend validates and bumps `User.ai_tier`.
 3. **Personal Gemini key** — bypasses the tier rate limiter for chat (the user pays Google directly).
+
+> **Shared key routing:** with a personal key the client calls Gemini directly. With the *shared* key it goes through the authenticated backend proxy `POST /api/v1/ai/gemini-proxy/`, which injects the key server-side — it is no longer compiled into the app binary. The proxy enforces the tier quota gate and returns 429 when exhausted.
 
 `AiQuotaService` is the single source of truth for quota state; `ChatService`, statistiche tabs, and the upgrade screen all read from it.
 
@@ -355,6 +364,10 @@ DRF REST API with token authentication.
 | Gruppi | `/api/v1/gruppi/` |
 | Profile | `GET/PATCH /api/v1/users/me/` (exposes `gemini_api_key`, `ai_tier`) |
 | AI quota | `GET /api/v1/ai/quota/`, `POST /api/v1/ai/chat/` |
+| AI proxy | `POST /api/v1/ai/gemini-proxy/` (shared key, server-side injection) |
+| Notifiche | `/api/v1/notifiche/`, `/notifiche/unread_count/`, `/notifiche/{id}/mark_read/`, `/notifiche/mark_all_read/` |
+| ML dataset | `/api/v1/pesate-melari/`, `/api/v1/alimentazioni/`, `/api/v1/nomadismi/`, `/api/v1/ml/dataset/colonia/{id}/` |
+| ML predictions | `GET /api/v1/ml/predict/colonia/{id}/` |
 
 Auth header: `Authorization: Token <token>`.
 
