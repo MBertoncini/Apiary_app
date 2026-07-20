@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../constants/app_constants.dart';
 import '../../models/colonia.dart';
 import '../../services/api_service.dart';
 import '../../services/colonia_service.dart';
 import '../../services/controllo_service.dart';
 import '../../services/language_service.dart';
 import '../../models/controllo_arnia.dart';
+import '../../models/colony_risk_prediction.dart';
+import '../../models/production_prediction.dart';
 import '../../widgets/skeleton_widgets.dart';
 import 'colonia_form_screen.dart';
 
@@ -25,6 +28,8 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
   bool _isLoading = true;
   Colonia? _colonia;
   List<ControlloArnia> _controlli = [];
+  ColonyPredictions? _predictions;
+  ProductionPrediction? _production;
   late TabController _tabController;
 
   @override
@@ -56,6 +61,13 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
               .map((r) => ControlloArnia.fromJson(r))
               .toList();
           _controlli.sort((a, b) => b.data.compareTo(a.data));
+        } catch (_) {}
+
+        // Predizioni ML per-colonia (best-effort: non bloccano la schermata)
+        try {
+          final res = await api.getColoniaPrediction(widget.coloniaId);
+          _predictions = ColonyPredictions.fromResponse(res);
+          _production = ProductionPrediction.fromResponse(res);
         } catch (_) {}
       }
     } catch (e) {
@@ -155,6 +167,19 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                 ),
                 const SizedBox(height: 16),
 
+                // Card predittive ML (mostrate solo quelle con dati)
+                if (_predictions != null)
+                  ..._predictions!.risks.where((r) => r.hasData).map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _buildRiskCard(r),
+                        ),
+                      ),
+                if (_production != null && _production!.hasData) ...[
+                  _buildProductionCard(_production!),
+                  const SizedBox(height: 16),
+                ],
+
                 _infoRow(Icons.home_outlined, s.coloniaDetailLblContenitore, c.contenitoreLabel),
                 _infoRow(Icons.location_on_outlined, s.coloniaDetailLblApiario, c.apiarioNome),
                 _infoRow(Icons.calendar_today_outlined, s.coloniaDetailLblInsediataIl, c.dataInizio),
@@ -198,6 +223,33 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                   const SizedBox(height: 8),
                   Text(c.note!, style: const TextStyle(color: Colors.black87)),
                 ],
+
+                // Dataset ML per-colonia: scorciatoie a alimentazioni/nomadismo
+                const Divider(height: 32),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.restaurant, size: 18),
+                      label: const Text('Alimentazioni'),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppConstants.alimentazioniRoute,
+                        arguments: c.id,
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.swap_horiz, size: 18),
+                      label: const Text('Spostamenti'),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppConstants.nomadismiRoute,
+                        arguments: c.id,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -230,6 +282,201 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                     );
                   },
                 ),
+        ],
+      ),
+    );
+  }
+
+  Color _levelColor(String? level) {
+    switch (level) {
+      case 'critico':
+        return Colors.red;
+      case 'alto':
+        return Colors.deepOrange;
+      case 'medio':
+        return Colors.amber.shade800;
+      case 'basso':
+        return Colors.green;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  IconData _levelIcon(String? level) {
+    switch (level) {
+      case 'critico':
+      case 'alto':
+        return Icons.warning_amber_rounded;
+      case 'medio':
+        return Icons.info_outline;
+      case 'basso':
+        return Icons.check_circle_outline;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Widget _buildRiskCard(ColonyRiskPrediction p) {
+    final color = _levelColor(p.level);
+    final positives = p.factors.where((f) => f.impact > 0).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_levelIcon(p.level), color: color, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(p.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              ),
+              if (p.hasData)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${(p.level ?? '').toUpperCase()}${p.score != null ? ' · ${p.score}' : ''}',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(p.summary, style: const TextStyle(color: Colors.black87, fontSize: 13)),
+          if (positives.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: positives
+                  .map((f) => Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: color.withOpacity(0.3)),
+                        ),
+                        child: Text(f.label,
+                            style: const TextStyle(fontSize: 11, color: Colors.black87)),
+                      ))
+                  .toList(),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined, size: 14, color: Colors.black45),
+              const SizedBox(width: 4),
+              Text('Confidenza: ${p.confidence}',
+                  style: const TextStyle(fontSize: 11, color: Colors.black54)),
+              if (p.lowData) ...[
+                const SizedBox(width: 8),
+                const Text('· stima preliminare',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.black45,
+                        fontStyle: FontStyle.italic)),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductionCard(ProductionPrediction p) {
+    final color = Colors.amber.shade800;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.water_drop_outlined, color: color, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Produzione miele attesa',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              ),
+              if (p.year != null)
+                Text('${p.year}',
+                    style: TextStyle(
+                        color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text('~${p.expectedKg!.toStringAsFixed(0)} kg',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 24, color: color)),
+              const SizedBox(width: 8),
+              if (p.kgLow != null && p.kgHigh != null)
+                Text(
+                  '(${p.kgLow!.toStringAsFixed(0)}–${p.kgHigh!.toStringAsFixed(0)} kg)',
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+            ],
+          ),
+          if (p.drivers.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: p.drivers
+                  .map((d) => Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: color.withOpacity(0.3)),
+                        ),
+                        child: Text('${d.label} · ~${d.kg.toStringAsFixed(0)} kg',
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.black87)),
+                      ))
+                  .toList(),
+            ),
+          ],
+          if (p.lastSeasonKg != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.history, size: 14, color: Colors.black45),
+                const SizedBox(width: 4),
+                Text('Scorso raccolto: ${p.lastSeasonKg!.toStringAsFixed(0)} kg',
+                    style: const TextStyle(fontSize: 11, color: Colors.black54)),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text('${p.basis} · confidenza ${p.confidence}',
+              style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.black45,
+                  fontStyle: FontStyle.italic)),
         ],
       ),
     );

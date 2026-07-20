@@ -334,6 +334,11 @@ class ApiService {
     return await get('${ApiConstants.colonieUrl}$coloniaId/');
   }
 
+  /// Predizioni ML per-colonia (pilota: rischio sciamatura).
+  Future<dynamic> getColoniaPrediction(int coloniaId) async {
+    return await get('${ApiConstants.mlPredictColoniaUrl}$coloniaId/');
+  }
+
   Future<dynamic> getColoniaAttivaByArnia(int arniaId) async {
     return await get('${ApiConstants.arnieUrl}$arniaId/colonia_attiva/');
   }

@@ -120,6 +120,9 @@ class ApiConstants {
   // Endpoint layout mappa apiario
   static const String apiarioMapLayoutUrl = baseUrl + apiPrefix + '/apiari/{apiario_id}/map_layout/';
 
+  // Endpoint ML predittivi (pilota: rischio sciamatura)
+  static const String mlPredictColoniaUrl = baseUrl + apiPrefix + '/ml/predict/colonia/';
+
   // Endpoint colonie
   static const String colonieUrl = baseUrl + apiPrefix + '/colonie/';
   static const String coloniaDettaglioUrl = baseUrl + apiPrefix + '/colonie/{colonia_id}/';
