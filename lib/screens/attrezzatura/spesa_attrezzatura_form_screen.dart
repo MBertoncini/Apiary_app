@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../models/spesa_attrezzatura.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
 
@@ -105,7 +104,6 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final service = AttrezzaturaService(apiService);
-      final auth = Provider.of<AuthService>(context, listen: false);
 
       final importo = double.parse(_importoController.text.replaceAll(',', '.'));
       final dataStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -124,9 +122,6 @@ class _SpesaAttrezzaturaFormScreenState extends State<SpesaAttrezzaturaFormScree
 
       await service.createSpesaAttrezzatura(
         data,
-        userId: auth.currentUser!.id,
-        attrezzaturaNome: widget.attrezzaturaNome ?? 'Attrezzatura',
-        condivisoConGruppo: widget.condivisoConGruppo,
         pagatoDaId: _selectedPagatoDaId,
       );
 

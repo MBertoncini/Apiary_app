@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../constants/api_constants.dart';
 import '../services/api_service.dart';
 import '../services/attrezzatura_service.dart';
-import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../services/storage_service.dart';
 
@@ -95,7 +94,6 @@ class _AttrezzaturaPromptDialogState extends State<_AttrezzaturaPromptDialog> {
 
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
-      final authService = Provider.of<AuthService>(context, listen: false);
       final svc = AttrezzaturaService(apiService);
 
       final prezzo = _prezzoCtrl.text.isNotEmpty
@@ -112,10 +110,7 @@ class _AttrezzaturaPromptDialogState extends State<_AttrezzaturaPromptDialog> {
         if (prezzo != null && prezzo > 0) 'prezzo_acquisto': prezzo,
       };
 
-      final attrezzatura = await svc.createAttrezzatura(
-        data,
-        userId: authService.currentUser!.id,
-      );
+      final attrezzatura = await svc.createAttrezzatura(data);
 
       // Link arnia → attrezzatura via PATCH
       try {

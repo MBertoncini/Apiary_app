@@ -6,7 +6,6 @@ import '../../models/attrezzatura.dart';
 import '../../models/gruppo.dart';
 import '../../services/attrezzatura_service.dart';
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/error_widget.dart';
@@ -194,7 +193,6 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
       final service = AttrezzaturaService(apiService);
-      final auth = Provider.of<AuthService>(context, listen: false);
 
       final prezzo = _prezzoController.text.isNotEmpty
           ? double.tryParse(_prezzoController.text.replaceAll(',', '.'))
@@ -225,7 +223,7 @@ class _AttrezzaturaFormScreenState extends State<AttrezzaturaFormScreen> {
           SnackBar(content: Text(s.attrezzaturaFormUpdatedOk)),
         );
       } else {
-        await service.createAttrezzatura(data, userId: auth.currentUser!.id);
+        await service.createAttrezzatura(data);
 
         String message = s.attrezzaturaFormCreatedOk;
         if (prezzo != null && prezzo > 0) {

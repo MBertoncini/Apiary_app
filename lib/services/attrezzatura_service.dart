@@ -6,14 +6,11 @@ import '../models/spesa_attrezzatura.dart';
 import '../models/manutenzione.dart';
 import 'api_service.dart';
 import '../constants/api_constants.dart';
-import 'pagamento_service.dart';
 
 class AttrezzaturaService {
   final ApiService _apiService;
-  final PagamentoService _pagamentoService;
 
-  AttrezzaturaService(this._apiService)
-      : _pagamentoService = PagamentoService(_apiService);
+  AttrezzaturaService(this._apiService);
 
   // Metodo helper per la gestione delle risposte API
   Future<T> _handleApiResponse<T>(
@@ -71,59 +68,15 @@ class AttrezzaturaService {
   }
 
   /// Crea una nuova attrezzatura.
-  /// Se prezzo_acquisto > 0, crea automaticamente:
-  /// - SpesaAttrezzatura (tipo='acquisto')
-  /// - Pagamento
-  Future<Attrezzatura> createAttrezzatura(
-    Map<String, dynamic> data, {
-    required int userId,
-  }) async {
-    // 1. Crea l'attrezzatura
-    final attrezzatura = await _handleApiResponse(
+  /// Se `prezzo_acquisto` > 0 il backend registra da solo la SpesaAttrezzatura
+  /// (tipo='acquisto') e il Pagamento collegato: il client non deve crearli,
+  /// altrimenti l'importo finisce più volte nelle uscite del bilancio.
+  Future<Attrezzatura> createAttrezzatura(Map<String, dynamic> data) async {
+    return _handleApiResponse(
       _apiService.post(ApiConstants.attrezzatureUrl, data),
       'Errore nella creazione dell\'attrezzatura',
       (response) => Attrezzatura.fromJson(response),
     );
-
-    // 2. Se prezzo_acquisto > 0, crea SpesaAttrezzatura e Pagamento
-    final prezzoAcquisto = data['prezzo_acquisto'];
-    if (prezzoAcquisto != null && prezzoAcquisto > 0) {
-      final dataAcquisto = data['data_acquisto'] ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final condivisoConGruppo = data['condiviso_con_gruppo'] ?? false;
-      final gruppoId = condivisoConGruppo ? data['gruppo'] : null;
-
-      // Crea SpesaAttrezzatura
-      try {
-        await _createSpesaAttrezzaturaInternal({
-          'attrezzatura': attrezzatura.id,
-          'tipo': 'acquisto',
-          'descrizione': 'Acquisto: ${attrezzatura.nome}',
-          'importo': prezzoAcquisto,
-          'data': dataAcquisto,
-          'gruppo': gruppoId,
-          'utente': userId,
-        });
-      } catch (e) {
-        debugPrint('Errore creazione SpesaAttrezzatura per acquisto: $e');
-      }
-
-      // Crea Pagamento: se pagato_da è specificato, il pagante è quell'utente
-      // (chi ha effettivamente sborsato il denaro), non chi ha inserito il record.
-      final pagatoDaId = data['pagato_da'] as int? ?? userId;
-      try {
-        await _pagamentoService.createPagamento({
-          'utente': pagatoDaId,
-          'importo': prezzoAcquisto,
-          'data': dataAcquisto,
-          'descrizione': 'Acquisto attrezzatura: ${attrezzatura.nome}',
-          'gruppo': gruppoId,
-        });
-      } catch (e) {
-        debugPrint('Errore creazione Pagamento per acquisto attrezzatura: $e');
-      }
-    }
-
-    return attrezzatura;
   }
 
   // Aggiorna un'attrezzatura
@@ -170,7 +123,9 @@ class AttrezzaturaService {
     );
   }
 
-  // Metodo interno per creare SpesaAttrezzatura (senza Pagamento)
+  // Metodo interno per creare SpesaAttrezzatura.
+  // Il Pagamento collegato lo genera il backend (signal su SpesaAttrezzatura),
+  // usando `pagato_da` per capire chi ha effettivamente sborsato il denaro.
   Future<SpesaAttrezzatura> _createSpesaAttrezzaturaInternal(Map<String, dynamic> data) async {
     return _handleApiResponse(
       _apiService.post(ApiConstants.speseAttrezzaturaUrl, data),
@@ -180,36 +135,16 @@ class AttrezzaturaService {
   }
 
   /// Crea una nuova spesa per un'attrezzatura.
-  /// Crea automaticamente un Pagamento collegato.
-  /// [pagatoDaId] indica chi ha effettivamente pagato; se null usa [userId].
+  /// [pagatoDaId] indica chi ha effettivamente pagato; se null il backend usa
+  /// l'utente autenticato. Il Pagamento collegato viene creato server-side.
   Future<SpesaAttrezzatura> createSpesaAttrezzatura(
     Map<String, dynamic> data, {
-    required int userId,
-    required String attrezzaturaNome,
-    required bool condivisoConGruppo,
     int? pagatoDaId,
   }) async {
-    // 1. Crea la SpesaAttrezzatura
-    final spesa = await _createSpesaAttrezzaturaInternal(data);
-
-    // 2. Crea il Pagamento collegato
-    final gruppoId = condivisoConGruppo ? data['gruppo'] : null;
-    final tipoDisplay = spesa.getTipoDisplay();
-    final pagante = pagatoDaId ?? userId;
-
-    try {
-      await _pagamentoService.createPagamento({
-        'utente': pagante,
-        'importo': spesa.importo,
-        'data': data['data'],
-        'descrizione': 'Spesa attrezzatura ($tipoDisplay): $attrezzaturaNome - ${spesa.descrizione}',
-        'gruppo': gruppoId,
-      });
-    } catch (e) {
-      debugPrint('Errore creazione Pagamento per spesa attrezzatura: $e');
-    }
-
-    return spesa;
+    return _createSpesaAttrezzaturaInternal({
+      ...data,
+      if (pagatoDaId != null) 'pagato_da': pagatoDaId,
+    });
   }
 
   // Elimina una spesa attrezzatura
@@ -257,9 +192,8 @@ class AttrezzaturaService {
   }
 
   /// Crea una nuova manutenzione per un'attrezzatura.
-  /// Se costo > 0, crea automaticamente:
-  /// - SpesaAttrezzatura (tipo='manutenzione')
-  /// - Pagamento
+  /// Se costo > 0 crea anche la SpesaAttrezzatura (tipo='manutenzione'); il
+  /// Pagamento collegato lo genera il backend a partire dalla spesa.
   /// [pagatoDaId] indica chi ha effettivamente pagato; se null usa [userId].
   Future<Manutenzione> createManutenzione(
     Map<String, dynamic> data, {
@@ -275,7 +209,7 @@ class AttrezzaturaService {
       (response) => Manutenzione.fromJson(response),
     );
 
-    // 2. Se costo > 0, crea SpesaAttrezzatura e Pagamento
+    // 2. Se costo > 0, crea la SpesaAttrezzatura (il Pagamento lo crea il backend)
     final costo = data['costo'];
     if (costo != null && costo > 0) {
       // Determina la data da usare (data_esecuzione o data_programmata)
@@ -283,7 +217,6 @@ class AttrezzaturaService {
       final gruppoId = condivisoConGruppo ? data['gruppo'] : null;
       final tipoDisplay = manutenzione.getTipoDisplay();
 
-      // Crea SpesaAttrezzatura
       try {
         await _createSpesaAttrezzaturaInternal({
           'attrezzatura': manutenzione.attrezzatura,
@@ -293,23 +226,10 @@ class AttrezzaturaService {
           'data': dataSpesa,
           'gruppo': gruppoId,
           'utente': userId,
+          if (pagatoDaId != null) 'pagato_da': pagatoDaId,
         });
       } catch (e) {
         debugPrint('Errore creazione SpesaAttrezzatura per manutenzione: $e');
-      }
-
-      // Crea Pagamento
-      final pagante = pagatoDaId ?? userId;
-      try {
-        await _pagamentoService.createPagamento({
-          'utente': pagante,
-          'importo': costo,
-          'data': dataSpesa,
-          'descrizione': 'Manutenzione attrezzatura: $attrezzaturaNome - $tipoDisplay',
-          'gruppo': gruppoId,
-        });
-      } catch (e) {
-        debugPrint('Errore creazione Pagamento per manutenzione: $e');
       }
     }
 
@@ -360,12 +280,12 @@ class AttrezzaturaService {
     // Aggiorna la manutenzione
     final manutenzione = await updateManutenzione(id, updateData);
 
-    // Se costo > 0 e la manutenzione non aveva costo prima, crea SpesaAttrezzatura e Pagamento
+    // Se costo > 0 e la manutenzione non aveva costo prima, crea la
+    // SpesaAttrezzatura (il Pagamento collegato lo crea il backend).
     if (costo != null && costo > 0) {
       final gruppoIdEffettivo = condivisoConGruppo ? gruppoId : null;
       final tipoDisplay = manutenzione.getTipoDisplay();
 
-      // Crea SpesaAttrezzatura
       try {
         await _createSpesaAttrezzaturaInternal({
           'attrezzatura': manutenzione.attrezzatura,
@@ -375,23 +295,10 @@ class AttrezzaturaService {
           'data': dataEsecuzione,
           'gruppo': gruppoIdEffettivo,
           'utente': userId,
+          if (pagatoDaId != null) 'pagato_da': pagatoDaId,
         });
       } catch (e) {
         debugPrint('Errore creazione SpesaAttrezzatura per completamento manutenzione: $e');
-      }
-
-      // Crea Pagamento
-      final pagante = pagatoDaId ?? userId;
-      try {
-        await _pagamentoService.createPagamento({
-          'utente': pagante,
-          'importo': costo,
-          'data': dataEsecuzione,
-          'descrizione': 'Manutenzione attrezzatura: $attrezzaturaNome - $tipoDisplay',
-          'gruppo': gruppoIdEffettivo,
-        });
-      } catch (e) {
-        debugPrint('Errore creazione Pagamento per completamento manutenzione: $e');
       }
     }
 
