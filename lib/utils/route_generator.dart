@@ -23,6 +23,7 @@ import '../screens/controllo/controllo_form_screen.dart';
 import '../screens/colonia/colonia_detail_screen.dart';
 import '../screens/colonia/colonia_form_screen.dart';
 import '../models/colonia.dart';
+import '../models/alimentazione.dart';
 import '../screens/alimentazione/alimentazioni_screen.dart';
 import '../screens/alimentazione/alimentazione_form_screen.dart';
 import '../screens/nomadismo/nomadismi_screen.dart';
@@ -545,6 +546,15 @@ class RouteGenerator {
             coloniaId: args is int ? args : null,
           ),
         );
+
+      case AppConstants.alimentazioneEditRoute:
+        if (args is Alimentazione) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => AlimentazioneFormScreen(alimentazione: args),
+          );
+        }
+        return _errorRoute();
 
       case AppConstants.nomadismiRoute:
         return MaterialPageRoute(

@@ -59,6 +59,112 @@ class _AlimentazioniScreenState extends State<AlimentazioniScreen> {
     }
   }
 
+  Future<void> _edit(Alimentazione a) async {
+    final ok = await Navigator.pushNamed(
+      context,
+      AppConstants.alimentazioneEditRoute,
+      arguments: a,
+    );
+    if (ok == true) _load();
+  }
+
+  Future<bool> _confirmDelete() async {
+    final c = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminare?'),
+        content:
+            const Text('Questa alimentazione verrà rimossa dal dataset.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annulla')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Elimina')),
+        ],
+      ),
+    );
+    return c == true;
+  }
+
+  void _showDetail(Alimentazione a) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${a.tipoDisplay ?? a.tipo} · ${a.quantitaKg.toStringAsFixed(2)} kg',
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              _detailRow(Icons.calendar_today, a.data),
+              if (a.coloniaDisplay != null)
+                _detailRow(Icons.hive_outlined, a.coloniaDisplay!),
+              if (a.scopoDisplay != null && a.scopoDisplay!.isNotEmpty)
+                _detailRow(Icons.flag_outlined, a.scopoDisplay!),
+              if (a.utenteUsername != null)
+                _detailRow(Icons.person_outline, a.utenteUsername!),
+              if (a.note != null && a.note!.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Note', style: Theme.of(ctx).textTheme.labelLarge),
+                const SizedBox(height: 4),
+                Text(a.note!),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.delete_outline,
+                          color: Colors.red),
+                      label: const Text('Elimina',
+                          style: TextStyle(color: Colors.red)),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        if (await _confirmDelete()) _delete(a);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Modifica'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _edit(a);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    );
+  }
+
   Future<void> _delete(Alimentazione a) async {
     try {
       await _api.delete('${ApiConstants.alimentazioniUrl}${a.id}/');
@@ -132,37 +238,35 @@ class _AlimentazioniScreenState extends State<AlimentazioniScreen> {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (_, i) {
           final a = _items[i];
+          final hasNote = a.note != null && a.note!.trim().isNotEmpty;
           return ListTile(
             leading: const Icon(Icons.restaurant, color: Colors.amber),
             title: Text(
               '${a.tipoDisplay ?? a.tipo} · ${a.quantitaKg.toStringAsFixed(2)} kg',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            subtitle: Text(
-              '${a.data}'
-              '${a.scopoDisplay != null && a.scopoDisplay!.isNotEmpty ? " · ${a.scopoDisplay}" : ""}'
-              '${a.coloniaDisplay != null ? " · ${a.coloniaDisplay}" : ""}',
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${a.data}'
+                  '${a.scopoDisplay != null && a.scopoDisplay!.isNotEmpty ? " · ${a.scopoDisplay}" : ""}'
+                  '${a.coloniaDisplay != null ? " · ${a.coloniaDisplay}" : ""}',
+                ),
+                if (hasNote)
+                  Text(
+                    a.note!.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontStyle: FontStyle.italic),
+                  ),
+              ],
             ),
+            onTap: () => _showDetail(a),
             trailing: IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: () async {
-                final c = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Eliminare?'),
-                    content: const Text(
-                        'Questa alimentazione verrà rimossa dal dataset.'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Annulla')),
-                      TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Elimina')),
-                    ],
-                  ),
-                );
-                if (c == true) _delete(a);
+                if (await _confirmDelete()) _delete(a);
               },
             ),
           );

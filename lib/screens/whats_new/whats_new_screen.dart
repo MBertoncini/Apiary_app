@@ -11,6 +11,17 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
+  20: _ReleaseNotes(
+    version: '1.0.3',
+    buildNumber: 20,
+    date: '28 Luglio 2026',
+    notes: [
+      _Note('🐝', 'Nuovo', 'Alimentazione per più colonie - Registra la stessa nutrizione per più famiglie o per tutto l\'apiario in un colpo solo: scegli l\'apiario, spunta le colonie (o "Tutte") e salva una volta sola'),
+      _Note('✏️', 'Miglioramento', 'Alimentazioni modificabili - Tocca un\'alimentazione per aprire il dettaglio con le note complete e i pulsanti per modificarla o eliminarla, senza doverla reinserire da capo'),
+      _Note('🍯', 'Miglioramento', 'Alimentazioni nel menu - Le alimentazioni ora hanno una voce dedicata nel menu laterale, oltre al pulsante nella scheda di dettaglio della colonia'),
+      _Note('🔩', 'Fix', 'Melari da smielare - Il contatore "da smielare" ora si azzera correttamente dopo aver registrato la smielatura dei melari rimossi, senza numeri che restano appesi'),
+    ],
+  ),
   19: _ReleaseNotes(
     version: '1.0.3',
     buildNumber: 19,
@@ -18,10 +29,10 @@ const Map<int, _ReleaseNotes> _changelog = {
     notes: [
       _Note('🔔', 'Nuovo', 'Centro notifiche - Un campanello nel menu laterale raccoglie gli avvisi e le comunicazioni, con il numero di messaggi non letti sempre in vista'),
       _Note('🔮', 'Nuovo', 'Previsioni colonia - Nel dettaglio della colonia trovi una stima del rischio sciamatura e della produzione di miele attesa, con il livello di confidenza sempre indicato: con pochi dati alle spalle la stima è segnalata come preliminare'),
-      _Note('🍯', 'Nuovo', 'Registro alimentazioni - Annota nutrizioni e somministrazioni colonia per colonia, direttamente dalla scheda di dettaglio'),
+      _Note('🍯', 'Nuovo', 'Registro alimentazioni - Annota nutrizioni e somministrazioni: apri una colonia e tocca il pulsante "Alimentazioni" nella sua scheda di dettaglio'),
       _Note('🚚', 'Nuovo', 'Spostamenti e nomadismo - Tieni traccia dei trasferimenti delle colonie, così lo storico di ogni famiglia resta completo anche quando cambia postazione'),
-      _Note('🐝', 'Migliorato', 'Livelli AI rinnovati - I piani si chiamano ora Uovo, Larva e Ape, con nuove illustrazioni animate ispirate al ciclo vitale dell\'ape: cambiano i nomi e la grafica, non quello che puoi fare'),
-      _Note('🔄', 'Migliorato', 'Aggiornamenti automatici - L\'app segnala da sé quando è disponibile una nuova versione sul Play Store'),
+      _Note('🐝', 'Miglioramento', 'Livelli AI rinnovati - I piani si chiamano ora Uovo, Larva e Ape, con nuove illustrazioni animate ispirate al ciclo vitale dell\'ape: le vedi aprendo i Livelli AI da Impostazioni o dalla chat. Cambiano i nomi e la grafica, non quello che puoi fare'),
+      _Note('🔄', 'Miglioramento', 'Aggiornamenti automatici - L\'app segnala da sé quando è disponibile una nuova versione sul Play Store'),
       _Note('🔩', 'Fix', 'Disposizione telaini - la posizione scelta viene ora rispettata sia in inserimento che in modifica: diaframmi e fogli cerei restano dove li hai messi e non vengono più riordinati da soli'),
       _Note('👥', 'Fix', 'Elenco clienti - risolto il limite che ne mostrava solo venti e che faceva sembrare i nuovi inseriti come sostituti dei vecchi'),
     ],

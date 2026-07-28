@@ -36,6 +36,7 @@ class AppConstants {
   // Route per alimentazione e nomadismo (dataset ML per-colonia)
   static const String alimentazioniRoute       = "/alimentazioni";
   static const String alimentazioneCreateRoute = "/alimentazione/create";
+  static const String alimentazioneEditRoute   = "/alimentazione/edit";
   static const String nomadismiRoute           = "/nomadismi";
   static const String nomadismoCreateRoute     = "/nomadismo/create";
 
