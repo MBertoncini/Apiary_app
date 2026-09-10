@@ -5,6 +5,8 @@ import '../../constants/api_constants.dart';
 import '../../models/alimentazione.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 
 /// Form di creazione/modifica [Alimentazione].
 ///
@@ -33,6 +35,9 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
 
   bool get _editing => widget.alimentazione != null;
 
+  AppStrings get _s =>
+      Provider.of<LanguageService>(context, listen: false).strings;
+
   int? _apiarioSel;
   final Set<int> _selColonie = {};
   DateTime _data = DateTime.now();
@@ -40,24 +45,6 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
   String? _scopo;
   final _quantitaCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
-
-  static const Map<String, String> _tipoLabel = {
-    'sciroppo_1_1': 'Sciroppo 1:1 (stimolante)',
-    'sciroppo_2_1': 'Sciroppo 2:1 (invernale)',
-    'candito': 'Candito',
-    'candito_proteico': 'Candito proteico',
-    'polline': 'Polline / sostituti',
-    'miele': 'Miele',
-    'altro': 'Altro',
-  };
-  static const Map<String, String> _scopoLabel = {
-    'stimolante': 'Stimolante primaverile',
-    'sostentamento': 'Sostentamento estivo',
-    'invernale': 'Riserve invernali',
-    'emergenza': 'Emergenza (fame)',
-    'introduzione': 'Introduzione regina / sciame',
-    'altro': 'Altro',
-  };
 
   @override
   void initState() {
@@ -84,6 +71,10 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
     _noteCtrl.dispose();
     super.dispose();
   }
+
+  /// Limite del campo `quantita_kg` lato backend: DecimalField(max_digits=6,
+  /// decimal_places=2).
+  static const double _maxKg = 9999.99;
 
   static String _formatKg(double v) {
     final s = v.toStringAsFixed(2);
@@ -114,16 +105,49 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
     final map = <int, String>{};
     for (final c in _colonie) {
       final id = c['apiario'] as int?;
-      if (id != null) {
+      if (id != null && _isAttiva(c)) {
         map[id] = c['apiario_nome']?.toString() ?? 'Apiario $id';
       }
     }
     return map;
   }
 
+  /// Etichetta leggibile di una colonia: "Arnia 7" / "Nucleo 3".
+  ///
+  /// `contenitore` dal backend vale la *stringa* 'arnia'/'nucleo'; il numero
+  /// sta in `contenitore_numero`. Usare il solo `contenitore` rendeva tutte le
+  /// caselle della lista identiche ("arnia"), impossibili da distinguere.
+  static String coloniaLabel(Map<String, dynamic> c) {
+    final numero = c['contenitore_numero'];
+    final tipo = c['contenitore']?.toString();
+    if (numero != null) {
+      if (tipo == 'nucleo') return 'Nucleo $numero';
+      if (tipo == 'arnia') return 'Arnia $numero';
+      return '$numero';
+    }
+    return 'Colonia ${c['id']}';
+  }
+
+  /// Ordina per numero di contenitore, così l'elenco segue la numerazione in
+  /// apiario invece dell'ordine arbitrario di ritorno dell'API.
+  static int _compareColonie(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final na = a['contenitore_numero'];
+    final nb = b['contenitore_numero'];
+    if (na is int && nb is int) return na.compareTo(nb);
+    if (na is int) return -1;
+    if (nb is int) return 1;
+    return (a['id'] as int).compareTo(b['id'] as int);
+  }
+
+  /// Colonie ancora vive: `/colonie/` restituisce anche quelle chiuse
+  /// (morte, unite, sciamate) e non ha senso alimentarle.
+  static bool _isAttiva(Map<String, dynamic> c) =>
+      c['is_attiva'] == true || (c['is_attiva'] == null && c['data_fine'] == null);
+
   List<Map<String, dynamic>> get _colonieApiario => _colonie
-      .where((c) => c['apiario'] == _apiarioSel)
-      .toList();
+      .where((c) => c['apiario'] == _apiarioSel && _isAttiva(c))
+      .toList()
+    ..sort(_compareColonie);
 
   double? _parseQta() {
     final qta = double.tryParse(_quantitaCtrl.text.replaceAll(',', '.'));
@@ -144,7 +168,7 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
     final qta = _parseQta();
     if (qta == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inserisci una quantità in kg > 0.')),
+        SnackBar(content: Text(_s.alimentazioneFormQuantitaInvalid)),
       );
       return;
     }
@@ -159,7 +183,7 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
         preselected != null ? [preselected] : _selColonie.toList();
     if (targets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seleziona almeno una colonia.')),
+        SnackBar(content: Text(_s.alimentazioneFormSelectColonia)),
       );
       return;
     }
@@ -180,18 +204,17 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
     if (ok == targets.length) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok == 1
-            ? 'Alimentazione registrata.'
-            : 'Alimentazione registrata per $ok colonie.'),
+            ? _s.alimentazioneFormSaved
+            : _s.alimentazioneFormSavedMulti(ok)),
       ));
       Navigator.pop(context, true);
     } else {
       setState(() => _saving = false);
-      final failed = targets.length - ok;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok == 0
-            ? 'Errore: $lastError'
-            : 'Registrate $ok su ${targets.length} '
-                '($failed non riuscite). Errore: $lastError'),
+            ? _s.alimentazioneFormError('$lastError')
+            : _s.alimentazioneFormPartial(
+                ok, targets.length, '$lastError')),
       ));
       if (ok > 0) Navigator.pop(context, true);
     }
@@ -207,14 +230,14 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Alimentazione aggiornata.')),
+        SnackBar(content: Text(_s.alimentazioneFormUpdated)),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
+          SnackBar(content: Text(_s.alimentazioneFormError(e.toString()))),
         );
       }
     }
@@ -222,11 +245,14 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Provider.of<LanguageService>(context);
+    final s = _s;
     final preselected = _editing ? null : _preselectedColoniaId;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            _editing ? 'Modifica alimentazione' : 'Nuova alimentazione'),
+        title: Text(_editing
+            ? s.alimentazioneFormTitleEdit
+            : s.alimentazioneFormTitleNew),
       ),
       body: _loadingColonie
           ? const Center(child: CircularProgressIndicator())
@@ -239,20 +265,29 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                   children: [
                     if (_editing) ...[
                       InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Colonia',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: s.alimentazioneFormColonia,
+                          border: const OutlineInputBorder(),
                         ),
                         child: Text(widget.alimentazione!.coloniaDisplay ??
-                            'Colonia ${widget.alimentazione!.colonia}'),
+                            '${s.alimentazioneFormColonia} '
+                                '${widget.alimentazione!.colonia}'),
                       ),
                       const SizedBox(height: 12),
+                    ] else if (preselected == null && _apiari.isEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Text(
+                          s.alimentazioneFormNoColonieAttive,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ] else if (preselected == null) ...[
                       DropdownButtonFormField<int>(
                         value: _apiarioSel,
-                        decoration: const InputDecoration(
-                          labelText: 'Apiario *',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: s.alimentazioneFormApiario,
+                          border: const OutlineInputBorder(),
                         ),
                         items: _apiari.entries
                             .map((e) => DropdownMenuItem(
@@ -265,7 +300,7 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                           _selColonie.clear();
                         }),
                         validator: (v) =>
-                            v == null ? 'Seleziona un apiario' : null,
+                            v == null ? s.alimentazioneFormSelectApiario : null,
                       ),
                       const SizedBox(height: 12),
                       if (_apiarioSel != null) ...[
@@ -285,10 +320,10 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                         if (p != null) setState(() => _data = p);
                       },
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Data',
-                          border: OutlineInputBorder(),
-                          suffixIcon: Icon(Icons.calendar_today),
+                        decoration: InputDecoration(
+                          labelText: s.alimentazioneFormData,
+                          border: const OutlineInputBorder(),
+                          suffixIcon: const Icon(Icons.calendar_today),
                         ),
                         child: Text(
                             '${_data.day.toString().padLeft(2, '0')}/${_data.month.toString().padLeft(2, '0')}/${_data.year}'),
@@ -297,14 +332,14 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: _tipo,
-                      decoration: const InputDecoration(
-                        labelText: 'Tipo',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: s.alimentazioneFormTipo,
+                        border: const OutlineInputBorder(),
                       ),
                       items: Alimentazione.tipiValidi
                           .map((t) => DropdownMenuItem(
                                 value: t,
-                                child: Text(_tipoLabel[t] ?? t),
+                                child: Text(s.alimentazioneTipoLabel(t)),
                               ))
                           .toList(),
                       onChanged: (v) =>
@@ -313,16 +348,17 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: _scopo,
-                      decoration: const InputDecoration(
-                        labelText: 'Scopo (opzionale)',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: s.alimentazioneFormScopo,
+                        border: const OutlineInputBorder(),
                       ),
                       items: [
                         const DropdownMenuItem<String>(
                             value: null, child: Text('—')),
-                        ...Alimentazione.scopiValidi.map((s) =>
+                        ...Alimentazione.scopiValidi.map((k) =>
                             DropdownMenuItem(
-                                value: s, child: Text(_scopoLabel[s] ?? s))),
+                                value: k,
+                                child: Text(s.alimentazioneScopoLabel(k)))),
                       ],
                       onChanged: (v) => setState(() => _scopo = v),
                     ),
@@ -332,18 +368,25 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true),
                       decoration: InputDecoration(
-                        labelText: 'Quantità (kg) *',
+                        labelText: s.alimentazioneFormQuantita,
                         helperText: preselected == null && !_editing
-                            ? 'Quantità per ciascuna colonia selezionata'
+                            ? s.alimentazioneFormQuantitaHelper
                             : null,
                         border: const OutlineInputBorder(),
                       ),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
-                          return 'Inserisci la quantità';
+                          return s.alimentazioneFormQuantitaRequired;
                         }
                         final n = double.tryParse(v.replaceAll(',', '.'));
-                        if (n == null || n <= 0) return 'Numero non valido';
+                        if (n == null || n <= 0) {
+                          return s.alimentazioneFormQuantitaInvalid;
+                        }
+                        // Il backend salva quantita_kg come DecimalField(6,2):
+                        // oltre 9999.99 la POST fallirebbe con un 400 opaco.
+                        if (n > _maxKg) {
+                          return s.alimentazioneFormQuantitaMax('$_maxKg');
+                        }
                         return null;
                       },
                     ),
@@ -351,14 +394,19 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                     TextFormField(
                       controller: _noteCtrl,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Note',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: s.labelNotes,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
-                      onPressed: _saving ? null : _save,
+                      onPressed: (_saving ||
+                              (!_editing &&
+                                  preselected == null &&
+                                  _apiari.isEmpty))
+                          ? null
+                          : _save,
                       icon: _saving
                           ? const SizedBox(
                               width: 18,
@@ -367,7 +415,7 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                                   CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.save),
-                      label: Text(_editing ? 'Salva modifiche' : 'Salva'),
+                      label: Text(s.btnSave),
                       style: ElevatedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48)),
                     ),
@@ -379,11 +427,12 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
   }
 
   Widget _buildColonieSelector() {
+    final s = _s;
     final colonie = _colonieApiario;
     if (colonie.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Text('Nessuna colonia in questo apiario.'),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(s.alimentazioneFormNoColonieApiario),
       );
     }
     final allSelected = _selColonie.length == colonie.length;
@@ -403,7 +452,8 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Colonie * (${_selColonie.length}/${colonie.length})',
+                  s.alimentazioneFormColonie(
+                      _selColonie.length, colonie.length),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 TextButton(
@@ -416,7 +466,9 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
                         ..addAll(colonie.map((c) => c['id'] as int));
                     }
                   }),
-                  child: Text(allSelected ? 'Nessuna' : 'Tutte'),
+                  child: Text(allSelected
+                      ? s.alimentazioneFormSelectNone
+                      : s.alimentazioneFormSelectAll),
                 ),
               ],
             ),
@@ -427,7 +479,7 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
             return CheckboxListTile(
               dense: true,
               controlAffinity: ListTileControlAffinity.leading,
-              title: Text(c['contenitore']?.toString() ?? 'Colonia $id'),
+              title: Text(coloniaLabel(c)),
               value: _selColonie.contains(id),
               onChanged: (v) => setState(() {
                 if (v == true) {

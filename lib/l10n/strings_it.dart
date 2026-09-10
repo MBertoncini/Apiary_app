@@ -16,9 +16,12 @@ class StringsIt extends AppStrings {
   @override String get navRegine => 'Regine';
   @override String get navTrattamentiSanitari => 'Trattamenti sanitari';
   @override String get navMelariProduzioni => 'Melari e produzioni';
+  @override String get navAlimentazioni => 'Alimentazioni';
   @override String get navAttrezzature => 'Attrezzature';
   @override String get navVendite => 'Vendite';
   @override String get navStatisticheAI => 'Statistiche & AI';
+  @override String get navLivelliAI => 'Livelli AI';
+  @override String get navLivelliAISubtitle => 'Uovo, Larva, Ape';
   @override String get navGruppi => 'Gruppi';
   @override String get navPagamenti => 'Pagamenti';
   @override String get navInserimentoVocale => 'Inserimento vocale';
@@ -56,7 +59,7 @@ class StringsIt extends AppStrings {
   @override String get geminiSectionLabel => 'Gemini - ApiarioAI & Inserimento Vocale';
   @override String get geminiDescription =>
       '• Senza chiave personale l\'app usa la chiave di sistema condivisa (quota condivisa).\n'
-      '• Con la tua chiave ottieni quota indipendente: 20 richieste/giorno (piano gratuito Gemini 2.5 Flash).\n'
+      '• Con la tua chiave ottieni quota indipendente: 20 richieste/giorno (piano gratuito Gemini).\n'
       '• Usata per: chat ApiarioAI + trascrizione vocale.\n'
       '• La chiave viene salvata sul server in modo sicuro.';
   @override String get geminiHowToGet => 'Ottienila su aistudio.google.com → "Get API key"';
@@ -2939,4 +2942,91 @@ class StringsIt extends AppStrings {
       'Valutiamo ogni segnalazione e, quando possibile, aggiorniamo il modello.';
   @override String get varroaModelFeedbackMsgHint =>
       'Descrivi la tua proposta, incolla link a paper, indica i parametri che vorresti modificare…';
+
+  // -- Alimentazioni --
+  @override String get alimentazioniTitle => 'Alimentazioni';
+  @override String alimentazioniTitleColonia(String colonia) => 'Alimentazioni - $colonia';
+  @override String get alimentazioniTabElenco => 'Elenco';
+  @override String get alimentazioniTabAnalisi => 'Analisi';
+  @override String get alimentazioniFabNuova => 'Nuova';
+  @override String get alimentazioniEmpty =>
+      'Nessuna alimentazione registrata.\n'
+      'Aggiungile per tenere traccia delle scorte e migliorare le stime di produzione.';
+  @override String get alimentazioniEmptyFiltri =>
+      'Nessuna alimentazione con i filtri selezionati.';
+  @override String alimentazioniError(String err) => 'Errore: $err';
+  @override String get alimentazioniDeleteTitle => 'Eliminare?';
+  @override String get alimentazioniDeleteMsg =>
+      'Questa alimentazione verra rimossa dal registro.';
+  @override String get alimentazioniDeleted => 'Alimentazione eliminata';
+  @override String get alimentazioniFiltroAnno => 'Anno';
+  @override String get alimentazioniFiltroTipo => 'Tipo';
+  @override String get alimentazioniKgTotali => 'Kg totali';
+  @override String get alimentazioniSomministrazioni => 'Somministrazioni';
+  @override String get alimentazioniColonieCoinvolte => 'Colonie servite';
+  @override String get alimentazioniMediaPerColonia => 'Media per colonia';
+  @override String get alimentazioniUltima => 'Ultima somministrazione';
+  @override String get alimentazioniPerTipo => 'Per tipo di alimento';
+  @override String get alimentazioniPerScopo => 'Per scopo';
+  @override String get alimentazioniPerColonia => 'Per colonia';
+  @override String get alimentazioniPerApiario => 'Per apiario';
+  @override String get alimentazioniSenzaScopo => 'Non indicato';
+  @override String alimentazioniGroupSubtitle(String kg, int count) =>
+      '$kg kg - $count ${count == 1 ? "somministrazione" : "somministrazioni"}';
+
+  // -- Form alimentazione --
+  @override String get alimentazioneFormTitleNew => 'Nuova alimentazione';
+  @override String get alimentazioneFormTitleEdit => 'Modifica alimentazione';
+  @override String get alimentazioneFormColonia => 'Colonia';
+  @override String get alimentazioneFormApiario => 'Apiario *';
+  @override String alimentazioneFormColonie(int selected, int total) =>
+      'Colonie * ($selected/$total)';
+  @override String get alimentazioneFormSelectAll => 'Tutte';
+  @override String get alimentazioneFormSelectNone => 'Nessuna';
+  @override String get alimentazioneFormNoColonieApiario =>
+      'Nessuna colonia attiva in questo apiario.';
+  @override String get alimentazioneFormNoColonieAttive =>
+      'Nessuna colonia attiva disponibile.\n'
+      'Crea o riapri una colonia per registrare un\'alimentazione.';
+  @override String get alimentazioneFormData => 'Data';
+  @override String get alimentazioneFormTipo => 'Tipo';
+  @override String get alimentazioneFormScopo => 'Scopo (opzionale)';
+  @override String get alimentazioneFormQuantita => 'Quantita (kg) *';
+  @override String get alimentazioneFormQuantitaHelper =>
+      'Quantita per ciascuna colonia selezionata';
+  @override String get alimentazioneFormQuantitaRequired => 'Inserisci la quantita';
+  @override String get alimentazioneFormQuantitaInvalid => 'Numero non valido';
+  @override String alimentazioneFormQuantitaMax(String max) => 'Massimo $max kg';
+  @override String get alimentazioneFormSelectApiario => 'Seleziona un apiario';
+  @override String get alimentazioneFormSelectColonia => 'Seleziona almeno una colonia.';
+  @override String get alimentazioneFormSaved => 'Alimentazione registrata.';
+  @override String alimentazioneFormSavedMulti(int count) =>
+      'Alimentazione registrata per $count colonie.';
+  @override String get alimentazioneFormUpdated => 'Alimentazione aggiornata.';
+  @override String alimentazioneFormPartial(int ok, int total, String err) =>
+      'Registrate $ok su $total. Errore: $err';
+  @override String alimentazioneFormError(String err) => 'Errore: $err';
+  @override String alimentazioneTipoLabel(String key) {
+    switch (key) {
+      case 'sciroppo_1_1': return 'Sciroppo 1:1 (stimolante)';
+      case 'sciroppo_2_1': return 'Sciroppo 2:1 (invernale)';
+      case 'candito': return 'Candito';
+      case 'candito_proteico': return 'Candito proteico';
+      case 'polline': return 'Polline / sostituti';
+      case 'miele': return 'Miele';
+      case 'altro': return 'Altro';
+      default: return key;
+    }
+  }
+  @override String alimentazioneScopoLabel(String key) {
+    switch (key) {
+      case 'stimolante': return 'Stimolante primaverile';
+      case 'sostentamento': return 'Sostentamento estivo';
+      case 'invernale': return 'Riserve invernali';
+      case 'emergenza': return 'Emergenza (fame)';
+      case 'introduzione': return 'Introduzione regina / sciame';
+      case 'altro': return 'Altro';
+      default: return key;
+    }
+  }
 }

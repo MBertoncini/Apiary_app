@@ -16,9 +16,12 @@ class StringsEn extends AppStrings {
   @override String get navRegine => 'Queens';
   @override String get navTrattamentiSanitari => 'Health Treatments';
   @override String get navMelariProduzioni => 'Honey Supers & Production';
+  @override String get navAlimentazioni => 'Feeding';
   @override String get navAttrezzature => 'Equipment';
   @override String get navVendite => 'Sales';
   @override String get navStatisticheAI => 'Statistics & AI';
+  @override String get navLivelliAI => 'AI tiers';
+  @override String get navLivelliAISubtitle => 'Egg, Larva, Bee';
   @override String get navGruppi => 'Groups';
   @override String get navPagamenti => 'Payments';
   @override String get navInserimentoVocale => 'Voice Input';
@@ -56,7 +59,7 @@ class StringsEn extends AppStrings {
   @override String get geminiSectionLabel => 'Gemini - ApiarioAI & Voice Input';
   @override String get geminiDescription =>
       '• Without a personal key the app uses the shared system key (shared quota).\n'
-      '• With your own key you get an independent quota: 20 requests/day (Gemini 2.5 Flash free plan).\n'
+      '• With your own key you get an independent quota: 20 requests/day (Gemini free plan).\n'
       '• Used for: ApiarioAI chat + voice transcription.\n'
       '• The key is stored securely on the server.';
   @override String get geminiHowToGet => 'Get it at aistudio.google.com → "Get API key"';
@@ -2977,4 +2980,91 @@ class StringsEn extends AppStrings {
       'We evaluate every report and, where possible, update the model.';
   @override String get varroaModelFeedbackMsgHint =>
       'Describe your proposal, paste paper links, indicate the parameters you\'d like to change…';
+
+  // -- Feeding --
+  @override String get alimentazioniTitle => 'Feeding';
+  @override String alimentazioniTitleColonia(String colonia) => 'Feeding - $colonia';
+  @override String get alimentazioniTabElenco => 'List';
+  @override String get alimentazioniTabAnalisi => 'Analysis';
+  @override String get alimentazioniFabNuova => 'New';
+  @override String get alimentazioniEmpty =>
+      'No feeding recorded yet.\n'
+      'Add entries to track stores and improve honey production estimates.';
+  @override String get alimentazioniEmptyFiltri =>
+      'No feeding matches the selected filters.';
+  @override String alimentazioniError(String err) => 'Error: $err';
+  @override String get alimentazioniDeleteTitle => 'Delete?';
+  @override String get alimentazioniDeleteMsg =>
+      'This feeding record will be removed from the log.';
+  @override String get alimentazioniDeleted => 'Feeding deleted';
+  @override String get alimentazioniFiltroAnno => 'Year';
+  @override String get alimentazioniFiltroTipo => 'Type';
+  @override String get alimentazioniKgTotali => 'Total kg';
+  @override String get alimentazioniSomministrazioni => 'Feedings';
+  @override String get alimentazioniColonieCoinvolte => 'Colonies fed';
+  @override String get alimentazioniMediaPerColonia => 'Average per colony';
+  @override String get alimentazioniUltima => 'Last feeding';
+  @override String get alimentazioniPerTipo => 'By feed type';
+  @override String get alimentazioniPerScopo => 'By purpose';
+  @override String get alimentazioniPerColonia => 'By colony';
+  @override String get alimentazioniPerApiario => 'By apiary';
+  @override String get alimentazioniSenzaScopo => 'Not specified';
+  @override String alimentazioniGroupSubtitle(String kg, int count) =>
+      '$kg kg - $count ${count == 1 ? "feeding" : "feedings"}';
+
+  // -- Feeding form --
+  @override String get alimentazioneFormTitleNew => 'New feeding';
+  @override String get alimentazioneFormTitleEdit => 'Edit feeding';
+  @override String get alimentazioneFormColonia => 'Colony';
+  @override String get alimentazioneFormApiario => 'Apiary *';
+  @override String alimentazioneFormColonie(int selected, int total) =>
+      'Colonies * ($selected/$total)';
+  @override String get alimentazioneFormSelectAll => 'All';
+  @override String get alimentazioneFormSelectNone => 'None';
+  @override String get alimentazioneFormNoColonieApiario =>
+      'No active colony in this apiary.';
+  @override String get alimentazioneFormNoColonieAttive =>
+      'No active colony available.\n'
+      'Create or reopen a colony to record a feeding.';
+  @override String get alimentazioneFormData => 'Date';
+  @override String get alimentazioneFormTipo => 'Type';
+  @override String get alimentazioneFormScopo => 'Purpose (optional)';
+  @override String get alimentazioneFormQuantita => 'Quantity (kg) *';
+  @override String get alimentazioneFormQuantitaHelper =>
+      'Quantity for each selected colony';
+  @override String get alimentazioneFormQuantitaRequired => 'Enter the quantity';
+  @override String get alimentazioneFormQuantitaInvalid => 'Invalid number';
+  @override String alimentazioneFormQuantitaMax(String max) => 'Maximum $max kg';
+  @override String get alimentazioneFormSelectApiario => 'Select an apiary';
+  @override String get alimentazioneFormSelectColonia => 'Select at least one colony.';
+  @override String get alimentazioneFormSaved => 'Feeding recorded.';
+  @override String alimentazioneFormSavedMulti(int count) =>
+      'Feeding recorded for $count colonies.';
+  @override String get alimentazioneFormUpdated => 'Feeding updated.';
+  @override String alimentazioneFormPartial(int ok, int total, String err) =>
+      'Recorded $ok of $total. Error: $err';
+  @override String alimentazioneFormError(String err) => 'Error: $err';
+  @override String alimentazioneTipoLabel(String key) {
+    switch (key) {
+      case 'sciroppo_1_1': return 'Syrup 1:1 (stimulative)';
+      case 'sciroppo_2_1': return 'Syrup 2:1 (winter)';
+      case 'candito': return 'Fondant';
+      case 'candito_proteico': return 'Protein fondant';
+      case 'polline': return 'Pollen / substitutes';
+      case 'miele': return 'Honey';
+      case 'altro': return 'Other';
+      default: return key;
+    }
+  }
+  @override String alimentazioneScopoLabel(String key) {
+    switch (key) {
+      case 'stimolante': return 'Spring stimulation';
+      case 'sostentamento': return 'Summer sustenance';
+      case 'invernale': return 'Winter stores';
+      case 'emergenza': return 'Emergency (starvation)';
+      case 'introduzione': return 'Queen / swarm introduction';
+      case 'altro': return 'Other';
+      default: return key;
+    }
+  }
 }

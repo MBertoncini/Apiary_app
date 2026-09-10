@@ -21,9 +21,12 @@ abstract class AppStrings {
   String get navRegine;
   String get navTrattamentiSanitari;
   String get navMelariProduzioni;
+  String get navAlimentazioni;
   String get navAttrezzature;
   String get navVendite;
   String get navStatisticheAI;
+  String get navLivelliAI;
+  String get navLivelliAISubtitle;
   String get navGruppi;
   String get navPagamenti;
   String get navInserimentoVocale;
@@ -2759,4 +2762,58 @@ abstract class AppStrings {
   String nomadismoPresetPeriodo(String key);
   String nomadismoPresetRegioni(String key);
   String nomadismoPresetDesc(String key);
+
+  // -- Alimentazioni (registro nutrizione) --
+  String get alimentazioniTitle;
+  String alimentazioniTitleColonia(String colonia);
+  String get alimentazioniTabElenco;
+  String get alimentazioniTabAnalisi;
+  String get alimentazioniFabNuova;
+  String get alimentazioniEmpty;
+  String get alimentazioniEmptyFiltri;
+  String alimentazioniError(String err);
+  String get alimentazioniDeleteTitle;
+  String get alimentazioniDeleteMsg;
+  String get alimentazioniDeleted;
+  String get alimentazioniFiltroAnno;
+  String get alimentazioniFiltroTipo;
+  String get alimentazioniKgTotali;
+  String get alimentazioniSomministrazioni;
+  String get alimentazioniColonieCoinvolte;
+  String get alimentazioniMediaPerColonia;
+  String get alimentazioniUltima;
+  String get alimentazioniPerTipo;
+  String get alimentazioniPerScopo;
+  String get alimentazioniPerColonia;
+  String get alimentazioniPerApiario;
+  String get alimentazioniSenzaScopo;
+  String alimentazioniGroupSubtitle(String kg, int count);
+
+  // -- Form alimentazione --
+  String get alimentazioneFormTitleNew;
+  String get alimentazioneFormTitleEdit;
+  String get alimentazioneFormColonia;
+  String get alimentazioneFormApiario;
+  String alimentazioneFormColonie(int selected, int total);
+  String get alimentazioneFormSelectAll;
+  String get alimentazioneFormSelectNone;
+  String get alimentazioneFormNoColonieApiario;
+  String get alimentazioneFormNoColonieAttive;
+  String get alimentazioneFormData;
+  String get alimentazioneFormTipo;
+  String get alimentazioneFormScopo;
+  String get alimentazioneFormQuantita;
+  String get alimentazioneFormQuantitaHelper;
+  String get alimentazioneFormQuantitaRequired;
+  String get alimentazioneFormQuantitaInvalid;
+  String alimentazioneFormQuantitaMax(String max);
+  String get alimentazioneFormSelectApiario;
+  String get alimentazioneFormSelectColonia;
+  String get alimentazioneFormSaved;
+  String alimentazioneFormSavedMulti(int count);
+  String get alimentazioneFormUpdated;
+  String alimentazioneFormPartial(int ok, int total, String err);
+  String alimentazioneFormError(String err);
+  String alimentazioneTipoLabel(String key);
+  String alimentazioneScopoLabel(String key);
 }

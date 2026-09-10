@@ -23,6 +23,11 @@ class Alimentazione {
   final int id;
   final int colonia;
   final String? coloniaDisplay;
+  /// Apiario della colonia. Esposto dal backend a partire dalla build 20:
+  /// resta null se il server non è ancora aggiornato, e in quel caso le
+  /// aggregazioni per apiario vengono nascoste.
+  final int? apiario;
+  final String? apiarioNome;
   final String data;
   final String tipo;
   final String? tipoDisplay;
@@ -38,6 +43,8 @@ class Alimentazione {
     required this.id,
     required this.colonia,
     this.coloniaDisplay,
+    this.apiario,
+    this.apiarioNome,
     required this.data,
     required this.tipo,
     this.tipoDisplay,
@@ -55,6 +62,8 @@ class Alimentazione {
       id: json['id'] as int,
       colonia: json['colonia'] as int,
       coloniaDisplay: json['colonia_display'] as String?,
+      apiario: json['apiario'] as int?,
+      apiarioNome: json['apiario_nome'] as String?,
       data: json['data'] as String,
       tipo: json['tipo'] as String? ?? 'sciroppo_1_1',
       tipoDisplay: json['tipo_display'] as String?,
