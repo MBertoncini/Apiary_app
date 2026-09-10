@@ -13,6 +13,7 @@ import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/offline_banner.dart';
+import '../../utils/melari_stats.dart';
 import '../cantina/cantina_screen.dart';
 import 'widgets/melari_apiario_mini_map.dart';
 
@@ -41,6 +42,14 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
   // null = tutti gli anni
   int? _selectedYear;
+
+  // Id dei melari già inclusi in una smielatura registrata (campo m2m
+  // `melari` delle produzioni): non vanno più contati come "da smielare"
+  // anche quando il backend non ne ha ancora aggiornato lo stato a
+  // 'smielato'. Ricalcolato in _refreshAll, non in build: i contatori per
+  // arnia si costruiscono in modo pigro e non possono dipendere dall'ordine
+  // in cui i tab vengono montati.
+  Set<int> _melariGiaSmielatiIds = {};
 
   // Mini-mappa: arnia evidenziata e chiavi per scroll-to
   int? _highlightedArniaId;
@@ -105,6 +114,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       _smielature    = cached[1].map((item) => item as Map<String, dynamic>).toList();
       _invasettamenti = cached[2].map((item) => Invasettamento.fromJson(item)).toList();
       _arnie         = cached[3].map((item) => Arnia.fromJson(item)).toList();
+      _melariGiaSmielatiIds = melariGiaSmielatiIds(_smielature);
       _isLoading = false;
       if (mounted) setState(() { _isRefreshing = true; });
     } else {
@@ -131,6 +141,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
       _smielature    = smielatureList.map((item) => item as Map<String, dynamic>).toList();
       _invasettamenti = invasettamentiList.map((item) => Invasettamento.fromJson(item)).toList();
       _arnie         = arnieList.map((item) => Arnia.fromJson(item)).toList();
+      _melariGiaSmielatiIds = melariGiaSmielatiIds(_smielature);
 
       // Salva sempre le liste fetchate (anche se vuote): se l'utente ha
       // eliminato l'ultimo melario, la cache deve riflettere lo stato vuoto
@@ -819,7 +830,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
   static const double _superH = 44.0;
   static const double _nidoH  = 80.0;
 
+  /// Vedi [isMelarioDaSmielare]: logica pura in `utils/melari_stats.dart`,
+  /// coperta da unit test.
+  bool _isDaSmielare(Melario m) =>
+      isMelarioDaSmielare(m, _melariGiaSmielatiIds);
+
   Widget _buildVistaAlveariTab() {
+
     final activeMelari = _melari
         .where((m) => m.stato == 'posizionato' || m.stato == 'in_smielatura')
         .toList();
@@ -854,11 +871,9 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
 
     final totPosizionati = _melari.where((m) => m.stato == 'posizionato').length;
     // "Da smielare": melari rimossi dall'arnia oppure (per dati storici)
-    // esplicitamente messi in coda di smielatura. Sono i candidati per la
-    // prossima Smielatura nel form dedicato.
-    final totDaSmielare = _melari
-        .where((m) => m.stato == 'rimosso' || m.stato == 'in_smielatura')
-        .length;
+    // esplicitamente messi in coda di smielatura, esclusi quelli già inclusi
+    // in una smielatura. Sono i candidati per la prossima Smielatura nel form.
+    final totDaSmielare = _melari.where(_isDaSmielare).length;
 
     return RefreshIndicator(
       onRefresh: _refreshAll,
@@ -898,9 +913,7 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
             final hScrollCtrl = _apiarioHScrollCtrls.putIfAbsent(
                 apiarioId, () => ScrollController());
             final daSmielareInApiario = _melari
-                .where((m) =>
-                    m.apiarioId == apiarioId &&
-                    (m.stato == 'rimosso' || m.stato == 'in_smielatura'))
+                .where((m) => m.apiarioId == apiarioId && _isDaSmielare(m))
                 .length;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -986,11 +999,13 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
         .toList()
       ..sort((a, b) => b.posizione.compareTo(a.posizione));
 
-    // Counter "Da smielare" per questa arnia/colonia: melari in stato
-    // rimosso o in_smielatura che appartenevano (e ancora referenziano)
-    // questa arnia. Allineato all'obiettivo dati-per-colonia.
-    final daSmielareOnArnia = melariOnArnia
-        .where((m) => m.stato == 'rimosso' || m.stato == 'in_smielatura')
+    // Counter "Da smielare" per questa arnia/colonia: melari staccati o in
+    // coda (non ancora smielati) che ancora referenziano questa arnia.
+    // NB: si parte da `_melari` e non da `melariOnArnia`, perché quest'ultima
+    // contiene solo i melari attivi (posizionato/in_smielatura) e quindi non
+    // includerebbe mai i 'rimosso'.
+    final daSmielareOnArnia = _melari
+        .where((m) => m.arnia == arnia.id && _isDaSmielare(m))
         .length;
 
     final hasQE = activeMelari.any((m) => m.escludiRegina);

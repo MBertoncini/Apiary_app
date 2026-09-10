@@ -72,12 +72,24 @@ class Melario {
     );
   }
 
+  /// Serializzazione per la cache locale.
+  ///
+  /// DEVE restare simmetrica a [Melario.fromJson]: la vista alveari raggruppa
+  /// i melari per `arnia` e la cache viene riscritta con questo metodo dopo
+  /// rimozione/spostamento/scambio. Se un campo non viene emesso qui, al
+  /// rilettura della cache diventa null e il melario sparisce dalla colonna
+  /// dell'arnia (o il contatore "da smielare" per arnia va a zero).
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'colonia': colonia ?? coloniaId,
+      'colonia_id': coloniaId ?? colonia,
+      'arnia': arnia,
+      'arnia_id': arnia,
+      'arnia_numero': arniaNumero,
       'apiario_id': apiarioId,
       'apiario_nome': apiarioNome,
+      'apiario_gruppo_nome': apiarioGruppoNome,
       'numero_telaini': numeroTelaini,
       'posizione': posizione,
       'data_posizionamento': dataPosizionamento,
