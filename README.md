@@ -128,7 +128,6 @@ lib/
 ├── app.dart                    # MaterialApp shell (legacy, see main.dart)
 ├── provider_setup.dart         # Service & provider wiring
 │
-├── config/                     # api_keys.dart (gitignored), google_credentials.dart
 ├── constants/                  # api_constants, theme_constants, gemini_constants,
 │                               #  app_constants, piante_mellifere
 ├── l10n/                       # AppStrings + strings_it / strings_en (custom i18n)
@@ -286,7 +285,7 @@ Two **independent** local stores — mixing them is a recurring source of bugs:
 
 `ChatService(AiQuotaService, MCPService)` calls Gemini's `v1beta/models/{model}:generateContent` directly with function-calling tools provided by `MCPService`. Tools translate to authenticated REST calls against the Django backend.
 
-- Model fallback chain in `lib/constants/gemini_constants.dart`: `gemini-2.5-flash` → `gemini-2.5-flash-lite` → `gemini-3-flash-preview` → `gemini-3.1-flash-lite-preview`.
+- Model fallback chain in `lib/constants/gemini_constants.dart`: `gemini-3.8-flash` → `gemini-3.6-flash` → `gemini-3.5-flash-lite`. Retired models answer `404 NOT_FOUND` and the rotation retries each one with the full payload, which for voice carries the base64 audio, so keep the list short and current. Note that `ListModels` still advertises models that reject calls with `404 no longer available to new users`, so verify a model with a real request before adding it.
 - System prompt is enriched with a per-user apiary/hive snapshot via `MCPService.prepareContext()` (cached 60 s).
 - Telemetry/quota: `AiQuotaService.recordChatCallToBackend()` posts `record_only:true` to `/api/v1/ai/chat/`.
 - A user can supply a **personal Gemini key** in Settings (`User.geminiApiKey`); when set, `ChatService.setPersonalKey()` skips the tier limit.
@@ -394,30 +393,60 @@ flutter pub get
 # Configure API base URL
 #   Edit lib/constants/api_constants.dart
 
-# Provide secrets (see "Configuration & Secrets")
-cp lib/config/api_keys.dart.example lib/config/api_keys.dart
-cp env.example.json env.json     # if you prefer --dart-define-from-file
-
-# (Optional) Google Cloud STT credentials
-#   Edit lib/config/google_credentials.dart
+# No client-side secret to configure: the app ships with no API key
+# compiled in. See "Configuration & Secrets".
 
 flutter run
-# or:
-flutter run --dart-define-from-file=env.json
 ```
 
 ---
 
 ## Configuration & Secrets
 
-Two ways to provide the Gemini key — both are gitignored:
+**No API key is compiled into the app.** Every key is resolved at runtime, so
+there is nothing to fill in before building.
 
-| Method | File | Used by |
-|---|---|---|
-| Source file | `lib/config/api_keys.dart` (from `.example`) | `ApiKeys.geminiApiKey` |
-| Build-time | `env.json` (from `env.example.json`) | `--dart-define-from-file=env.json` |
+| Key | Where it lives | Set by | Used when |
+|---|---|---|---|
+| Personal Gemini key | User profile on the backend (`Profilo.gemini_api_key`) | End user, Settings → *AI API Keys* → Gemini | Client calls Gemini directly (independent quota) |
+| Shared system Gemini key | Backend environment variable `GEMINI_API_KEY` | Developer, backend `.env` (see below) | Client has no personal key → calls go through `POST /api/v1/ai/gemini-proxy/` |
+| Personal Groq key | Device only, `SharedPreferences` key `groq_api_key` | End user, Settings → *AI API Keys* → Groq | Statistics NL query |
 
-`.gitignore` already excludes `lib/config/api_keys.dart`, `env.json`, and `android/app/google-services.json`.
+The personal Gemini key is saved through `PATCH` on the profile
+(`SettingsScreen._saveApiKey`) and propagated to `ChatService` and
+`GeminiAudioProcessor` at startup by `provider_setup.dart`.
+
+### Setting the shared system key (developer)
+
+The system key is **backend-side only** and lives in the `Apiary` Django repo,
+never in this one. `apiario_manager/settings.py` reads it from the environment
+after loading a `.env`:
+
+```bash
+# Local dev — .env in the backend project root
+GEMINI_API_KEY=AIzaSy...
+
+# Production (PythonAnywhere) — /home/Cible99/.env
+GEMINI_API_KEY=AIzaSy...
+```
+
+Reload the web app after editing the production file. `GeminiService` in
+`core/ai_services.py` picks it up; when neither a personal nor a system key is
+available the proxy answers `403` with
+`Nessuna GEMINI_API_KEY configurata`.
+
+### Removed: build-time key injection
+
+Earlier builds compiled the shared key into the binary through
+`lib/config/api_keys.dart` or `--dart-define-from-file=env.json`. That is how
+the key got extracted and suspended by Google, and it is why the backend proxy
+exists. Those placeholder files (`lib/config/api_keys.dart.example`,
+`lib/config/google_credentials.dart`, `env.example.json`) have been deleted:
+no `String.fromEnvironment('GEMINI_API_KEY')` is left in the code, so passing
+`--dart-define` does nothing. Do not reintroduce them.
+
+`.gitignore` still excludes `env.json`, `lib/config/api_keys.dart`, and
+`android/app/google-services.json` as a safety net.
 
 The RevenueCat Google Play API key is currently embedded as a constant in `lib/services/subscription_service.dart` (test key). Replace before shipping production builds.
 
@@ -434,12 +463,106 @@ flutter build apk --release         # Android APK
 flutter build appbundle --release   # Play Store bundle
 flutter build ios --release         # iOS
 flutter build web --release         # Web
-
-# With build-time secrets:
-flutter build appbundle --release --dart-define-from-file=env.json
 ```
 
 Launcher icons & splash are managed by `flutter_launcher_icons` and `flutter_native_splash` (config in `pubspec.yaml`).
+
+### Pre-release checklist
+
+Run these in order before publishing a new build. Steps 1-4 are local and take
+a couple of minutes; steps 5-7 need a device or emulator.
+
+**1. Backend regression suite** (in the `Apiary` repo)
+
+```bash
+DJANGO_DEBUG=True python manage.py test core
+```
+
+Runs against a throwaway SQLite database, touches nothing in production. It
+covers the melario lifecycle (place, remove, extract) and the feeding API,
+including the cross-account access checks. `DJANGO_DEBUG` must be set or
+Django tries to reach the production MySQL server.
+
+**2. Static analysis** (app repo)
+
+```bash
+flutter analyze
+```
+
+The baseline is *zero* errors. Warnings and infos are pre-existing lint noise;
+what matters is that the error count stays at zero and the warning list does
+not grow.
+
+**3. Unit tests** (app repo)
+
+```bash
+flutter test
+```
+
+Pure logic only, no network: payment splitting, melari counters and cache
+round-trip, feeding aggregations.
+
+**4. Compile check**
+
+```bash
+flutter build apk --debug
+```
+
+Catches anything the analyzer misses, such as missing assets declared in
+`pubspec.yaml`.
+
+**5. Smoke test on a device**
+
+```bash
+flutter run
+```
+
+Walk the flows that changed in the release. Log in as a real account with real
+data, not an empty one: most regressions only show up with existing records.
+
+**6. Check the release notes**
+
+Open the what's-new sheet and confirm every entry matches something a user can
+actually find. The changelog lives in `_changelog` in
+`lib/screens/whats_new/whats_new_screen.dart`, keyed by build number, and the
+build number is the digit after `+` in `pubspec.yaml`.
+
+**7. Release build, installed on a real device**
+
+Release builds are signed with the upload keystore declared in
+`android/key.properties` (gitignored, never committed):
+
+```
+storeFile=C:/path/to/upload-keystore.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
+Without that file `signingConfigs.release` gets a null `storeFile` and the
+bundle comes out unsigned, which the Play Console rejects.
+
+```bash
+flutter build apk --release
+```
+
+Install the APK and open it once before uploading the bundle. Release mode
+enables tree shaking and R8, which occasionally breaks things that work fine
+in debug. Only then:
+
+```bash
+flutter build appbundle --release
+```
+
+Upload to the Play Console **internal testing** track first, and promote to
+production once it installs and starts on at least one real device.
+
+### Deployment order
+
+When a release changes both repos, deploy the backend *first*. The app tolerates
+a backend that lacks new response fields, but a new backend field the app never
+receives shows up as missing data. Deploying the app first against an old
+backend is the case that breaks.
 
 ---
 

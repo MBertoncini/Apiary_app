@@ -53,3 +53,11 @@ env.json
 
 # Firebase config — contains project keys, keep out of VCS
 android/app/google-services.json
+
+# Cache del compilatore Kotlin generata da Gradle (build artifact)
+android/.kotlin/
+
+# Credenziali di firma Android (upload keystore)
+android/key.properties
+*.jks
+*.keystore

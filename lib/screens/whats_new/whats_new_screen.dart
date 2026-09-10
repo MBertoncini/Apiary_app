@@ -14,12 +14,17 @@ const Map<int, _ReleaseNotes> _changelog = {
   20: _ReleaseNotes(
     version: '1.0.3',
     buildNumber: 20,
-    date: '28 Luglio 2026',
+    date: '10 Settembre 2026',
     notes: [
       _Note('🐝', 'Nuovo', 'Alimentazione per più colonie - Registra la stessa nutrizione per più famiglie o per tutto l\'apiario in un colpo solo: scegli l\'apiario, spunta le colonie (o "Tutte") e salva una volta sola'),
+      _Note('📊', 'Nuovo', 'Analisi delle alimentazioni - La scheda "Analisi" mostra kg totali, colonie servite e la ripartizione per tipo di alimento, scopo, apiario e colonia, con i filtri per anno e per tipo'),
       _Note('✏️', 'Miglioramento', 'Alimentazioni modificabili - Tocca un\'alimentazione per aprire il dettaglio con le note complete e i pulsanti per modificarla o eliminarla, senza doverla reinserire da capo'),
-      _Note('🍯', 'Miglioramento', 'Alimentazioni nel menu - Le alimentazioni ora hanno una voce dedicata nel menu laterale, oltre al pulsante nella scheda di dettaglio della colonia'),
-      _Note('🔩', 'Fix', 'Melari da smielare - Il contatore "da smielare" ora si azzera correttamente dopo aver registrato la smielatura dei melari rimossi, senza numeri che restano appesi'),
+      _Note('🍯', 'Miglioramento', 'Alimentazioni nel menu - Le alimentazioni hanno ora una voce dedicata nel menu laterale, oltre al pulsante nella scheda di dettaglio della colonia'),
+      _Note('🐝', 'Miglioramento', 'Livelli AI nel menu - La voce "Livelli AI" è sempre nel menu laterale, con l\'illustrazione animata del tuo livello: uovo, larva o ape. Prima compariva solo come proposta di upgrade dentro le impostazioni'),
+      _Note('🔩', 'Fix', 'Smielature senza melari - I melari selezionati durante la registrazione di una smielatura venivano scartati dal server: la smielatura nasceva vuota e i melari restavano "da smielare". Ora vengono collegati e marcati correttamente'),
+      _Note('🔩', 'Fix', 'Melari da smielare - Il contatore si azzera dopo la smielatura dei melari rimossi, senza numeri che restano appesi'),
+      _Note('🔩', 'Fix', 'Melari sulle arnie - Dopo aver rimosso o spostato un melario, alla riapertura dell\'app i melari non spariscono più dalla colonna della loro arnia'),
+      _Note('🔩', 'Fix', 'Scelta delle colonie - Nell\'inserimento multiplo le caselle mostravano tutte "arnia": ora riportano il numero dell\'arnia o del nucleo, in ordine, e le colonie chiuse non compaiono più'),
     ],
   ),
   19: _ReleaseNotes(
