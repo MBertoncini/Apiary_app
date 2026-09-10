@@ -8,9 +8,12 @@ const String kGeminiBaseUrl =
 
 /// Lista ordinata di modelli Gemini provati in cascata su 429 / errori
 /// transitori. Tenere il più capace per primo.
+/// ATTENZIONE: ogni tentativo fallito ri-carica l'audio base64 (fino a ~20MB),
+/// quindi la lista va tenuta corta e priva di modelli ritirati. Google risponde
+/// 404 NOT_FOUND sui modelli dismessi, non 400, quindi la rotazione li prova
+/// tutti prima di arrendersi.
 const List<String> kGeminiModelFallbacks = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-3-flash-preview',
-  'gemini-3.1-flash-lite-preview',
+  'gemini-3.8-flash',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash-lite',
 ];
