@@ -16,6 +16,10 @@ class AppConstants {
   static const String forgotPasswordRoute = "/forgot-password";
   static const String dashboardRoute = "/dashboard";
   static const String settingsRoute = "/settings";
+  // Livelli AI: raggiungibile dal menu laterale, dalle impostazioni e
+  // dalla chat. Serve una rotta nominata perche il drawer evidenzi la
+  // voce attiva.
+  static const String aiTierRoute  = "/ai-tier";
   
   // Route per apiari
   static const String apiarioListRoute = "/apiari";

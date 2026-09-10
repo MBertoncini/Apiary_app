@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/theme_constants.dart';
+import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../services/notification_polling_service.dart';
 import 'beehive_illustrations.dart';
+import 'animated_tier_icon.dart';
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
@@ -231,6 +233,16 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, AppConstants.melariRoute),
           ),
 
+          // Alimentazioni (vista globale; il pre-filtro per colonia resta
+          // disponibile dal dettaglio colonia)
+          ListTile(
+            leading: Icon(Icons.restaurant),
+            title: Text(s.navAlimentazioni),
+            selected: currentRoute == AppConstants.alimentazioniRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () => _navigateTo(context, AppConstants.alimentazioniRoute),
+          ),
+
           // Attrezzature
           ListTile(
             leading: Icon(Icons.build),
@@ -277,6 +289,31 @@ class AppDrawer extends StatelessWidget {
             selected: currentRoute == AppConstants.statisticheRoute,
             selectedColor: ThemeConstants.primaryColor,
             onTap: () => _navigateTo(context, AppConstants.statisticheRoute),
+          ),
+
+          // Livelli AI — l'icona e l'illustrazione animata del livello
+          // corrente (uovo / larva / ape). La voce resta visibile a ogni
+          // livello: prima esisteva solo come CTA di upgrade dentro le
+          // impostazioni e spariva a chi era gia al livello massimo.
+          ListTile(
+            leading: SizedBox(
+              width: 28,
+              height: 28,
+              child: Center(
+                child: AnimatedTierIcon(
+                  tier: user?.aiTier ?? AiTier.free,
+                  size: 26,
+                ),
+              ),
+            ),
+            title: Text(s.navLivelliAI),
+            subtitle: Text(
+              s.navLivelliAISubtitle,
+              style: const TextStyle(fontSize: 11),
+            ),
+            selected: currentRoute == AppConstants.aiTierRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () => _navigateTo(context, AppConstants.aiTierRoute),
           ),
 
           // Divisore

@@ -706,8 +706,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             badge: 'Gemini Audio',
           ),
 
-          // ─── Blocco 3: ACCESSO ESTESO (solo se tier < Professionale) ──
-          if (tier != AiTier.professionale) ...[
+          // ─── Blocco 3: LIVELLI AI ────────────────────────────────────
+          // Visibile a ogni livello: la schermata mostra i piani con le
+          // illustrazioni animate, non solo la CTA di upgrade. Nascondendola
+          // al tier massimo diventava irraggiungibile dalle impostazioni.
+          ...[
             const Divider(height: 28),
             InkWell(
               borderRadius: BorderRadius.circular(8),

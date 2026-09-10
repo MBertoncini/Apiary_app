@@ -10,6 +10,7 @@ import '../screens/apiario/apiario_list_screen.dart';
 import '../screens/apiario/apiario_detail_screen.dart';
 import '../screens/apiario/apiario_form_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/ai_tier_upgrade_screen.dart';
 import '../screens/gruppo/gruppi_list_screen.dart';
 import '../screens/gruppo/gruppo_detail_screen.dart';
 import '../screens/gruppo/gruppo_form_screen.dart';
@@ -121,6 +122,12 @@ class RouteGenerator {
 
       case AppConstants.settingsRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => SettingsScreen());
+
+      case AppConstants.aiTierRoute:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const AiTierUpgradeScreen(),
+        );
 
       // Routes for group management
       case AppConstants.gruppiListRoute:
