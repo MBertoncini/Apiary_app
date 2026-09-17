@@ -26,7 +26,7 @@
 <body>
 
 <h1>Informativa sulla Privacy</h1>
-<p class="updated">Ultimo aggiornamento: 12 marzo 2026</p>
+<p class="updated">Ultimo aggiornamento: 17 settembre 2026</p>
 
 <div class="highlight">
   <p>La presente Informativa sulla Privacy descrive come <strong>Apiary Manager</strong> raccoglie, utilizza e protegge i dati degli utenti. Ti invitiamo a leggerla attentamente prima di utilizzare l'applicazione.</p>
@@ -60,6 +60,23 @@
   L'applicazione richiede l'accesso alla <strong>fotocamera del dispositivo</strong> per consentire la funzionalità di analisi fotografica dei telaini tramite intelligenza artificiale (rilevamento di api, fuchi, celle reali e covata). Le immagini scattate vengono elaborate localmente sul dispositivo e/o inviate al server backend dell'applicazione per l'analisi. <strong>Le immagini non vengono condivise con terze parti né utilizzate per scopi diversi dall'analisi apistica.</strong>
 </p>
 
+<h2>2.4 Dati di posizione</h2>
+<p>
+  L'applicazione può richiedere l'accesso alla <strong>posizione del dispositivo</strong> per agevolare il posizionamento degli apiari sulla mappa. Le <strong>coordinate geografiche degli apiari</strong> (non la posizione in tempo reale dell'utente) vengono inviate al servizio meteorologico <strong>Open-Meteo</strong> per ottenere dati meteo storici e previsionali associati all'apiario. Non viene trasmesso alcun identificativo dell'utente insieme alle coordinate.
+</p>
+
+<h2>2.5 Dati trattati dall'assistente AI</h2>
+<p>
+  L'app integra un assistente conversazionale basato su <strong>Google Gemini</strong>. Quando utilizzi la chat AI, vengono inviati a Google: il testo dei tuoi messaggi e un riepilogo dei dati apistici necessari a rispondere (elenco di apiari, arnie e relativi dati di gestione). Le richieste possono transitare dal server backend dell'applicazione, che funge da proxy, oppure essere inviate direttamente a Google qualora tu abbia configurato una tua chiave API personale. Il trattamento da parte di Google è regolato dalle
+  <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">condizioni privacy di Google</a>.
+  <strong>Non inserire nella chat AI dati personali di terzi o informazioni riservate non necessarie.</strong>
+</p>
+
+<h2>2.6 Dati relativi agli abbonamenti</h2>
+<p>
+  Le funzionalità in abbonamento sono gestite tramite <strong>RevenueCat</strong> e i sistemi di pagamento dello store (Google Play / App Store). Questi servizi trattano un identificativo anonimo dell'utente e lo stato dell'abbonamento. <strong>L'applicazione non raccoglie né ha accesso ai dati della tua carta di credito o ad altri strumenti di pagamento</strong>, che sono gestiti esclusivamente dallo store.
+</p>
+
 <h2>3. Finalità del trattamento</h2>
 <ul>
   <li><strong>Erogazione del servizio:</strong> gestione dei dati degli apiari, sincronizzazione tra dispositivi tramite il backend remoto, analisi AI dei telaini.</li>
@@ -87,6 +104,9 @@
 <p>I dati personali non vengono venduti né ceduti a terzi. Possono essere condivisi esclusivamente con:</p>
 <ul>
   <li><strong>Provider di hosting:</strong> PythonAnywhere (server backend), che tratta i dati come responsabile del trattamento nel rispetto del GDPR.</li>
+  <li><strong>Google (Gemini API):</strong> per il funzionamento dell'assistente AI, come descritto al punto 2.5.</li>
+  <li><strong>RevenueCat e gli store (Google Play / App Store):</strong> per la gestione degli abbonamenti, come descritto al punto 2.6.</li>
+  <li><strong>Open-Meteo:</strong> per i dati meteorologici associati alle coordinate degli apiari, come descritto al punto 2.4.</li>
   <li><strong>Servizi di analisi e pubblicità</strong> (in futuro): es. Google AdMob / Google Analytics, che dispongono di proprie informative sulla privacy. L'integrazione sarà comunicata con un aggiornamento della presente informativa.</li>
   <li><strong>Autorità competenti:</strong> ove richiesto dalla legge o per tutelare diritti legittimi.</li>
 </ul>
