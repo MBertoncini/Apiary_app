@@ -21,6 +21,39 @@ class AlimentazioneFormScreen extends StatefulWidget {
   const AlimentazioneFormScreen({Key? key, this.coloniaId, this.alimentazione})
       : super(key: key);
 
+  /// Colonie attive che corrispondono a un alveare reale, una per box.
+  ///
+  /// I server fino alla build 20 potevano restituire colonie "attive" senza
+  /// contenitore (arnia eliminata) o più colonie attive nella stessa arnia:
+  /// nell'elenco comparivano alveari inesistenti e doppioni. Scartiamo le
+  /// prime e, per ogni box, teniamo la colonia che il resto dell'app già
+  /// mostra: `data_inizio` più recente, poi id più alto.
+  static List<Map<String, dynamic>> colonieSelezionabili(
+      List<Map<String, dynamic>> colonie) {
+    final perBox = <String, Map<String, dynamic>>{};
+    for (final c in colonie) {
+      if (!_AlimentazioneFormScreenState._isAttiva(c)) continue;
+      final String key;
+      if (c['arnia'] != null) {
+        key = 'arnia:${c['arnia']}';
+      } else if (c['nucleo'] != null) {
+        key = 'nucleo:${c['nucleo']}';
+      } else {
+        continue;
+      }
+      final corrente = perBox[key];
+      if (corrente == null || _piuRecente(c, corrente)) perBox[key] = c;
+    }
+    return perBox.values.toList();
+  }
+
+  static bool _piuRecente(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final cmp = (a['data_inizio']?.toString() ?? '')
+        .compareTo(b['data_inizio']?.toString() ?? '');
+    if (cmp != 0) return cmp > 0;
+    return (a['id'] as int) > (b['id'] as int);
+  }
+
   @override
   State<AlimentazioneFormScreen> createState() =>
       _AlimentazioneFormScreenState();
@@ -92,7 +125,8 @@ class _AlimentazioneFormScreenState extends State<AlimentazioneFormScreen> {
       final list = await _api.getAll(ApiConstants.colonieUrl);
       if (!mounted) return;
       setState(() {
-        _colonie = list.map((e) => e as Map<String, dynamic>).toList();
+        _colonie = AlimentazioneFormScreen.colonieSelezionabili(
+            list.map((e) => e as Map<String, dynamic>).toList());
         _loadingColonie = false;
       });
     } catch (_) {
