@@ -34,6 +34,10 @@ jobs:
       - name: Build web
         run: flutter build web --base-href "/Apiary_app/" --release
 
+      # L'URL dell'informativa è registrato su Google Play: deve restare servito
+      - name: Include privacy policy
+        run: cp privacy_policy.html build/web/privacy_policy.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
