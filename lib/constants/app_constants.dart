@@ -106,6 +106,7 @@ class AppConstants {
 
   // Route per gestione pagamenti
   static const String pagamentiRoute = "/pagamenti";
+  static const String exportDatiRoute = "/export-dati";
   static const String pagamentoDetailRoute = "/pagamento/detail";
   static const String pagamentoCreateRoute = "/pagamento/create";
   static const String quoteRoute = "/quote";

@@ -212,6 +212,20 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  // GET di un file binario (es. export Excel): restituisce i byte grezzi
+  // senza decodificarli come JSON. Gli errori seguono lo stesso percorso di
+  // _handleResponse (HttpStatusException, QuotaExceededException).
+  Future<Uint8List> getBytes(String endpoint) async {
+    final uri = Uri.parse(_buildUrl(endpoint));
+    final response = await _executeWithRetry(
+      (headers) => http.get(uri, headers: headers),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _handleResponse(response);
+    }
+    return response.bodyBytes;
+  }
+
   // PUT request
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     final uri = Uri.parse(_buildUrl(endpoint));

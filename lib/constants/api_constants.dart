@@ -148,6 +148,9 @@ class ApiConstants {
   // Endpoint ML: pesate melari / alimentazione / nomadismo + dataset export
   static const String pesateMelariUrl = baseUrl + apiPrefix + '/pesate-melari/';
   static const String alimentazioniUrl = baseUrl + apiPrefix + '/alimentazioni/';
+
+  // Esportazione dati utente in Excel (multi-foglio, generato dal backend)
+  static const String exportExcelUrl = baseUrl + apiPrefix + '/export/excel/';
   static const String nomadismiUrl = baseUrl + apiPrefix + '/nomadismi/';
   static String mlDatasetColoniaUrlOf(int coloniaId) =>
       baseUrl + apiPrefix + '/ml/dataset/colonia/$coloniaId/';

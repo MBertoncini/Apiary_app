@@ -2816,4 +2816,24 @@ abstract class AppStrings {
   String alimentazioneFormError(String err);
   String alimentazioneTipoLabel(String key);
   String alimentazioneScopoLabel(String key);
+
+  // -- Esportazione dati (Excel) --
+  String get navEsportaDati;
+  String get exportDatiTitle;
+  String get exportDatiIntro;
+  String get exportDatiApiario;
+  String get exportDatiTuttiApiari;
+  String get exportDatiAnno;
+  String get exportDatiTuttiAnni;
+  String get exportDatiAnnoHelper;
+  String get exportDatiSezioni;
+  String get exportDatiSelezionaTutto;
+  String get exportDatiDeselezionaTutto;
+  String get exportDatiNotaApiario;
+  String get exportDatiNessunaSezione;
+  String get exportDatiBtn;
+  String get exportDatiInCorso;
+  String get exportDatiShareSubject;
+  String exportDatiErrore(String err);
+  String exportDatiSezione(String key);
 }

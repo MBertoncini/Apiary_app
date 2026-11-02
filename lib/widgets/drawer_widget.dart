@@ -337,6 +337,15 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, AppConstants.pagamentiRoute),
           ),
 
+          // Esporta dati (Excel)
+          ListTile(
+            leading: Icon(Icons.file_download_outlined),
+            title: Text(s.navEsportaDati),
+            selected: currentRoute == AppConstants.exportDatiRoute,
+            selectedColor: ThemeConstants.primaryColor,
+            onTap: () => _navigateTo(context, AppConstants.exportDatiRoute),
+          ),
+
           // Inserimento vocale
           ListTile(
             leading: Icon(Icons.mic),

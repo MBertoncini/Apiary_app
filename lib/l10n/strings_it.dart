@@ -3029,4 +3029,43 @@ class StringsIt extends AppStrings {
       default: return key;
     }
   }
+
+  // -- Esportazione dati (Excel) --
+  @override String get navEsportaDati => 'Esporta dati (Excel)';
+  @override String get exportDatiTitle => 'Esporta dati';
+  @override String get exportDatiIntro => 'Crea un file Excel con i tuoi dati, un foglio per ogni sezione. Potrai salvarlo o condividerlo (email, Drive, WhatsApp…).';
+  @override String get exportDatiApiario => 'Apiario';
+  @override String get exportDatiTuttiApiari => 'Tutti gli apiari';
+  @override String get exportDatiAnno => 'Anno';
+  @override String get exportDatiTuttiAnni => 'Tutti gli anni';
+  @override String get exportDatiAnnoHelper => 'Filtra gli eventi datati (controlli, trattamenti, smielature…). Apiari, arnie, colonie, regine e attrezzature sono sempre completi.';
+  @override String get exportDatiSezioni => 'Dati da esportare';
+  @override String get exportDatiSelezionaTutto => 'Tutti';
+  @override String get exportDatiDeselezionaTutto => 'Nessuno';
+  @override String get exportDatiNotaApiario => 'Vendite, pagamenti e attrezzature non sono legati a un apiario: vengono esportati per intero.';
+  @override String get exportDatiNessunaSezione => 'Seleziona almeno una sezione';
+  @override String get exportDatiBtn => 'Esporta in Excel';
+  @override String get exportDatiInCorso => 'Preparazione del file…';
+  @override String get exportDatiShareSubject => 'Dati Apiary Manager';
+  @override String exportDatiErrore(String err) => 'Esportazione non riuscita: $err';
+  @override String exportDatiSezione(String key) {
+    switch (key) {
+      case 'apiari': return 'Apiari';
+      case 'arnie': return 'Arnie';
+      case 'colonie': return 'Colonie';
+      case 'controlli': return 'Controlli';
+      case 'regine': return 'Regine';
+      case 'trattamenti': return 'Trattamenti';
+      case 'varroa': return 'Varroa';
+      case 'alimentazioni': return 'Alimentazioni';
+      case 'melari': return 'Melari';
+      case 'smielature': return 'Smielature';
+      case 'invasettamenti': return 'Invasettamenti';
+      case 'vendite': return 'Vendite';
+      case 'pagamenti': return 'Pagamenti';
+      case 'attrezzature': return 'Attrezzature';
+      case 'spese_attrezzatura': return 'Spese attrezzatura';
+      default: return key;
+    }
+  }
 }

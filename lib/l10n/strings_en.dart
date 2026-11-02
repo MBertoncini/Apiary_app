@@ -3067,4 +3067,43 @@ class StringsEn extends AppStrings {
       default: return key;
     }
   }
+
+  // -- Data export (Excel) --
+  @override String get navEsportaDati => 'Export data (Excel)';
+  @override String get exportDatiTitle => 'Export data';
+  @override String get exportDatiIntro => 'Create an Excel file with your data, one sheet per section. You can then save or share it (email, Drive, WhatsApp…).';
+  @override String get exportDatiApiario => 'Apiary';
+  @override String get exportDatiTuttiApiari => 'All apiaries';
+  @override String get exportDatiAnno => 'Year';
+  @override String get exportDatiTuttiAnni => 'All years';
+  @override String get exportDatiAnnoHelper => 'Filters dated events (inspections, treatments, extractions…). Apiaries, hives, colonies, queens and equipment are always complete.';
+  @override String get exportDatiSezioni => 'Data to export';
+  @override String get exportDatiSelezionaTutto => 'All';
+  @override String get exportDatiDeselezionaTutto => 'None';
+  @override String get exportDatiNotaApiario => 'Sales, payments and equipment are not tied to an apiary: they are exported in full.';
+  @override String get exportDatiNessunaSezione => 'Select at least one section';
+  @override String get exportDatiBtn => 'Export to Excel';
+  @override String get exportDatiInCorso => 'Preparing the file…';
+  @override String get exportDatiShareSubject => 'Apiary Manager data';
+  @override String exportDatiErrore(String err) => 'Export failed: $err';
+  @override String exportDatiSezione(String key) {
+    switch (key) {
+      case 'apiari': return 'Apiaries';
+      case 'arnie': return 'Hives';
+      case 'colonie': return 'Colonies';
+      case 'controlli': return 'Inspections';
+      case 'regine': return 'Queens';
+      case 'trattamenti': return 'Treatments';
+      case 'varroa': return 'Varroa';
+      case 'alimentazioni': return 'Feeding';
+      case 'melari': return 'Supers';
+      case 'smielature': return 'Extractions';
+      case 'invasettamenti': return 'Jarring';
+      case 'vendite': return 'Sales';
+      case 'pagamenti': return 'Payments';
+      case 'attrezzature': return 'Equipment';
+      case 'spese_attrezzatura': return 'Equipment expenses';
+      default: return key;
+    }
+  }
 }

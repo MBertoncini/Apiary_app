@@ -51,6 +51,7 @@ import '../screens/mappa/nomadismo_screen.dart';
 import '../screens/pagamento/pagamenti_screen.dart';
 import '../screens/pagamento/pagamento_detail_screen.dart';
 import '../screens/pagamento/pagamento_form_screen.dart';
+import '../screens/export/export_dati_screen.dart';
 import '../screens/pagamento/quote_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/voice_command_screen.dart'; // Updated import - using the correct updated class
@@ -354,6 +355,10 @@ class RouteGenerator {
       // Routes for payment management
       case AppConstants.pagamentiRoute:
         return MaterialPageRoute(settings: settings, builder: (_) => PagamentiScreen());
+
+      // Esportazione dati in Excel
+      case AppConstants.exportDatiRoute:
+        return MaterialPageRoute(settings: settings, builder: (_) => const ExportDatiScreen());
 
       case AppConstants.pagamentoDetailRoute:
         // Verify arguments are correct
