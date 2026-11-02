@@ -11,6 +11,15 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
+  21: _ReleaseNotes(
+    version: '1.0.4',
+    buildNumber: 21,
+    date: '02 Novembre 2026',
+    notes: [
+      _Note('📊', 'Nuovo', 'Esporta i tuoi dati in Excel - Dal menu laterale apri "Esporta dati (Excel)": l\'app crea un file con un foglio per ogni sezione (apiari, arnie, colonie, controlli, regine, trattamenti, varroa, alimentazioni, melari, smielature, invasettamenti, vendite, pagamenti, attrezzature e spese). Puoi filtrare per apiario e per anno, scegliere le sezioni e poi salvare il file o condividerlo via email, Drive o WhatsApp'),
+      _Note('🔩', 'Fix', 'Colonie da alimentare - Nella scelta delle colonie non compaiono più arnie ripetute o già eliminate'),
+    ],
+  ),
   20: _ReleaseNotes(
     version: '1.0.3',
     buildNumber: 20,
