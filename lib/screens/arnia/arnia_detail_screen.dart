@@ -48,6 +48,9 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   Map<String, dynamic>? _reginaGenealogia;
   bool _reginaAutoCreata = false;
   List<dynamic> _controlli = [];
+  /// Controlli più vecchi di 90 giorni: il server non li manda di default.
+  bool _caricandoControlliVecchi = false;
+  bool _controlliVecchiCaricati = false;
   List<dynamic> _melari = [];
   List<AnalisiTelaino> _analisiTelaini = [];
 
@@ -67,6 +70,53 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  /// Scarica dal server anche i controlli più vecchi di 90 giorni, che la
+  /// sincronizzazione normale non porta sul telefono. Restano poi in cache.
+  Future<void> _caricaControlliVecchi() async {
+    setState(() => _caricandoControlliVecchi = true);
+    final prima = _controlli.length;
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final tutti = await ControlloService(apiService).getControlliByArnia(
+        widget.arniaId,
+        days: ControlloService.giorniStoricoCompleto,
+      );
+      tutti.sort((a, b) => (b['data'] ?? '').compareTo(a['data'] ?? ''));
+      if (!mounted) return;
+      setState(() {
+        _controlli = tutti;
+        _controlliVecchiCaricati = true;
+      });
+      if (tutti.length <= prima) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_s.arniaDetailNessunControlloVecchio)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _caricandoControlliVecchi = false);
+    }
+  }
+
+  Widget _buildCaricaControlliVecchi() {
+    if (_controlliVecchiCaricati) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: _caricandoControlliVecchi
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : TextButton.icon(
+                onPressed: _caricaControlliVecchi,
+                icon: const Icon(Icons.history),
+                label: Text(_s.arniaDetailCaricaControlliVecchi),
+              ),
+      ),
+    );
   }
 
   Future<void> _loadArnia() async {
@@ -926,13 +976,18 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                         icon: const Icon(Icons.add),
                         label: Text(s.arniaDetailBtnRegControllo),
                       ),
+                      const SizedBox(height: 8),
+                      _buildCaricaControlliVecchi(),
                     ],
                   ),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _controlli.length,
+                  itemCount: _controlli.length + 1,
                   itemBuilder: (context, index) {
+                    if (index == _controlli.length) {
+                      return _buildCaricaControlliVecchi();
+                    }
                     final controllo = _controlli[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),

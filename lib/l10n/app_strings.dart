@@ -354,6 +354,8 @@ abstract class AppStrings {
 
   // Controlli tab content
   String get arniaDetailNoControlli;
+  String get arniaDetailCaricaControlliVecchi;
+  String get arniaDetailNessunControlloVecchio;
   String arniaDetailControlloTitle(String date);
   String arniaDetailControlloBy(String user);
   String arniaDetailScorte(int n);

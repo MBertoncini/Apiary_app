@@ -1,3 +1,4 @@
-- App e sito sempre allineati: quello che elimini dal sito (per esempio un controllo) ora sparisce anche dall'app alla sincronizzazione successiva.
+- App e sito sempre allineati: quello che elimini dal sito (es. un controllo) ora sparisce anche dall'app alla sincronizzazione successiva.
 - Nomi delle colonie: le colonie si riconoscono dall'arnia o dal nucleo in cui vivono ("Colonia · Arnia 3"), come sul sito. Nella storia di un'arnia sono numerate 1, 2, 3 in ordine di insediamento.
+- Controlli più vecchi: nella scheda di un'arnia il pulsante "Carica controlli più vecchi" mostra anche quelli di oltre 3 mesi fa.
 - Correzioni minori.

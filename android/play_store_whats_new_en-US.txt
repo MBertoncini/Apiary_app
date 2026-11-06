@@ -1,3 +1,4 @@
-- App and website stay in sync: anything you delete on the website (for example an inspection) now disappears from the app at the next sync.
+- App and website stay in sync: anything you delete on the website (e.g. an inspection) now disappears from the app at the next sync.
 - Colony names: colonies are named after the hive or nucleus they live in ("Colony · Hive 3"), as on the website. In a hive's history they are numbered 1, 2, 3 in the order they were installed.
+- Older inspections: on a hive's page, the "Load older inspections" button fetches inspections older than 3 months.
 - Minor fixes.

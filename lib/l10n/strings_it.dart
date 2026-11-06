@@ -351,6 +351,8 @@ class StringsIt extends AppStrings {
   @override String get arniaTabAnalisi => 'Analisi';
   // Controlli tab content
   @override String get arniaDetailNoControlli => 'Nessun controllo registrato';
+  @override String get arniaDetailCaricaControlliVecchi => 'Carica controlli più vecchi';
+  @override String get arniaDetailNessunControlloVecchio => 'Nessun controllo più vecchio di 3 mesi';
   @override String arniaDetailControlloTitle(String date) => 'Controllo del $date';
   @override String arniaDetailControlloBy(String user) => 'Effettuato da $user';
   @override String arniaDetailScorte(int n) => 'Scorte: $n';

@@ -360,6 +360,8 @@ class StringsEn extends AppStrings {
   @override String get arniaTabAnalisi => 'Analysis';
   // Controlli tab content
   @override String get arniaDetailNoControlli => 'No inspections recorded';
+  @override String get arniaDetailCaricaControlliVecchi => 'Load older inspections';
+  @override String get arniaDetailNessunControlloVecchio => 'No inspections older than 3 months';
   @override String arniaDetailControlloTitle(String date) => 'Inspection of $date';
   @override String arniaDetailControlloBy(String user) => 'By $user';
   @override String arniaDetailScorte(int n) => 'Stores: $n';

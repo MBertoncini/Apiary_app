@@ -16,6 +16,7 @@ const Map<int, _ReleaseNotes> _changelog = {
     buildNumber: 22,
     date: '06 Novembre 2026',
     notes: [
+      _Note('📜', 'Nuovo', 'Controlli più vecchi - Nella scheda di un\'arnia l\'app mostra i controlli degli ultimi 3 mesi: in fondo all\'elenco il pulsante "Carica controlli più vecchi" recupera tutto lo storico, che poi resta disponibile anche offline'),
       _Note('🔄', 'Fix', 'App e sito sempre allineati - Quello che elimini dal sito (per esempio un controllo) ora sparisce anche dall\'app alla sincronizzazione successiva, invece di restare in elenco'),
       _Note('🐝', 'Fix', 'Nomi delle colonie - Le colonie si riconoscono dall\'arnia o dal nucleo in cui vivono ("Colonia · Arnia 3"), come sul sito, invece che da un numero interno che non partiva da 1. Nella storia di un\'arnia le colonie sono numerate 1, 2, 3… in ordine di insediamento'),
     ],

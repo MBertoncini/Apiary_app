@@ -130,8 +130,21 @@ class ControlloService {
     return localControllo;
   }
   
-  // Ottieni controlli per un'arnia specifica
-  Future<List<Map<String, dynamic>>> getControlliByArnia(int arniaId) async {
+  /// Finestra di default del server per `GET /arnie/{id}/controlli/`.
+  static const int giorniRecenti = 90;
+
+  /// Finestra che copre tutto lo storico (il server accetta solo `days`).
+  static const int giorniStoricoCompleto = 36500;
+
+  /// Controlli di un'arnia: prima la cache locale, poi il server.
+  ///
+  /// Il server restituisce solo gli ultimi [days] giorni (default 90): per
+  /// scaricare anche quelli più vecchi passare [giorniStoricoCompleto].
+  /// Una volta scaricati restano nella cache e compaiono anche dopo.
+  Future<List<Map<String, dynamic>>> getControlliByArnia(
+    int arniaId, {
+    int days = giorniRecenti,
+  }) async {
     // Prima recupera i dati locali
     debugPrint('Inizio caricamento controlli per arnia $arniaId');
     List<Map<String, dynamic>> localControlli = await _controlloDao.getByArnia(arniaId);
@@ -144,8 +157,9 @@ class ControlloService {
     if (isOnline) {
       try {
         // Recupera dal server
-        debugPrint('Chiamata API: ${ApiConstants.arnieUrl}$arniaId/controlli/');
-        final response = await _apiService.get('${ApiConstants.arnieUrl}$arniaId/controlli/');
+        final url = '${ApiConstants.arnieUrl}$arniaId/controlli/?days=$days';
+        debugPrint('Chiamata API: $url');
+        final response = await _apiService.get(url);
         debugPrint('Risposta API ricevuta di tipo: ${response.runtimeType}');
         
         List<Map<String, dynamic>> remoteControlli = [];
@@ -163,7 +177,8 @@ class ControlloService {
         // Allinea il database locale, anche quando la lista è vuota: i
         // controlli eliminati dal web devono sparire anche qui.
         if (_isCompleteList(response)) {
-          await _controlloDao.replaceArniaFromServer(arniaId, remoteControlli);
+          await _controlloDao.replaceArniaFromServer(arniaId, remoteControlli,
+              days: days);
         } else {
           await _controlloDao.syncFromServer(remoteControlli);
         }
