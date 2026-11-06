@@ -11,6 +11,15 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
+  22: _ReleaseNotes(
+    version: '1.0.5',
+    buildNumber: 22,
+    date: '06 Novembre 2026',
+    notes: [
+      _Note('🔄', 'Fix', 'App e sito sempre allineati - Quello che elimini dal sito (per esempio un controllo) ora sparisce anche dall\'app alla sincronizzazione successiva, invece di restare in elenco'),
+      _Note('🐝', 'Fix', 'Nomi delle colonie - Le colonie si riconoscono dall\'arnia o dal nucleo in cui vivono ("Colonia · Arnia 3"), come sul sito, invece che da un numero interno che non partiva da 1. Nella storia di un\'arnia le colonie sono numerate 1, 2, 3… in ordine di insediamento'),
+    ],
+  ),
   21: _ReleaseNotes(
     version: '1.0.4',
     buildNumber: 21,
