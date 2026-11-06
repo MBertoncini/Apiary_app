@@ -1116,9 +1116,12 @@ class StringsEn extends AppStrings {
   @override String get coloniaDetailLblTotaleControlli => 'Total inspections';
   @override String get coloniaDetailSectionNote => 'Notes';
   @override String get coloniaDetailNoControlli => 'No inspections recorded';
-  @override String coloniaId(int id) => 'Colony #$id';
-  @override String coloniaOrigineDaId(int id) => 'Colony #$id';
-  @override String coloniaConfluitaInId(int id) => 'Colony #$id';
+  @override String coloniaContenitore(String tipo, int? numero) =>
+      numero == null ? 'No container'
+      : tipo == 'nucleo' ? 'Nucleus $numero'
+      : 'Hive $numero';
+  @override String coloniaTitle(String contenitore) => 'Colony · $contenitore';
+  @override String coloniaRiferimento(String contenitore, String dataInizio) => '$contenitore, since $dataInizio';
   @override String coloniaControlloSubtitle(int scorte, int covata) => 'Stores: $scorte · Brood: $covata';
   @override String get coloniaControlloSciamatura => ' · ⚠ Swarm';
 
@@ -1133,7 +1136,7 @@ class StringsEn extends AppStrings {
   @override String coloniaFormError(String e) => 'Error: $e';
 
   // Colonia chiudi
-  @override String coloniaChiudiTitle(int id) => 'Close Colony #$id';
+  @override String coloniaChiudiTitle(String contenitore) => 'Close colony · $contenitore';
   @override String get coloniaChiudiWarning =>
       'This operation closes the lifecycle of the colony. '
       'All historical data (inspections, queen, honey supers) will be preserved.';
@@ -1156,7 +1159,7 @@ class StringsEn extends AppStrings {
   // Storia colonie
   @override String get storiaColonieTitle => 'Colony history';
   @override String get storiaColonieEmpty => 'No historical colonies';
-  @override String storiaColonieItem(int id, String stato) => 'Colony #$id · $stato';
+  @override String storiaColonieItem(int numero, String stato) => 'Colony $numero · $stato';
   @override String storiaColonieDates(String start, String? end) =>
       'From $start${end != null ? ' to $end' : ''}';
   @override String get storiaColonieInCorso => ' · ongoing';
@@ -2598,7 +2601,7 @@ class StringsEn extends AppStrings {
   // ── Colony data in arnia detail ──
   @override String get arniaColoniaVuota => 'Empty hive - no active colony';
   @override String get arniaInsediaColonia => 'Settle colony';
-  @override String arniaColoniaHeader(int id, String date) => 'Colony #$id - since $date';
+  @override String arniaColoniaHeader(String date) => 'Colony since $date';
   @override String arniaColoniaRegina(String razza, String origine) => 'Queen: $razza · $origine';
   @override String get arniaMenuStoriaColonie => 'Colony history';
   @override String get arniaMenuInsediaNuovaColonia => 'Settle new colony';

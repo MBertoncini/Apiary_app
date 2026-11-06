@@ -1144,9 +1144,11 @@ abstract class AppStrings {
   String get coloniaDetailLblTotaleControlli;
   String get coloniaDetailSectionNote;
   String get coloniaDetailNoControlli;
-  String coloniaId(int id);
-  String coloniaOrigineDaId(int id);
-  String coloniaConfluitaInId(int id);
+  // Le colonie si identificano col contenitore ("Arnia 3"), come sul web:
+  // l'id del database è globale e non parte da 1 per l'utente.
+  String coloniaContenitore(String tipo, int? numero);
+  String coloniaTitle(String contenitore);
+  String coloniaRiferimento(String contenitore, String dataInizio);
   String coloniaControlloSubtitle(int scorte, int covata);
   String get coloniaControlloSciamatura;
 
@@ -1161,7 +1163,7 @@ abstract class AppStrings {
   String coloniaFormError(String e);
 
   // Colonia chiudi
-  String coloniaChiudiTitle(int id);
+  String coloniaChiudiTitle(String contenitore);
   String get coloniaChiudiWarning;
   String get coloniaChiudiLblStato;
   String get coloniaChiudiLblData;
@@ -1182,7 +1184,7 @@ abstract class AppStrings {
   // Storia colonie
   String get storiaColonieTitle;
   String get storiaColonieEmpty;
-  String storiaColonieItem(int id, String stato);
+  String storiaColonieItem(int numero, String stato);
   String storiaColonieDates(String start, String? end);
   String get storiaColonieInCorso;
 
@@ -2547,7 +2549,7 @@ abstract class AppStrings {
   // ── Colony data in arnia detail ──
   String get arniaColoniaVuota;
   String get arniaInsediaColonia;
-  String arniaColoniaHeader(int id, String date);
+  String arniaColoniaHeader(String date);
   String arniaColoniaRegina(String razza, String origine);
   String get arniaMenuStoriaColonie;
   String get arniaMenuInsediaNuovaColonia;

@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/colonia_service.dart';
 import '../../services/controllo_service.dart';
 import '../../services/language_service.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/controllo_arnia.dart';
 import '../../models/colony_risk_prediction.dart';
 import '../../models/production_prediction.dart';
@@ -27,6 +28,8 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
     with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   Colonia? _colonia;
+  Colonia? _coloniaOrigine;
+  Colonia? _coloniaSuccessore;
   List<ControlloArnia> _controlli = [];
   ColonyPredictions? _predictions;
   ProductionPrediction? _production;
@@ -51,6 +54,15 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
       final api = Provider.of<ApiService>(context, listen: false);
       final service = ColoniaService(api);
       _colonia = await service.getColonia(widget.coloniaId);
+
+      // Colonie di origine/successore: servono per mostrarle col loro
+      // contenitore ("Arnia 3, dal ...") invece che con l'id del database.
+      final origineId = _colonia?.coloniaOrigineId;
+      final successoreId = _colonia?.coloniaSuccessoreId;
+      _coloniaOrigine =
+          origineId != null ? await service.getColonia(origineId) : null;
+      _coloniaSuccessore =
+          successoreId != null ? await service.getColonia(successoreId) : null;
 
       // Carica controlli via ControlloService
       if (_colonia != null) {
@@ -104,7 +116,8 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(s.coloniaId(c.id)),
+        title: Text(s.coloniaTitle(
+            s.coloniaContenitore(c.contenitore, c.contenitoreNumero))),
         actions: [
           if (c.isAttiva)
             PopupMenuButton<String>(
@@ -180,7 +193,8 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                   const SizedBox(height: 16),
                 ],
 
-                _infoRow(Icons.home_outlined, s.coloniaDetailLblContenitore, c.contenitoreLabel),
+                _infoRow(Icons.home_outlined, s.coloniaDetailLblContenitore,
+                    s.coloniaContenitore(c.contenitore, c.contenitoreNumero)),
                 _infoRow(Icons.location_on_outlined, s.coloniaDetailLblApiario, c.apiarioNome),
                 _infoRow(Icons.calendar_today_outlined, s.coloniaDetailLblInsediataIl, c.dataInizio),
                 if (c.dataFine != null)
@@ -206,10 +220,10 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
                 // Genealogia colonia
                 if (c.coloniaOrigineId != null)
                   _infoRow(Icons.account_tree_outlined, s.coloniaDetailLblOrigineDa,
-                      s.coloniaOrigineDaId(c.coloniaOrigineId!)),
+                      _coloniaRiferimento(s, _coloniaOrigine)),
                 if (c.coloniaSuccessoreId != null)
                   _infoRow(Icons.call_merge_rounded, s.coloniaDetailLblConfluitaIn,
-                      s.coloniaConfluitaInId(c.coloniaSuccessoreId!)),
+                      _coloniaRiferimento(s, _coloniaSuccessore)),
 
                 // Contatore controlli
                 if (c.nControlli != null)
@@ -482,6 +496,13 @@ class _ColoniaDetailScreenState extends State<ColoniaDetailScreen>
     );
   }
 
+  /// "Arnia 3, dal 2025-04-01" per una colonia collegata; '—' se non è
+  /// stato possibile caricarla.
+  String _coloniaRiferimento(AppStrings s, Colonia? c) => c == null
+      ? '—'
+      : s.coloniaRiferimento(
+          s.coloniaContenitore(c.contenitore, c.contenitoreNumero), c.dataInizio);
+
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -528,6 +549,7 @@ class StoriaColonieScreen extends StatefulWidget {
 class _StoriaColonieScreenState extends State<StoriaColonieScreen> {
   bool _isLoading = true;
   List<Colonia> _colonie = [];
+  Map<int, int> _numeri = {};
 
   @override
   void initState() {
@@ -541,6 +563,16 @@ class _StoriaColonieScreenState extends State<StoriaColonieScreen> {
       final api = Provider.of<ApiService>(context, listen: false);
       final service = ColoniaService(api);
       _colonie = await service.getStoriaColonieByArnia(widget.arniaId);
+      // Numerazione 1..N in ordine di insediamento, a prescindere
+      // dall'ordine in cui la lista viene mostrata.
+      final cronologico = [..._colonie]
+        ..sort((a, b) {
+          final byDate = a.dataInizio.compareTo(b.dataInizio);
+          return byDate != 0 ? byDate : a.id.compareTo(b.id);
+        });
+      _numeri = {
+        for (var i = 0; i < cronologico.length; i++) cronologico[i].id: i + 1,
+      };
     } catch (e) {
       debugPrint('StoriaColonie load error: $e');
     } finally {
@@ -563,6 +595,7 @@ class _StoriaColonieScreenState extends State<StoriaColonieScreen> {
                   itemBuilder: (ctx, i) {
                     final c = _colonie[i];
                     final isAttiva = c.isAttiva;
+                    final numero = _numeri[c.id] ?? i + 1;
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor:
@@ -572,7 +605,7 @@ class _StoriaColonieScreenState extends State<StoriaColonieScreen> {
                           color: isAttiva ? Colors.green : Colors.grey,
                         ),
                       ),
-                      title: Text(s.storiaColonieItem(c.id, c.statoLabel)),
+                      title: Text(s.storiaColonieItem(numero, c.statoLabel)),
                       subtitle: Text(s.storiaColonieDates(
                         c.dataInizio,
                         c.dataFine,

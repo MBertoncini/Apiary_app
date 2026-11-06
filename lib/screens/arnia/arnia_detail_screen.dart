@@ -727,7 +727,7 @@ class _ArniaDetailScreenState extends State<ArniaDetailScreen> with SingleTicker
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _s.arniaColoniaHeader(colonia.id, colonia.dataInizio),
+                    _s.arniaColoniaHeader(colonia.dataInizio),
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   if (colonia.reginaAttiva != null)

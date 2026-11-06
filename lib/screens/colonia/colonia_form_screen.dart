@@ -232,7 +232,8 @@ class _ColoniaChiudiScreenState extends State<ColoniaChiudiScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(s.coloniaChiudiTitle(widget.colonia.id)),
+        title: Text(s.coloniaChiudiTitle(s.coloniaContenitore(
+            widget.colonia.contenitore, widget.colonia.contenitoreNumero))),
         backgroundColor: Colors.red.shade700,
         foregroundColor: Colors.white,
         actions: [
