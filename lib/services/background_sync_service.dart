@@ -284,6 +284,36 @@ Future<void> _saveDataToDatabase(Map<String, dynamic> syncData) async {
   if (syncData.containsKey('smielature')) {
     await dbHelper.batchInsertOrUpdate(dbHelper.tableSmielature, syncData['smielature']);
   }
+
+  // /sync/ restituisce l'elenco completo di ogni entità: quello che manca è
+  // stato eliminato sul server (es. dal web) e va tolto anche dalla cache.
+  await _pruneDeletedOnServer(dbHelper, syncData, {
+    'apiari': dbHelper.tableApiari,
+    'arnie': dbHelper.tableArnie,
+    'controlli': dbHelper.tableControlli,
+    'regine': dbHelper.tableRegine,
+    'fioriture': dbHelper.tableFioriture,
+    'trattamenti': dbHelper.tableTrattamenti,
+    'melari': dbHelper.tableMelari,
+    'smielature': dbHelper.tableSmielature,
+  });
+}
+
+/// Per ogni chiave presente in [syncData] elimina dalla tabella corrispondente
+/// le righe già sincronizzate che il server non ha restituito.
+Future<void> _pruneDeletedOnServer(
+  DatabaseHelper dbHelper,
+  Map<String, dynamic> syncData,
+  Map<String, String> tables,
+) async {
+  for (final entry in tables.entries) {
+    final records = syncData[entry.key];
+    if (records is! List) continue;
+    await dbHelper.deleteSyncedMissing(
+      entry.value,
+      records.whereType<Map>().map((r) => r['id']),
+    );
+  }
 }
 
 // Salva preferenza

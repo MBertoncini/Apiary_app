@@ -177,7 +177,56 @@ class ControlloArniaDao {
         .toList();
     await _dbHelper.batchInsertOrUpdate(_dbHelper.tableControlli, filtered);
   }
-  
+
+  /// Allinea la cache all'elenco COMPLETO restituito dal server: aggiorna i
+  /// record ricevuti ed elimina quelli già sincronizzati che non ci sono più
+  /// (cancellati altrove, per esempio dal web). Con [scopeWhere] la pulizia
+  /// si limita al perimetro coperto dalla risposta.
+  Future<void> replaceFromServer(
+    List<Map<String, dynamic>> records, {
+    String? scopeWhere,
+    List<Object?> scopeArgs = const [],
+  }) async {
+    await syncFromServer(records);
+    await _dbHelper.deleteSyncedMissing(
+      _dbHelper.tableControlli,
+      records.map((r) => r['id']),
+      scopeWhere: scopeWhere,
+      scopeArgs: scopeArgs,
+    );
+  }
+
+  /// [replaceFromServer] per la risposta di `GET /arnie/{id}/controlli/`, che
+  /// copre solo gli ultimi [days] giorni: i controlli più vecchi restano.
+  Future<void> replaceArniaFromServer(
+    int arniaId,
+    List<Map<String, dynamic>> records, {
+    int days = 90,
+  }) async {
+    // Un giorno di margine per non toccare i controlli al confine della
+    // finestra (il server la calcola con il proprio fuso orario).
+    final since = DateTime.now().subtract(Duration(days: days - 1));
+    final sinceStr = '${since.year}-${since.month.toString().padLeft(2, '0')}'
+        '-${since.day.toString().padLeft(2, '0')}';
+    await replaceFromServer(
+      records,
+      scopeWhere: 'arnia = ? AND data >= ?',
+      scopeArgs: [arniaId, sinceStr],
+    );
+  }
+
+  /// [replaceFromServer] per la risposta di `GET /colonie/{id}/controlli/`,
+  /// che restituisce tutti i controlli della colonia.
+  Future<void> replaceColoniaFromServer(
+    int coloniaId,
+    List<Map<String, dynamic>> records,
+  ) =>
+      replaceFromServer(
+        records,
+        scopeWhere: 'colonia_id = ?',
+        scopeArgs: [coloniaId],
+      );
+
   Future<int> delete(int id) async {
     return await _dbHelper.delete(
       _dbHelper.tableControlli,

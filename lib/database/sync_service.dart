@@ -150,19 +150,30 @@ class SyncService {
     // Ottieni dati aggiornati dal server
     final syncData = await _apiService.syncData(lastSync: lastSync);
     
+    // /sync/ restituisce l'elenco completo di ogni entità: oltre ad
+    // aggiornare, si eliminano i record che il server non ha più (cancellati
+    // altrove, es. dalla dashboard web).
+
     // Sincronizza apiari
     if (syncData.containsKey('apiari')) {
-      await _apiarioDao.syncFromServer(syncData['apiari']);
+      final apiari = List<Map<String, dynamic>>.from(syncData['apiari']);
+      await _apiarioDao.syncFromServer(apiari);
+      await _dbHelper.deleteSyncedMissing(
+          _dbHelper.tableApiari, apiari.map((r) => r['id']));
     }
-    
+
     // Sincronizza arnie
     if (syncData.containsKey('arnie')) {
-      await _arniaDao.syncFromServer(syncData['arnie']);
+      final arnie = List<Map<String, dynamic>>.from(syncData['arnie']);
+      await _arniaDao.syncFromServer(arnie);
+      await _dbHelper.deleteSyncedMissing(
+          _dbHelper.tableArnie, arnie.map((r) => r['id']));
     }
-    
+
     // Sincronizza controlli
     if (syncData.containsKey('controlli')) {
-      await _controlloArniaDao.syncFromServer(syncData['controlli']);
+      await _controlloArniaDao.replaceFromServer(
+          List<Map<String, dynamic>>.from(syncData['controlli']));
     }
     
     // Continua con altre entità (regine, trattamenti, etc.)

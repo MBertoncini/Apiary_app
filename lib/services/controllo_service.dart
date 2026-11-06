@@ -160,16 +160,18 @@ class ControlloService {
           debugPrint('Formato risposta non riconosciuto!');
         }
         
-        // Sincronizza con il database locale
-        if (remoteControlli.isNotEmpty) {
+        // Allinea il database locale, anche quando la lista è vuota: i
+        // controlli eliminati dal web devono sparire anche qui.
+        if (_isCompleteList(response)) {
+          await _controlloDao.replaceArniaFromServer(arniaId, remoteControlli);
+        } else {
           await _controlloDao.syncFromServer(remoteControlli);
-          debugPrint('Sincronizzati ${remoteControlli.length} controlli');
-          
-          // Ricarica i dati dal database locale
-          localControlli = await _controlloDao.getByArnia(arniaId);
-          debugPrint('Dati locali dopo sincronizzazione: ${localControlli.length}');
         }
-        
+        debugPrint('Sincronizzati ${remoteControlli.length} controlli');
+
+        localControlli = await _controlloDao.getByArnia(arniaId);
+        debugPrint('Dati locali dopo sincronizzazione: ${localControlli.length}');
+
         return localControlli;
       } catch (e) {
         debugPrint('Errore nel recupero controlli dal server: $e');
@@ -194,15 +196,24 @@ class ControlloService {
       } else if (response is Map && response['results'] != null) {
         remote = List<Map<String, dynamic>>.from(response['results']);
       }
-      if (remote.isNotEmpty) {
+      if (_isCompleteList(response)) {
+        await _controlloDao.replaceColoniaFromServer(coloniaId, remote);
+      } else {
         await _controlloDao.syncFromServer(remote);
-        local = await _controlloDao.getByColonia(coloniaId);
       }
+      local = await _controlloDao.getByColonia(coloniaId);
     } catch (e) {
       debugPrint('getControlliByColonia error: $e');
     }
     return local;
   }
+
+  /// Vero se [response] contiene l'elenco intero: una lista semplice, o una
+  /// pagina senza pagine successive. Solo in quel caso un id assente vuol
+  /// dire che il controllo è stato eliminato sul server.
+  static bool _isCompleteList(dynamic response) =>
+      response is List ||
+      (response is Map && response['results'] is List && response['next'] == null);
 
   /// Elimina un controllo dal server e dal SQLite locale.
   /// Lancia eccezione se la chiamata API fallisce (il record rimane in SQLite).

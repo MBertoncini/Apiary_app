@@ -571,6 +571,50 @@ class DatabaseHelper {
     return rows.map((r) => r['name'] as String).toSet();
   }
 
+  /// Elimina le righe già sincronizzate che il server non restituisce più,
+  /// cioè quelle cancellate altrove (per esempio dalla dashboard web).
+  ///
+  /// Le sincronizzazioni fanno solo insert/update: senza questa pulizia un
+  /// record eliminato sul server resterebbe per sempre nella cache locale.
+  /// Le righe `pending` (modifiche locali non ancora inviate) non si toccano.
+  ///
+  /// [scopeWhere]/[scopeArgs] restringono la pulizia al sottoinsieme che la
+  /// risposta del server copre davvero (es. i controlli di una sola arnia):
+  /// fuori da quel perimetro l'assenza di un id non significa che sia stato
+  /// eliminato. Restituisce il numero di righe eliminate.
+  Future<int> deleteSyncedMissing(
+    String table,
+    Iterable<dynamic> serverIds, {
+    String? scopeWhere,
+    List<Object?> scopeArgs = const [],
+  }) async {
+    final db = await database;
+    final keep = serverIds.whereType<num>().map((id) => id.toInt()).toSet();
+    final where = scopeWhere == null
+        ? "sync_status = 'synced'"
+        : "sync_status = 'synced' AND ($scopeWhere)";
+    final rows = await db.query(table,
+        columns: ['id'], where: where, whereArgs: scopeArgs);
+    final stale = rows
+        .map((r) => r['id'])
+        .whereType<int>()
+        .where((id) => !keep.contains(id))
+        .toList();
+
+    // A blocchi, per restare sotto il limite di parametri di SQLite (999).
+    const chunkSize = 500;
+    for (var i = 0; i < stale.length; i += chunkSize) {
+      final chunk = stale.sublist(
+          i, i + chunkSize > stale.length ? stale.length : i + chunkSize);
+      await db.delete(
+        table,
+        where: 'id IN (${List.filled(chunk.length, '?').join(',')})',
+        whereArgs: chunk,
+      );
+    }
+    return stale.length;
+  }
+
   // Metodi di pulizia
   Future<void> clearSyncedData(Duration olderThan) async {
     final db = await database;

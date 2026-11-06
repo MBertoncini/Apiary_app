@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/colonia.dart';
 import '../database/dao/colonia_dao.dart';
+import '../database/database_helper.dart';
 import 'api_service.dart';
 import '../constants/api_constants.dart';
 
@@ -26,6 +27,12 @@ class ColoniaService {
           .map(Colonia.fromJson)
           .toList();
       await _dao.syncFromServer(colonie.map(ColoniaDao.toRow).toList());
+      // Elenco completo (non una pagina parziale): le colonie che mancano
+      // sono state eliminate sul server e vanno tolte dalla cache.
+      if (response is List || (response is Map && response['next'] == null)) {
+        await DatabaseHelper().deleteSyncedMissing(
+            DatabaseHelper().tableColonie, colonie.map((c) => c.id));
+      }
       return colonie;
     } catch (_) {}
     final rows = await _dao.getAll();
