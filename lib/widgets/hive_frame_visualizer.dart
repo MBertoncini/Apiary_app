@@ -30,7 +30,7 @@ class HiveFrameVisualizer extends StatelessWidget {
     switch (type) {
       case 'covata':          return s.frameLabelCovata;
       case 'scorte':          return s.frameLabelScorte;
-      case 'misto':           return s.frameLabelCovata;
+      case 'misto':           return s.frameLabelMisto;
       case 'foglio_cereo':    return s.frameLabelFoglioCereo;
       case 'diaframma':       return s.frameLabelDiaframma;
       case 'nutritore':       return s.frameLabelNutritore;
@@ -43,10 +43,24 @@ class HiveFrameVisualizer extends StatelessWidget {
 
   static Color _colorFor(String type) => _colors[type] ?? const Color(0xFFEEEEEE);
 
+  /// Telaino misto: metà covata e metà scorte, stessi colori dell'anteprima web.
+  static const LinearGradient _mistoGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: [0.5, 0.5],
+    colors: [Color(0xFFFF8C42), Color(0xFFFFD166)],
+  );
+
   /// Decorazione speciale per tipi con pattern complesso (3 scomparti, gabbia).
   /// Per gli altri tipi, restituisce un BoxDecoration semplice con colore pieno.
   static BoxDecoration _decorationFor(String type) {
     switch (type) {
+      case 'misto':
+        return BoxDecoration(
+          gradient: _mistoGradient,
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: Colors.black12, width: 0.5),
+        );
       case 'trappola_varroa':
         return BoxDecoration(
           gradient: const LinearGradient(
@@ -87,7 +101,7 @@ class HiveFrameVisualizer extends StatelessWidget {
   // ─── legenda (chiamata una volta per gruppo; ora localizzata) ──────
   static Widget legend(BuildContext context) {
     final s = Provider.of<LanguageService>(context, listen: false).strings;
-    const types = ['covata', 'scorte', 'foglio_cereo', 'diaframma', 'nutritore', 'trappola_varroa', 'gabbia_regina', 'vuoto'];
+    const types = ['covata', 'scorte', 'misto', 'foglio_cereo', 'diaframma', 'nutritore', 'trappola_varroa', 'gabbia_regina', 'vuoto'];
     return Wrap(
       spacing: 10,
       runSpacing: 2,
@@ -97,7 +111,8 @@ class HiveFrameVisualizer extends StatelessWidget {
           Container(
             width: 10, height: 10,
             decoration: BoxDecoration(
-              color: _colors[t],
+              color: t == 'misto' ? null : _colors[t],
+              gradient: t == 'misto' ? _mistoGradient : null,
               borderRadius: BorderRadius.circular(2),
               border: Border.all(color: Colors.black26, width: 0.5),
             ),

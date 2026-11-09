@@ -1664,6 +1664,7 @@ abstract class AppStrings {
   String get controlloFormSectionTelaini;
   String get controlloFormTelainiCovata;
   String get controlloFormTelainiScorte;
+  String get controlloFormTelainiMisto;
   String get controlloFormTelainiFoglioCereo;
   String get controlloFormTelainiDiaframma;
   String get controlloFormTelainiNutritore;
@@ -2599,6 +2600,7 @@ abstract class AppStrings {
   // ── Hive frame visualizer ──
   String get frameLabelCovata;
   String get frameLabelScorte;
+  String get frameLabelMisto;
   String get frameLabelFoglioCereo;
   String get frameLabelDiaframma;
   String get frameLabelNutritore;

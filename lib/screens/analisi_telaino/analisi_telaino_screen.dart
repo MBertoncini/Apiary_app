@@ -29,6 +29,7 @@ class _TelainoSlot {
     switch (tipo) {
       case 'covata':          return 'Covata';
       case 'scorte':          return 'Scorte';
+      case 'misto':           return 'Misto';
       case 'foglio_cereo':    return 'F. Cereo';
       case 'diaframma':       return 'Diaframma';
       case 'nutritore':       return 'Nutritore';
@@ -42,6 +43,7 @@ class _TelainoSlot {
     switch (tipo) {
       case 'covata':          return Colors.red.shade700;
       case 'scorte':          return Colors.amber.shade700;
+      case 'misto':           return Colors.deepOrange.shade700;
       case 'foglio_cereo':    return const Color(0xFF8FBC5A);
       case 'diaframma':       return Colors.grey.shade800;
       case 'nutritore':       return const Color(0xFFA0785A);
@@ -55,6 +57,7 @@ class _TelainoSlot {
     switch (tipo) {
       case 'covata':          return Icons.grid_4x4;
       case 'scorte':          return Icons.hexagon_outlined;
+      case 'misto':           return Icons.view_agenda;
       case 'foglio_cereo':    return Icons.description_outlined;
       case 'diaframma':       return Icons.vertical_split;
       case 'nutritore':       return Icons.coffee;
@@ -274,6 +277,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
         break;
 
       case 'covata':
+      case 'misto': // contiene covata: regina e celle reali sono normali
         if (result.royalCells > 3) {
           w.add(_DetectionWarning(
             s.analisiWarnCovataSciamaturaAlta(result.royalCells),
@@ -329,7 +333,7 @@ class _AnalisiTelainoScreenState extends State<AnalisiTelainoScreen> {
 
     // Global cross-type alert: extremely high total detections
     final total = result.bees + result.drones;
-    if (slot.tipo != 'covata' && total > 300) {
+    if (slot.tipo != 'covata' && slot.tipo != 'misto' && total > 300) {
       w.add(_DetectionWarning(
         s.analisiWarnDensitaAltissima(total),
         lo, Icons.info_outline,

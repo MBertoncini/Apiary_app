@@ -1632,6 +1632,7 @@ class StringsEn extends AppStrings {
   @override String get controlloFormSectionTelaini => 'Frame Configuration';
   @override String get controlloFormTelainiCovata => 'Brood';
   @override String get controlloFormTelainiScorte => 'Honey';
+  @override String get controlloFormTelainiMisto => 'Mixed';
   @override String get controlloFormTelainiFoglioCereo => 'Wax';
   @override String get controlloFormTelainiDiaframma => 'Divider';
   @override String get controlloFormTelainiNutritore => 'Feeder';
@@ -2692,6 +2693,7 @@ class StringsEn extends AppStrings {
   // ── Hive frame visualizer ──
   @override String get frameLabelCovata => 'Brood';
   @override String get frameLabelScorte => 'Stores';
+  @override String get frameLabelMisto => 'Mixed';
   @override String get frameLabelFoglioCereo => 'Wax foundation';
   @override String get frameLabelDiaframma => 'Dummy board';
   @override String get frameLabelNutritore => 'Feeder';

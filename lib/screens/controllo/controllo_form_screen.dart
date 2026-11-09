@@ -377,8 +377,9 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     int gabbiaRegina = 0;
 
     for (String tipo in _telainiConfig) {
-      if (tipo == 'covata') covata++;
-      if (tipo == 'scorte') scorte++;
+      // Un telaino misto conta sia come covata sia come scorte (come sul web).
+      if (tipo == 'covata' || tipo == 'misto') covata++;
+      if (tipo == 'scorte' || tipo == 'misto') scorte++;
       if (tipo == 'diaframma') diaframma++;
       if (tipo == 'foglio_cereo') foglioCereo++;
       if (tipo == 'trappola_varroa') trappolaVarroa++;
@@ -809,6 +810,7 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
                         children: [
                           _buildToolButton('covata', s.controlloFormTelainiCovata, Colors.red, Icons.grid_4x4),
                           _buildToolButton('scorte', s.controlloFormTelainiScorte, Colors.amber, Icons.grid_4x4),
+                          _buildToolButton('misto', s.controlloFormTelainiMisto, Colors.deepOrange, Icons.view_agenda),
                           _buildToolButton('foglio_cereo', s.controlloFormTelainiFoglioCereo, Colors.yellow.shade200, Icons.description),
                           _buildToolButton('diaframma', s.controlloFormTelainiDiaframma, Colors.black, Icons.vertical_split),
                           _buildToolButton('nutritore', s.controlloFormTelainiNutritore, const Color(0xFFE8D4B9), Icons.coffee),
@@ -1212,8 +1214,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         prevConfig = List<String>.from(json.decode(rawConfig.toString()) as List);
       } catch (_) {}
     }
-    final int prevCovata  = prevConfig.where((t) => t == 'covata').length;
-    final int prevScorte  = prevConfig.where((t) => t == 'scorte').length;
+    final int prevCovata  = prevConfig.where((t) => t == 'covata' || t == 'misto').length;
+    final int prevScorte  = prevConfig.where((t) => t == 'scorte' || t == 'misto').length;
     final int prevDiaframma = prevConfig.where((t) => t == 'diaframma').length;
     final int prevFoglioCereo = prevConfig.where((t) => t == 'foglio_cereo').length;
     final int prevTrappolaVarroa = prevConfig.where((t) => t == 'trappola_varroa').length;
@@ -1353,6 +1355,14 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
     );
   }
 
+  /// Telaino misto: metà covata (rosso) e metà scorte (ambra).
+  static const LinearGradient _mistoGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: [0.5, 0.5],
+    colors: [Colors.red, Colors.amber],
+  );
+
   Widget _buildMiniTelainiPreview(List<String> config) {
     Color _colorForTipo(String tipo) {
       switch (tipo) {
@@ -1379,7 +1389,8 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
             height: 32,
             margin: const EdgeInsets.symmetric(horizontal: 1),
             decoration: BoxDecoration(
-              color: _colorForTipo(tipo),
+              color: tipo == 'misto' ? null : _colorForTipo(tipo),
+              gradient: tipo == 'misto' ? _mistoGradient : null,
               borderRadius: BorderRadius.circular(2),
             ),
           );
@@ -1461,6 +1472,12 @@ class _ControlloArniaScreenState extends State<ControlloArniaScreen> {
         color = Colors.amber;
         width = 24;
         icon = Icons.grid_4x4;
+        break;
+      case 'misto':
+        color = Colors.deepOrange;
+        width = 24;
+        icon = Icons.view_agenda;
+        gradient = _mistoGradient;
         break;
       case 'diaframma':
         color = Colors.black;

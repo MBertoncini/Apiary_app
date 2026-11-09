@@ -636,14 +636,14 @@ class MCPService {
       String descrizioneTelaini = _generaDescrizioneTelaini(telainiConfig);
       
       // Conta i diversi tipi di telaini
-      int telainiScorte = telainiConfig.where((t) => t == 'scorte').length;
-      int telainiCovata = telainiConfig.where((t) => t == 'covata').length;
+      int telainiScorte = telainiConfig.where((t) => t == 'scorte' || t == 'misto').length;
+      int telainiCovata = telainiConfig.where((t) => t == 'covata' || t == 'misto').length;
       int telainiVuoti = telainiConfig.where((t) => t == 'vuoto').length;
       int telainiDiaframma = telainiConfig.where((t) => t == 'diaframma').length;
       int telainiNutritore = telainiConfig.where((t) => t == 'nutritore').length;
       int telainiTrappolaVarroa = telainiConfig.where((t) => t == 'trappola_varroa').length;
       int telainiGabbiaRegina = telainiConfig.where((t) => t == 'gabbia_regina').length;
-      
+
       // Calcola lo stato e tendenza
       String statoFamiglia = "normale";
       if (telainiCovata >= 5) statoFamiglia = "forte";
@@ -944,8 +944,9 @@ class MCPService {
   // NUOVO: Metodo helper per generare una descrizione testuale della configurazione dei telaini
   String _generaDescrizioneTelaini(List<String> telainiConfig) {
     // Conta i diversi tipi di telaini
-    int telainiScorte = telainiConfig.where((t) => t == 'scorte').length;
-    int telainiCovata = telainiConfig.where((t) => t == 'covata').length;
+    int telainiMisti = telainiConfig.where((t) => t == 'misto').length;
+    int telainiScorte = telainiConfig.where((t) => t == 'scorte').length + telainiMisti;
+    int telainiCovata = telainiConfig.where((t) => t == 'covata').length + telainiMisti;
     int telainiVuoti = telainiConfig.where((t) => t == 'vuoto').length;
     int telainiDiaframma = telainiConfig.where((t) => t == 'diaframma').length;
     int telainiNutritore = telainiConfig.where((t) => t == 'nutritore').length;
@@ -961,6 +962,10 @@ class MCPService {
 
     if (telainiScorte > 0) {
       parti.add('$telainiScorte telaini di scorte');
+    }
+
+    if (telainiMisti > 0) {
+      parti.add('di cui $telainiMisti misti (covata e scorte sullo stesso telaino)');
     }
 
     if (telainiVuoti > 0) {
@@ -999,14 +1004,15 @@ class MCPService {
   
   // NUOVO: Metodo helper per verificare se la covata è disposta al centro
   bool _isCovataAlCentro(List<String> telainiConfig) {
-    int firstCovata = telainiConfig.indexOf('covata');
-    int lastCovata = telainiConfig.lastIndexOf('covata');
-    
+    bool conCovata(String t) => t == 'covata' || t == 'misto';
+    int firstCovata = telainiConfig.indexWhere(conCovata);
+    int lastCovata = telainiConfig.lastIndexWhere(conCovata);
+
     if (firstCovata == -1) return false; // Non c'è covata
-    
+
     // Verifica se tutti i telaini di covata sono contigui
     for (int i = firstCovata; i <= lastCovata; i++) {
-      if (telainiConfig[i] != 'covata') return false;
+      if (!conCovata(telainiConfig[i])) return false;
     }
     
     // Verifica se la covata è grossomodo al centro
