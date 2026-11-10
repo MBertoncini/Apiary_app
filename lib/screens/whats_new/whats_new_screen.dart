@@ -11,6 +11,18 @@ import '../../services/language_service.dart';
 // Chiave: build number (il numero dopo '+' in pubspec.yaml, es. 1.0.1+8 → 8)
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<int, _ReleaseNotes> _changelog = {
+  24: _ReleaseNotes(
+    version: '1.0.6',
+    buildNumber: 24,
+    date: '10 Novembre 2026',
+    notes: [
+      _Note('🍯', 'Nuovo', 'Telaino misto - Nei controlli puoi segnare un telaino con covata e scorte insieme: conta in entrambi i totali, come sul sito'),
+      _Note('🎨', 'Nuovo', 'Colore personalizzato dell\'arnia - Scegliendo "Altro" come colore si apre un selettore per impostare la tinta che vuoi'),
+      _Note('💊', 'Fix', 'Trattamenti - Nel dettaglio di un trattamento le arnie compaiono con il loro numero, in ordine, e non più con un codice interno'),
+      _Note('🤖', 'Fix', 'Assistente AI con chiave personale - Se hai inserito la tua chiave Gemini, la chat non si ferma più al limite giornaliero del piano, come già succedeva per la voce'),
+      _Note('📊', 'Fix', 'Domande AI nelle statistiche - Il contatore mostra le tue domande di oggi e il limite del tuo piano, e la tua chiave Groq personale viene ora usata davvero'),
+    ],
+  ),
   23: _ReleaseNotes(
     version: '1.0.5',
     buildNumber: 23,

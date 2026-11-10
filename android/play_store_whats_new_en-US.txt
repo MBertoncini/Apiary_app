@@ -1,4 +1,5 @@
-- App and website stay in sync: anything you delete on the website (e.g. an inspection) now disappears from the app at the next sync.
-- Colony names: colonies are named after the hive or nucleus they live in ("Colony · Hive 3"), as on the website. In a hive's history they are numbered 1, 2, 3 in the order they were installed.
-- Older inspections: on a hive's page, the "Load older inspections" button fetches inspections older than 3 months.
+- Mixed frame: in inspections you can mark a frame holding both brood and stores.
+- Custom colour: pick "Other" as the hive colour to set any shade you like.
+- Treatments: the detail page lists hives by their number, in order.
+- AI assistant: with your own Gemini key, chat is no longer capped by the plan's daily limit; the statistics question counter is fixed.
 - Minor fixes.
