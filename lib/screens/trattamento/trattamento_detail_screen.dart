@@ -28,6 +28,8 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
       Provider.of<LanguageService>(context, listen: false).strings;
 
   Map<String, dynamic>? _trattamento;
+  // id arnia -> numero arnia, per mostrare il numero e non l'id del database
+  Map<int, int> _arniaNumeri = {};
   bool _isLoading = true;
   String? _errorMessage;
   late ApiService _apiService;
@@ -50,16 +52,64 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
     try {
       final data = await _apiService
           .get('${ApiConstants.trattamentiUrl}${widget.trattamentoId}/');
+      final numeri = await _loadArniaNumeri(
+          (data['arnie'] as List?)?.cast<int>() ?? const <int>[]);
+      if (!mounted) return;
       setState(() {
         _trattamento = data;
+        _arniaNumeri = numeri;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = _s.trattamentoDetailDeleteError(e.toString());
         _isLoading = false;
       });
     }
+  }
+
+  /// Risolve gli id arnia nei rispettivi numeri: prima dalla cache locale,
+  /// poi dal server per quelli che in cache non ci sono.
+  Future<Map<int, int>> _loadArniaNumeri(List<int> ids) async {
+    final numeri = <int, int>{};
+    if (ids.isEmpty) return numeri;
+    try {
+      final storage = Provider.of<StorageService>(context, listen: false);
+      final cached = await storage.getStoredData('arnie');
+      for (final a in cached) {
+        final id = a['id'];
+        final numero = a['numero'];
+        if (id is int && numero is int && ids.contains(id)) {
+          numeri[id] = numero;
+        }
+      }
+    } catch (e) {
+      debugPrint('Errore lettura cache arnie: $e');
+    }
+    final mancanti = ids.where((id) => !numeri.containsKey(id)).toList();
+    await Future.wait(mancanti.map((id) async {
+      try {
+        final a = await _apiService.get('${ApiConstants.arnieUrl}$id/');
+        final numero = a['numero'];
+        if (numero is int) numeri[id] = numero;
+      } catch (_) {
+        // Arnia non raggiungibile: resta l'etichetta di ripiego.
+      }
+    }));
+    return numeri;
+  }
+
+  String _arniaLabel(int id, AppStrings s) {
+    final numero = _arniaNumeri[id];
+    return s.trattamentoDetailArniaLabel(numero?.toString() ?? '#$id');
+  }
+
+  List<int> _sortedByNumero(Iterable<int> ids) {
+    final list = ids.toList();
+    list.sort((a, b) =>
+        (_arniaNumeri[a] ?? 1 << 30).compareTo(_arniaNumeri[b] ?? 1 << 30));
+    return list;
   }
 
   Future<void> _openSplitDialog() async {
@@ -96,10 +146,10 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
-                  children: arnieIds.map((id) {
+                  children: _sortedByNumero(arnieIds).map((id) {
                     final isSelected = selected.contains(id);
                     return FilterChip(
-                      label: Text(s.trattamentoDetailArniaLabel(id.toString())),
+                      label: Text(_arniaLabel(id, s)),
                       selected: isSelected,
                       onSelected: (v) => setDialogState(() {
                         if (v) {
@@ -480,9 +530,9 @@ class _TrattamentoDetailScreenState extends State<TrattamentoDetailScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 4,
-                      children: arnie
+                      children: _sortedByNumero(arnie.cast<int>())
                           .map((id) => Chip(
-                                label: Text(s.trattamentoDetailArniaLabel(id.toString())),
+                                label: Text(_arniaLabel(id, s)),
                                 visualDensity: VisualDensity.compact,
                               ))
                           .toList(),
