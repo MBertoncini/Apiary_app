@@ -429,6 +429,13 @@ abstract class AppStrings {
   String get arniaFormLblNumero;
   String get arniaFormHintNumero;
   String get arniaFormLblColore;
+  String get arniaFormLblColoreCustom;
+  String get arniaFormBtnColoreCustom;
+  String get colorPickerTitle;
+  String get colorPickerHue;
+  String get colorPickerSaturation;
+  String get colorPickerBrightness;
+  String get colorPickerHex;
   String get arniaFormLblDataInstall;
   String get arniaFormActiveTitle;
   String get arniaFormLblNotes;

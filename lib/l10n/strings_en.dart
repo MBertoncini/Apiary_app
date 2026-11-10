@@ -434,6 +434,13 @@ class StringsEn extends AppStrings {
   @override String get arniaFormLblNumero => 'Hive number';
   @override String get arniaFormHintNumero => 'Enter the hive number';
   @override String get arniaFormLblColore => 'Hive colour';
+  @override String get arniaFormLblColoreCustom => 'Custom colour';
+  @override String get arniaFormBtnColoreCustom => 'Choose';
+  @override String get colorPickerTitle => 'Choose the colour';
+  @override String get colorPickerHue => 'Hue';
+  @override String get colorPickerSaturation => 'Saturation';
+  @override String get colorPickerBrightness => 'Brightness';
+  @override String get colorPickerHex => 'Hex code';
   @override String get arniaFormLblDataInstall => 'Installation date';
   @override String get arniaFormActiveTitle => 'Active hive';
   @override String get arniaFormLblNotes => 'Notes';

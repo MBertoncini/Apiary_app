@@ -423,6 +423,13 @@ class StringsIt extends AppStrings {
   @override String get arniaFormLblNumero => 'Numero arnia';
   @override String get arniaFormHintNumero => 'Inserisci il numero dell\'arnia';
   @override String get arniaFormLblColore => 'Colore arnia';
+  @override String get arniaFormLblColoreCustom => 'Colore personalizzato';
+  @override String get arniaFormBtnColoreCustom => 'Scegli';
+  @override String get colorPickerTitle => 'Scegli il colore';
+  @override String get colorPickerHue => 'Tonalità';
+  @override String get colorPickerSaturation => 'Saturazione';
+  @override String get colorPickerBrightness => 'Luminosità';
+  @override String get colorPickerHex => 'Codice esadecimale';
   @override String get arniaFormLblDataInstall => 'Data installazione';
   @override String get arniaFormActiveTitle => 'Arnia attiva';
   @override String get arniaFormLblNotes => 'Note';

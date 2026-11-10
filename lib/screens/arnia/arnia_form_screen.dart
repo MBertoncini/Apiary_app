@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/nfc_service.dart';
 import '../../services/storage_service.dart';  // Import StorageService
 import '../../widgets/attrezzatura_prompt_dialog.dart';
+import '../../widgets/color_picker_dialog.dart';
 import '../../widgets/field_help_icon.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/language_service.dart';
@@ -185,6 +186,14 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
   
   // Gestisce il cambio di colore
   void _onColoreChanged(String? newValue) {
+    if (newValue == 'altro') {
+      // Colore personalizzato: si parte dal colore corrente e si apre il selettore.
+      if (_colore != 'altro') {
+        setState(() => _colore = 'altro');
+        _pickCustomColor();
+      }
+      return;
+    }
     if (newValue != null) {
       setState(() {
         _colore = newValue;
@@ -199,6 +208,13 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
 
         _coloreHex = selectedColor['hex'];
       });
+    }
+  }
+
+  Future<void> _pickCustomColor() async {
+    final hex = await showColorPickerDialog(context, initialHex: _coloreHex);
+    if (hex != null && mounted) {
+      setState(() => _coloreHex = hex);
     }
   }
 
@@ -454,7 +470,11 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                                 width: 20,
                                 height: 20,
                                 decoration: BoxDecoration(
-                                  color: _colorFromHex(color['hex']),
+                                  color: _colorFromHex(
+                                    color['id'] == 'altro' && _colore == 'altro'
+                                        ? _coloreHex
+                                        : color['hex'],
+                                  ),
                                   border: Border.all(color: Colors.grey),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
@@ -467,6 +487,41 @@ class _ArniaFormScreenState extends State<ArniaFormScreen> {
                       }).toList(),
                       onChanged: _onColoreChanged,
                     ),
+                    if (_colore == 'altro') ...[
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: _pickCustomColor,
+                        borderRadius: BorderRadius.circular(4),
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: s.arniaFormLblColoreCustom,
+                            border: const OutlineInputBorder(),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: _colorFromHex(_coloreHex),
+                                  border: Border.all(color: Colors.grey),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(_coloreHex.toUpperCase())),
+                              Text(
+                                s.arniaFormBtnColoreCustom,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Tipo arnia
