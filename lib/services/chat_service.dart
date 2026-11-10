@@ -99,8 +99,8 @@ class ChatService with ChangeNotifier {
     if (message.trim().isEmpty) return;
 
     // Pre-check centralizzato: se la quota chat è esaurita non spediamo.
-    // Se c'è una chiave personale, canCall(chat) dovrebbe comunque restituire true
-    // se implementato correttamente nel gating.
+    // Con chiave Gemini personale canCall(chat) è sempre true (salvo 429
+    // reali di Google): il tier limit vale solo per la chiave condivisa.
     if (!_quotaService.canCall(AiFeature.chat)) {
       _error = preCheckErrorMsg ?? 'Quota AI giornaliera esaurita';
       notifyListeners();

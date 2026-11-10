@@ -162,6 +162,7 @@ class AiQuotaService extends ChangeNotifier {
       // Se Google risponderà con 429 reale, il mark verrà riscritto dal
       // prossimo tentativo di chiamata.
       _markedExceededAt.remove(AiFeature.voice);
+      _markedExceededAt.remove(AiFeature.chat);
     }
     notifyListeners();
   }
@@ -181,8 +182,19 @@ class AiQuotaService extends ChangeNotifier {
         return limits.voice;
       case AiFeature.stats:
         if (_hasPersonalGroqKey) return 0;
-        return _intFrom(_quotaData?['daily_limit']);
+        // Backend recente: limite stats per tier. Backend vecchio: pool
+        // condiviso di sistema.
+        return _tierStatsLimit ?? _intFrom(_quotaData?['daily_limit']);
     }
+  }
+
+  /// Limite giornaliero `stats` del tier corrente, se il backend lo espone
+  /// (`all_tier_limits[tier].stats`). Null con un backend che non conta
+  /// ancora le domande AI per utente.
+  int? get _tierStatsLimit {
+    final tierMap = allTierLimits?[_tier.name];
+    if (tierMap is! Map) return null;
+    return _intFromMaybe(tierMap['stats']);
   }
 
   /// Limite totale combinato chat+voice (visualizzato nel riepilogo).
@@ -208,7 +220,7 @@ class AiQuotaService extends ChangeNotifier {
           backend = _intFrom(usage['voice_today']);
           break;
         case AiFeature.stats:
-          if (_hasPersonalGroqKey) {
+          if (_hasPersonalGroqKey || _tierStatsLimit != null) {
             backend = _intFrom(usage['stats_today']);
           } else {
             final system = _quotaData?['system'] as Map?;
@@ -222,7 +234,9 @@ class AiQuotaService extends ChangeNotifier {
           }
           break;
       }
-    } else if (feature == AiFeature.stats && !_hasPersonalGroqKey) {
+    } else if (feature == AiFeature.stats &&
+        !_hasPersonalGroqKey &&
+        _tierStatsLimit == null) {
       // Se _quotaData è parziale o null, prova a leggere comunque il sistema
       final system = _quotaData?['system'] as Map?;
       if (system != null) {
@@ -273,9 +287,10 @@ class AiQuotaService extends ChangeNotifier {
     }
 
     // Chiave Gemini personale → l'utente paga Google direttamente e non è
-    // vincolato al tier limit locale. Eventuali 429 Google sono gestiti
-    // via [markExceeded] / burst cooldown sopra.
-    if (feature == AiFeature.voice && _hasPersonalGeminiKey) {
+    // vincolato al tier limit locale, né per la voce né per la chat.
+    // Eventuali 429 Google sono gestiti via [markExceeded] / burst cooldown
+    // sopra.
+    if (_usesPersonalGeminiKey(feature)) {
       return AiQuotaBlock.ok;
     }
 
@@ -284,7 +299,11 @@ class AiQuotaService extends ChangeNotifier {
       return AiQuotaBlock.exceeded;
     }
 
-    if (feature == AiFeature.stats && !_hasPersonalGroqKey) {
+    // Pool condiviso di sistema: vale solo con un backend che non ha ancora
+    // la quota stats per utente.
+    if (feature == AiFeature.stats &&
+        !_hasPersonalGroqKey &&
+        _tierStatsLimit == null) {
       final system = _quotaData?['system'] as Map?;
       if (system != null) {
         final requestsToday = _intFrom(system['requests_today']);
@@ -297,6 +316,12 @@ class AiQuotaService extends ChangeNotifier {
 
     return AiQuotaBlock.ok;
   }
+
+  /// True se [feature] passa da Gemini con la chiave personale dell'utente
+  /// (chat e voice), quindi fuori dal tier limit.
+  bool _usesPersonalGeminiKey(AiFeature feature) =>
+      _hasPersonalGeminiKey &&
+      (feature == AiFeature.chat || feature == AiFeature.voice);
 
   /// Istante fino a cui la voice è in cool-down da rate-limit burst.
   /// Null se non c'è un cool-down attivo.
@@ -392,6 +417,9 @@ class AiQuotaService extends ChangeNotifier {
   /// Se l'utilizzo corrente ha raggiunto/superato il limite, imposta il mark
   /// di esaurimento. Scade naturalmente al prossimo reset giornaliero.
   void _maybeMarkOnLimit(AiFeature feature) {
+    // Con chiave personale il tier limit non si applica: un mark qui
+    // bloccherebbe la feature fino al reset senza motivo.
+    if (_usesPersonalGeminiKey(feature)) return;
     final limit = limitFor(feature);
     if (limit > 0 && usedFor(feature) >= limit) {
       _markedExceededAt[feature] ??= DateTime.now().toUtc();
@@ -424,6 +452,16 @@ class AiQuotaService extends ChangeNotifier {
   /// viene invocato direttamente dal client). Usa l'endpoint esistente
   /// aiChatUrl ma segnala che è solo per registrazione quota.
   Future<void> recordChatCallToBackend({String? model}) async {
+    if (_hasPersonalGeminiKey) {
+      // Come per la voce: con chiave personale la chiamata non consuma il
+      // tier. Scala solo l'overlay ottimistico.
+      final currentOpt = _optimistic[AiFeature.chat] ?? 0;
+      if (currentOpt > 0) {
+        _optimistic[AiFeature.chat] = currentOpt - 1;
+        notifyListeners();
+      }
+      return;
+    }
     try {
       final payload = <String, dynamic>{
         'record_only': true,
@@ -597,6 +635,12 @@ class AiQuotaService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Solo per i test: imposta un mark di esaurimento con un istante scelto.
+  @visibleForTesting
+  void debugSetExceededAt(AiFeature feature, DateTime at) {
+    _markedExceededAt[feature] = at.toUtc();
+  }
+
   /// Rimuove manualmente il blocco (es. dopo refresh manuale da UI).
   void clearExceeded(AiFeature feature) {
     if (_markedExceededAt.remove(feature) != null) {
@@ -611,7 +655,9 @@ class AiQuotaService extends ChangeNotifier {
   /// stats usa `system.reset_at` quando serve il pool condiviso.
   DateTime? resetAtFor(AiFeature feature) {
     final String? raw;
-    if (feature == AiFeature.stats && !_hasPersonalGroqKey) {
+    if (feature == AiFeature.stats &&
+        !_hasPersonalGroqKey &&
+        _tierStatsLimit == null) {
       raw = (_quotaData?['system'] as Map?)?['reset_at'] as String?;
     } else {
       raw = (_quotaData?['personal'] as Map?)?['reset_at'] as String?;
@@ -774,9 +820,19 @@ class AiQuotaService extends ChangeNotifier {
   void _pruneExceededIfReset(AiFeature feature) {
     final marked = _markedExceededAt[feature];
     if (marked == null) return;
+    final now = DateTime.now().toUtc();
+    // Il reset è a mezzanotte UTC: un mark messo prima dell'ultima mezzanotte
+    // è scaduto. Va confrontato con l'ULTIMO reset e non con il prossimo:
+    // dopo un refresh fatto oltre la mezzanotte `resetAtFor` punta già al
+    // giorno successivo e il mark non verrebbe mai rimosso.
+    final lastReset = DateTime.utc(now.year, now.month, now.day);
+    if (marked.isBefore(lastReset)) {
+      _markedExceededAt.remove(feature);
+      return;
+    }
     final reset = resetAtFor(feature);
     if (reset == null) return;
-    if (DateTime.now().toUtc().isAfter(reset)) {
+    if (now.isAfter(reset)) {
       _markedExceededAt.remove(feature);
     }
   }
