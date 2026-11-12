@@ -3120,4 +3120,54 @@ class StringsEn extends AppStrings {
       default: return key;
     }
   }
+
+  // ── Cellar / yield per hive / apiary environment ──
+  @override String get invasettamentoFormLblOrigine => 'Source';
+  @override String get invasettamentoFormOrigineCantina => 'Storage container';
+  @override String get ripartizioneTitle => 'Yield per hive';
+  @override String get ripartizioneHint =>
+      'The harvest is split across the supers. Tap a row to correct its value.';
+  @override String ripartizioneArnia(String numero) => 'Hive $numero';
+  @override String get ripartizioneNoArnia => 'No hive';
+  @override String get ripartizioneManuale => 'manual';
+  @override String get ripartizioneAuto => 'estimated';
+  @override String ripartizioneDialogTitle(String melario) => 'Kg from super $melario';
+  @override String get ripartizioneDialogHint => 'Leave empty to go back to the automatic split.';
+  @override String get ripartizioneLblKg => 'Kg of honey';
+  @override String get apiarioFormAmbienteTitle => 'Site environment';
+  @override String get apiarioFormAmbienteHint =>
+      'Used by the forecasts. Altitude and aspect are computed from the coordinates if left empty.';
+  @override String get apiarioFormLblAltitudine => 'Altitude (m)';
+  @override String get apiarioFormLblEsposizione => 'Aspect';
+  @override String get apiarioFormLblCopertura => 'Main land cover';
+  @override String get apiarioFormEsposizioneAuto => 'Automatic';
+  @override String get apiarioFormNonIndicata => 'Not set';
+  @override String get apiarioFormValidateAltitudine => 'Invalid altitude';
+  @override String esposizioneLabel(String key) {
+    switch (key) {
+      case 'piano': return 'Flat';
+      case 'N': return 'North';
+      case 'NE': return 'North-East';
+      case 'E': return 'East';
+      case 'SE': return 'South-East';
+      case 'S': return 'South';
+      case 'SO': return 'South-West';
+      case 'O': return 'West';
+      case 'NO': return 'North-West';
+      default: return key;
+    }
+  }
+  @override String coperturaSuoloLabel(String key) {
+    switch (key) {
+      case 'bosco_latifoglie': return 'Broadleaf woodland';
+      case 'bosco_conifere': return 'Conifer woodland';
+      case 'prato_pascolo': return 'Meadows and pastures';
+      case 'seminativi': return 'Arable land';
+      case 'frutteti_vigneti': return 'Orchards and vineyards';
+      case 'macchia_incolto': return 'Scrub and fallow land';
+      case 'urbano': return 'Urban area / gardens';
+      case 'misto': return 'Mixed';
+      default: return key;
+    }
+  }
 }

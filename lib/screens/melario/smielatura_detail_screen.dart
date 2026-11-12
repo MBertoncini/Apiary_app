@@ -25,6 +25,9 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
   /// Mappa pk Melario → numero_progressivo per-utente, letta dalla cache locale.
   /// Fallback all'`id` se il record non è in cache (es. legacy o cache vuota).
   Map<int, int> _melariNumByPk = {};
+  /// Kg attribuiti a ciascun melario (e quindi a ciascuna arnia). Vuota se il
+  /// server non espone ancora l'endpoint: in quel caso si mostra la lista semplice.
+  List<Map<String, dynamic>> _ripartizione = [];
 
   AppStrings get _s => Provider.of<LanguageService>(context, listen: false).strings;
 
@@ -53,14 +56,135 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
           if (pk is int && n is int) map[pk] = n;
         }
       }
+      List<Map<String, dynamic>> ripartizione = [];
+      try {
+        final rip = await _apiService.get(
+            '${ApiConstants.produzioniUrl}${widget.smielaturaId}/ripartizione/');
+        if (rip is Map && rip['righe'] is List) {
+          ripartizione = (rip['righe'] as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+      } catch (_) {
+        // Dato accessorio: la scheda resta consultabile anche senza.
+      }
+      if (!mounted) return;
       setState(() {
         _smielatura = data;
         _melariNumByPk = map;
+        _ripartizione = ripartizione;
         _isRefreshing = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() { _errorMessage = 'Errore: $e'; _isRefreshing = false; });
     }
+  }
+
+  String _fmtKg(dynamic v) {
+    final d = v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '');
+    return d == null ? '-' : d.toStringAsFixed(2);
+  }
+
+  Future<void> _editKgMelario(Map<String, dynamic> riga) async {
+    final s = _s;
+    final ctrl = TextEditingController(
+        text: riga['kg_manuale'] == true ? _fmtKg(riga['kg_miele']) : '');
+    final numero = (riga['melario_numero'] ?? riga['melario']).toString();
+    final salvato = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.ripartizioneDialogTitle(numero)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: s.ripartizioneLblKg,
+            helperText: s.ripartizioneDialogHint,
+            helperMaxLines: 2,
+            suffixText: 'kg',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.dialogCancelBtn)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.btnSave)),
+        ],
+      ),
+    );
+    final testo = ctrl.text.trim().replaceAll(',', '.');
+    ctrl.dispose();
+    if (salvato != true || !mounted) return;
+
+    final kg = testo.isEmpty ? null : double.tryParse(testo);
+    if (testo.isNotEmpty && (kg == null || kg < 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.msgErrorGeneric(testo))));
+      return;
+    }
+    setState(() { _isRefreshing = true; });
+    try {
+      final rip = await _apiService.put(
+        '${ApiConstants.produzioniUrl}${widget.smielaturaId}/ripartizione/',
+        {
+          'righe': [
+            {'melario': riga['melario'], 'kg_miele': kg},
+          ],
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        if (rip is Map && rip['righe'] is List) {
+          _ripartizione = (rip['righe'] as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+        _isRefreshing = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _isRefreshing = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.msgErrorGeneric(e.toString()))));
+    }
+  }
+
+  List<Widget> _buildRipartizione() {
+    final s = _s;
+    return [
+      Text(s.ripartizioneTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 4),
+      Text(s.ripartizioneHint, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+      const SizedBox(height: 8),
+      ..._ripartizione.map((riga) {
+        final arnia = riga['arnia_numero'];
+        final dove = arnia != null
+            ? s.ripartizioneArnia(arnia.toString())
+            : ((riga['colonia_display'] as String?) ?? s.ripartizioneNoArnia);
+        final numero = riga['melario_numero'] ?? riga['melario'];
+        final manuale = riga['kg_manuale'] == true;
+        return Card(
+          child: ListTile(
+            leading: const Icon(Icons.view_module, color: Colors.amber),
+            title: Text(dove),
+            subtitle: Text(
+                '${s.melariMelarioId(numero is int ? numero : int.tryParse(numero.toString()) ?? 0)}'
+                ' · ${manuale ? s.ripartizioneManuale : s.ripartizioneAuto}'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('${_fmtKg(riga['kg_miele'])} kg',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 4),
+                Icon(Icons.edit, size: 18, color: Colors.grey[600]),
+              ],
+            ),
+            onTap: () => _editKgMelario(riga),
+          ),
+        );
+      }),
+    ];
   }
 
   Future<void> _deleteSmielatura() async {
@@ -223,8 +347,11 @@ class _SmielaturaDetailScreenState extends State<SmielaturaDetailScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          // Melari list
-          if (melariIds.isNotEmpty) ...[
+          // Produzione per arnia (kg per melario) oppure, se il server non
+          // la espone, il semplice elenco dei melari.
+          if (_ripartizione.isNotEmpty)
+            ..._buildRipartizione()
+          else if (melariIds.isNotEmpty) ...[
             Text(loc.smielaturaDetailMelariAssociati, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...melariIds.map((id) {

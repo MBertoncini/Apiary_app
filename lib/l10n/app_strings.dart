@@ -2849,4 +2849,27 @@ abstract class AppStrings {
   String get exportDatiShareSubject;
   String exportDatiErrore(String err);
   String exportDatiSezione(String key);
+
+  // ── Cantina / produzione per arnia / ambiente apiario ──
+  String get invasettamentoFormLblOrigine;
+  String get invasettamentoFormOrigineCantina;
+  String get ripartizioneTitle;
+  String get ripartizioneHint;
+  String ripartizioneArnia(String numero);
+  String get ripartizioneNoArnia;
+  String get ripartizioneManuale;
+  String get ripartizioneAuto;
+  String ripartizioneDialogTitle(String melario);
+  String get ripartizioneDialogHint;
+  String get ripartizioneLblKg;
+  String get apiarioFormAmbienteTitle;
+  String get apiarioFormAmbienteHint;
+  String get apiarioFormLblAltitudine;
+  String get apiarioFormLblEsposizione;
+  String get apiarioFormLblCopertura;
+  String get apiarioFormEsposizioneAuto;
+  String get apiarioFormNonIndicata;
+  String get apiarioFormValidateAltitudine;
+  String esposizioneLabel(String key);
+  String coperturaSuoloLabel(String key);
 }

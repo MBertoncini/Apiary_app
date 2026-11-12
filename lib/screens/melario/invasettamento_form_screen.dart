@@ -35,6 +35,11 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
   final _noteController = TextEditingController();
 
   bool get _isEditing => widget.initialData != null;
+
+  /// Lotto nato in cantina (da un contenitore) o rimasto senza smielatura:
+  /// l'origine non è una smielatura e non va chiesta né inviata.
+  bool get _senzaSmielatura =>
+      _isEditing && widget.initialData!['smielatura'] == null;
   int? get _editId => widget.initialData?['id'];
 
   @override
@@ -114,7 +119,7 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedSmielaturaId == null) {
+    if (_selectedSmielaturaId == null && !_senzaSmielatura) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_s.invasettamentoFormValidateSmielatura)));
       return;
     }
@@ -122,7 +127,7 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
     setState(() { _isLoading = true; });
 
     final data = {
-      'smielatura': _selectedSmielaturaId,
+      if (_selectedSmielaturaId != null) 'smielatura': _selectedSmielaturaId,
       'data': _selectedDate.toIso8601String().split('T')[0],
       'tipo_miele': _tipoMieleController.text,
       'formato_vasetto': _formatoVasetto,
@@ -163,7 +168,14 @@ class _InvasettamentoFormScreenState extends State<InvasettamentoFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Smielatura dropdown
+                    // Origine del lotto: contenitore di cantina (sola lettura)
+                    // oppure smielatura.
+                    if (_senzaSmielatura)
+                      InputDecorator(
+                        decoration: InputDecoration(labelText: s.invasettamentoFormLblOrigine, border: const OutlineInputBorder()),
+                        child: Text((widget.initialData!['contenitore_info'] as String?) ?? s.invasettamentoFormOrigineCantina),
+                      )
+                    else
                     DropdownButtonFormField<int>(
                       value: _selectedSmielaturaId,
                       decoration: InputDecoration(labelText: s.invasettamentoFormLblSmielatura, border: const OutlineInputBorder()),

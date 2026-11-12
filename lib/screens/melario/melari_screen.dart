@@ -774,6 +774,8 @@ class _MelariScreenState extends State<MelariScreen> with SingleTickerProviderSt
                       Navigator.pushNamed(context, AppConstants.invasettamentoCreateRoute, arguments: {
                         'id': inv.id,
                         'smielatura': inv.smielatura,
+                        'contenitore': inv.contenitore,
+                        'contenitore_info': inv.contenitoreInfo,
                         'data': inv.data,
                         'tipo_miele': inv.tipoMiele,
                         'formato_vasetto': inv.formatoVasetto,

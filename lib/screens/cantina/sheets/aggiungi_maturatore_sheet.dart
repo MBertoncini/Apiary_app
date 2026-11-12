@@ -120,7 +120,9 @@ class _AggiungiMaturatoreSheetState extends State<AggiungiMaturatoreSheet> {
         'kg_attuali': double.parse(_kgCtrl.text),
         'giorni_maturazione': int.parse(_giorniCtrl.text),
         'data_inizio': _dataInizio.toIso8601String().split('T')[0],
-        'stato': 'in_maturazione',
+        // Lo stato si imposta solo alla creazione: in modifica riportava a
+        // "in maturazione" anche i maturatori pronti o già svuotati.
+        if (widget.existing == null) 'stato': 'in_maturazione',
         if (_selectedSmielaturaId != null) 'smielatura': _selectedSmielaturaId,
       };
       if (widget.existing != null) {

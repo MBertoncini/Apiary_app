@@ -823,6 +823,16 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
               if (_apiario!['latitudine'] != null)
                 _infoRow(Icons.map, _s.apiarioDetailInfoCoord,
                     'Lat: ${_apiario!['latitudine']}, Long: ${_apiario!['longitudine']}'),
+              if (_apiario!['altitudine_m'] != null)
+                _infoRow(Icons.terrain, _s.apiarioFormLblAltitudine,
+                    (double.tryParse(_apiario!['altitudine_m'].toString()) ?? 0)
+                        .toStringAsFixed(0)),
+              if ((_apiario!['esposizione'] ?? '').toString().isNotEmpty)
+                _infoRow(Icons.explore, _s.apiarioFormLblEsposizione,
+                    _s.esposizioneLabel(_apiario!['esposizione'].toString())),
+              if ((_apiario!['copertura_suolo'] ?? '').toString().isNotEmpty)
+                _infoRow(Icons.park, _s.apiarioFormLblCopertura,
+                    _s.coperturaSuoloLabel(_apiario!['copertura_suolo'].toString())),
               _infoRow(Icons.wb_sunny, _s.apiarioFormMeteoTitle,
                   (_apiario!['monitoraggio_meteo'] == true)
                       ? _s.apiarioDetailInfoMeteoOn

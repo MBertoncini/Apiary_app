@@ -11,6 +11,12 @@ class Apiario {
   final int? gruppo;
   final bool condivisoConGruppo;
   final String visibilitaMappa;
+  // Dati ambientali della postazione. Non entrano in toJson(): la tabella
+  // SQLite locale degli apiari non ha queste colonne.
+  final double? altitudineM;
+  final double? pendenzaGradi;
+  final String esposizione;
+  final String coperturaSuolo;
   
   Apiario({
     required this.id,
@@ -25,6 +31,10 @@ class Apiario {
     this.gruppo,
     required this.condivisoConGruppo,
     required this.visibilitaMappa,
+    this.altitudineM,
+    this.pendenzaGradi,
+    this.esposizione = '',
+    this.coperturaSuolo = '',
   });
   
   factory Apiario.fromJson(Map<String, dynamic> json) {
@@ -41,6 +51,10 @@ class Apiario {
       gruppo: json['gruppo'],
       condivisoConGruppo: json['condiviso_con_gruppo'] ?? false,
       visibilitaMappa: json['visibilita_mappa'] ?? 'privato',
+      altitudineM: json['altitudine_m'] != null ? double.tryParse(json['altitudine_m'].toString()) : null,
+      pendenzaGradi: json['pendenza_gradi'] != null ? double.tryParse(json['pendenza_gradi'].toString()) : null,
+      esposizione: json['esposizione'] ?? '',
+      coperturaSuolo: json['copertura_suolo'] ?? '',
     );
   }
   

@@ -33,6 +33,17 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
   final _longitudineController = TextEditingController();
   final _noteController = TextEditingController();
   final _indirizzoController = TextEditingController();
+  final _altitudineController = TextEditingController();
+
+  // Ambiente della postazione ('' = non indicata / automatica)
+  String _esposizione = '';
+  String _coperturaSuolo = '';
+
+  static const _esposizioni = ['piano', 'N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+  static const _coperture = [
+    'bosco_latifoglie', 'bosco_conifere', 'prato_pascolo', 'seminativi',
+    'frutteti_vigneti', 'macchia_incolto', 'urbano', 'misto',
+  ];
 
   // Flags
   bool _monitoraggioMeteo = false;
@@ -71,6 +82,16 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
       _condivisoConGruppo = widget.apiario!['condiviso_con_gruppo'] ?? false;
       _visibilitaMappa = widget.apiario!['visibilita_mappa'] ?? 'privato';
 
+      final altitudine = widget.apiario!['altitudine_m'];
+      if (altitudine != null) {
+        final a = double.tryParse(altitudine.toString());
+        if (a != null) _altitudineController.text = a.toStringAsFixed(0);
+      }
+      final esposizione = (widget.apiario!['esposizione'] ?? '').toString();
+      _esposizione = _esposizioni.contains(esposizione) ? esposizione : '';
+      final copertura = (widget.apiario!['copertura_suolo'] ?? '').toString();
+      _coperturaSuolo = _coperture.contains(copertura) ? copertura : '';
+
       // Pre-select group in edit mode
       if (widget.apiario!['gruppo'] != null) {
         _selectedGruppoId = widget.apiario!['gruppo'];
@@ -97,6 +118,7 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
     _longitudineController.dispose();
     _noteController.dispose();
     _indirizzoController.dispose();
+    _altitudineController.dispose();
     super.dispose();
   }
 
@@ -279,6 +301,11 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
         'condiviso_con_gruppo': _condivisoConGruppo,
         'visibilita_mappa': _visibilitaMappa,
         'note': _noteController.text,
+        // Vuoti = li calcola il server dalle coordinate.
+        'altitudine_m': double.tryParse(
+            _altitudineController.text.trim().replaceAll(',', '.')),
+        'esposizione': _esposizione,
+        'copertura_suolo': _coperturaSuolo,
       };
 
       // Includi gruppo solo se condivisione attiva e gruppo selezionato
@@ -789,6 +816,81 @@ class _ApiarioFormScreenState extends State<ApiarioFormScreen> {
                                   ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Ambiente della postazione
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _s.apiarioFormAmbienteTitle,
+                      style: ThemeConstants.subheadingStyle,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _s.apiarioFormAmbienteHint,
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _altitudineController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
+                      decoration: InputDecoration(
+                        labelText: _s.apiarioFormLblAltitudine,
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        final v = (value ?? '').trim().replaceAll(',', '.');
+                        if (v.isEmpty) return null;
+                        final n = double.tryParse(v);
+                        if (n == null || n < -500 || n > 5000) {
+                          return _s.apiarioFormValidateAltitudine;
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _esposizione,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: _s.apiarioFormLblEsposizione,
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                            value: '', child: Text(_s.apiarioFormEsposizioneAuto)),
+                        for (final e in _esposizioni)
+                          DropdownMenuItem(
+                              value: e, child: Text(_s.esposizioneLabel(e))),
+                      ],
+                      onChanged: (v) => setState(() => _esposizione = v ?? ''),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _coperturaSuolo,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: _s.apiarioFormLblCopertura,
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                            value: '', child: Text(_s.apiarioFormNonIndicata)),
+                        for (final c in _coperture)
+                          DropdownMenuItem(
+                              value: c, child: Text(_s.coperturaSuoloLabel(c))),
+                      ],
+                      onChanged: (v) => setState(() => _coperturaSuolo = v ?? ''),
+                    ),
                   ],
                 ),
               ),

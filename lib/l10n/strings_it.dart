@@ -3082,4 +3082,54 @@ class StringsIt extends AppStrings {
       default: return key;
     }
   }
+
+  // ── Cantina / produzione per arnia / ambiente apiario ──
+  @override String get invasettamentoFormLblOrigine => 'Origine';
+  @override String get invasettamentoFormOrigineCantina => 'Contenitore di cantina';
+  @override String get ripartizioneTitle => 'Produzione per arnia';
+  @override String get ripartizioneHint =>
+      'I kg del raccolto sono divisi fra i melari. Tocca una riga per correggere il valore.';
+  @override String ripartizioneArnia(String numero) => 'Arnia $numero';
+  @override String get ripartizioneNoArnia => 'Senza arnia';
+  @override String get ripartizioneManuale => 'manuale';
+  @override String get ripartizioneAuto => 'calcolato';
+  @override String ripartizioneDialogTitle(String melario) => 'Kg del melario $melario';
+  @override String get ripartizioneDialogHint => 'Lascia vuoto per tornare al calcolo automatico.';
+  @override String get ripartizioneLblKg => 'Kg di miele';
+  @override String get apiarioFormAmbienteTitle => 'Ambiente della postazione';
+  @override String get apiarioFormAmbienteHint =>
+      'Dati usati dalle previsioni. Altitudine ed esposizione vengono calcolate dalle coordinate se le lasci vuote.';
+  @override String get apiarioFormLblAltitudine => 'Altitudine (m)';
+  @override String get apiarioFormLblEsposizione => 'Esposizione';
+  @override String get apiarioFormLblCopertura => 'Copertura del suolo prevalente';
+  @override String get apiarioFormEsposizioneAuto => 'Automatica';
+  @override String get apiarioFormNonIndicata => 'Non indicata';
+  @override String get apiarioFormValidateAltitudine => 'Altitudine non valida';
+  @override String esposizioneLabel(String key) {
+    switch (key) {
+      case 'piano': return 'Pianeggiante';
+      case 'N': return 'Nord';
+      case 'NE': return 'Nord-Est';
+      case 'E': return 'Est';
+      case 'SE': return 'Sud-Est';
+      case 'S': return 'Sud';
+      case 'SO': return 'Sud-Ovest';
+      case 'O': return 'Ovest';
+      case 'NO': return 'Nord-Ovest';
+      default: return key;
+    }
+  }
+  @override String coperturaSuoloLabel(String key) {
+    switch (key) {
+      case 'bosco_latifoglie': return 'Bosco di latifoglie';
+      case 'bosco_conifere': return 'Bosco di conifere';
+      case 'prato_pascolo': return 'Prati e pascoli';
+      case 'seminativi': return 'Seminativi';
+      case 'frutteti_vigneti': return 'Frutteti e vigneti';
+      case 'macchia_incolto': return 'Macchia e incolti';
+      case 'urbano': return 'Area urbana / giardini';
+      case 'misto': return 'Misto';
+      default: return key;
+    }
+  }
 }

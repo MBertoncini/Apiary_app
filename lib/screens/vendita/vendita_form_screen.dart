@@ -241,29 +241,34 @@ class _VenditaFormScreenState extends State<VenditaFormScreen> {
         if (_noteController.text.isNotEmpty)
           'note': _noteController.text,
         'gruppo': _selectedGruppoId,
+        // Le righe viaggiano insieme alla vendita: il server le crea (o le
+        // sostituisce, in modifica) e scarica i vasetti dalla cantina in
+        // un'unica transazione. Prima venivano inviate una alla volta dopo
+        // la vendita: in modifica si duplicavano e, se una chiamata falliva,
+        // restava una vendita a metà.
+        'dettagli': [
+          for (final d in _dettagli)
+            {
+              'categoria': d.categoria,
+              if (d.categoria == 'miele' && d.tipoMieleController.text.trim().isNotEmpty)
+                'tipo_miele': d.tipoMieleController.text.trim(),
+              if (d.categoria == 'miele' && d.formatoVasetto != null)
+                'formato_vasetto': d.formatoVasetto,
+              'quantita': int.tryParse(d.quantitaController.text) ?? 0,
+              'prezzo_unitario': d.prezzoController.text.trim().replaceAll(',', '.'),
+            },
+        ],
       };
 
-      dynamic result;
       if (_isEditing) {
-        result = await _apiService.put('${ApiConstants.venditeUrl}${widget.venditaId}/', venditaData);
+        await _apiService.put('${ApiConstants.venditeUrl}${widget.venditaId}/', venditaData);
       } else {
-        result = await _apiService.post(ApiConstants.venditeUrl, venditaData);
+        await _apiService.post(ApiConstants.venditeUrl, venditaData);
       }
 
-      final venditaId = result['id'];
-      for (final d in _dettagli) {
-        final dettaglioData = {
-          'categoria':       d.categoria,
-          if (d.categoria == 'miele' && d.tipoMieleController.text.isNotEmpty)
-            'tipo_miele':    d.tipoMieleController.text,
-          if (d.categoria == 'miele' && d.formatoVasetto != null)
-            'formato_vasetto': d.formatoVasetto,
-          'quantita':        int.tryParse(d.quantitaController.text) ?? 0,
-          'prezzo_unitario': d.prezzoController.text,
-        };
-        await _apiService.post(
-          '${ApiConstants.venditeUrl}$venditaId/aggiungi_dettaglio/', dettaglioData);
-      }
+      // I vasetti disponibili sono cambiati: la cantina non deve mostrare
+      // i numeri vecchi dalla cache.
+      await _storageService.saveData('invasettamenti', []);
 
       await _storageService.saveData('vendite', []);
       ScaffoldMessenger.of(context).showSnackBar(

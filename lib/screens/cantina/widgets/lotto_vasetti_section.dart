@@ -7,8 +7,8 @@ class LottoVasettiSection extends StatefulWidget {
   final String tipoMiele;
   final List<Invasettamento> invasettamenti;
   /// [selected] = items per il form vendita: [{tipo_miele, formato_vasetto, quantita}].
-  /// La distribuzione FIFO sui lotti avviene server-side via
-  /// POST /api/v1/invasettamenti/vendi/, quindi non servono deductions.
+  /// La distribuzione FIFO sui lotti avviene server-side quando la vendita
+  /// viene salvata, quindi non servono deductions.
   final void Function(List<Map<String, dynamic>> selected) onSell;
 
   const LottoVasettiSection({

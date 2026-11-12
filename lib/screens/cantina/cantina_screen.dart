@@ -82,10 +82,12 @@ class CantinaScreenState extends State<CantinaScreen> {
       _contenitori = cList.map<ContenitoreStoccaggio>((e) => ContenitoreStoccaggio.fromJson(e)).toList();
       _invasettamenti = iList.map<Invasettamento>((e) => Invasettamento.fromJson(e)).toList();
 
+      // Si salva anche la lista vuota: altrimenti, dopo aver eliminato
+      // l'ultimo elemento, la cache continuava a riproporlo offline.
       await Future.wait([
-        if (mList.isNotEmpty) _storageService.saveData('maturatori', mList),
-        if (cList.isNotEmpty) _storageService.saveData('contenitori_stoccaggio', cList),
-        if (iList.isNotEmpty) _storageService.saveData('invasettamenti', iList),
+        _storageService.saveData('maturatori', mList),
+        _storageService.saveData('contenitori_stoccaggio', cList),
+        _storageService.saveData('invasettamenti', iList),
       ]);
     } catch (e) {
       if (_maturatori.isEmpty && _contenitori.isEmpty) {
@@ -546,30 +548,14 @@ class CantinaScreenState extends State<CantinaScreen> {
     String tipoMiele,
     List<Map<String, dynamic>> selected,
   ) async {
-    final result = await Navigator.pushNamed(
+    await Navigator.pushNamed(
       context,
       '/vendita/create',
       arguments: {'prefill_miele': selected, 'tipo_miele': tipoMiele},
     );
-    // Solo se la vendita è stata salvata, marca i vasetti come venduti.
-    // L'endpoint custom /api/v1/invasettamenti/vendi/ distribuisce
-    // FIFO sui lotti incrementando numero_vasetti_venduti (lo storico
-    // numero_vasetti resta intatto per le statistiche annuali).
-    if (result == true) {
-      try {
-        for (final item in selected) {
-          await _apiService.post('${ApiConstants.invasettamentiUrl}vendi/', {
-            'tipo_miele': item['tipo_miele'],
-            'formato_vasetto': item['formato_vasetto'],
-            'quantita': item['quantita'],
-          });
-        }
-      } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_s.cantinaVenditaErrVasetti}: $e')),
-        );
-      }
-    }
+    // Lo scarico dei vasetti lo fa il server salvando la vendita, con le
+    // quantità effettivamente vendute (nel form possono essere cambiate
+    // rispetto alla selezione fatta qui). Basta ricaricare.
     _load();
   }
 
