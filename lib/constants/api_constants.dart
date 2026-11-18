@@ -1,8 +1,12 @@
 // File: lib/constants/api_constants.dart
 
 class ApiConstants {
-  // Base URL dell'API
-  static const String baseUrl = "https://cible99.pythonanywhere.com";
+  // Base URL dell'API. Sovrascrivibile in build/test con
+  // --dart-define=API_BASE_URL=http://10.0.2.2:8000 (server locale).
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://cible99.pythonanywhere.com',
+  );
   
   // Endpoint API principali
   static const String apiPrefix = "/api/v1";
