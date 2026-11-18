@@ -13,6 +13,18 @@ import '../../services/notification_service.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/language_service.dart';
 
+/// Tutte le arnie di [apiarioId], seguendo la paginazione DRF (`next`).
+/// Con la sola prima pagina un apiario con piu' di 20 arnie appariva troncato.
+/// Il filtro locale su `apiario` protegge dai server che ignorano ?apiario=
+/// (in quel caso arriverebbero le arnie di tutti gli apiari dell'utente).
+Future<List<dynamic>> caricaArnieApiario(
+    ApiService api, int apiarioId) async {
+  final list = await api.getAll('${ApiConstants.arnieUrl}?apiario=$apiarioId');
+  return list
+      .where((a) => a is Map && a['apiario'] == apiarioId)
+      .toList();
+}
+
 class TrattamentoFormScreen extends StatefulWidget {
   final int? apiarioId;
   final int? arniaId; // Pre-selezione arnia specifica
@@ -110,18 +122,13 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
     }
 
     try {
+      // getAll segue la paginazione DRF: con .get() solo i primi 20 elementi.
       final results = await Future.wait([
-        _apiService.get(ApiConstants.apiariUrl),
-        _apiService.get(ApiConstants.tipiTrattamentoUrl),
+        _apiService.getAll(ApiConstants.apiariUrl),
+        _apiService.getAll(ApiConstants.tipiTrattamentoUrl),
       ]);
-      final apiariResponse = results[0];
-      final tipiTrattamentoResponse = results[1];
-      final apiariList = apiariResponse is List
-          ? apiariResponse
-          : (apiariResponse['results'] as List? ?? []);
-      final tipiList = tipiTrattamentoResponse is List
-          ? tipiTrattamentoResponse
-          : (tipiTrattamentoResponse['results'] as List? ?? []);
+      final apiariList = results[0];
+      final tipiList = results[1];
 
       await Future.wait([
         _storageService.saveData('apiari', apiariList),
@@ -197,17 +204,21 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
     }
   }
 
-  Future<void> _loadArnieForApiario(int apiarioId) async {
+  /// Carica le arnie dell'apiario. Con [rethrowErrors] l'errore risale al
+  /// chiamante (salvataggio), altrimenti viene mostrato con uno SnackBar.
+  Future<void> _loadArnieForApiario(int apiarioId,
+      {bool rethrowErrors = false}) async {
     if (mounted) setState(() => _loadingArnie = true);
     try {
-      final response = await _apiService
-          .get('${ApiConstants.arnieUrl}?apiario=$apiarioId');
-      final list = response is List
-          ? response
-          : (response['results'] as List? ?? []);
+      final list = await caricaArnieApiario(_apiService, apiarioId);
       if (mounted) setState(() => _arnieApiario = list);
       await _loadUltimiControlli(list);
-    } catch (_) {
+    } catch (e) {
+      if (rethrowErrors) rethrow;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_s.trattamentoFormError(e.toString()))));
+      }
     } finally {
       if (mounted) setState(() => _loadingArnie = false);
     }
@@ -216,9 +227,13 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
   Future<void> _loadUltimiControlli(List<dynamic> arnie) async {
     final dao = ControlloArniaDao();
     final Map<int, Map<String, dynamic>?> map = {};
-    for (final arnia in arnie) {
-      final id = arnia['id'] as int?;
-      if (id != null) map[id] = await dao.getLatestByArnia(id);
+    try {
+      for (final arnia in arnie) {
+        final id = arnia['id'] as int?;
+        if (id != null) map[id] = await dao.getLatestByArnia(id);
+      }
+    } catch (_) {
+      // Solo informativo (ultimo controllo locale): non blocca la lista arnie.
     }
     if (mounted) setState(() => _ultimiControlli = map);
   }
@@ -458,7 +473,9 @@ class _TrattamentoFormScreenState extends State<TrattamentoFormScreen> {
         arnieDaSalvare = _selectedArnieIds.toList();
       } else {
         if (_arnieApiario.isEmpty) {
-          await _loadArnieForApiario(_apiarioId!);
+          // Se il caricamento fallisce il salvataggio si ferma con l'errore
+          // visibile, invece di salvare il trattamento senza arnie.
+          await _loadArnieForApiario(_apiarioId!, rethrowErrors: true);
         }
         arnieDaSalvare = _arnieApiario
             .map<int?>((a) => a['id'] as int?)
