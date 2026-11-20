@@ -203,29 +203,31 @@ class ControlloService {
   /// sola richiesta (`GET /apiari/{id}/controlli/?detail=1`).
   ///
   /// Restituisce `false` quando il server non supporta ancora `detail=1`
-  /// (risponde con i campi ridotti) o la richiesta fallisce: in quel caso il
-  /// chiamante deve ripiegare su [getControlliByArnia] arnia per arnia.
+  /// (risponde con i campi ridotti) o non restituisce l'elenco intero: in
+  /// quel caso il chiamante deve ripiegare su [getControlliByArnia] arnia per
+  /// arnia. In quel caso la cache non viene toccata.
+  ///
+  /// Gli errori di rete o del server vengono rilanciati: ripiegare con una
+  /// richiesta per arnia su un server che non risponde moltiplicherebbe solo
+  /// le attese, e la cache locale resta valida fino al prossimo aggiornamento.
   Future<bool> syncControlliByApiario(
     int apiarioId,
     List<int> arniaIds, {
     int days = giorniRecenti,
   }) async {
-    try {
-      final response = await _apiService.get(
-          '${ApiConstants.apiariUrl}$apiarioId/controlli/?days=$days&detail=1');
-      if (response is! List) return false;
-      final remote = List<Map<String, dynamic>>.from(response);
-      // I campi di dettaglio distinguono la risposta completa da quella
-      // ridotta di un server non aggiornato, che non va scritta in cache.
-      if (remote.isNotEmpty && !remote.first.containsKey('telaini_config')) {
-        return false;
-      }
-      await _controlloDao.replaceArnieFromServer(arniaIds, remote, days: days);
-      return true;
-    } catch (e) {
-      debugPrint('syncControlliByApiario error: $e');
+    final response = await _apiService.get(
+        '${ApiConstants.apiariUrl}$apiarioId/controlli/?days=$days&detail=1');
+    if (!_isCompleteList(response)) return false;
+    final remote = List<Map<String, dynamic>>.from(
+        response is List ? response : response['results'] as List);
+    // I campi di dettaglio distinguono la risposta completa da quella
+    // ridotta di un server non aggiornato, che non va scritta in cache.
+    // Una lista vuota e' uguale nei due formati: nessun controllo recente.
+    if (remote.isNotEmpty && !remote.first.containsKey('telaini_config')) {
       return false;
     }
+    await _controlloDao.replaceArnieFromServer(arniaIds, remote, days: days);
+    return true;
   }
 
   /// Restituisce i controlli di una colonia (prima locale, poi server).

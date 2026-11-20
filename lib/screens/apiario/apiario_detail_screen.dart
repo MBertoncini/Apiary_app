@@ -221,7 +221,8 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
     final dao = ControlloArniaDao();
 
     // Sync dal server: una sola richiesta per tutto l'apiario. Una richiesta
-    // per arnia intasa il server, che ne serve una alla volta.
+    // per arnia intasa il server, che ne serve una alla volta. Se la richiesta
+    // fallisce si resta sulla cache locale (niente ripiego arnia per arnia).
     if (syncServer && _arnie.isNotEmpty) {
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);

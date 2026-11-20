@@ -70,6 +70,8 @@ dev_dependencies:
   flutter_lints: ^2.0.3
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.3.2
+  sqflite_common_ffi: ^2.3.6
+  path_provider_platform_interface: ^2.1.2
 
 flutter:
   uses-material-design: true
