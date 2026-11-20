@@ -215,6 +215,29 @@ class ControlloArniaDao {
     );
   }
 
+  /// [replaceFromServer] per la risposta di
+  /// `GET /apiari/{id}/controlli/?detail=1`, che copre gli ultimi [days]
+  /// giorni di tutte le arnie [arniaIds] dell'apiario.
+  Future<void> replaceArnieFromServer(
+    List<int> arniaIds,
+    List<Map<String, dynamic>> records, {
+    int days = 90,
+  }) async {
+    if (arniaIds.isEmpty) {
+      await syncFromServer(records);
+      return;
+    }
+    final since = DateTime.now().subtract(Duration(days: days - 1));
+    final sinceStr = '${since.year}-${since.month.toString().padLeft(2, '0')}'
+        '-${since.day.toString().padLeft(2, '0')}';
+    final placeholders = List.filled(arniaIds.length, '?').join(', ');
+    await replaceFromServer(
+      records,
+      scopeWhere: 'arnia IN ($placeholders) AND data >= ?',
+      scopeArgs: [...arniaIds, sinceStr],
+    );
+  }
+
   /// [replaceFromServer] per la risposta di `GET /colonie/{id}/controlli/`,
   /// che restituisce tutti i controlli della colonia.
   Future<void> replaceColoniaFromServer(

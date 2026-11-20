@@ -199,6 +199,35 @@ class ControlloService {
     return localControlli;
   }
   
+  /// Allinea la cache dei controlli di tutte le arnie di un apiario con UNA
+  /// sola richiesta (`GET /apiari/{id}/controlli/?detail=1`).
+  ///
+  /// Restituisce `false` quando il server non supporta ancora `detail=1`
+  /// (risponde con i campi ridotti) o la richiesta fallisce: in quel caso il
+  /// chiamante deve ripiegare su [getControlliByArnia] arnia per arnia.
+  Future<bool> syncControlliByApiario(
+    int apiarioId,
+    List<int> arniaIds, {
+    int days = giorniRecenti,
+  }) async {
+    try {
+      final response = await _apiService.get(
+          '${ApiConstants.apiariUrl}$apiarioId/controlli/?days=$days&detail=1');
+      if (response is! List) return false;
+      final remote = List<Map<String, dynamic>>.from(response);
+      // I campi di dettaglio distinguono la risposta completa da quella
+      // ridotta di un server non aggiornato, che non va scritta in cache.
+      if (remote.isNotEmpty && !remote.first.containsKey('telaini_config')) {
+        return false;
+      }
+      await _controlloDao.replaceArnieFromServer(arniaIds, remote, days: days);
+      return true;
+    } catch (e) {
+      debugPrint('syncControlliByApiario error: $e');
+      return false;
+    }
+  }
+
   /// Restituisce i controlli di una colonia (prima locale, poi server).
   Future<List<Map<String, dynamic>>> getControlliByColonia(int coloniaId) async {
     List<Map<String, dynamic>> local = await _controlloDao.getByColonia(coloniaId);
