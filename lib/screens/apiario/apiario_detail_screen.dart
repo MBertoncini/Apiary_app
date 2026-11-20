@@ -180,8 +180,6 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
         final arnieData = await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/arnie/');
         _arnie = arnieData;
 
-        await apiService.get('${ApiConstants.apiariUrl}${widget.apiarioId}/controlli/');
-        
         final melariData = await apiService.get('${ApiConstants.melariUrl}?apiario_id=${widget.apiarioId}');
         bool melarioAttivo(dynamic m) =>
             m['stato'] == 'posizionato' || m['stato'] == 'in_smielatura';
@@ -222,16 +220,24 @@ class _ApiarioDetailScreenState extends State<ApiarioDetailScreen> with SingleTi
   Future<void> _loadUltimiControlli({bool syncServer = false}) async {
     final dao = ControlloArniaDao();
 
-    // Sync dal server in parallelo per ogni arnia (usa endpoint arnie/{id}/controlli/)
+    // Sync dal server: una sola richiesta per tutto l'apiario. Una richiesta
+    // per arnia intasa il server, che ne serve una alla volta. Se la richiesta
+    // fallisce si resta sulla cache locale (niente ripiego arnia per arnia).
     if (syncServer && _arnie.isNotEmpty) {
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
         final controlloService = ControlloService(apiService);
-        await Future.wait(_arnie.map((arnia) {
-          final id = arnia['id'] as int?;
-          if (id != null) return controlloService.getControlliByArnia(id);
-          return Future.value(<Map<String, dynamic>>[]);
-        }));
+        final arniaIds =
+            _arnie.map((arnia) => arnia['id'] as int?).whereType<int>().toList();
+        final synced = await controlloService.syncControlliByApiario(
+            widget.apiarioId, arniaIds);
+        if (!synced) {
+          // Server non aggiornato: ripiega su arnie/{id}/controlli/, in
+          // sequenza per non accodare decine di richieste insieme.
+          for (final id in arniaIds) {
+            await controlloService.getControlliByArnia(id);
+          }
+        }
       } catch (e) {
         debugPrint('Error syncing controlli from server: $e');
       }
